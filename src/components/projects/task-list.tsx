@@ -1,14 +1,17 @@
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Task } from '@/lib/types';
 import { users } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format, isPast } from 'date-fns';
-import { Circle, CheckCircle2, CircleDot, AlertTriangle } from 'lucide-react';
+import { Circle, CheckCircle2, CircleDot, AlertTriangle, Pencil } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { Button } from '@/components/ui/button';
 
 type TaskListProps = {
   tasks: Task[];
+  onEditTask: (task: Task) => void;
 };
 
 const statusIcons = {
@@ -17,7 +20,7 @@ const statusIcons = {
   done: <CheckCircle2 className="w-4 h-4 text-green-500" />,
 };
 
-export function TaskList({ tasks }: TaskListProps) {
+export function TaskList({ tasks, onEditTask }: TaskListProps) {
   if (tasks.length === 0) {
     return (
       <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg">
@@ -26,6 +29,8 @@ export function TaskList({ tasks }: TaskListProps) {
       </div>
     );
   }
+
+  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
   return (
     <TooltipProvider>
@@ -37,6 +42,7 @@ export function TaskList({ tasks }: TaskListProps) {
             <TableHead>Assignees</TableHead>
             <TableHead>Due Date</TableHead>
             <TableHead className="text-right">Weight</TableHead>
+            <TableHead className="w-[50px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -47,7 +53,7 @@ export function TaskList({ tasks }: TaskListProps) {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {statusIcons[task.status]}
-                    <span className="capitalize hidden md:inline-block">{task.status.replace('-', ' ')}</span>
+                    <span className="capitalize hidden md:inline-block">{capitalize(task.status.replace('-', ' '))}</span>
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">{task.title}</TableCell>
@@ -88,6 +94,12 @@ export function TaskList({ tasks }: TaskListProps) {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">{task.weight}%</TableCell>
+                <TableCell className="text-right">
+                  <Button variant="ghost" size="icon" onClick={() => onEditTask(task)}>
+                    <Pencil className="w-4 h-4" />
+                    <span className="sr-only">Edit Task</span>
+                  </Button>
+                </TableCell>
               </TableRow>
             );
           })}

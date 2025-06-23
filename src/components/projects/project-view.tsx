@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -15,6 +16,7 @@ import { TaskList } from "@/components/projects/task-list";
 import { EditMilestoneDialog } from "./edit-milestone-dialog";
 import { AddTaskDialog } from "./add-task-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { EditTaskDialog } from "./edit-task-dialog";
 
 type ProjectViewProps = {
   initialProject: Project;
@@ -25,6 +27,8 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
   const [project, setProject] = useState<Project>(initialProject);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
+  const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: Task; milestone: Milestone } | null>(null);
+
 
   const department = departments.find(d => d.id === project.departmentId);
   const projectManager = users.find(u => u.id === project.projectManagerId);
@@ -67,6 +71,17 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
       ...prevProject,
       milestones: prevProject.milestones.map(m =>
         m.id === milestoneId ? { ...m, tasks: [...m.tasks, newTask] } : m
+      ),
+    }));
+  };
+
+  const handleTaskUpdate = (milestoneId: string, updatedTask: Task) => {
+    setProject(prevProject => ({
+      ...prevProject,
+      milestones: prevProject.milestones.map(m =>
+        m.id === milestoneId
+          ? { ...m, tasks: m.tasks.map(t => t.id === updatedTask.id ? updatedTask : t) }
+          : m
       ),
     }));
   };
@@ -171,7 +186,10 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                                         <PlusCircle className="mr-2 h-4 w-4" /> Add Task
                                     </Button>
                                 </div>
-                                <TaskList tasks={milestone.tasks} />
+                                <TaskList 
+                                    tasks={milestone.tasks} 
+                                    onEditTask={(task) => setEditingTaskInfo({ task, milestone })}
+                                />
                             </AccordionContent>
                         </AccordionItem>
                     )
@@ -195,6 +213,16 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
             onOpenChange={(open) => !open && setAddingTaskToMilestone(null)}
             milestone={addingTaskToMilestone}
             onTaskAdd={handleTaskAdd}
+        />
+      )}
+      
+      {editingTaskInfo && (
+        <EditTaskDialog
+            isOpen={!!editingTaskInfo}
+            onOpenChange={(open) => !open && setEditingTaskInfo(null)}
+            milestone={editingTaskInfo.milestone}
+            task={editingTaskInfo.task}
+            onTaskUpdate={handleTaskUpdate}
         />
       )}
     </div>
