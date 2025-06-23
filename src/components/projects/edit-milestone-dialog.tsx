@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -29,25 +30,44 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Milestone } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-
-const milestoneSchema = z.object({
-  title: z.string().min(3, "Title must be at least 3 characters."),
-  description: z.string().min(10, "Description must be at least 10 characters."),
-  dueDate: z.date(),
-  weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
-});
-
-type MilestoneFormValues = z.infer<typeof milestoneSchema>;
+import { useEffect, useMemo } from "react";
 
 type EditMilestoneDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   milestone: Milestone;
+  projectMilestones: Milestone[];
   onMilestoneUpdate: (updatedMilestone: Milestone) => void;
 };
 
-export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, onMilestoneUpdate }: EditMilestoneDialogProps) {
+export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMilestones, onMilestoneUpdate }: EditMilestoneDialogProps) {
   const { toast } = useToast();
+
+  const milestoneSchema = useMemo(() => {
+    return z.object({
+      title: z.string().min(3, "Title must be at least 3 characters."),
+      description: z.string().min(10, "Description must be at least 10 characters."),
+      dueDate: z.date(),
+      weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
+    }).superRefine((data, ctx) => {
+        const weightOfOtherMilestones = projectMilestones
+          .filter(m => m.id !== milestone.id)
+          .reduce((sum, m) => sum + m.weight, 0);
+        const newTotalWeight = weightOfOtherMilestones + data.weight;
+
+        if (newTotalWeight !== 100) {
+            ctx.addIssue({
+                code: z.ZodIssueCode.custom,
+                message: `The sum of all milestone weights must be 100. With this change, the total would be ${newTotalWeight}%.`,
+                path: ['weight']
+            });
+        }
+    });
+  }, [projectMilestones, milestone.id]);
+
+
+  type MilestoneFormValues = z.infer<typeof milestoneSchema>;
+
   const form = useForm<MilestoneFormValues>({
     resolver: zodResolver(milestoneSchema),
     defaultValues: {
@@ -57,6 +77,17 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, onMilesto
       weight: milestone.weight,
     },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        title: milestone.title,
+        description: milestone.description,
+        dueDate: new Date(milestone.dueDate),
+        weight: milestone.weight,
+      });
+    }
+  }, [isOpen, milestone, form]);
 
   function onSubmit(data: MilestoneFormValues) {
     const updatedMilestone = {
@@ -77,7 +108,7 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, onMilesto
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Milestone</DialogTitle>
-          <DialogDescription>Make changes to your milestone here. Click save when you're done.</DialogDescription>
+          <DialogDescription>Make changes to your milestone here. The total weight of all milestones must equal 100%.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">

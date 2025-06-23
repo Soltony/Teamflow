@@ -51,15 +51,6 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
       m.id === updatedMilestone.id ? updatedMilestone : m
     );
 
-    const totalWeight = newMilestones.reduce((sum, m) => sum + m.weight, 0);
-    if (totalWeight !== 100) {
-      toast({
-          title: "Warning: Milestone Weights Invalid",
-          description: `The sum of all milestone weights is now ${totalWeight}%. It should be 100%. Please adjust other milestones.`,
-          variant: "destructive"
-      });
-    }
-
     setProject(prevProject => ({
       ...prevProject,
       milestones: newMilestones,
@@ -203,6 +194,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
             isOpen={!!editingMilestone}
             onOpenChange={(open) => !open && setEditingMilestone(null)}
             milestone={editingMilestone}
+            projectMilestones={project.milestones}
             onMilestoneUpdate={handleMilestoneUpdate}
         />
       )}
