@@ -26,6 +26,7 @@ export type Milestone = {
     title: string;
     description: string;
     dueDate: string;
+    weight: number;
     tasks: Task[];
 };
 

@@ -34,6 +34,7 @@ const milestoneSchema = z.object({
   title: z.string().min(3, "Title must be at least 3 characters."),
   description: z.string().min(10, "Description must be at least 10 characters."),
   dueDate: z.date(),
+  weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
 });
 
 type MilestoneFormValues = z.infer<typeof milestoneSchema>;
@@ -53,6 +54,7 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, onMilesto
       title: milestone.title,
       description: milestone.description,
       dueDate: new Date(milestone.dueDate),
+      weight: milestone.weight,
     },
   });
 
@@ -72,7 +74,7 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, onMilesto
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px]">
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Edit Milestone</DialogTitle>
           <DialogDescription>Make changes to your milestone here. Click save when you're done.</DialogDescription>
@@ -133,6 +135,19 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, onMilesto
                   <FormMessage />
                 </FormItem>
               )}
+            />
+             <FormField
+                control={form.control}
+                name="weight"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Milestone Weight (%)</FormLabel>
+                    <FormControl>
+                        <Input type="number" placeholder="e.g., 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

@@ -14,11 +14,17 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const allTasks = project.milestones.flatMap(m => m.tasks);
   const completedTasks = allTasks.filter(task => task.status === 'done').length;
 
-  const totalWeight = allTasks.reduce((sum, task) => sum + task.weight, 0);
-  const completedWeight = allTasks
-    .filter(task => task.status === 'done')
-    .reduce((sum, task) => sum + task.weight, 0);
-  const weightedProgress = totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
+  const weightedProgress = project.milestones.reduce((progress, milestone) => {
+    const completedTaskWeightInMilestone = milestone.tasks
+      .filter(task => task.status === 'done')
+      .reduce((sum, task) => sum + task.weight, 0);
+    
+    // Milestone progress is (completed weight / 100), as task weights are designed to sum to 100
+    const milestoneProgress = completedTaskWeightInMilestone / 100;
+
+    // Add this milestone's weighted contribution to the total project progress
+    return progress + (milestoneProgress * milestone.weight);
+  }, 0);
   
   const status = projectStatuses.find(s => s.id === project.statusId);
   

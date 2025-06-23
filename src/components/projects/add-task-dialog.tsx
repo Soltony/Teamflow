@@ -27,7 +27,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import type { Task } from "@/lib/types";
+import type { Milestone, Task } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { users } from "@/lib/data";
 import { Slider } from "../ui/slider";
@@ -37,37 +37,49 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-
-const taskSchema = z.object({
-  title: z.string().min(3, "Task title must be at least 3 characters."),
-  description: z.string().optional(),
-  startDate: z.date({ required_error: "A start date is required."}),
-  endDate: z.date({ required_error: "An end date is required."}),
-  assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
-  weight: z.number().min(0).max(100),
-}).refine(data => data.endDate >= data.startDate, {
-    message: "End date must be on or after start date.",
-    path: ["endDate"],
-});
-
-type TaskFormValues = z.infer<typeof taskSchema>;
+import { useMemo } from "react";
 
 type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  milestoneId: string;
+  milestone: Milestone;
   onTaskAdd: (milestoneId: string, newTask: Task) => void;
 };
 
-export function AddTaskDialog({ isOpen, onOpenChange, milestoneId, onTaskAdd }: AddTaskDialogProps) {
+export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd }: AddTaskDialogProps) {
   const { toast } = useToast();
+
+  const existingTasksWeight = useMemo(() => {
+    return milestone.tasks.reduce((sum, task) => sum + task.weight, 0);
+  }, [milestone.tasks]);
+  const remainingWeight = 100 - existingTasksWeight;
+
+  const taskSchema = z.object({
+    title: z.string().min(3, "Task title must be at least 3 characters."),
+    description: z.string().optional(),
+    startDate: z.date({ required_error: "A start date is required."}),
+    endDate: z.date({ required_error: "An end date is required."}),
+    assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
+    weight: z.number().min(0).max(100),
+  }).refine(data => data.endDate >= data.startDate, {
+      message: "End date must be on or after start date.",
+      path: ["endDate"],
+  }).refine(data => {
+      return data.weight <= remainingWeight;
+  }, {
+      message: `Total task weight cannot exceed 100. Remaining: ${remainingWeight}%.`,
+      path: ["weight"],
+  });
+
+  type TaskFormValues = z.infer<typeof taskSchema>;
+
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
     defaultValues: {
       title: "",
       description: "",
       assignedUserIds: [],
-      weight: 10,
+      weight: Math.min(10, remainingWeight),
     },
   });
 
@@ -84,7 +96,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestoneId, onTaskAdd }: 
       assignedUserIds: data.assignedUserIds,
       weight: data.weight,
     };
-    onTaskAdd(milestoneId, newTask);
+    onTaskAdd(milestone.id, newTask);
     toast({
       title: "Task Added!",
       description: `The task "${data.title}" has been successfully added.`,
@@ -94,11 +106,16 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestoneId, onTaskAdd }: 
   }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={(open) => {
+        onOpenChange(open);
+        if (!open) {
+            form.reset();
+        }
+    }}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add New Task</DialogTitle>
-          <DialogDescription>Fill in the details for the new task.</DialogDescription>
+          <DialogTitle>Add New Task to "{milestone.title}"</DialogTitle>
+          <DialogDescription>Fill in the details for the new task. The total weight of all tasks in a milestone cannot exceed 100%.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -237,12 +254,12 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestoneId, onTaskAdd }: 
                 name="weight"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Task Weight (Impact on project progress): {field.value}%</FormLabel>
+                        <FormLabel>Task Weight (Remaining available: {remainingWeight}%): {field.value}%</FormLabel>
                         <FormControl>
                             <Slider
-                                defaultValue={[field.value]}
+                                value={[field.value]}
                                 onValueChange={(value) => field.onChange(value[0])}
-                                max={100}
+                                max={remainingWeight}
                                 step={5}
                             />
                         </FormControl>
