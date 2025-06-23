@@ -45,7 +45,7 @@ export function DepartmentProjectsChart() {
   return (
     <ChartContainer
       config={chartConfig}
-      className="aspect-square max-h-[300px]"
+      className="mx-auto aspect-square max-h-[300px]"
     >
       <PieChart>
         <ChartTooltip
@@ -58,6 +58,39 @@ export function DepartmentProjectsChart() {
           nameKey="name"
           innerRadius="60%"
           strokeWidth={2}
+          labelLine={false}
+          label={({
+            value,
+            percent,
+            cx,
+            cy,
+            midAngle,
+            innerRadius,
+            outerRadius,
+          }) => {
+            // Don't render label for small slices
+            if (percent < 0.05) {
+              return null;
+            }
+            
+            const RADIAN = Math.PI / 180;
+            const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+            const x = cx + radius * Math.cos(-midAngle * RADIAN);
+            const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+            return (
+              <text
+                x={x}
+                y={y}
+                fill="hsl(var(--card-foreground))"
+                textAnchor="middle"
+                dominantBaseline="central"
+                className="text-base font-bold"
+              >
+                {value}
+              </text>
+            );
+          }}
         >
           {chartData.map((entry, index) => (
             <Cell
