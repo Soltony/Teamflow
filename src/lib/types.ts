@@ -28,6 +28,7 @@ export type Milestone = {
     dueDate: string;
     weight: number;
     tasks: Task[];
+    responsibleDepartmentIds: string[];
 };
 
 export type Department = {

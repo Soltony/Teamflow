@@ -188,15 +188,24 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                                 .filter(t => t.status === 'done')
                                 .reduce((sum, task) => sum + task.weight, 0);
 
+                            const responsibleDepts = departments.filter(d => milestone.responsibleDepartmentIds.includes(d.id));
                             return (
                                 <AccordionItem value={milestone.id} key={milestone.id}>
                                     <AccordionTrigger>
                                         <div className="flex-1 flex justify-between items-center pr-2">
-                                            <div className="flex flex-col items-start text-left">
+                                            <div className="flex flex-col items-start text-left gap-2">
                                                 <span className="font-semibold">{milestone.title}</span>
-                                                <span className="text-sm text-muted-foreground">
-                                                    Weight: {milestone.weight}% | Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
-                                                </span>
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <Badge variant="outline">
+                                                        Weight: {milestone.weight}%
+                                                    </Badge>
+                                                    <Badge variant="outline">
+                                                        Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
+                                                    </Badge>
+                                                    {responsibleDepts.map(dept => (
+                                                        <Badge key={dept.id} variant="secondary">{dept.name}</Badge>
+                                                    ))}
+                                                </div>
                                             </div>
                                             <Button 
                                                 variant="ghost" 

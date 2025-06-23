@@ -25,12 +25,19 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Milestone } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useMemo } from "react";
+import { departments } from "@/lib/data";
+import {
+    DropdownMenu,
+    DropdownMenuCheckboxItem,
+    DropdownMenuContent,
+    DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type EditMilestoneDialogProps = {
   isOpen: boolean;
@@ -49,6 +56,7 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
       description: z.string().min(10, "Description must be at least 10 characters."),
       dueDate: z.date(),
       weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
+      responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
     }).superRefine((data, ctx) => {
         const weightOfOtherMilestones = projectMilestones
           .filter(m => m.id !== milestone.id)
@@ -70,12 +78,6 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
 
   const form = useForm<MilestoneFormValues>({
     resolver: zodResolver(milestoneSchema),
-    defaultValues: {
-      title: milestone.title,
-      description: milestone.description,
-      dueDate: new Date(milestone.dueDate),
-      weight: milestone.weight,
-    },
   });
 
   useEffect(() => {
@@ -85,6 +87,7 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
         description: milestone.description,
         dueDate: new Date(milestone.dueDate),
         weight: milestone.weight,
+        responsibleDepartmentIds: milestone.responsibleDepartmentIds,
       });
     }
   }, [isOpen, milestone, form]);
@@ -179,6 +182,51 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
                     <FormMessage />
                     </FormItem>
                 )}
+            />
+            <FormField
+                control={form.control}
+                name="responsibleDepartmentIds"
+                render={({ field }) => {
+                    const selectedDepts = departments.filter(dept => field.value?.includes(dept.id));
+                    return (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Responsible Departments</FormLabel>
+                        <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <FormControl>
+                            <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
+                                {selectedDepts.length > 0
+                                    ? selectedDepts.map(d => d.name).join(', ')
+                                    : "Select departments..."}
+                                <ChevronDown className="ml-auto h-4 w-4" />
+                            </Button>
+                            </FormControl>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                            {departments.map((dept) => (
+                            <DropdownMenuCheckboxItem
+                                key={dept.id}
+                                checked={field.value?.includes(dept.id)}
+                                onCheckedChange={(checked) => {
+                                const newValues = field.value ? [...field.value] : [];
+                                if (checked) {
+                                    newValues.push(dept.id);
+                                } else {
+                                    const idx = newValues.indexOf(dept.id);
+                                    if (idx > -1) newValues.splice(idx, 1);
+                                }
+                                field.onChange(newValues);
+                                }}
+                            >
+                                {dept.name}
+                            </DropdownMenuCheckboxItem>
+                            ))}
+                        </DropdownMenuContent>
+                        </DropdownMenu>
+                        <FormMessage />
+                    </FormItem>
+                    )
+                }}
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
