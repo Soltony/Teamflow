@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
 import { projects } from "@/lib/data";
 import { DepartmentProjectsChart } from "@/components/dashboard/department-projects-chart";
+import { ProjectStatusChart } from "@/components/dashboard/project-status-chart";
 import {
   Card,
   CardContent,
@@ -25,8 +26,22 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-5">
-        <Card className="md:col-span-2">
+      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Welcome to TeamFlow!</CardTitle>
+            <CardDescription>
+              Your central hub for managing projects, teams, and departments
+              efficiently.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <p className="text-sm text-muted-foreground">
+              Get an overview of your ongoing work and create new projects to get started. Use the charts to see how projects are distributed.
+            </p>
+          </CardContent>
+        </Card>
+        <Card>
           <CardHeader>
             <CardTitle>Projects by Department</CardTitle>
             <CardDescription>
@@ -37,22 +52,15 @@ export default function DashboardPage() {
             <DepartmentProjectsChart />
           </CardContent>
         </Card>
-        <Card className="md:col-span-3">
+        <Card>
           <CardHeader>
-            <CardTitle>Welcome to TeamFlow!</CardTitle>
+            <CardTitle>Projects by Status</CardTitle>
             <CardDescription>
-              Your central hub for managing projects, teams, and departments
-              efficiently. Get an overview of your ongoing work and create new
-              projects to get started.
+              Distribution of projects across different statuses.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Use the sidebar to navigate between different sections of the
-              application. You can create new projects, manage departments, and
-              soon, you'll be able to manage teams and view comprehensive Gantt
-              charts.
-            </p>
+            <ProjectStatusChart />
           </CardContent>
         </Card>
       </div>
