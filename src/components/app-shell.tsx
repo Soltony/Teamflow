@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { ThemeToggle } from "./theme-toggle";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
@@ -126,7 +127,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <PanelLeft className="w-6 h-6" />
             <span className="sr-only">Toggle Menu</span>
           </Button>
-          {/* Header Content can go here */}
+          <div className="ml-auto">
+            <ThemeToggle />
+          </div>
         </header>
         <main className="flex-1 overflow-auto bg-muted/40">{children}</main>
       </div>
