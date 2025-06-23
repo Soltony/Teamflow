@@ -70,6 +70,22 @@ export const projects: Project[] = [
                 { id: 'task-1-5', title: 'Deployment & QA', description: 'Deploy the application and perform quality assurance testing.', status: 'todo', startDate: '2024-11-01', endDate: '2024-11-30', weight: 100, assignedUserIds: ['user-1', 'user-2', 'user-3'] },
             ]
         }
+    ],
+    blockers: [
+        {
+            id: 'blocker-1',
+            description: 'The third-party payment gateway API is not providing the expected responses for international transactions.',
+            status: 'open',
+            createdAt: '2024-10-25',
+        },
+        {
+            id: 'blocker-2',
+            description: 'Design team has not finalized the new logo, which is blocking the creation of marketing materials.',
+            status: 'resolved',
+            createdAt: '2024-10-20',
+            resolvedAt: '2024-10-22',
+            resolution: 'An emergency meeting was held with the design team and stakeholders. A final logo was approved and delivered.'
+        }
     ]
   },
   {

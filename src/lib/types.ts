@@ -45,6 +45,15 @@ export type ProjectStatus = {
   name: string;
 };
 
+export type Blocker = {
+  id: string;
+  description: string;
+  status: 'open' | 'resolved';
+  createdAt: string;
+  resolvedAt?: string;
+  resolution?: string;
+};
+
 export type Project = {
   id: string;
   name:string;
@@ -55,4 +64,5 @@ export type Project = {
   departmentId: string;
   projectManagerId: string;
   milestones: Milestone[];
+  blockers?: Blocker[];
 };

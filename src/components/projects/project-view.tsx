@@ -3,10 +3,10 @@
 
 import { useState } from "react";
 import Link from 'next/link';
-import { ArrowLeft, Building, Calendar, Layers, UserCircle, Pencil, PlusCircle } from "lucide-react";
-import { format, differenceInDays } from "date-fns";
+import { ArrowLeft, Building, Calendar, Layers, UserCircle, Pencil, PlusCircle, ShieldAlert, ShieldCheck } from "lucide-react";
+import { format, differenceInDays, parseISO } from "date-fns";
 import { departments, users, projectStatuses } from "@/lib/data";
-import type { Project, Milestone, Task } from "@/lib/types";
+import type { Project, Milestone, Task, Blocker } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -17,6 +17,9 @@ import { EditMilestoneDialog } from "./edit-milestone-dialog";
 import { AddTaskDialog } from "./add-task-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { EditTaskDialog } from "./edit-task-dialog";
+import { AddBlockerDialog } from "./add-blocker-dialog";
+import { ResolveBlockerDialog } from "./resolve-blocker-dialog";
+import { Separator } from "../ui/separator";
 
 type ProjectViewProps = {
   initialProject: Project;
@@ -28,6 +31,8 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
   const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: Task; milestone: Milestone } | null>(null);
+  const [addingBlocker, setAddingBlocker] = useState(false);
+  const [resolvingBlocker, setResolvingBlocker] = useState<Blocker | null>(null);
 
 
   const department = departments.find(d => d.id === project.departmentId);
@@ -76,6 +81,44 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
       ),
     }));
   };
+
+  const handleBlockerAdd = (data: { description: string }) => {
+    const newBlocker: Blocker = {
+      id: `blocker-${Date.now()}`,
+      description: data.description,
+      status: 'open',
+      createdAt: new Date().toISOString().split('T')[0],
+    };
+    setProject(prev => ({
+      ...prev,
+      blockers: [...(prev.blockers || []), newBlocker],
+    }));
+    toast({
+      title: "Blocker Added",
+      description: "The project blocker has been recorded and is now visible to management.",
+    });
+  };
+
+  const handleBlockerResolve = (blockerId: string, resolution: string) => {
+    setProject(prev => ({
+      ...prev,
+      blockers: (prev.blockers || []).map(b => 
+        b.id === blockerId 
+          ? { 
+              ...b, 
+              status: 'resolved', 
+              resolution, 
+              resolvedAt: new Date().toISOString().split('T')[0] 
+            } 
+          : b
+      ),
+    }));
+    toast({
+      title: "Blocker Resolved",
+      description: "The blocker has been marked as resolved.",
+    });
+  };
+
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -189,6 +232,65 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
         </CardContent>
       </Card>
 
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <CardTitle>Project Blockers</CardTitle>
+            <Button onClick={() => setAddingBlocker(true)}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Blocker
+            </Button>
+          </div>
+          <CardDescription>
+            Issues that are impeding progress and require higher management attention.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            {!project.blockers || project.blockers.length === 0 ? (
+              <p className="text-muted-foreground text-sm">No blockers have been reported for this project.</p>
+            ) : (
+              project.blockers.map((blocker, index) => (
+                <div key={blocker.id}>
+                  <div className="flex items-start gap-4">
+                    <div>
+                      {blocker.status === 'open' ? (
+                         <ShieldAlert className="h-5 w-5 text-destructive mt-1" />
+                      ) : (
+                         <ShieldCheck className="h-5 w-5 text-green-600 mt-1" />
+                      )}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-center">
+                         <p className="font-semibold">{blocker.status === 'open' ? 'Open Blocker' : 'Resolved Blocker'}</p>
+                         <p className="text-xs text-muted-foreground">
+                          {blocker.status === 'open' ? 'Created: ' : 'Resolved: '} 
+                          {format(parseISO(blocker.resolvedAt || blocker.createdAt), 'MMM dd, yyyy')}
+                         </p>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">{blocker.description}</p>
+                      {blocker.status === 'resolved' && (
+                        <div className="mt-2 text-sm bg-muted/50 p-3 rounded-md border">
+                            <p className="font-semibold text-xs">Resolution:</p>
+                            <p className="text-muted-foreground">{blocker.resolution}</p>
+                        </div>
+                      )}
+                    </div>
+                    <div>
+                    {blocker.status === 'open' && (
+                      <Button variant="outline" size="sm" onClick={() => setResolvingBlocker(blocker)}>
+                        Resolve
+                      </Button>
+                    )}
+                    </div>
+                  </div>
+                  {index < project.blockers.length - 1 && <Separator className="my-4" />}
+                </div>
+              ))
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {editingMilestone && (
         <EditMilestoneDialog 
             isOpen={!!editingMilestone}
@@ -215,6 +317,23 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
             milestone={editingTaskInfo.milestone}
             task={editingTaskInfo.task}
             onTaskUpdate={handleTaskUpdate}
+        />
+      )}
+
+      {addingBlocker && (
+        <AddBlockerDialog
+          isOpen={addingBlocker}
+          onOpenChange={setAddingBlocker}
+          onBlockerAdd={handleBlockerAdd}
+        />
+      )}
+      
+      {resolvingBlocker && (
+        <ResolveBlockerDialog
+          isOpen={!!resolvingBlocker}
+          onOpenChange={(open) => !open && setResolvingBlocker(null)}
+          blocker={resolvingBlocker}
+          onBlockerResolve={handleBlockerResolve}
         />
       )}
     </div>
