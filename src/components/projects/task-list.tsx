@@ -1,7 +1,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import type { Task } from '@/lib/types';
-import { teams, users } from '@/lib/data';
+import { users } from '@/lib/data';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format, isPast } from 'date-fns';
 import { Circle, CheckCircle2, CircleDot, AlertTriangle } from 'lucide-react';
@@ -35,16 +34,13 @@ export function TaskList({ tasks }: TaskListProps) {
           <TableRow>
             <TableHead className="w-[80px]">Status</TableHead>
             <TableHead>Task</TableHead>
-            <TableHead>Team</TableHead>
-            <TableHead>Team Lead</TableHead>
+            <TableHead>Assignees</TableHead>
             <TableHead>Due Date</TableHead>
             <TableHead className="text-right">Weight</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
           {tasks.map((task) => {
-            const team = teams.find(t => t.id === task.teamId);
-            const teamLead = users.find(u => u.id === task.teamLeadId);
             const isOverdue = isPast(new Date(task.endDate)) && task.status !== 'done';
             return (
               <TableRow key={task.id}>
@@ -56,15 +52,24 @@ export function TaskList({ tasks }: TaskListProps) {
                 </TableCell>
                 <TableCell className="font-medium">{task.title}</TableCell>
                 <TableCell>
-                  <Badge variant="outline">{team?.name || 'N/A'}</Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar className="w-6 h-6">
-                      <AvatarImage src={teamLead?.avatar} />
-                      <AvatarFallback>{teamLead?.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <span>{teamLead?.name}</span>
+                  <div className="flex items-center -space-x-2">
+                    {task.assignedUserIds.map(userId => {
+                      const user = users.find(u => u.id === userId);
+                      if (!user) return null;
+                      return (
+                          <Tooltip key={user.id}>
+                              <TooltipTrigger asChild>
+                                  <Avatar className="w-8 h-8 border-2 border-background">
+                                      <AvatarImage src={user.avatar} alt={user.name} />
+                                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
+                                  </Avatar>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                  <p>{user.name}</p>
+                              </TooltipContent>
+                          </Tooltip>
+                      )
+                    })}
                   </div>
                 </TableCell>
                 <TableCell>

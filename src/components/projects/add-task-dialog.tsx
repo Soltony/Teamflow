@@ -24,22 +24,26 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import type { Task } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { teams, users } from "@/lib/data";
+import { users } from "@/lib/data";
 import { Slider } from "../ui/slider";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const taskSchema = z.object({
   title: z.string().min(3, "Task title must be at least 3 characters."),
   description: z.string().optional(),
   startDate: z.date({ required_error: "A start date is required."}),
   endDate: z.date({ required_error: "An end date is required."}),
-  teamId: z.string().nonempty("Please select a team."),
-  teamLeadId: z.string().nonempty("Please select a team lead."),
+  assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
   weight: z.number().min(0).max(100),
 }).refine(data => data.endDate >= data.startDate, {
     message: "End date must be on or after start date.",
@@ -62,11 +66,12 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestoneId, onTaskAdd }: 
     defaultValues: {
       title: "",
       description: "",
-      teamId: "",
-      teamLeadId: "",
+      assignedUserIds: [],
       weight: 10,
     },
   });
+
+  const selectedUsers = users.filter(user => form.watch('assignedUserIds')?.includes(user.id));
 
   function onSubmit(data: TaskFormValues) {
     const newTask: Task = {
@@ -76,8 +81,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestoneId, onTaskAdd }: 
       status: 'todo',
       startDate: data.startDate.toISOString().split('T')[0],
       endDate: data.endDate.toISOString().split('T')[0],
-      teamId: data.teamId,
-      teamLeadId: data.teamLeadId,
+      assignedUserIds: data.assignedUserIds,
       weight: data.weight,
     };
     onTaskAdd(milestoneId, newTask);
@@ -184,44 +188,50 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestoneId, onTaskAdd }: 
                     )}
                 />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="teamId"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Assign to Team</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                <FormField
-                    control={form.control}
-                    name="teamLeadId"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel>Assign Team Lead</FormLabel>
-                            <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select a team lead" /></SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
+            <FormField
+              control={form.control}
+              name="assignedUserIds"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel>Assign to Users</FormLabel>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <FormControl>
+                        <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
+                            {selectedUsers.length > 0
+                                ? selectedUsers.map(u => u.name).join(', ')
+                                : "Select users..."}
+                          <ChevronDown className="ml-auto h-4 w-4" />
+                        </Button>
+                      </FormControl>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                      {users.map((user) => (
+                        <DropdownMenuCheckboxItem
+                          key={user.id}
+                          checked={field.value?.includes(user.id)}
+                          onCheckedChange={(checked) => {
+                            const newValues = field.value ? [...field.value] : [];
+                            if (checked) {
+                              newValues.push(user.id);
+                            } else {
+                              const index = newValues.indexOf(user.id);
+                              if (index > -1) {
+                                newValues.splice(index, 1);
+                              }
+                            }
+                            field.onChange(newValues);
+                          }}
+                        >
+                          {user.name}
+                        </DropdownMenuCheckboxItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
              <FormField
                 control={form.control}
                 name="weight"

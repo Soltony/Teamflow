@@ -18,8 +18,7 @@ export type Task = {
   startDate: string;
   endDate: string;
   weight: number;
-  teamId: string;
-  teamLeadId: string;
+  assignedUserIds: string[];
 };
 
 export type Milestone = {
