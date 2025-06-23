@@ -1,0 +1,141 @@
+"use client";
+
+import * as React from "react";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
+import {
+  FolderKanban,
+  GanttChartSquare,
+  Home,
+  PanelLeft,
+  Settings,
+  Users,
+} from "lucide-react";
+
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarHeader,
+  SidebarContent,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarFooter,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { cn } from "@/lib/utils";
+
+const menuItems = [
+  { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/teams", label: "Teams", icon: Users },
+  { href: "/gantt", label: "Gantt", icon: GanttChartSquare },
+  { href: "/settings", label: "Settings", icon: Settings },
+];
+
+function AppSidebar() {
+  const pathname = usePathname();
+  const { isOpen, isMobile } = useSidebar();
+
+  return (
+    <Sidebar>
+      <SidebarHeader>
+        <div className="flex items-center gap-2">
+          <GanttChartSquare className="w-8 h-8 text-primary" />
+          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-primary truncate">TeamFlow</h1>}
+        </div>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarMenu>
+          {menuItems.map((item) => (
+            <SidebarMenuItem key={item.label}>
+              <Link href={item.href} legacyBehavior passHref>
+                <SidebarMenuButton
+                  isActive={pathname.startsWith(item.href)}
+                  icon={<item.icon />}
+                >
+                  {item.label}
+                </SidebarMenuButton>
+              </Link>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarContent>
+      <SidebarFooter>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="justify-start w-full gap-2 px-2">
+              <Avatar className="w-8 h-8">
+                <AvatarImage src="https://i.pravatar.cc/150?u=admin" />
+                <AvatarFallback>AD</AvatarFallback>
+              </Avatar>
+              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">Admin User</span>}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="end" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">Admin</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  admin@teamflow.com
+                </p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem>Log out</DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </SidebarFooter>
+    </Sidebar>
+  );
+}
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const { isMobile, toggleSidebar, isOpen } = useSidebar();
+  return (
+    <div
+      className={cn(
+        "min-h-screen w-full",
+        !isMobile && (isOpen ? "pl-[280px]" : "pl-[56px]"),
+        "transition-all duration-300 ease-in-out"
+      )}
+    >
+      <AppSidebar />
+      <div className="flex flex-col">
+        <header className="sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={toggleSidebar}
+          >
+            <PanelLeft className="w-6 h-6" />
+            <span className="sr-only">Toggle Menu</span>
+          </Button>
+          {/* Header Content can go here */}
+        </header>
+        <main className="flex-1 overflow-auto bg-muted/40">{children}</main>
+      </div>
+    </div>
+  );
+}
+
+export function AppShellProvider({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider>
+      <AppShell>{children}</AppShell>
+    </SidebarProvider>
+  );
+}
