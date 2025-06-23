@@ -1,4 +1,4 @@
-import type { User, Team, Project, Department } from './types';
+import type { User, Team, Project, Department, ProjectStatus } from './types';
 
 export const users: User[] = [
   { id: 'user-1', name: 'Alice Johnson', avatar: 'https://i.pravatar.cc/150?u=user-1' },
@@ -20,6 +20,13 @@ export const departments: Department[] = [
     { id: 'dept-2', name: 'Marketing', responsible: { name: 'Marcus Holloway', title: 'CMO', phone: '444-555-6666' } },
 ];
 
+export const projectStatuses: ProjectStatus[] = [
+  { id: 'status-1', name: 'Active' },
+  { id: 'status-2', name: 'Pending' },
+  { id: 'status-3', name: 'Parked' },
+  { id: 'status-4', name: 'Completed' },
+];
+
 export const projects: Project[] = [
   {
     id: 'proj-1',
@@ -27,6 +34,7 @@ export const projects: Project[] = [
     description: 'Complete overhaul of the existing e-commerce platform to improve user experience and performance.',
     startDate: '2024-08-01',
     endDate: '2024-11-30',
+    statusId: 'status-1',
     departmentId: 'dept-1',
     projectManagerId: 'user-1',
     milestones: [
@@ -67,6 +75,7 @@ export const projects: Project[] = [
     description: 'A new mobile application for users to manage their daily tasks and improve productivity.',
     startDate: '2024-09-01',
     endDate: '2024-12-31',
+    statusId: 'status-2',
     departmentId: 'dept-2',
     projectManagerId: 'user-2',
     milestones: [

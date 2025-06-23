@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { departments, users } from "@/lib/data";
+import { departments, users, projectStatuses } from "@/lib/data";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useToast } from "@/hooks/use-toast";
@@ -47,6 +47,7 @@ const projectSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   startDate: z.date({ required_error: "A start date is required."}),
   endDate: z.date({ required_error: "An end date is required."}),
+  statusId: z.string().nonempty("Please select a project status."),
   departmentId: z.string().nonempty("Please select a department."),
   projectManagerId: z.string().nonempty("Please select a project manager."),
   milestones: z.array(milestoneSchema),
@@ -65,6 +66,7 @@ export function ProjectForm() {
     defaultValues: {
       name: "",
       description: "",
+      statusId: "",
       departmentId: "",
       projectManagerId: "",
       milestones: [],
@@ -200,7 +202,7 @@ export function ProjectForm() {
                         )}
                     />
                 </div>
-                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <FormField
                         control={form.control}
                         name="departmentId"
@@ -231,6 +233,24 @@ export function ProjectForm() {
                                     </FormControl>
                                     <SelectContent>
                                         {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="statusId"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Project Status</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {projectStatuses.map(status => <SelectItem key={status.id} value={status.id}>{status.name}</SelectItem>)}
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />

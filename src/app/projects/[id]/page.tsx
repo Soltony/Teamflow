@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { projects, departments, users } from "@/lib/data";
+import { projects, departments, users, projectStatuses } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { TaskList } from "@/components/projects/task-list";
@@ -19,6 +19,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   const department = departments.find(d => d.id === project.departmentId);
   const projectManager = users.find(u => u.id === project.projectManagerId);
+  const status = projectStatuses.find(s => s.id === project.statusId);
 
   const allTasks = project.milestones.flatMap(m => m.tasks);
   const totalWeight = allTasks.reduce((sum, task) => sum + task.weight, 0);
@@ -35,7 +36,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
       </Link>
       <Card>
         <CardHeader>
-          <CardTitle className="text-3xl">{project.name}</CardTitle>
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <CardTitle className="text-3xl">{project.name}</CardTitle>
+            {status && <Badge className="shrink-0 text-base" variant="secondary">{status.name}</Badge>}
+          </div>
           <CardDescription>{project.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">

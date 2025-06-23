@@ -40,12 +40,18 @@ export type Department = {
     };
 };
 
+export type ProjectStatus = {
+  id: string;
+  name: string;
+};
+
 export type Project = {
   id: string;
   name:string;
   description: string;
   startDate: string;
   endDate: string;
+  statusId: string;
   departmentId: string;
   projectManagerId: string;
   milestones: Milestone[];

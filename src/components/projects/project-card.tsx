@@ -4,7 +4,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Project } from '@/lib/types';
-import { differenceInDays } from 'date-fns';
+import { projectStatuses } from '@/lib/data';
 
 type ProjectCardProps = {
   project: Project;
@@ -19,8 +19,8 @@ export function ProjectCard({ project }: ProjectCardProps) {
     .filter(task => task.status === 'done')
     .reduce((sum, task) => sum + task.weight, 0);
   const weightedProgress = totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
-
-  const daysRemaining = differenceInDays(new Date(project.endDate), new Date());
+  
+  const status = projectStatuses.find(s => s.id === project.statusId);
   
   return (
     <Card className="flex flex-col">
@@ -44,11 +44,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
         </div>
       </CardContent>
       <CardFooter className="flex justify-between items-center">
-        <Badge variant={daysRemaining < 0 ? 'destructive' : 'secondary'}>
-          {daysRemaining < 0 
-            ? `Overdue by ${Math.abs(daysRemaining)} days` 
-            : `${daysRemaining} days remaining`}
-        </Badge>
+        {status ? (
+          <Badge variant='outline'>{status.name}</Badge>
+        ) : <div />}
         <Button asChild variant="ghost" size="sm">
           <Link href={`/projects/${project.id}`}>View Project</Link>
         </Button>
