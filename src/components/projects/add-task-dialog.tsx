@@ -1,0 +1,252 @@
+"use client";
+
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
+import { CalendarIcon } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { format } from "date-fns";
+import type { Task } from "@/lib/types";
+import { useToast } from "@/hooks/use-toast";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { teams, users } from "@/lib/data";
+import { Slider } from "../ui/slider";
+
+const taskSchema = z.object({
+  title: z.string().min(3, "Task title must be at least 3 characters."),
+  description: z.string().optional(),
+  startDate: z.date({ required_error: "A start date is required."}),
+  endDate: z.date({ required_error: "An end date is required."}),
+  teamId: z.string().nonempty("Please select a team."),
+  teamLeadId: z.string().nonempty("Please select a team lead."),
+  weight: z.number().min(0).max(100),
+}).refine(data => data.endDate >= data.startDate, {
+    message: "End date must be on or after start date.",
+    path: ["endDate"],
+});
+
+type TaskFormValues = z.infer<typeof taskSchema>;
+
+type AddTaskDialogProps = {
+  isOpen: boolean;
+  onOpenChange: (open: boolean) => void;
+  milestoneId: string;
+  onTaskAdd: (milestoneId: string, newTask: Task) => void;
+};
+
+export function AddTaskDialog({ isOpen, onOpenChange, milestoneId, onTaskAdd }: AddTaskDialogProps) {
+  const { toast } = useToast();
+  const form = useForm<TaskFormValues>({
+    resolver: zodResolver(taskSchema),
+    defaultValues: {
+      title: "",
+      description: "",
+      teamId: "",
+      teamLeadId: "",
+      weight: 10,
+    },
+  });
+
+  function onSubmit(data: TaskFormValues) {
+    const newTask: Task = {
+      id: `task-${Date.now()}`,
+      title: data.title,
+      description: data.description || "",
+      status: 'todo',
+      startDate: data.startDate.toISOString().split('T')[0],
+      endDate: data.endDate.toISOString().split('T')[0],
+      teamId: data.teamId,
+      teamLeadId: data.teamLeadId,
+      weight: data.weight,
+    };
+    onTaskAdd(milestoneId, newTask);
+    toast({
+      title: "Task Added!",
+      description: `The task "${data.title}" has been successfully added.`,
+    });
+    onOpenChange(false);
+    form.reset();
+  }
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Add New Task</DialogTitle>
+          <DialogDescription>Fill in the details for the new task.</DialogDescription>
+        </DialogHeader>
+        <Form {...form}>
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <FormField
+              control={form.control}
+              name="title"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Task Title</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., Setup database schema" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+            <FormField
+              control={form.control}
+              name="description"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Description (Optional)</FormLabel>
+                  <FormControl>
+                    <Textarea placeholder="Describe the task requirements..." {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="startDate"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>Start Date</FormLabel>
+                        <Popover>
+                        <PopoverTrigger asChild>
+                            <FormControl>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                                )}
+                            >
+                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                            </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="endDate"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                        <FormLabel>End Date</FormLabel>
+                        <Popover>
+                        <PopoverTrigger asChild>
+                            <FormControl>
+                            <Button
+                                variant={"outline"}
+                                className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                                )}
+                            >
+                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                            </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
+                        </Popover>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="teamId"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Assign to Team</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger><SelectValue placeholder="Select a team" /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {teams.map(team => <SelectItem key={team.id} value={team.id}>{team.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                <FormField
+                    control={form.control}
+                    name="teamLeadId"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Assign Team Lead</FormLabel>
+                            <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                    <SelectTrigger><SelectValue placeholder="Select a team lead" /></SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+            </div>
+             <FormField
+                control={form.control}
+                name="weight"
+                render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Task Weight (Impact on project progress): {field.value}%</FormLabel>
+                        <FormControl>
+                            <Slider
+                                defaultValue={[field.value]}
+                                onValueChange={(value) => field.onChange(value[0])}
+                                max={100}
+                                step={5}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )}
+            />
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+              <Button type="submit">Add Task</Button>
+            </DialogFooter>
+          </form>
+        </Form>
+      </DialogContent>
+    </Dialog>
+  );
+}
