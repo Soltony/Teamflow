@@ -10,6 +10,7 @@ import {
   PanelLeft,
   Settings,
   Users,
+  Building2,
 } from "lucide-react";
 
 import {
@@ -38,6 +39,7 @@ import { cn } from "@/lib/utils";
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/departments", label: "Departments", icon: Building2 },
   { href: "/teams", label: "Teams", icon: Users },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare },
   { href: "/settings", label: "Settings", icon: Settings },

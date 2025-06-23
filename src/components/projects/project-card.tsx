@@ -4,18 +4,18 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import type { Project } from '@/lib/types';
-import { format, differenceInDays } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 
 type ProjectCardProps = {
   project: Project;
 };
 
 export function ProjectCard({ project }: ProjectCardProps) {
-  const completedTasks = project.tasks.filter(task => task.status === 'done').length;
-  const progress = project.tasks.length > 0 ? (completedTasks / project.tasks.length) * 100 : 0;
-  
-  const totalWeight = project.tasks.reduce((sum, task) => sum + task.weight, 0);
-  const completedWeight = project.tasks
+  const allTasks = project.milestones.flatMap(m => m.tasks);
+  const completedTasks = allTasks.filter(task => task.status === 'done').length;
+
+  const totalWeight = allTasks.reduce((sum, task) => sum + task.weight, 0);
+  const completedWeight = allTasks
     .filter(task => task.status === 'done')
     .reduce((sum, task) => sum + task.weight, 0);
   const weightedProgress = totalWeight > 0 ? (completedWeight / totalWeight) * 100 : 0;
@@ -39,7 +39,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
           <Progress value={weightedProgress} className="h-2" />
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Tasks</span>
-            <span>{completedTasks} / {project.tasks.length}</span>
+            <span>{completedTasks} / {allTasks.length}</span>
           </div>
         </div>
       </CardContent>

@@ -8,7 +8,7 @@ export default function NewProjectPage() {
         <CardHeader>
             <CardTitle className="text-2xl">Create a New Project</CardTitle>
             <CardDescription>
-                Fill in the details below to register a new project. You can add multiple tasks with their timelines and weight percentages.
+                Fill in the project details, assign it to a department, and define the major milestones.
             </CardDescription>
         </CardHeader>
         <CardContent>

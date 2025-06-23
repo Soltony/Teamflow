@@ -10,8 +10,9 @@ type GanttChartProps = {
 
 export function GanttChart({ project }: GanttChartProps) {
   const projectStartDate = parseISO(project.startDate);
+  const tasks = project.milestones.flatMap(m => m.tasks);
 
-  const data = project.tasks.map(task => {
+  const data = tasks.map(task => {
     const taskStartDate = parseISO(task.startDate);
     const taskEndDate = parseISO(task.endDate);
     

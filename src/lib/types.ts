@@ -22,11 +22,31 @@ export type Task = {
   teamLeadId: string;
 };
 
+export type Milestone = {
+    id: string;
+    title: string;
+    description: string;
+    dueDate: string;
+    tasks: Task[];
+};
+
+export type Department = {
+    id: string;
+    name: string;
+    responsible: {
+        name: string;
+        title: string;
+        phone: string;
+    };
+};
+
 export type Project = {
   id: string;
   name:string;
   description: string;
   startDate: string;
   endDate: string;
-  tasks: Task[];
+  departmentId: string;
+  projectManagerId: string;
+  milestones: Milestone[];
 };
