@@ -1,7 +1,8 @@
+
 "use client";
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
-import { differenceInDays, parseISO } from 'date-fns';
+import { differenceInDays, parseISO, format, addDays } from 'date-fns';
 import type { Project } from '@/lib/types';
 
 type GanttChartProps = {
@@ -12,6 +13,14 @@ export function GanttChart({ project }: GanttChartProps) {
   const projectStartDate = parseISO(project.startDate);
   const tasks = project.milestones.flatMap(m => m.tasks);
 
+  if (tasks.length === 0) {
+    return (
+      <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
+        No tasks have been added to this project yet.
+      </div>
+    );
+  }
+
   const data = tasks.map(task => {
     const taskStartDate = parseISO(task.startDate);
     const taskEndDate = parseISO(task.endDate);
@@ -21,8 +30,7 @@ export function GanttChart({ project }: GanttChartProps) {
 
     return {
       name: task.title,
-      range: [startDay, startDay + duration],
-      startOffset: startDay,
+      startOffset: startDay < 0 ? 0 : startDay, // handle tasks starting before project
       duration: duration
     };
   });
@@ -30,17 +38,14 @@ export function GanttChart({ project }: GanttChartProps) {
   const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
       const taskData = payload[0].payload;
-      const startDate = new Date(project.startDate);
-      startDate.setDate(startDate.getDate() + taskData.startOffset);
-      
-      const endDate = new Date(startDate);
-      endDate.setDate(endDate.getDate() + taskData.duration - 1);
+      const startDate = addDays(projectStartDate, taskData.startOffset);
+      const endDate = addDays(startDate, taskData.duration - 1);
 
       return (
         <div className="p-2 bg-card border rounded-md shadow-lg">
           <p className="font-bold">{label}</p>
-          <p className="text-sm text-muted-foreground">Start: {startDate.toLocaleDateString()}</p>
-          <p className="text-sm text-muted-foreground">End: {endDate.toLocaleDateString()}</p>
+          <p className="text-sm text-muted-foreground">Start: {format(startDate, 'MMM dd, yyyy')}</p>
+          <p className="text-sm text-muted-foreground">End: {format(endDate, 'MMM dd, yyyy')}</p>
           <p className="text-sm text-muted-foreground">Duration: {taskData.duration} days</p>
         </div>
       );
@@ -48,8 +53,10 @@ export function GanttChart({ project }: GanttChartProps) {
     return null;
   };
 
+  const chartHeight = data.length * 50 + 80;
+
   return (
-    <div className="w-full h-[500px]">
+    <div style={{ width: '100%', height: chartHeight }}>
       <ResponsiveContainer width="100%" height="100%">
         <BarChart
           data={data}
@@ -63,11 +70,11 @@ export function GanttChart({ project }: GanttChartProps) {
           barCategoryGap="30%"
         >
           <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-          <XAxis type="number" domain={['dataMin', 'dataMax']} unit=" days" />
-          <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 12 }} />
-          <Tooltip content={<CustomTooltip />} cursor={{fill: 'rgba(var(--card), 0.5)'}}/>
-          <Bar dataKey="duration" name="Duration" stackId="a" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]} />
-          <Bar dataKey="startOffset" name="Start Offset" stackId="a" fill="transparent" />
+          <XAxis type="number" domain={['dataMin', 'dataMax']} unit=" days" label={{ value: 'Days from project start', position: 'insideBottom', offset: -5 }} />
+          <YAxis dataKey="name" type="category" width={150} tick={{ fontSize: 12 }} interval={0} />
+          <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsl(var(--card))'}}/>
+          <Bar dataKey="startOffset" stackId="a" fill="transparent" />
+          <Bar dataKey="duration" stackId="a" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]} />
         </BarChart>
       </ResponsiveContainer>
     </div>

@@ -20,6 +20,8 @@ import { EditTaskDialog } from "./edit-task-dialog";
 import { AddBlockerDialog } from "./add-blocker-dialog";
 import { ResolveBlockerDialog } from "./resolve-blocker-dialog";
 import { Separator } from "../ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { GanttChart } from "./gantt-chart";
 
 type ProjectViewProps = {
   initialProject: Project;
@@ -167,129 +169,151 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
         </CardContent>
       </Card>
       
-      <Card>
-        <CardHeader>
-            <CardTitle>Project Milestones</CardTitle>
-            <CardDescription>Here are the major milestones for this project. The Project Manager can add tasks to each milestone.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <Accordion type="single" collapsible className="w-full" defaultValue={project.milestones[0]?.id}>
-                {project.milestones.map((milestone) => {
-                    const completedTaskWeight = milestone.tasks
-                        .filter(t => t.status === 'done')
-                        .reduce((sum, task) => sum + task.weight, 0);
+      <Tabs defaultValue="milestones" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger value="milestones">Milestones</TabsTrigger>
+            <TabsTrigger value="gantt">Gantt Chart</TabsTrigger>
+            <TabsTrigger value="blockers">Blockers</TabsTrigger>
+        </TabsList>
+        <TabsContent value="milestones">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Project Milestones</CardTitle>
+                    <CardDescription>Here are the major milestones for this project. The Project Manager can add tasks to each milestone.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Accordion type="single" collapsible className="w-full" defaultValue={project.milestones[0]?.id}>
+                        {project.milestones.map((milestone) => {
+                            const completedTaskWeight = milestone.tasks
+                                .filter(t => t.status === 'done')
+                                .reduce((sum, task) => sum + task.weight, 0);
 
-                    return (
-                        <AccordionItem value={milestone.id} key={milestone.id}>
-                            <AccordionTrigger>
-                                <div className="flex-1 flex justify-between items-center pr-2">
-                                    <div className="flex flex-col items-start text-left">
-                                        <span className="font-semibold">{milestone.title}</span>
-                                        <span className="text-sm text-muted-foreground">
-                                            Weight: {milestone.weight}% | Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
-                                        </span>
-                                    </div>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="icon" 
-                                        onClick={(e) => { 
-                                            e.stopPropagation(); 
-                                            setEditingMilestone(milestone) 
-                                        }}
-                                        className="h-8 w-8"
-                                    >
-                                        <Pencil className="w-4 h-4" />
-                                        <span className="sr-only">Edit Milestone</span>
-                                    </Button>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="space-y-4">
-                                <p className="text-muted-foreground">{milestone.description}</p>
-                                
-                                <div className="space-y-1">
-                                    <div className="flex justify-between items-center">
-                                      <span className="text-sm font-medium">Milestone Progress</span>
-                                      <span className="text-sm font-medium text-primary">{completedTaskWeight}%</span>
-                                    </div>
-                                    <Progress value={completedTaskWeight} className="h-2" />
-                                </div>
+                            return (
+                                <AccordionItem value={milestone.id} key={milestone.id}>
+                                    <AccordionTrigger>
+                                        <div className="flex-1 flex justify-between items-center pr-2">
+                                            <div className="flex flex-col items-start text-left">
+                                                <span className="font-semibold">{milestone.title}</span>
+                                                <span className="text-sm text-muted-foreground">
+                                                    Weight: {milestone.weight}% | Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
+                                                </span>
+                                            </div>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                onClick={(e) => { 
+                                                    e.stopPropagation(); 
+                                                    setEditingMilestone(milestone) 
+                                                }}
+                                                className="h-8 w-8"
+                                            >
+                                                <Pencil className="w-4 h-4" />
+                                                <span className="sr-only">Edit Milestone</span>
+                                            </Button>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="space-y-4">
+                                        <p className="text-muted-foreground">{milestone.description}</p>
+                                        
+                                        <div className="space-y-1">
+                                            <div className="flex justify-between items-center">
+                                              <span className="text-sm font-medium">Milestone Progress</span>
+                                              <span className="text-sm font-medium text-primary">{completedTaskWeight}%</span>
+                                            </div>
+                                            <Progress value={completedTaskWeight} className="h-2" />
+                                        </div>
 
-                                <div className="flex justify-between items-center pt-2">
-                                    <h4 className="font-semibold">Tasks</h4>
-                                    <Button onClick={() => setAddingTaskToMilestone(milestone)}>
-                                        <PlusCircle className="mr-2 h-4 w-4" /> Add Task
-                                    </Button>
-                                </div>
-                                <TaskList 
-                                    tasks={milestone.tasks} 
-                                    onEditTask={(task) => setEditingTaskInfo({ task, milestone })}
-                                />
-                            </AccordionContent>
-                        </AccordionItem>
-                    )
-                })}
-            </Accordion>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Project Blockers</CardTitle>
-            <Button onClick={() => setAddingBlocker(true)}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Blocker
-            </Button>
-          </div>
-          <CardDescription>
-            Issues that are impeding progress and require higher management attention.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {!project.blockers || project.blockers.length === 0 ? (
-              <p className="text-muted-foreground text-sm">No blockers have been reported for this project.</p>
-            ) : (
-              project.blockers.map((blocker, index) => (
-                <div key={blocker.id}>
-                  <div className="flex items-start gap-4">
-                    <div>
-                      {blocker.status === 'open' ? (
-                         <ShieldAlert className="h-5 w-5 text-destructive mt-1" />
-                      ) : (
-                         <ShieldCheck className="h-5 w-5 text-green-600 mt-1" />
-                      )}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center">
-                         <p className="font-semibold">{blocker.status === 'open' ? 'Open Blocker' : 'Resolved Blocker'}</p>
-                         <p className="text-xs text-muted-foreground">
-                          {blocker.status === 'open' ? 'Created: ' : 'Resolved: '} 
-                          {format(parseISO(blocker.resolvedAt || blocker.createdAt), 'MMM dd, yyyy')}
-                         </p>
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-1">{blocker.description}</p>
-                      {blocker.status === 'resolved' && (
-                        <div className="mt-2 text-sm bg-muted/50 p-3 rounded-md border">
-                            <p className="font-semibold text-xs">Resolution:</p>
-                            <p className="text-muted-foreground">{blocker.resolution}</p>
-                        </div>
-                      )}
-                    </div>
-                    <div>
-                    {blocker.status === 'open' && (
-                      <Button variant="outline" size="sm" onClick={() => setResolvingBlocker(blocker)}>
-                        Resolve
-                      </Button>
-                    )}
-                    </div>
-                  </div>
-                  {index < project.blockers.length - 1 && <Separator className="my-4" />}
+                                        <div className="flex justify-between items-center pt-2">
+                                            <h4 className="font-semibold">Tasks</h4>
+                                            <Button onClick={() => setAddingTaskToMilestone(milestone)}>
+                                                <PlusCircle className="mr-2 h-4 w-4" /> Add Task
+                                            </Button>
+                                        </div>
+                                        <TaskList 
+                                            tasks={milestone.tasks} 
+                                            onEditTask={(task) => setEditingTaskInfo({ task, milestone })}
+                                        />
+                                    </AccordionContent>
+                                </AccordionItem>
+                            )
+                        })}
+                    </Accordion>
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="gantt">
+          <Card>
+            <CardHeader>
+                <CardTitle>Task Gantt Chart</CardTitle>
+                <CardDescription>A timeline view of all tasks for this project, relative to the project start date.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <GanttChart project={project} />
+            </CardContent>
+          </Card>
+        </TabsContent>
+        <TabsContent value="blockers">
+            <Card>
+                <CardHeader>
+                <div className="flex items-center justify-between">
+                    <CardTitle>Project Blockers</CardTitle>
+                    <Button onClick={() => setAddingBlocker(true)}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Blocker
+                    </Button>
                 </div>
-              ))
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                <CardDescription>
+                    Issues that are impeding progress and require higher management attention.
+                </CardDescription>
+                </CardHeader>
+                <CardContent>
+                <div className="space-y-4">
+                    {!project.blockers || project.blockers.length === 0 ? (
+                    <p className="text-muted-foreground text-sm">No blockers have been reported for this project.</p>
+                    ) : (
+                    project.blockers.map((blocker, index) => (
+                        <div key={blocker.id}>
+                        <div className="flex items-start gap-4">
+                            <div>
+                            {blocker.status === 'open' ? (
+                                <ShieldAlert className="h-5 w-5 text-destructive mt-1" />
+                            ) : (
+                                <ShieldCheck className="h-5 w-5 text-green-600 mt-1" />
+                            )}
+                            </div>
+                            <div className="flex-1">
+                            <div className="flex justify-between items-center">
+                                <p className="font-semibold">{blocker.status === 'open' ? 'Open Blocker' : 'Resolved Blocker'}</p>
+                                <p className="text-xs text-muted-foreground">
+                                {blocker.status === 'open' ? 'Created: ' : 'Resolved: '} 
+                                {format(parseISO(blocker.resolvedAt || blocker.createdAt), 'MMM dd, yyyy')}
+                                </p>
+                            </div>
+                            <p className="text-sm text-muted-foreground mt-1">{blocker.description}</p>
+                            {blocker.status === 'resolved' && (
+                                <div className="mt-2 text-sm bg-muted/50 p-3 rounded-md border">
+                                    <p className="font-semibold text-xs">Resolution:</p>
+                                    <p className="text-muted-foreground">{blocker.resolution}</p>
+                                </div>
+                            )}
+                            </div>
+                            <div>
+                            {blocker.status === 'open' && (
+                            <Button variant="outline" size="sm" onClick={() => setResolvingBlocker(blocker)}>
+                                Resolve
+                            </Button>
+                            )}
+                            </div>
+                        </div>
+                        {index < project.blockers.length - 1 && <Separator className="my-4" />}
+                        </div>
+                    ))
+                    )}
+                </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+      </Tabs>
+
 
       {editingMilestone && (
         <EditMilestoneDialog 
