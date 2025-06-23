@@ -1,7 +1,7 @@
 "use client";
 
 import * as React from "react";
-import { Pie, PieChart } from "recharts";
+import { Pie, PieChart, Cell } from "recharts";
 import {
   ChartContainer,
   ChartTooltip,
@@ -58,7 +58,15 @@ export function DepartmentProjectsChart() {
           nameKey="name"
           innerRadius={60}
           strokeWidth={2}
-        />
+        >
+          {chartData.map((entry, index) => (
+            <Cell
+              key={`cell-${index}`}
+              fill={`hsl(var(--chart-${(index % 5) + 1}))`}
+              className="stroke-background"
+            />
+          ))}
+        </Pie>
         <ChartLegend
             content={<ChartLegendContent nameKey="name" />}
             className="-translate-y-4 flex-wrap gap-2 [&>*]:basis-1/3 [&>*]:justify-center"
