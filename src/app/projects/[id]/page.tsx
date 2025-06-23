@@ -6,7 +6,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { TaskList } from "@/components/projects/task-list";
 import { GanttChart } from "@/components/projects/gantt-chart";
 import { differenceInDays, format } from "date-fns";
-import { Calendar, Layers } from "lucide-react";
+import { Calendar, Layers, ArrowLeft } from "lucide-react";
+import Link from 'next/link';
 
 export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
   const project = projects.find((p) => p.id === params.id);
@@ -23,6 +24,10 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+      <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
+        <ArrowLeft className="w-4 h-4" />
+        Back to Dashboard
+      </Link>
       <Card>
         <CardHeader>
           <CardTitle className="text-3xl">{project.name}</CardTitle>
