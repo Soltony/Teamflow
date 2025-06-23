@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -37,7 +38,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 
 type AddTaskDialogProps = {
   isOpen: boolean;
@@ -54,7 +55,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd }: Ad
   }, [milestone.tasks]);
   const remainingWeight = 100 - existingTasksWeight;
 
-  const taskSchema = z.object({
+  const taskSchema = useMemo(() => z.object({
     title: z.string().min(3, "Task title must be at least 3 characters."),
     description: z.string().optional(),
     startDate: z.date({ required_error: "A start date is required."}),
@@ -69,19 +70,27 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd }: Ad
   }, {
       message: `Total task weight cannot exceed 100. Remaining: ${remainingWeight}%.`,
       path: ["weight"],
-  });
+  }), [remainingWeight]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
-    defaultValues: {
-      title: "",
-      description: "",
-      assignedUserIds: [],
-      weight: Math.min(10, remainingWeight),
-    },
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      form.reset({
+        title: "",
+        description: "",
+        startDate: new Date(),
+        endDate: new Date(),
+        assignedUserIds: [],
+        weight: Math.min(10, remainingWeight),
+      });
+    }
+  }, [isOpen, milestone.id, remainingWeight, form]);
+
 
   const selectedUsers = users.filter(user => form.watch('assignedUserIds')?.includes(user.id));
 
@@ -102,7 +111,6 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd }: Ad
       description: `The task "${data.title}" has been successfully added.`,
     });
     onOpenChange(false);
-    form.reset();
   }
 
   return (
@@ -257,7 +265,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd }: Ad
                         <FormLabel>Task Weight (Remaining available: {remainingWeight}%): {field.value}%</FormLabel>
                         <FormControl>
                             <Slider
-                                value={[field.value]}
+                                value={[field.value ?? 0]}
                                 onValueChange={(value) => field.onChange(value[0])}
                                 max={remainingWeight}
                                 step={5}
