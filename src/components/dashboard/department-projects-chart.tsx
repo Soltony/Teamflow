@@ -45,7 +45,7 @@ export function DepartmentProjectsChart() {
   return (
     <ChartContainer
       config={chartConfig}
-      className="mx-auto aspect-square max-h-[300px]"
+      className="aspect-square max-h-[300px]"
     >
       <PieChart>
         <ChartTooltip
@@ -56,7 +56,7 @@ export function DepartmentProjectsChart() {
           data={chartData}
           dataKey="projects"
           nameKey="name"
-          innerRadius={60}
+          innerRadius="60%"
           strokeWidth={2}
         >
           {chartData.map((entry, index) => (
