@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useFieldArray, useForm } from "react-hook-form";
@@ -219,10 +220,10 @@ export function ProjectForm() {
                         name="departmentId"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Department</FormLabel>
+                                <FormLabel>Owning Department</FormLabel>
                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                     <FormControl>
-                                        <SelectTrigger><SelectValue placeholder="Select a department" /></SelectTrigger>
+                                        <SelectTrigger><SelectValue placeholder="Select an Owning Department" /></SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
                                         {departments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
