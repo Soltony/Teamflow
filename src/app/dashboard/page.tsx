@@ -14,21 +14,29 @@ import {
 } from "@/components/ui/card";
 import { isPast, parseISO, max as dateMax } from 'date-fns';
 
+const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode, count: number, href: string }) => {
+  if (count > 0) {
+    return <Link href={href}>{children}</Link>;
+  }
+  return <>{children}</>;
+};
+
+
 export default function DashboardPage() {
   const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
   const completedProjects = projects.filter(p => p.statusId === completedStatusId);
   const overdueProjects = projects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate)));
 
-  const onTimeProjects = completedProjects.filter(project => {
+  const onTimeProjectsCount = completedProjects.filter(project => {
     const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate)));
     if (allTaskEndDates.length === 0) return true;
     const lastTaskDate = dateMax(allTaskEndDates);
     return lastTaskDate <= parseISO(project.endDate);
   }).length;
   
-  const lateProjects = completedProjects.length - onTimeProjects;
+  const lateProjectsCount = completedProjects.length - onTimeProjectsCount;
 
-  const totalBlockers = projects.reduce((acc, p) => acc + (p.blockers?.filter(b => b.status === 'open').length || 0), 0);
+  const totalBlockersCount = projects.reduce((acc, p) => acc + (p.blockers?.filter(b => b.status === 'open').length || 0), 0);
   
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -60,46 +68,57 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">On-Time Completion</CardTitle>
-            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{onTimeProjects}</div>
-            <p className="text-xs text-muted-foreground">projects completed on schedule</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Late Completion</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{lateProjects}</div>
-            <p className="text-xs text-muted-foreground">projects completed after schedule</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overdue Projects</CardTitle>
-            <AlertOctagon className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{overdueProjects.length}</div>
-            <p className="text-xs text-muted-foreground">active projects past their deadline</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Blockers</CardTitle>
-            <ShieldAlert className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalBlockers}</div>
-            <p className="text-xs text-muted-foreground">issues requiring attention</p>
-          </CardContent>
-        </Card>
+        <StatCardWrapper count={onTimeProjectsCount} href="/reports?type=on-time">
+          <Card className={onTimeProjectsCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">On-Time Completion</CardTitle>
+              <CheckCircle className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{onTimeProjectsCount}</div>
+              <p className="text-xs text-muted-foreground">projects completed on schedule</p>
+            </CardContent>
+          </Card>
+        </StatCardWrapper>
+        
+        <StatCardWrapper count={lateProjectsCount} href="/reports?type=late">
+          <Card className={lateProjectsCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Late Completion</CardTitle>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{lateProjectsCount}</div>
+              <p className="text-xs text-muted-foreground">projects completed after schedule</p>
+            </CardContent>
+          </Card>
+        </StatCardWrapper>
+
+        <StatCardWrapper count={overdueProjects.length} href="/reports?type=overdue">
+          <Card className={overdueProjects.length > 0 ? 'hover:bg-muted transition-colors' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Overdue Projects</CardTitle>
+              <AlertOctagon className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{overdueProjects.length}</div>
+              <p className="text-xs text-muted-foreground">active projects past their deadline</p>
+            </CardContent>
+          </Card>
+        </StatCardWrapper>
+
+        <StatCardWrapper count={totalBlockersCount} href="/reports?type=active-blockers">
+          <Card className={totalBlockersCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Blockers</CardTitle>
+              <ShieldAlert className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{totalBlockersCount}</div>
+              <p className="text-xs text-muted-foreground">issues requiring attention</p>
+            </CardContent>
+          </Card>
+        </StatCardWrapper>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
