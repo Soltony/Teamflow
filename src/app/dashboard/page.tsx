@@ -6,6 +6,7 @@ import { ProjectCard } from "@/components/projects/project-card";
 import { projects, projectStatuses } from "@/lib/data";
 import { DepartmentProjectsChart } from "@/components/dashboard/department-projects-chart";
 import { ProjectStatusChart } from "@/components/dashboard/project-status-chart";
+import { ResponsibleDepartmentChart } from "@/components/dashboard/responsible-department-chart";
 import {
   Card,
   CardContent,
@@ -122,7 +123,7 @@ export default function DashboardPage() {
         </StatCardWrapper>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
+      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-3">
         <Card>
           <CardHeader>
             <CardTitle>Projects by Owning Department</CardTitle>
@@ -143,6 +144,17 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <ProjectStatusChart />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Milestone Responsibilities by Department</CardTitle>
+            <CardDescription>
+              Total milestones each department is responsible for.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsibleDepartmentChart />
           </CardContent>
         </Card>
       </div>
