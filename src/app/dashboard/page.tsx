@@ -1,3 +1,4 @@
+
 import Link from "next/link";
 import { PlusCircle, CheckCircle, Clock, AlertOctagon, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -124,9 +125,9 @@ export default function DashboardPage() {
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Projects by Department</CardTitle>
+            <CardTitle>Projects by Owning Department</CardTitle>
             <CardDescription>
-              Distribution of projects across departments.
+              Distribution of projects across owning departments.
             </CardDescription>
           </CardHeader>
           <CardContent>
