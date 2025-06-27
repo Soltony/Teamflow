@@ -10,6 +10,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 export const metadata: Metadata = {
   title: "TeamFlow",
   description: "A project management solution to assign tasks and manage activity online.",
+  manifest: "/manifest.json",
+  themeColor: "#121829",
 };
 
 export default function RootLayout({
