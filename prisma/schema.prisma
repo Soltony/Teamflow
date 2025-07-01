@@ -10,25 +10,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Enums based on the data types in the application
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  PENDING_REVIEW
-  DONE
-}
-
-enum BlockerStatus {
-  OPEN
-  RESOLVED
-}
-
-enum TaskUpdateType {
-  COMMENT
-  STATUS_CHANGE
-}
-
-
 model User {
   id              String    @id
   name            String
@@ -36,67 +17,33 @@ model User {
   password        String
   avatar          String?
   phone           String?
-  
   ledTeams        Team[]    @relation("TeamLead")
   teams           Team[]    @relation("TeamMembers")
-  managedProjects Project[] @relation("ProjectManager")
-  assignedTasks   Task[]    @relation("TaskAssignees")
+  managedProjects Project[]
+  assignedTasks   Task[]
   taskUpdates     TaskUpdate[]
 }
 
-model Department {
-  id                    String      @id
-  name                  String      @unique
-  responsibleName       String
-  responsibleTitle      String
-  responsiblePhone      String
-  
-  owningProjects        Project[]
-  responsibleMilestones Milestone[]
+model Team {
+  id         String   @id
+  name       String
+  projectId  String
+  project    Project  @relation(fields: [projectId], references: [id])
+  teamLeadId String
+  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  memberIds  String[]
+  members    User[]   @relation("TeamMembers")
 }
 
-model ProjectStatus {
-  id       String    @id
-  name     String    @unique
-  projects Project[]
-}
-
-model Project {
-  id               String   @id
-  name             String
-  description      String
-  startDate        DateTime
-  endDate          DateTime
-  workingYear      String
-  
-  statusId         String
-  status           ProjectStatus @relation(fields: [statusId], references: [id])
-  
-  departmentId     String
-  owningDepartment Department    @relation(fields: [departmentId], references: [id])
-  
-  projectManagerId String
-  projectManager   User          @relation("ProjectManager", fields: [projectManagerId], references: [id])
-  
-  milestones       Milestone[]
-  blockers         Blocker[]
-  teams            Team[]
-}
-
-model Milestone {
-  id          String   @id
-  title       String
-  description String
-  dueDate     DateTime
-  weight      Int
-  
-  projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  responsibleDepartmentIds String[]
-  responsibleDepartments   Department[]
-  
-  tasks       Task[]
+model TaskUpdate {
+  id        String   @id
+  text      String
+  userId    String
+  author    User     @relation(fields: [userId], references: [id])
+  createdAt DateTime @default(now())
+  type      UpdateType @default(COMMENT)
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id])
 }
 
 model Task {
@@ -108,51 +55,83 @@ model Task {
   endDate     DateTime
   weight      Int
   completedAt DateTime?
-  
   milestoneId String
-  milestone   Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
-  
-  assignedUserIds String[]
-  assignees       User[]   @relation("TaskAssignees")
-  
+  milestone   Milestone  @relation(fields: [milestoneId], references: [id])
+  assignees   User[]
   updates     TaskUpdate[]
 }
 
-model TaskUpdate {
-  id        String         @id
-  text      String
-  createdAt DateTime       @default(now())
-  type      TaskUpdateType
-  
-  authorId  String
-  author    User           @relation(fields: [authorId], references: [id])
-  
-  taskId    String
-  task      Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+model Milestone {
+  id                       String       @id
+  title                    String
+  description              String
+  dueDate                  DateTime
+  weight                   Int
+  projectId                String
+  project                  Project      @relation(fields: [projectId], references: [id])
+  responsibleDepartmentIds String[]
+  responsibleDepartments   Department[]
+  tasks                    Task[]
+}
+
+model Department {
+  id                       String      @id
+  name                     String
+  responsibleName          String
+  responsibleTitle         String
+  responsiblePhone         String
+  ownedProjects            Project[]
+  responsibleForMilestones Milestone[]
+}
+
+model ProjectStatus {
+  id       String    @id
+  name     String
+  projects Project[]
 }
 
 model Blocker {
-  id          String        @id
+  id          String   @id
   description String
   status      BlockerStatus @default(OPEN)
-  createdAt   DateTime
+  createdAt   DateTime @default(now())
   resolvedAt  DateTime?
   resolution  String?
-  
   projectId   String
-  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project  @relation(fields: [projectId], references: [id])
 }
 
-model Team {
-  id         String @id
-  name       String
-  
-  projectId  String
-  project    Project @relation(fields: [projectId], references: [id])
-  
-  teamLeadId String
-  teamLead   User   @relation("TeamLead", fields: [teamLeadId], references: [id])
-  
-  memberIds  String[]
-  members    User[]   @relation("TeamMembers")
+model Project {
+  id               String   @id
+  name             String
+  description      String
+  startDate        DateTime
+  endDate          DateTime
+  workingYear      String
+  statusId         String
+  status           ProjectStatus @relation(fields: [statusId], references: [id])
+  departmentId     String
+  owningDepartment Department @relation(fields: [departmentId], references: [id])
+  projectManagerId String
+  projectManager   User     @relation(fields: [projectManagerId], references: [id])
+  milestones       Milestone[]
+  blockers         Blocker[]
+  teams            Team[]
+}
+
+enum BlockerStatus {
+  OPEN
+  RESOLVED
+}
+
+enum UpdateType {
+  COMMENT
+  STATUS_CHANGE
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  PENDING_REVIEW
+  DONE
 }

@@ -126,7 +126,7 @@ async function main() {
             weight: task.weight,
             completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
             milestone: { connect: { id: milestone.id } },
-            assignedUsers: {
+            assignees: {
               connect: task.assignedUserIds.map(id => ({ id })),
             },
           },
