@@ -1,7 +1,8 @@
+
 "use client";
 
 import Link from "next/link";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { PlusCircle, CheckCircle, Clock, AlertOctagon, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
@@ -40,6 +41,16 @@ export default function DashboardPage() {
     const years = new Set(allProjects.map(p => p.workingYear));
     return ["all", ...Array.from(years).sort().reverse()];
   }, []);
+
+  useEffect(() => {
+    const activeYear = localStorage.getItem("activeWorkingYear");
+    if (activeYear && availableYears.includes(activeYear)) {
+      setSelectedYear(activeYear);
+    } else if (availableYears.length > 1) {
+      // Fallback to the most recent year if no active year is set
+      setSelectedYear(availableYears[1]); // availableYears[0] is 'all', so [1] is the most recent
+    }
+  }, [availableYears]);
 
   const projects = useMemo(() => {
     if (selectedYear === "all") {
