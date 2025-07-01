@@ -78,7 +78,7 @@ export function ProjectMilestones({ initialProject }: ProjectMilestonesProps) {
                       return (
                           <AccordionItem value={milestone.id} key={milestone.id}>
                               <AccordionTrigger>
-                                <div className="w-full flex flex-col items-start gap-3 text-left">
+                                <div className="flex-1 flex flex-col items-start gap-3 text-left pr-4">
                                   <div className="flex w-full items-start justify-between gap-4">
                                       <span className="font-semibold text-base flex-1">{milestone.title}</span>
                                       <Button 
