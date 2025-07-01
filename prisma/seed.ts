@@ -15,7 +15,7 @@ async function main() {
   // Seed Users
   for (const user of users) {
       await prisma.user.upsert({
-          where: { id: user.id },
+          where: { email: `${user.name.toLowerCase().replace(/\s+/g, '.')}@teamflow.com` },
           update: {},
           create: {
             id: user.id,
