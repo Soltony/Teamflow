@@ -1,4 +1,5 @@
 
+
 import { TeamTasksManagement } from "@/components/tasks/team-tasks-management";
 import prisma from "@/lib/db";
 import { notFound } from "next/navigation";
@@ -110,12 +111,15 @@ export default async function TeamViewPage() {
       const userTask: TeamViewTask = {
           ...task,
           status: task.status.replace(/_/g,'-').toLowerCase() as Task['status'],
-          updates: task.updates.map(u => ({ ...u, type: u.type?.replace(/_/g,'-').toLowerCase() as TaskUpdate['type']})),
+          updates: task.updates.map(u => ({ ...u, type: u.type?.replace(/_/g,'-').toLowerCase() as TaskUpdate['type'], createdAt: u.createdAt.toISOString(), author: u.author, authorId: u.authorId, id: u.id, text: u.text })),
           projectId: task.milestone.project.id,
           projectName: task.milestone.project.name,
           milestoneId: task.milestone.id,
           milestoneTitle: task.milestone.title,
           assignedUserIds: task.assignees.map(a => a.id),
+          startDate: task.startDate.toISOString(),
+          endDate: task.endDate.toISOString(),
+          completedAt: task.completedAt?.toISOString(),
       };
       
       acc[projectId].tasks.push(userTask);
@@ -133,7 +137,7 @@ export default async function TeamViewPage() {
         allUsers={JSON.parse(JSON.stringify(allUsers))}
         ledTeams={JSON.parse(JSON.stringify(ledTeams))}
         currentUser={JSON.parse(JSON.stringify(currentUser))} 
-        initialTasksByProject={JSON.parse(JSON.stringify(Object.values(tasksByProject)))}
+        initialTasksByProject={Object.values(tasksByProject)}
         projectStatuses={JSON.parse(JSON.stringify(projectStatuses))}
     />
   );

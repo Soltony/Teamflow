@@ -1,18 +1,23 @@
+
 'use server';
 
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { Task, TaskUpdate } from "@/lib/types";
+import { TaskStatus, TaskUpdateType } from "@prisma/client";
+
+const statusMap: Record<Task['status'], TaskStatus> = {
+    'todo': TaskStatus.TODO,
+    'in-progress': TaskStatus.IN_PROGRESS,
+    'pending-review': TaskStatus.PENDING_REVIEW,
+    'done': TaskStatus.DONE
+};
 
 export async function updateTaskStatusAction(taskId: string, newStatus: Task['status']) {
-  const updateData: { status: Task['status'], completedAt?: Date } = {
-    status: newStatus
-  };
+  const prismaStatus = statusMap[newStatus];
 
-  const prismaStatus = newStatus.replace('-', '_').toUpperCase() as any;
-
-  if (newStatus === 'done') {
-    updateData.completedAt = new Date();
+  if (!prismaStatus) {
+      return { success: false, error: "Invalid task status." };
   }
 
   try {
@@ -44,14 +49,14 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
                     text,
                     authorId,
                     taskId: taskId,
-                    type: 'COMMENT',
+                    type: TaskUpdateType.COMMENT,
                 }
             });
 
-            if (task.status === 'IN_PROGRESS') {
+            if (task.status === TaskStatus.IN_PROGRESS) {
                 await tx.task.update({
                     where: { id: taskId },
-                    data: { status: 'PENDING_REVIEW' }
+                    data: { status: TaskStatus.PENDING_REVIEW }
                 });
             }
         });

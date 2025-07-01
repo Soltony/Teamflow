@@ -1,51 +1,28 @@
-import type { User, Team, Project, Department, ProjectStatus } from './types';
+
+import type { User, Team, Project, Department, ProjectStatus, Task, Milestone, TaskUpdate, Blocker } from './types';
 
 export const users: User[] = [
-  { id: 'user-1', name: 'Alice Johnson', avatar: 'https://i.pravatar.cc/150?u=user-1', phone: '123-456-7890' },
-  { id: 'user-2', name: 'Bob Williams', avatar: 'https://i.pravatar.cc/150?u=user-2', phone: '234-567-8901' },
-  { id: 'user-3', name: 'Charlie Brown', avatar: 'https://i.pravatar.cc/150?u=user-3', phone: '345-678-9012' },
-  { id: 'user-4', name: 'Diana Miller', avatar: 'https://i.pravatar.cc/150?u=user-4', phone: '456-789-0123' },
-  { id: 'user-5', name: 'Ethan Davis', avatar: 'https://i.pravatar.cc/150?u=user-5', phone: '567-890-1234' },
-  { id: 'user-6', name: 'Fiona Garcia', avatar: 'https://i.pravatar.cc/150?u=user-6', phone: '678-901-2345' },
+  { id: 'user-1', name: 'Alice Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phone: '123-456-7890' },
+  { id: 'user-2', name: 'Bob Williams', email: 'bob.williams@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-2', phone: '234-567-8901' },
+  { id: 'user-3', name: 'Charlie Brown', email: 'charlie.brown@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-3', phone: '345-678-9012' },
+  { id: 'user-4', name: 'Diana Miller', email: 'diana.miller@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-4', phone: '456-789-0123' },
+  { id: 'user-5', name: 'Ethan Davis', email: 'ethan.davis@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-5', phone: '567-890-1234' },
+  { id: 'user-6', name: 'Fiona Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phone: '678-901-2345' },
 ];
 
-export const teams: Team[] = [
-  { 
-    id: 'team-1', 
-    name: 'Frontend Wizards', 
-    projectId: 'proj-1', 
-    teamLeadId: 'user-1', 
-    memberIds: ['user-1', 'user-3'] 
-  },
-  { 
-    id: 'team-2', 
-    name: 'Backend Titans', 
-    projectId: 'proj-1', 
-    teamLeadId: 'user-2', 
-    memberIds: ['user-2', 'user-4'] 
-  },
-  { 
-    id: 'team-3', 
-    name: 'Marketing Squad', 
-    projectId: 'proj-2', 
-    teamLeadId: 'user-4', 
-    memberIds: ['user-4', 'user-6'] 
-  },
+export const departments: Omit<Department, 'id'>[] = [
+    { name: 'Technology', responsible: { name: 'Dr. Evelyn Reed', title: 'CTO', phone: '111-222-3333' } },
+    { name: 'Marketing', responsible: { name: 'Marcus Holloway', title: 'CMO', phone: '444-555-6666' } },
 ];
 
-export const departments: Department[] = [
-    { id: 'dept-1', name: 'Technology', responsible: { name: 'Dr. Evelyn Reed', title: 'CTO', phone: '111-222-3333' } },
-    { id: 'dept-2', name: 'Marketing', responsible: { name: 'Marcus Holloway', title: 'CMO', phone: '444-555-6666' } },
+export const projectStatuses: Omit<ProjectStatus, 'id'>[] = [
+  { name: 'Active' },
+  { name: 'Pending' },
+  { name: 'Parked' },
+  { name: 'Completed' },
 ];
 
-export const projectStatuses: ProjectStatus[] = [
-  { id: 'status-1', name: 'Active' },
-  { id: 'status-2', name: 'Pending' },
-  { id: 'status-3', name: 'Parked' },
-  { id: 'status-4', name: 'Completed' },
-];
-
-export const projects: Project[] = [
+const tempProjects: any[] = [
   {
     id: 'proj-1',
     name: 'E-commerce Platform Relaunch',
@@ -53,9 +30,9 @@ export const projects: Project[] = [
     startDate: '2024-08-01',
     endDate: '2024-11-30',
     workingYear: '2024/2025',
-    statusId: 'status-1',
-    departmentId: 'dept-1',
-    projectManagerId: 'user-1',
+    statusName: 'Active',
+    departmentName: 'Technology',
+    projectManagerEmail: 'alice.johnson@teamflow.com',
     milestones: [
         {
             id: 'mile-1-1',
@@ -64,10 +41,10 @@ export const projects: Project[] = [
             startDate: '2024-08-01',
             dueDate: '2024-09-10',
             weight: 30,
-            responsibleDepartmentIds: ['dept-2'],
+            responsibleDepartmentNames: ['Marketing'],
             tasks: [
-                { id: 'task-1-1', title: 'User Research & Analysis', description: 'Conduct user surveys and interviews to gather requirements.', status: 'done', startDate: '2024-08-01', endDate: '2024-08-15', weight: 40, assignedUserIds: ['user-5'] },
-                { id: 'task-1-2', title: 'Design Wireframes & Mockups', description: 'Create high-fidelity mockups for the new platform.', status: 'in-progress', startDate: '2024-08-16', endDate: '2024-09-10', weight: 60, assignedUserIds: ['user-5', 'user-6'] },
+                { id: 'task-1-1', title: 'User Research & Analysis', description: 'Conduct user surveys and interviews to gather requirements.', status: 'done', startDate: '2024-08-01', endDate: '2024-08-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com'] },
+                { id: 'task-1-2', title: 'Design Wireframes & Mockups', description: 'Create high-fidelity mockups for the new platform.', status: 'in-progress', startDate: '2024-08-16', endDate: '2024-09-10', weight: 60, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
             ]
         },
         {
@@ -77,15 +54,15 @@ export const projects: Project[] = [
             startDate: '2024-09-11',
             dueDate: '2024-10-31',
             weight: 60,
-            responsibleDepartmentIds: ['dept-1'],
+            responsibleDepartmentNames: ['Technology'],
             tasks: [
-                { id: 'task-1-3', title: 'Frontend Development', description: 'Develop the client-side of the application using Next.js.', status: 'pending-review', startDate: '2024-09-11', endDate: '2024-10-31', weight: 70, assignedUserIds: ['user-1', 'user-3'],
+                { id: 'task-1-3', title: 'Frontend Development', description: 'Develop the client-side of the application using Next.js.', status: 'pending-review', startDate: '2024-09-11', endDate: '2024-10-31', weight: 70, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'],
                   updates: [
-                    { id: 'update-1', text: 'Initial component structure is complete. Starting on data binding.', userId: 'user-1', createdAt: '2024-10-15T10:00:00Z' },
-                    { id: 'update-2', text: 'Data binding is done. Ready for review.', userId: 'user-1', createdAt: '2024-10-20T14:30:00Z' },
+                    { id: 'update-1', text: 'Initial component structure is complete. Starting on data binding.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-15T10:00:00Z' },
+                    { id: 'update-2', text: 'Data binding is done. Ready for review.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-20T14:30:00Z' },
                   ]
                 },
-                { id: 'task-1-4', title: 'Backend Development', description: 'Build the server-side logic and database schema.', status: 'todo', startDate: '2024-09-11', endDate: '2024-10-31', weight: 30, assignedUserIds: ['user-2', 'user-4'] },
+                { id: 'task-1-4', title: 'Backend Development', description: 'Build the server-side logic and database schema.', status: 'todo', startDate: '2024-09-11', endDate: '2024-10-31', weight: 30, assignedUserEmails: ['bob.williams@teamflow.com', 'diana.miller@teamflow.com'] },
             ]
         },
         {
@@ -95,9 +72,9 @@ export const projects: Project[] = [
             startDate: '2024-11-01',
             dueDate: '2024-11-30',
             weight: 10,
-            responsibleDepartmentIds: ['dept-1', 'dept-2'],
+            responsibleDepartmentNames: ['Technology', 'Marketing'],
             tasks: [
-                { id: 'task-1-5', title: 'Deployment & QA', description: 'Deploy the application and perform quality assurance testing.', status: 'todo', startDate: '2024-11-01', endDate: '2024-11-30', weight: 100, assignedUserIds: ['user-1', 'user-2', 'user-3'] },
+                { id: 'task-1-5', title: 'Deployment & QA', description: 'Deploy the application and perform quality assurance testing.', status: 'todo', startDate: '2024-11-01', endDate: '2024-11-30', weight: 100, assignedUserEmails: ['alice.johnson@teamflow.com', 'bob.williams@teamflow.com', 'charlie.brown@teamflow.com'] },
             ]
         }
     ],
@@ -125,9 +102,9 @@ export const projects: Project[] = [
     startDate: '2024-09-01',
     endDate: '2024-12-31',
     workingYear: '2024/2025',
-    statusId: 'status-2',
-    departmentId: 'dept-2',
-    projectManagerId: 'user-2',
+    statusName: 'Pending',
+    departmentName: 'Technology',
+    projectManagerEmail: 'bob.williams@teamflow.com',
     milestones: [
         {
             id: 'mile-2-1',
@@ -136,10 +113,10 @@ export const projects: Project[] = [
             startDate: '2024-09-01',
             dueDate: '2024-11-15',
             weight: 50,
-            responsibleDepartmentIds: ['dept-1', 'dept-2'],
+            responsibleDepartmentNames: ['Technology', 'Marketing'],
             tasks: [
-                { id: 'task-2-1', title: 'Market Research', description: 'Analyze competitor apps and market trends.', status: 'done', startDate: '2024-09-01', endDate: '2024-09-15', weight: 30, assignedUserIds: ['user-4'] },
-                { id: 'task-2-2', title: 'API Development', description: 'Develop REST APIs for the mobile app.', status: 'in-progress', startDate: '2024-09-16', endDate: '2024-11-15', weight: 70, assignedUserIds: ['user-2'] },
+                { id: 'task-2-1', title: 'Market Research', description: 'Analyze competitor apps and market trends.', status: 'done', startDate: '2024-09-01', endDate: '2024-09-15', weight: 30, assignedUserEmails: ['diana.miller@teamflow.com'] },
+                { id: 'task-2-2', title: 'API Development', description: 'Develop REST APIs for the mobile app.', status: 'in-progress', startDate: '2024-09-16', endDate: '2024-11-15', weight: 70, assignedUserEmails: ['bob.williams@teamflow.com'] },
             ]
         },
         {
@@ -149,75 +126,63 @@ export const projects: Project[] = [
             startDate: '2024-11-16',
             dueDate: '2024-12-15',
             weight: 50,
-            responsibleDepartmentIds: ['dept-1'],
+            responsibleDepartmentNames: ['Technology'],
             tasks: [
-                { id: 'task-2-3', title: 'Mobile UI/UX Design', description: 'Design the user interface and experience for iOS and Android.', status: 'in-progress', startDate: '2024-09-16', endDate: '2024-10-15', weight: 40, assignedUserIds: ['user-5', 'user-6'] },
-                { id: 'task-2-4', title: 'Mobile App Development', description: 'Develop the native mobile application.', status: 'todo', startDate: '2024-10-16', endDate: '2024-12-15', weight: 60, assignedUserIds: ['user-1', 'user-3'] },
+                { id: 'task-2-3', title: 'Mobile UI/UX Design', description: 'Design the user interface and experience for iOS and Android.', status: 'in-progress', startDate: '2024-09-16', endDate: '2024-10-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
+                { id: 'task-2-4', title: 'Mobile App Development', description: 'Develop the native mobile application.', status: 'todo', startDate: '2024-10-16', endDate: '2024-12-15', weight: 60, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'] },
             ]
         }
     ]
   },
-  {
-    id: 'proj-3',
-    name: 'Data Analytics Dashboard Q1',
-    description: 'Implementation of a new data analytics dashboard for the marketing team.',
-    startDate: '2025-01-15',
-    endDate: '2025-03-31',
-    workingYear: '2024/2025',
-    statusId: 'status-1',
-    departmentId: 'dept-2',
-    projectManagerId: 'user-4',
-    milestones: [
-        {
-            id: 'mile-3-1',
-            title: 'Q1: Data Source Integration',
-            description: 'Connect to all required data sources.',
-            startDate: '2025-01-15',
-            dueDate: '2025-02-15',
-            weight: 50,
-            responsibleDepartmentIds: ['dept-1'],
-            tasks: [
-                { id: 'task-3-1', title: 'Integrate CRM Data', description: 'Pull customer data from the CRM.', status: 'in-progress', startDate: '2025-01-15', endDate: '2025-01-31', weight: 100, assignedUserIds: ['user-2'] },
-            ]
-        },
-        {
-            id: 'mile-3-2',
-            title: 'Q1: Dashboard UI/UX',
-            description: 'Design and implement the dashboard user interface.',
-            startDate: '2025-02-16',
-            dueDate: '2025-03-31',
-            weight: 50,
-            responsibleDepartmentIds: ['dept-2'],
-            tasks: [
-                 { id: 'task-3-2', title: 'Design Dashboard Mockups', description: 'Create mockups for all dashboard views.', status: 'todo', startDate: '2025-02-01', endDate: '2025-02-28', weight: 50, assignedUserIds: ['user-5', 'user-6'] },
-                 { id: 'task-3-3', title: 'Develop UI Components', description: 'Build the React components for the dashboard.', status: 'todo', startDate: '2025-03-01', endDate: '2025-03-31', weight: 50, assignedUserIds: ['user-1', 'user-3'] },
-            ]
-        }
-    ]
+];
+
+const userMap = new Map(users.map(u => [u.email, u.id]));
+const departmentMap = new Map(departments.map((d, i) => [d.name, `dept-${i+1}`]));
+const statusMap = new Map(projectStatuses.map((s, i) => [s.name, `status-${i+1}`]));
+
+departments.forEach((d, i) => { (d as any).id = `dept-${i+1}` });
+projectStatuses.forEach((s, i) => { (s as any).id = `status-${i+1}` });
+
+
+export const projects: Project[] = tempProjects.map(p => ({
+  ...p,
+  statusId: statusMap.get(p.statusName)!,
+  departmentId: departmentMap.get(p.departmentName)!,
+  projectManagerId: userMap.get(p.projectManagerEmail)!,
+  milestones: p.milestones.map((m:any) => ({
+    ...m,
+    responsibleDepartmentIds: m.responsibleDepartmentNames.map((name:string) => departmentMap.get(name)!),
+    tasks: m.tasks.map((t:any) => ({
+      ...t,
+      assignedUserIds: t.assignedUserEmails.map((email:string) => userMap.get(email)!),
+      updates: t.updates?.map((u:any) => ({
+        ...u,
+        authorId: userMap.get(u.userEmail)!,
+      }))
+    }))
+  }))
+}));
+
+export const teams: Team[] = [
+  { 
+    id: 'team-1', 
+    name: 'Frontend Wizards', 
+    projectId: 'proj-1', 
+    teamLeadId: 'user-1', 
+    memberIds: ['user-1', 'user-3'] 
   },
-  {
-    id: 'proj-4',
-    name: 'Annual Company Offsite Planning',
-    description: 'Organize and plan the annual company-wide offsite event.',
-    startDate: '2025-08-01',
-    endDate: '2025-10-31',
-    workingYear: '2025/2026',
-    statusId: 'status-2',
-    departmentId: 'dept-2',
-    projectManagerId: 'user-6',
-    milestones: [
-      {
-        id: 'mile-4-1',
-        title: 'Venue and Logistics',
-        description: 'Finalize venue, travel, and accommodation.',
-        startDate: '2025-08-01',
-        dueDate: '2025-09-15',
-        weight: 100,
-        responsibleDepartmentIds: ['dept-2'],
-        tasks: [
-          { id: 'task-4-1', title: 'Venue Selection', description: 'Research and book the event venue.', status: 'todo', startDate: '2025-08-01', endDate: '2025-08-31', weight: 100, assignedUserIds: ['user-6'] },
-        ]
-      }
-    ]
-  }
+  { 
+    id: 'team-2', 
+    name: 'Backend Titans', 
+    projectId: 'proj-1', 
+    teamLeadId: 'user-2', 
+    memberIds: ['user-2', 'user-4'] 
+  },
+  { 
+    id: 'team-3', 
+    name: 'Marketing Squad', 
+    projectId: 'proj-2', 
+    teamLeadId: 'user-4', 
+    memberIds: ['user-4', 'user-6'] 
+  },
 ];

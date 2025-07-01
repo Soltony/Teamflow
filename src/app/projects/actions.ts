@@ -3,6 +3,8 @@
 
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { BlockerStatus, TaskStatus } from "@prisma/client";
+import type { Task } from "@/lib/types";
 
 export async function createProject(data: any) {
     const { milestones, ...projectData } = data;
@@ -38,7 +40,7 @@ export async function addBlocker(projectId: string, description: string) {
     await prisma.blocker.create({
         data: {
             description,
-            status: 'OPEN',
+            status: BlockerStatus.OPEN,
             projectId,
         }
     });
@@ -49,7 +51,7 @@ export async function resolveBlocker(blockerId: string, resolution: string, proj
     await prisma.blocker.update({
         where: { id: blockerId },
         data: {
-            status: 'RESOLVED',
+            status: BlockerStatus.RESOLVED,
             resolution,
             resolvedAt: new Date(),
         }
@@ -78,7 +80,7 @@ export async function addTask(milestoneId: string, projectId: string, data: any)
     await prisma.task.create({
         data: {
             ...taskData,
-            status: 'TODO',
+            status: TaskStatus.TODO,
             milestoneId,
             assignees: {
                 connect: assignedUserIds.map((id:string) => ({ id }))
@@ -88,10 +90,17 @@ export async function addTask(milestoneId: string, projectId: string, data: any)
     revalidatePath(`/projects/${projectId}/milestones`);
 }
 
+const statusMap: Record<Task['status'], TaskStatus> = {
+    'todo': TaskStatus.TODO,
+    'in-progress': TaskStatus.IN_PROGRESS,
+    'pending-review': TaskStatus.PENDING_REVIEW,
+    'done': TaskStatus.DONE
+};
+
 export async function updateTask(taskId: string, projectId: string, data: any) {
     const { assignedUserIds, status, ...taskData } = data;
     
-    const prismaStatus = status?.replace('-', '_').toUpperCase();
+    const prismaStatus = status ? statusMap[status as Task['status']] : undefined;
 
     await prisma.task.update({
         where: { id: taskId },

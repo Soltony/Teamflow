@@ -8,7 +8,7 @@ export default async function GanttPage() {
     include: {
         milestones: {
             orderBy: {
-                startDate: 'asc'
+                dueDate: 'asc'
             }
         }
     },
