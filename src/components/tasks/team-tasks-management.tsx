@@ -100,7 +100,12 @@ export function TeamTasksManagement({ allUsers, allTeams, currentUser }: TeamTas
                   ? {
                       ...m,
                       tasks: m.tasks.map(t =>
-                        t.id === task.id ? { ...t, status: 'done', updates: [...(t.updates || []), newUpdate] } : t
+                        t.id === task.id ? { 
+                            ...t, 
+                            status: 'done', 
+                            updates: [...(t.updates || []), newUpdate],
+                            completedAt: new Date().toISOString() 
+                        } : t
                       ),
                     }
                   : m

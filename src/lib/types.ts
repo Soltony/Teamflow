@@ -31,6 +31,7 @@ export type Task = {
   weight: number;
   assignedUserIds: string[];
   updates?: TaskUpdate[];
+  completedAt?: string;
 };
 
 export type Milestone = {
@@ -44,7 +45,7 @@ export type Milestone = {
 };
 
 export type Department = {
-    id: string;
+    id:string;
     name: string;
     responsible: {
         name: string;
