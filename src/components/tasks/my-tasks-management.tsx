@@ -30,19 +30,14 @@ import { useToast } from "@/hooks/use-toast";
 import type { Task, User, TaskUpdate } from "@/lib/types";
 import { format, formatDistanceToNow, isPast, parseISO, differenceInDays } from "date-fns";
 import { CheckCircle, XCircle, AlertTriangle, Clock, Check, Target, Award } from "lucide-react";
-import { useProjects } from "@/hooks/use-projects";
 import { Progress } from "@/components/ui/progress";
+import type { UserTask } from "@/app/my-tasks/page";
+import { addTaskUpdateAction, updateTaskStatusAction } from "@/app/my-tasks/actions";
 
 type MyTasksManagementProps = {
   allUsers: User[];
   currentUser: User;
-};
-
-type UserTask = Task & {
-  projectId: string;
-  projectName: string;
-  milestoneId: string;
-  milestoneTitle: string;
+  initialTasks: UserTask[];
 };
 
 const taskUpdateSchema = z.object({
@@ -221,9 +216,8 @@ const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubm
     </Card>
 )
 
-export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementProps) {
+export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTasksManagementProps) {
   const { toast } = useToast();
-  const [projects, setProjects] = useProjects();
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
   const { overdueTasks, activeTasks, accomplishedThisWeek, onTimePerformance } = useMemo(() => {
@@ -231,21 +225,7 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
     const active: UserTask[] = [];
     const accomplished: UserTask[] = [];
 
-    const allMyTasks: UserTask[] = projects.flatMap(project => 
-        project.milestones.flatMap(milestone => 
-            milestone.tasks
-                .filter(task => task.assignedUserIds.includes(currentUser.id))
-                .map(task => ({
-                    ...task,
-                    projectId: project.id,
-                    projectName: project.name,
-                    milestoneId: milestone.id,
-                    milestoneTitle: milestone.title,
-                }))
-        )
-    );
-
-    allMyTasks.forEach(task => {
+    initialTasks.forEach(task => {
         const isTaskOverdue = isPast(parseISO(task.endDate)) && task.status !== 'done';
         if (isTaskOverdue) {
             overdue.push(task);
@@ -262,7 +242,7 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
     active.sort((a,b) => parseISO(a.endDate).getTime() - parseISO(b.endDate).getTime());
     accomplished.sort((a,b) => parseISO(b.completedAt!).getTime() - parseISO(a.completedAt!).getTime());
 
-    const allCompletedTasks = allMyTasks.filter(t => t.status === 'done' && t.completedAt);
+    const allCompletedTasks = initialTasks.filter(t => t.status === 'done' && t.completedAt);
     const onTimeCount = allCompletedTasks.filter(t => 
         t.completedAt && parseISO(t.completedAt) <= parseISO(t.endDate)
     ).length;
@@ -277,82 +257,44 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
         accomplishedThisWeek: accomplished,
         onTimePerformance: performance,
     };
-  }, [projects, currentUser.id]);
+  }, [initialTasks]);
 
 
-  const handleStatusChange = (task: UserTask, newStatus: Task['status']) => {
-    setProjects(prevProjects =>
-      prevProjects.map(p =>
-        p.id === task.projectId
-          ? {
-              ...p,
-              milestones: p.milestones.map(m =>
-                m.id === task.milestoneId
-                  ? {
-                      ...m,
-                      tasks: m.tasks.map(t =>
-                        t.id === task.id ? { ...t, status: newStatus } : t
-                      ),
-                    }
-                  : m
-              ),
-            }
-          : p
-      )
-    );
-    toast({
-        title: "Status Updated",
-        description: `Task status has been changed to "${capitalize(newStatus.replace('-', ' '))}".`
-    })
+  const handleStatusChange = async (task: UserTask, newStatus: Task['status']) => {
+    const result = await updateTaskStatusAction(task.id, newStatus);
+    if (result.success) {
+        toast({
+            title: "Status Updated",
+            description: `Task status has been changed to "${capitalize(newStatus.replace('-', ' '))}".`
+        });
+    } else {
+        toast({
+            title: "Error",
+            description: result.error,
+            variant: "destructive"
+        });
+    }
   };
 
-  const handleUpdateSubmit = (task: UserTask, data: TaskUpdateFormValues) => {
-    const newUpdate: TaskUpdate = {
-        id: `update-${Date.now()}`,
-        text: data.text,
-        userId: currentUser.id,
-        createdAt: new Date().toISOString(),
-        type: 'comment',
-    };
-
+  const handleUpdateSubmit = async (task: UserTask, data: TaskUpdateFormValues) => {
+    const result = await addTaskUpdateAction(task.id, data.text, currentUser.id);
     let toastDescription = "Your progress update has been recorded.";
 
-    setProjects(prevProjects =>
-        prevProjects.map(p =>
-          p.id === task.projectId
-            ? {
-                ...p,
-                milestones: p.milestones.map(m =>
-                  m.id === task.milestoneId
-                    ? {
-                        ...m,
-                        tasks: m.tasks.map(t => {
-                          if (t.id === task.id) {
-                            // If task was in-progress (e.g., after being declined), resubmit for review.
-                            const newStatus = t.status === 'in-progress' ? 'pending-review' : t.status;
-                            if (newStatus === 'pending-review') {
-                                toastDescription = "Your update has been posted and the task is resubmitted for review.";
-                            }
-                            return { 
-                                ...t, 
-                                status: newStatus,
-                                updates: [...(t.updates || []), newUpdate] 
-                            };
-                          }
-                          return t;
-                        }),
-                      }
-                    : m
-                ),
-              }
-            : p
-        )
-      );
-
-      toast({
-          title: "Update Added",
-          description: toastDescription
-      });
+    if (result.success) {
+        if (task.status === 'in-progress') {
+            toastDescription = "Your update has been posted and the task is resubmitted for review.";
+        }
+        toast({
+            title: "Update Added",
+            description: toastDescription
+        });
+    } else {
+        toast({
+            title: "Error",
+            description: result.error,
+            variant: "destructive"
+        });
+    }
   };
 
   const commonTaskSectionProps = {
