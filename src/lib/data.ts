@@ -1,5 +1,5 @@
 
-import type { User, Team, Project, Department, ProjectStatus, Task, Milestone, TaskUpdate, Blocker } from './types';
+import type { User, Team, Project, ProjectStatus, Task, Milestone, TaskUpdate, Blocker } from './types';
 
 export const users: User[] = [
   { id: 'user-1', name: 'Alice Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phone: '123-456-7890' },
@@ -10,7 +10,7 @@ export const users: User[] = [
   { id: 'user-6', name: 'Fiona Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phone: '678-901-2345' },
 ];
 
-export const departments: Omit<Department, 'id'>[] = [
+export const departments = [
     { name: 'Technology', responsible: { name: 'Dr. Evelyn Reed', title: 'CTO', phone: '111-222-3333' } },
     { name: 'Marketing', responsible: { name: 'Marcus Holloway', title: 'CMO', phone: '444-555-6666' } },
 ];
@@ -58,8 +58,8 @@ const tempProjects: any[] = [
             tasks: [
                 { id: 'task-1-3', title: 'Frontend Development', description: 'Develop the client-side of the application using Next.js.', status: 'pending-review', startDate: '2024-09-11', endDate: '2024-10-31', weight: 70, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'],
                   updates: [
-                    { id: 'update-1', text: 'Initial component structure is complete. Starting on data binding.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-15T10:00:00Z' },
-                    { id: 'update-2', text: 'Data binding is done. Ready for review.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-20T14:30:00Z' },
+                    { id: 'update-1', text: 'Initial component structure is complete. Starting on data binding.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-15T10:00:00Z', type: 'comment' },
+                    { id: 'update-2', text: 'Data binding is done. Ready for review.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-20T14:30:00Z', type: 'comment' },
                   ]
                 },
                 { id: 'task-1-4', title: 'Backend Development', description: 'Build the server-side logic and database schema.', status: 'todo', startDate: '2024-09-11', endDate: '2024-10-31', weight: 30, assignedUserEmails: ['bob.williams@teamflow.com', 'diana.miller@teamflow.com'] },

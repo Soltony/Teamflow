@@ -51,11 +51,9 @@ export type Milestone = {
 export type Department = {
     id:string;
     name: string;
-    responsible: {
-        name: string;
-        title: string;
-        phone: string;
-    };
+    responsibleName: string;
+    responsibleTitle: string;
+    responsiblePhone: string;
 };
 
 export type ProjectStatus = {
@@ -85,3 +83,4 @@ export type Project = {
   milestones: Milestone[];
   blockers?: Blocker[];
 };
+

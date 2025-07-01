@@ -156,7 +156,12 @@ async function main() {
         // Upsert Task Updates
         if (task.updates) {
           for (const update of task.updates) {
-            const updateType = update.type === 'status-change' ? TaskUpdateType.STATUS_CHANGE : TaskUpdateType.COMMENT;
+            const updateTypeMap = {
+                'comment': TaskUpdateType.COMMENT,
+                'status-change': TaskUpdateType.STATUS_CHANGE
+            };
+            const updateType = updateTypeMap[update.type as keyof typeof updateTypeMap] || TaskUpdateType.COMMENT;
+
             await prisma.taskUpdate.upsert({
                 where: { id: update.id },
                 update: {},

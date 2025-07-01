@@ -48,12 +48,12 @@ export function ProjectsGanttChart({ projects }: { projects: any[] }) {
           projectName: p.name,
           milestoneTitle: m.title
       }))
-  );
+  ).filter(m => m.startDate && m.dueDate); // Filter for milestones with valid dates
 
   if (allMilestones.length === 0) {
       return (
         <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
-          No milestones found across all projects.
+          No milestones with valid date ranges found across all projects.
         </div>
       );
   }
