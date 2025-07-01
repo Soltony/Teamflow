@@ -124,6 +124,8 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
         type: 'comment',
     };
 
+    let toastDescription = "Your progress update has been recorded.";
+
     setProjects(prevProjects =>
         prevProjects.map(p =>
           p.id === projectId
@@ -133,9 +135,21 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
                   m.id === milestoneId
                     ? {
                         ...m,
-                        tasks: m.tasks.map(t =>
-                          t.id === taskId ? { ...t, updates: [...(t.updates || []), newUpdate] } : t
-                        ),
+                        tasks: m.tasks.map(t => {
+                          if (t.id === taskId) {
+                            // If task was in-progress (e.g., after being declined), resubmit for review.
+                            const newStatus = t.status === 'in-progress' ? 'pending-review' : t.status;
+                            if (newStatus === 'pending-review') {
+                                toastDescription = "Your update has been posted and the task is resubmitted for review.";
+                            }
+                            return { 
+                                ...t, 
+                                status: newStatus,
+                                updates: [...(t.updates || []), newUpdate] 
+                            };
+                          }
+                          return t;
+                        }),
                       }
                     : m
                 ),
@@ -146,7 +160,7 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
 
       toast({
           title: "Update Added",
-          description: "Your progress update has been recorded."
+          description: toastDescription
       });
       form.reset();
   };
