@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -16,8 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { departments as initialDepartments } from "@/lib/data";
-import type { Department } from "@/lib/types";
+import type { Department } from "@prisma/client";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2 } from "lucide-react";
 import {
@@ -30,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { createDepartment, deleteDepartment, updateDepartment } from "@/app/departments/actions";
 
 const departmentSchema = z.object({
   name: z.string().min(3, "Department name must be at least 3 characters."),
@@ -40,10 +40,10 @@ const departmentSchema = z.object({
 
 type DepartmentFormValues = z.infer<typeof departmentSchema>;
 
-export function DepartmentsManagement() {
+export function DepartmentsManagement({ initialDepartments }: { initialDepartments: Department[] }) {
   const { toast } = useToast();
-  const [departments, setDepartments] = useState<Department[]>(initialDepartments);
-  const [editingDepartmentId, setEditingDepartmentId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
 
   const form = useForm<DepartmentFormValues>({
@@ -56,74 +56,60 @@ export function DepartmentsManagement() {
     },
   });
 
-  const isEditing = editingDepartmentId !== null;
+  const isEditing = editingDepartment !== null;
 
   function onSubmit(data: DepartmentFormValues) {
-    if (isEditing) {
-      setDepartments(
-        departments.map((dept) =>
-          dept.id === editingDepartmentId
-            ? {
-                ...dept,
-                name: data.name,
-                responsible: {
-                  ...dept.responsible,
-                  name: data.responsibleName,
-                  title: data.responsibleTitle,
-                  phone: data.responsiblePhone,
-                },
-              }
-            : dept
-        )
-      );
-      toast({
-        title: "Department Updated!",
-        description: `The "${data.name}" department has been successfully updated.`,
-      });
-      setEditingDepartmentId(null);
-    } else {
-      const newDepartment: Department = {
-        id: `dept-${Date.now()}`,
-        name: data.name,
-        responsible: {
-          name: data.responsibleName,
-          title: data.responsibleTitle,
-          phone: data.responsiblePhone,
-        },
-      };
-      setDepartments([...departments, newDepartment]);
-      toast({
-        title: "Department Added!",
-        description: `The "${data.name}" department has been successfully created.`,
-      });
-    }
-    form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
+    startTransition(async () => {
+      const result = isEditing
+        ? await updateDepartment(editingDepartment.id, data)
+        : await createDepartment(data);
+
+      if (result.success) {
+        toast({
+          title: isEditing ? "Department Updated!" : "Department Added!",
+          description: `The "${data.name}" department has been successfully saved.`,
+        });
+        setEditingDepartment(null);
+        form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
+      } else {
+        toast({ title: "Error", description: result.error, variant: "destructive" });
+      }
+    });
   }
 
   function handleEdit(department: Department) {
-    setEditingDepartmentId(department.id);
+    setEditingDepartment(department);
     form.reset({
       name: department.name,
-      responsibleName: department.responsible.name,
-      responsibleTitle: department.responsible.title,
-      responsiblePhone: department.responsible.phone,
+      responsibleName: department.responsibleName,
+      responsibleTitle: department.responsibleTitle,
+      responsiblePhone: department.responsiblePhone,
     });
   }
 
   function handleCancelEdit() {
-    setEditingDepartmentId(null);
+    setEditingDepartment(null);
     form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
   }
 
   function handleDeleteConfirm() {
     if (!departmentToDelete) return;
-    setDepartments(departments.filter((dept) => dept.id !== departmentToDelete.id));
-    toast({
-      title: "Department Deleted",
-      description: `The "${departmentToDelete.name}" department has been removed.`,
-      variant: "destructive",
+    startTransition(async () => {
+      const result = await deleteDepartment(departmentToDelete.id);
+      if (result.success) {
+        toast({
+          title: "Department Deleted",
+          description: `The "${departmentToDelete.name}" department has been removed.`,
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive"
+        })
+      }
+      setDepartmentToDelete(null);
     });
-    setDepartmentToDelete(null);
   }
 
   return (
@@ -144,7 +130,7 @@ export function DepartmentsManagement() {
                       <FormItem>
                         <FormLabel>Department Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Marketing" {...field} />
+                          <Input placeholder="e.g., Marketing" {...field} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -157,7 +143,7 @@ export function DepartmentsManagement() {
                       <FormItem>
                         <FormLabel>Responsible Person</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., John Doe" {...field} />
+                          <Input placeholder="e.g., John Doe" {...field} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -170,7 +156,7 @@ export function DepartmentsManagement() {
                       <FormItem>
                         <FormLabel>Title</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Head of Marketing" {...field} />
+                          <Input placeholder="e.g., Head of Marketing" {...field} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -183,18 +169,18 @@ export function DepartmentsManagement() {
                       <FormItem>
                         <FormLabel>Phone Number</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., (123) 456-7890" {...field} />
+                          <Input placeholder="e.g., (123) 456-7890" {...field} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <div className="space-y-2 pt-2">
-                    <Button type="submit" className="w-full">
-                      {isEditing ? "Update Department" : "Add Department"}
+                    <Button type="submit" className="w-full" disabled={isPending}>
+                       {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Department" : "Add Department")}
                     </Button>
                     {isEditing && (
-                      <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit}>
+                      <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit} disabled={isPending}>
                         Cancel
                       </Button>
                     )}
@@ -210,18 +196,18 @@ export function DepartmentsManagement() {
               <CardTitle>Existing Departments</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {departments.length === 0 && (
+              {initialDepartments.length === 0 && (
                 <p className="text-muted-foreground">No departments have been added yet.</p>
               )}
-              {departments.map((dept, index) => (
+              {initialDepartments.map((dept, index) => (
                 <div key={dept.id}>
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-semibold">{dept.name}</h3>
                       <p className="text-sm text-muted-foreground">
-                        {dept.responsible.name}, {dept.responsible.title}
+                        {dept.responsibleName}, {dept.responsibleTitle}
                       </p>
-                      <p className="text-sm text-muted-foreground">{dept.responsible.phone}</p>
+                      <p className="text-sm text-muted-foreground">{dept.responsiblePhone}</p>
                     </div>
                     <div className="flex items-center gap-1">
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(dept)}>
@@ -239,7 +225,7 @@ export function DepartmentsManagement() {
                       </Button>
                     </div>
                   </div>
-                  {index < departments.length - 1 && <Separator className="my-4" />}
+                  {index < initialDepartments.length - 1 && <Separator className="my-4" />}
                 </div>
               ))}
             </CardContent>
@@ -261,8 +247,9 @@ export function DepartmentsManagement() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteConfirm}
+              disabled={isPending}
             >
-              Delete
+              {isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

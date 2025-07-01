@@ -1,7 +1,6 @@
-
 "use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,7 +22,6 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { projects as allProjects } from "@/lib/data";
 
 const activeYearSchema = z.object({
   activeYear: z.string().nonempty("Please select an active year."),
@@ -31,14 +29,9 @@ const activeYearSchema = z.object({
 
 type ActiveYearFormValues = z.infer<typeof activeYearSchema>;
 
-export function ActiveYearManagement() {
+export function ActiveYearManagement({ availableYears }: { availableYears: string[] }) {
   const { toast } = useToast();
   const [currentActiveYear, setCurrentActiveYear] = useState<string>("");
-
-  const availableYears = useMemo(() => {
-    const years = new Set(allProjects.map(p => p.workingYear));
-    return Array.from(years).sort().reverse();
-  }, []);
   
   const form = useForm<ActiveYearFormValues>({
     resolver: zodResolver(activeYearSchema),

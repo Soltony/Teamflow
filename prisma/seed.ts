@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, BlockerStatus, TaskStatus, TaskUpdateType } from '@prisma/client';
 import { 
     users, 
     departments, 
@@ -83,7 +83,7 @@ async function main() {
           create: {
             id: blocker.id,
             description: blocker.description,
-            status: blocker.status.toUpperCase() as any,
+            status: blocker.status.toUpperCase() as BlockerStatus,
             createdAt: new Date(blocker.createdAt),
             resolvedAt: blocker.resolvedAt ? new Date(blocker.resolvedAt) : undefined,
             resolution: blocker.resolution,
@@ -120,7 +120,7 @@ async function main() {
             id: task.id,
             title: task.title,
             description: task.description,
-            status: task.status.replace('-', '_').toUpperCase() as any,
+            status: task.status.replace('-', '_').toUpperCase() as TaskStatus,
             startDate: new Date(task.startDate),
             endDate: new Date(task.endDate),
             weight: task.weight,
@@ -141,7 +141,7 @@ async function main() {
                 create: {
                     id: update.id,
                     text: update.text,
-                    type: (update.type ?? 'comment').replace('-', '_').toUpperCase() as any,
+                    type: (update.type ?? 'comment').replace('-', '_').toUpperCase() as TaskUpdateType,
                     createdAt: new Date(update.createdAt),
                     author: { connect: { id: update.userId } },
                     task: { connect: { id: task.id } }

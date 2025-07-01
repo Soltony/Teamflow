@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -16,8 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { projectStatuses as initialStatuses } from "@/lib/data";
-import type { ProjectStatus } from "@/lib/types";
+import type { ProjectStatus } from "@prisma/client";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2 } from "lucide-react";
 import {
@@ -30,6 +29,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { createProjectStatus, updateProjectStatus, deleteProjectStatus } from "@/app/settings/actions";
 
 const statusSchema = z.object({
   name: z.string().min(3, "Status name must be at least 3 characters."),
@@ -37,68 +37,62 @@ const statusSchema = z.object({
 
 type StatusFormValues = z.infer<typeof statusSchema>;
 
-export function ProjectStatusManagement() {
+export function ProjectStatusManagement({ initialStatuses }: { initialStatuses: ProjectStatus[] }) {
   const { toast } = useToast();
-  const [statuses, setStatuses] = useState<ProjectStatus[]>(initialStatuses);
-  const [editingStatusId, setEditingStatusId] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [editingStatus, setEditingStatus] = useState<ProjectStatus | null>(null);
   const [statusToDelete, setStatusToDelete] = useState<ProjectStatus | null>(null);
 
   const form = useForm<StatusFormValues>({
     resolver: zodResolver(statusSchema),
-    defaultValues: {
-      name: "",
-    },
+    defaultValues: { name: "" },
   });
 
-  const isEditing = editingStatusId !== null;
+  const isEditing = editingStatus !== null;
 
   function onSubmit(data: StatusFormValues) {
-    if (isEditing) {
-      setStatuses(
-        statuses.map((status) =>
-          status.id === editingStatusId
-            ? { ...status, name: data.name }
-            : status
-        )
-      );
-      toast({
-        title: "Status Updated!",
-        description: `The "${data.name}" status has been successfully updated.`,
-      });
-      setEditingStatusId(null);
-    } else {
-      const newStatus: ProjectStatus = {
-        id: `status-${Date.now()}`,
-        name: data.name,
-      };
-      setStatuses([...statuses, newStatus]);
-      toast({
-        title: "Status Added!",
-        description: `The "${data.name}" status has been successfully created.`,
-      });
-    }
-    form.reset({ name: "" });
+    startTransition(async () => {
+      const result = isEditing
+        ? await updateProjectStatus(editingStatus.id, data.name)
+        : await createProjectStatus(data.name);
+
+      if (result.success) {
+        toast({
+          title: isEditing ? "Status Updated!" : "Status Added!",
+          description: `The "${data.name}" status has been successfully saved.`,
+        });
+        setEditingStatus(null);
+        form.reset({ name: "" });
+      } else {
+        toast({ title: "Error", description: result.error, variant: "destructive" });
+      }
+    });
   }
 
   function handleEdit(status: ProjectStatus) {
-    setEditingStatusId(status.id);
+    setEditingStatus(status);
     form.reset({ name: status.name });
   }
 
   function handleCancelEdit() {
-    setEditingStatusId(null);
+    setEditingStatus(null);
     form.reset({ name: "" });
   }
 
   function handleDeleteConfirm() {
     if (!statusToDelete) return;
-    setStatuses(statuses.filter((status) => status.id !== statusToDelete.id));
-    toast({
-      title: "Status Deleted",
-      description: `The "${statusToDelete.name}" status has been removed.`,
-      variant: "destructive",
+    startTransition(async () => {
+      const result = await deleteProjectStatus(statusToDelete.id);
+      if (result.success) {
+        toast({
+          title: "Status Deleted",
+          description: `The "${statusToDelete.name}" status has been removed.`,
+        });
+      } else {
+        toast({ title: "Error", description: result.error, variant: "destructive" });
+      }
+      setStatusToDelete(null);
     });
-    setStatusToDelete(null);
   }
 
   return (
@@ -119,18 +113,18 @@ export function ProjectStatusManagement() {
                       <FormItem>
                         <FormLabel>Status Name</FormLabel>
                         <FormControl>
-                          <Input placeholder="e.g., Active" {...field} />
+                          <Input placeholder="e.g., Active" {...field} disabled={isPending} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                   <div className="space-y-2 pt-2">
-                    <Button type="submit" className="w-full">
-                      {isEditing ? "Update Status" : "Add Status"}
+                    <Button type="submit" className="w-full" disabled={isPending}>
+                      {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Status" : "Add Status")}
                     </Button>
                     {isEditing && (
-                      <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit}>
+                      <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit} disabled={isPending}>
                         Cancel
                       </Button>
                     )}
@@ -146,10 +140,10 @@ export function ProjectStatusManagement() {
               <CardTitle>Existing Project Statuses</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {statuses.length === 0 && (
+              {initialStatuses.length === 0 && (
                 <p className="text-muted-foreground">No statuses have been added yet.</p>
               )}
-              {statuses.map((status, index) => (
+              {initialStatuses.map((status, index) => (
                 <div key={status.id}>
                   <div className="flex justify-between items-center">
                     <h3 className="font-semibold">{status.name}</h3>
@@ -169,7 +163,7 @@ export function ProjectStatusManagement() {
                       </Button>
                     </div>
                   </div>
-                  {index < statuses.length - 1 && <Separator className="my-4" />}
+                  {index < initialStatuses.length - 1 && <Separator className="my-4" />}
                 </div>
               ))}
             </CardContent>
@@ -191,8 +185,9 @@ export function ProjectStatusManagement() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteConfirm}
+              disabled={isPending}
             >
-              Delete
+              {isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

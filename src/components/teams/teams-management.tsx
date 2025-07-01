@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -16,8 +15,6 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { teams as initialTeams, projects, users } from "@/lib/data";
-import type { Team } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2, Phone, ChevronDown, PlusCircle } from "lucide-react";
 import {
@@ -41,6 +38,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
+import { createTeam, updateTeam, deleteTeam } from "@/app/teams/actions";
+import type { Project as PrismaProject, Team as PrismaTeam, User as PrismaUser } from '@prisma/client';
 
 const teamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters."),
@@ -51,12 +50,24 @@ const teamSchema = z.object({
 
 type TeamFormValues = z.infer<typeof teamSchema>;
 
-export function TeamsManagement() {
+type TeamWithRelations = PrismaTeam & {
+    project: PrismaProject;
+    teamLead: PrismaUser;
+    members: PrismaUser[];
+    memberIds: string[];
+};
+
+type TeamsManagementProps = {
+  initialTeams: TeamWithRelations[];
+  allProjects: PrismaProject[];
+  allUsers: PrismaUser[];
+}
+
+export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsManagementProps) {
   const { toast } = useToast();
-  const [teams, setTeams] = useState<Team[]>(initialTeams);
-  const [editingTeam, setEditingTeam] = useState<Team | null>(null);
+  const [editingTeam, setEditingTeam] = useState<TeamWithRelations | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
+  const [teamToDelete, setTeamToDelete] = useState<TeamWithRelations | null>(null);
 
   const form = useForm<TeamFormValues>({
     resolver: zodResolver(teamSchema),
@@ -73,7 +84,12 @@ export function TeamsManagement() {
   useEffect(() => {
     if (isDialogOpen) {
       if (editingTeam) {
-        form.reset(editingTeam);
+        form.reset({
+            name: editingTeam.name,
+            projectId: editingTeam.projectId,
+            teamLeadId: editingTeam.teamLeadId,
+            memberIds: editingTeam.memberIds,
+        });
       } else {
         form.reset({ name: "", projectId: "", teamLeadId: "", memberIds: [] });
       }
@@ -81,44 +97,37 @@ export function TeamsManagement() {
   }, [isDialogOpen, editingTeam, form]);
 
   const teamsByProject = useMemo(() => {
-    return teams.reduce((acc, team) => {
-      const projectName = projects.find(p => p.id === team.projectId)?.name || 'Unknown Project';
+    return initialTeams.reduce((acc, team) => {
+      const projectName = team.project.name || 'Unknown Project';
       if (!acc[projectName]) {
         acc[projectName] = [];
       }
       acc[projectName].push(team);
       return acc;
-    }, {} as Record<string, Team[]>);
-  }, [teams]);
+    }, {} as Record<string, TeamWithRelations[]>);
+  }, [initialTeams]);
 
-  function onSubmit(data: TeamFormValues) {
-    if (isEditing && editingTeam) {
-      setTeams(
-        teams.map((team) =>
-          team.id === editingTeam.id
-            ? { ...team, ...data }
-            : team
-        )
-      );
-      toast({
-        title: "Team Updated!",
-        description: `The "${data.name}" team has been successfully updated.`,
-      });
+  async function onSubmit(data: TeamFormValues) {
+    const result = isEditing && editingTeam
+      ? await updateTeam(editingTeam.id, data)
+      : await createTeam(data);
+    
+    if (result.success) {
+        toast({
+            title: isEditing ? "Team Updated!" : "Team Created!",
+            description: `The "${data.name}" team has been successfully saved.`,
+        });
+        setIsDialogOpen(false);
     } else {
-      const newTeam: Team = {
-        id: `team-${Date.now()}`,
-        ...data
-      };
-      setTeams([...teams, newTeam]);
-      toast({
-        title: "Team Added!",
-        description: `The "${data.name}" team has been successfully created.`,
-      });
+        toast({
+            title: "Error",
+            description: result.error,
+            variant: "destructive",
+        });
     }
-    setIsDialogOpen(false);
   }
 
-  function handleEdit(team: Team) {
+  function handleEdit(team: TeamWithRelations) {
     setEditingTeam(team);
     setIsDialogOpen(true);
   }
@@ -128,18 +137,25 @@ export function TeamsManagement() {
     setIsDialogOpen(true);
   }
 
-  function handleDeleteConfirm() {
+  async function handleDeleteConfirm() {
     if (!teamToDelete) return;
-    setTeams(teams.filter((team) => team.id !== teamToDelete.id));
-    toast({
-      title: "Team Deleted",
-      description: `The "${teamToDelete.name}" team has been removed.`,
-      variant: "destructive",
-    });
+    const result = await deleteTeam(teamToDelete.id);
+    if (result.success) {
+      toast({
+        title: "Team Deleted",
+        description: `The "${teamToDelete.name}" team has been removed.`,
+      });
+    } else {
+       toast({
+        title: "Error",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
     setTeamToDelete(null);
   }
 
-  const selectedMembers = users.filter(user => form.watch('memberIds')?.includes(user.id));
+  const selectedMembers = allUsers.filter(user => form.watch('memberIds')?.includes(user.id));
 
   return (
     <>
@@ -168,27 +184,25 @@ export function TeamsManagement() {
                   <AccordionContent>
                     <div className="space-y-4 pl-4 border-l-2 ml-2">
                       {projectTeams.map((team) => {
-                         const teamLead = users.find(u => u.id === team.teamLeadId);
-                         const teamMembers = users.filter(u => team.memberIds.includes(u.id));
                         return (
                             <div key={team.id} className="p-4 border rounded-md relative">
                               <div className="flex justify-between items-start">
                                   <div>
                                       <h4 className="font-semibold">{team.name}</h4>
-                                      {teamLead && (
+                                      {team.teamLead && (
                                           <div className="text-sm text-muted-foreground mt-1">
-                                              <p className="font-medium">Lead: {teamLead.name}</p>
-                                              {teamLead.phone && (
-                                                  <a href={`tel:${teamLead.phone}`} className="flex items-center gap-1.5 hover:text-primary">
+                                              <p className="font-medium">Lead: {team.teamLead.name}</p>
+                                              {team.teamLead.phone && (
+                                                  <a href={`tel:${team.teamLead.phone}`} className="flex items-center gap-1.5 hover:text-primary">
                                                       <Phone className="w-3 h-3"/>
-                                                      {teamLead.phone}
+                                                      {team.teamLead.phone}
                                                   </a>
                                               )}
                                           </div>
                                       )}
                                       <div className="mt-2">
                                           <p className="text-sm font-medium">Members:</p>
-                                          <p className="text-sm text-muted-foreground">{teamMembers.map(m => m.name).join(', ')}</p>
+                                          <p className="text-sm text-muted-foreground">{team.members.map(m => m.name).join(', ')}</p>
                                       </div>
                                   </div>
                                   <div className="flex items-center gap-1 absolute top-2 right-2">
@@ -237,7 +251,7 @@ export function TeamsManagement() {
                               <SelectTrigger><SelectValue placeholder="Select a project" /></SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                              {projects.map(proj => <SelectItem key={proj.id} value={proj.id}>{proj.name}</SelectItem>)}
+                              {allProjects.map(proj => <SelectItem key={proj.id} value={proj.id}>{proj.name}</SelectItem>)}
                           </SelectContent>
                       </Select>
                       <FormMessage />
@@ -268,7 +282,7 @@ export function TeamsManagement() {
                               <SelectTrigger><SelectValue placeholder="Select a team lead" /></SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                              {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
+                              {allUsers.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
                           </SelectContent>
                       </Select>
                       <FormMessage />
@@ -295,7 +309,7 @@ export function TeamsManagement() {
                           </FormControl>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                          {users.map((user) => (
+                          {allUsers.map((user) => (
                             <DropdownMenuCheckboxItem
                               key={user.id}
                               checked={field.value?.includes(user.id)}
@@ -323,7 +337,9 @@ export function TeamsManagement() {
                 />
                 <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                    <Button type="submit">{isEditing ? "Update Team" : "Create Team"}</Button>
+                    <Button type="submit" disabled={form.formState.isSubmitting}>
+                      {form.formState.isSubmitting ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Team" : "Create Team")}
+                    </Button>
                 </DialogFooter>
               </form>
             </Form>
