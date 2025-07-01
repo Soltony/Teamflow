@@ -42,6 +42,7 @@ import { departments, users, projectStatuses } from "@/lib/data";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useToast } from "@/hooks/use-toast";
+import { useEffect } from "react";
 
 
 const milestoneSchema = z.object({
@@ -57,7 +58,7 @@ const projectSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   startDate: z.date({ required_error: "A start date is required."}),
   endDate: z.date({ required_error: "An end date is required."}),
-  workingYear: z.string().regex(/^\d{4}\/\d{4}$/, "Working year must be in YYYY/YYYY format."),
+  workingYear: z.string().nonempty("An active working year must be set on the Settings page."),
   statusId: z.string().nonempty("Please select a project status."),
   departmentId: z.string().nonempty("Please select a department."),
   projectManagerId: z.string().nonempty("Please select a project manager."),
@@ -91,6 +92,13 @@ export function ProjectForm() {
       milestones: [],
     },
   });
+
+  useEffect(() => {
+    const activeYear = localStorage.getItem("activeWorkingYear");
+    if (activeYear) {
+      form.setValue("workingYear", activeYear);
+    }
+  }, [form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -285,8 +293,11 @@ export function ProjectForm() {
                             <FormItem>
                             <FormLabel>Working Year</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., 2024/2025" {...field} />
+                                <Input placeholder="Set active year in Settings" {...field} disabled />
                             </FormControl>
+                            <FormDescription>
+                                The working year is automatically set based on the active year from Settings.
+                            </FormDescription>
                             <FormMessage />
                             </FormItem>
                         )}
