@@ -1,6 +1,7 @@
 "use client"
 
 import * as React from "react"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
@@ -160,26 +161,43 @@ interface SidebarMenuButtonProps
   extends React.ComponentPropsWithoutRef<typeof Button> {
   icon?: React.ReactElement
   isActive?: boolean
+  href?: string
 }
 
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
   SidebarMenuButtonProps
->(({ className, icon, isActive, children, ...props }, ref) => {
+>(({ className, icon, isActive, children, href, ...props }, ref) => {
   const { isOpen, isMobile } = useSidebar()
-  return (
-    <Button
-      ref={ref}
-      variant={isActive ? "secondary" : "ghost"}
-      className={cn(
-        "h-10 w-full justify-start gap-3",
-        !isOpen && !isMobile && "h-10 w-10 justify-center p-0",
-        className
-      )}
-      {...props}
-    >
+
+  const commonProps = {
+    variant: isActive ? "secondary" : "ghost" as const,
+    className: cn(
+      "h-10 w-full justify-start gap-3",
+      !isOpen && !isMobile && "h-10 w-10 justify-center p-0",
+      className
+    ),
+    ...props
+  };
+
+  const buttonContent = (
+    <>
       {icon && React.cloneElement(icon, { className: "h-5 w-5 shrink-0" })}
       {(isOpen || isMobile) && <span className="truncate">{children}</span>}
+    </>
+  );
+
+  if (href) {
+    return (
+      <Button {...commonProps} ref={ref} asChild>
+        <Link href={href}>{buttonContent}</Link>
+      </Button>
+    )
+  }
+
+  return (
+    <Button {...commonProps} ref={ref}>
+      {buttonContent}
     </Button>
   )
 })
