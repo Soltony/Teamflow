@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -11,6 +12,7 @@ import {
   Settings,
   Users,
   Building2,
+  Milestone,
 } from "lucide-react";
 
 import {
@@ -40,6 +42,7 @@ import { ThemeToggle } from "./theme-toggle";
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/projects", label: "Projects", icon: FolderKanban },
+  { href: "/milestones", label: "Milestones", icon: Milestone },
   { href: "/departments", label: "Departments", icon: Building2 },
   { href: "/teams", label: "Teams", icon: Users },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare },
@@ -64,7 +67,7 @@ function AppSidebar() {
             <SidebarMenuItem key={item.label}>
               <Link href={item.href} legacyBehavior passHref>
                 <SidebarMenuButton
-                  isActive={pathname.startsWith(item.href)}
+                  isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}
                   icon={<item.icon />}
                 >
                   {item.label}
