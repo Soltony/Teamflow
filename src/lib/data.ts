@@ -1,18 +1,36 @@
 import type { User, Team, Project, Department, ProjectStatus } from './types';
 
 export const users: User[] = [
-  { id: 'user-1', name: 'Alice Johnson', avatar: 'https://i.pravatar.cc/150?u=user-1' },
-  { id: 'user-2', name: 'Bob Williams', avatar: 'https://i.pravatar.cc/150?u=user-2' },
-  { id: 'user-3', name: 'Charlie Brown', avatar: 'https://i.pravatar.cc/150?u=user-3' },
-  { id: 'user-4', name: 'Diana Miller', avatar: 'https://i.pravatar.cc/150?u=user-4' },
-  { id: 'user-5', name: 'Ethan Davis', avatar: 'https://i.pravatar.cc/150?u=user-5' },
-  { id: 'user-6', name: 'Fiona Garcia', avatar: 'https://i.pravatar.cc/150?u=user-6' },
+  { id: 'user-1', name: 'Alice Johnson', avatar: 'https://i.pravatar.cc/150?u=user-1', phone: '123-456-7890' },
+  { id: 'user-2', name: 'Bob Williams', avatar: 'https://i.pravatar.cc/150?u=user-2', phone: '234-567-8901' },
+  { id: 'user-3', name: 'Charlie Brown', avatar: 'https://i.pravatar.cc/150?u=user-3', phone: '345-678-9012' },
+  { id: 'user-4', name: 'Diana Miller', avatar: 'https://i.pravatar.cc/150?u=user-4', phone: '456-789-0123' },
+  { id: 'user-5', name: 'Ethan Davis', avatar: 'https://i.pravatar.cc/150?u=user-5', phone: '567-890-1234' },
+  { id: 'user-6', name: 'Fiona Garcia', avatar: 'https://i.pravatar.cc/150?u=user-6', phone: '678-901-2345' },
 ];
 
 export const teams: Team[] = [
-  { id: 'team-1', name: 'Frontend Wizards', members: [users[0], users[2]] },
-  { id: 'team-2', name: 'Backend Titans', members: [users[1], users[3]] },
-  { id: 'team-3', name: 'Design Gurus', members: [users[4], users[5]] },
+  { 
+    id: 'team-1', 
+    name: 'Frontend Wizards', 
+    projectId: 'proj-1', 
+    teamLeadId: 'user-1', 
+    memberIds: ['user-1', 'user-3'] 
+  },
+  { 
+    id: 'team-2', 
+    name: 'Backend Titans', 
+    projectId: 'proj-1', 
+    teamLeadId: 'user-2', 
+    memberIds: ['user-2', 'user-4'] 
+  },
+  { 
+    id: 'team-3', 
+    name: 'Marketing Squad', 
+    projectId: 'proj-2', 
+    teamLeadId: 'user-4', 
+    memberIds: ['user-4', 'user-6'] 
+  },
 ];
 
 export const departments: Department[] = [

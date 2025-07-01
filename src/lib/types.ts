@@ -2,12 +2,15 @@ export type User = {
   id: string;
   name: string;
   avatar: string;
+  phone?: string;
 };
 
 export type Team = {
   id: string;
   name: string;
-  members: User[];
+  projectId: string;
+  teamLeadId: string;
+  memberIds: string[];
 };
 
 export type Task = {
