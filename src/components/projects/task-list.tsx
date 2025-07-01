@@ -1,8 +1,7 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Task } from '@/lib/types';
-import { users } from '@/lib/data';
-import { format, isPast } from 'date-fns';
+import type { Task, User } from '@/lib/types';
+import { format, isPast, parseISO } from 'date-fns';
 import { Circle, CheckCircle2, CircleDot, AlertTriangle, Pencil, FileClock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -10,6 +9,7 @@ import { Button } from '@/components/ui/button';
 
 type TaskListProps = {
   tasks: Task[];
+  users: User[];
   onEditTask: (task: Task) => void;
 };
 
@@ -20,7 +20,7 @@ const statusIcons: Record<Task['status'], React.ReactNode> = {
   done: <CheckCircle2 className="w-4 h-4 text-green-500" />,
 };
 
-export function TaskList({ tasks, onEditTask }: TaskListProps) {
+export function TaskList({ tasks, onEditTask, users }: TaskListProps) {
   if (tasks.length === 0) {
     return (
       <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg">
@@ -31,6 +31,7 @@ export function TaskList({ tasks, onEditTask }: TaskListProps) {
   }
 
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+  const userMap = new Map(users.map(u => [u.id, u.name]));
 
   return (
     <TooltipProvider>
@@ -47,7 +48,7 @@ export function TaskList({ tasks, onEditTask }: TaskListProps) {
         </TableHeader>
         <TableBody>
           {tasks.map((task) => {
-            const isOverdue = isPast(new Date(task.endDate)) && task.status !== 'done';
+            const isOverdue = isPast(parseISO(task.endDate)) && task.status !== 'done';
             return (
               <TableRow key={task.id}>
                 <TableCell>
@@ -60,14 +61,14 @@ export function TaskList({ tasks, onEditTask }: TaskListProps) {
                 <TableCell>
                   <span className="text-sm text-muted-foreground">
                     {task.assignedUserIds
-                      .map(userId => users.find(u => u.id === userId)?.name)
+                      .map(userId => userMap.get(userId))
                       .filter(Boolean)
                       .join(', ')}
                   </span>
                 </TableCell>
                 <TableCell>
                   <div className={cn("flex items-center gap-1.5", isOverdue && "text-destructive")}>
-                    <span>{format(new Date(task.endDate), 'MMM dd, yyyy')}</span>
+                    <span>{format(parseISO(task.endDate), 'MMM dd, yyyy')}</span>
                     {isOverdue && (
                       <Tooltip>
                           <TooltipTrigger>

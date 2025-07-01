@@ -4,9 +4,8 @@
 import { useState } from "react";
 import Link from 'next/link';
 import { ArrowLeft, Pencil, PlusCircle } from "lucide-react";
-import { format } from "date-fns";
-import { departments } from "@/lib/data";
-import type { Project, Milestone, Task } from "@/lib/types";
+import { format, parseISO } from "date-fns";
+import type { Milestone, Task, User, Department } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -17,64 +16,70 @@ import { AddTaskDialog } from "./add-task-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { EditTaskDialog } from "./edit-task-dialog";
 import { Progress } from "../ui/progress";
+import { addTask, updateMilestone, updateTask } from "@/app/projects/actions";
 
 type ProjectMilestonesProps = {
-  initialProject: Project;
+  initialProject: any;
+  users: User[];
+  departments: Department[];
 }
 
-export function ProjectMilestones({ initialProject }: ProjectMilestonesProps) {
+export function ProjectMilestones({ initialProject, users, departments }: ProjectMilestonesProps) {
   const { toast } = useToast();
-  const [project, setProject] = useState<Project>(initialProject);
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
   const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: Task; milestone: Milestone } | null>(null);
 
-  const handleMilestoneUpdate = (updatedMilestone: Milestone) => {
-    const newMilestones = project.milestones.map(m => 
-      m.id === updatedMilestone.id ? updatedMilestone : m
-    );
-    setProject(prevProject => ({ ...prevProject, milestones: newMilestones }));
+  const handleMilestoneUpdate = async (updatedMilestone: Milestone) => {
+    setEditingMilestone(null);
+    const { id, tasks, ...dataToUpdate } = updatedMilestone;
+    await updateMilestone(id, initialProject.id, dataToUpdate);
+    toast({
+      title: "Milestone Updated!",
+      description: `The milestone "${updatedMilestone.title}" has been successfully updated.`,
+    });
   };
 
-  const handleTaskAdd = (milestoneId: string, newTask: Task) => {
-    setProject(prevProject => ({
-      ...prevProject,
-      milestones: prevProject.milestones.map(m =>
-        m.id === milestoneId ? { ...m, tasks: [...m.tasks, newTask] } : m
-      ),
-    }));
+  const handleTaskAdd = async (milestoneId: string, newTask: any) => {
+    setAddingTaskToMilestone(null);
+    await addTask(milestoneId, initialProject.id, newTask);
+    toast({
+      title: "Task Added!",
+      description: `The task "${newTask.title}" has been successfully added.`,
+    });
   };
 
-  const handleTaskUpdate = (milestoneId: string, updatedTask: Task) => {
-    setProject(prevProject => ({
-      ...prevProject,
-      milestones: prevProject.milestones.map(m =>
-        m.id === milestoneId
-          ? { ...m, tasks: m.tasks.map(t => t.id === updatedTask.id ? updatedTask : t) }
-          : m
-      ),
-    }));
+  const handleTaskUpdate = async (milestoneId: string, updatedTask: Task) => {
+    setEditingTaskInfo(null);
+    const { id, ...dataToUpdate } = updatedTask;
+    await updateTask(id, initialProject.id, dataToUpdate);
+    toast({
+      title: "Task Updated!",
+      description: `The task "${updatedTask.title}" has been successfully updated.`,
+    });
   };
+
+  const departmentMap = new Map(departments.map(d => [d.id, d]));
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <Link href={`/projects/${project.id}`} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
+      <Link href={`/projects/${initialProject.id}`} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
         <ArrowLeft className="w-4 h-4" />
         Back to Project Overview
       </Link>
       <Card>
           <CardHeader>
-              <CardTitle>Milestones for: {project.name}</CardTitle>
+              <CardTitle>Milestones for: {initialProject.name}</CardTitle>
               <CardDescription>Here are the major milestones for this project. The Project Manager can add tasks to each milestone.</CardDescription>
           </CardHeader>
           <CardContent>
-              <Accordion type="single" collapsible className="w-full" defaultValue={project.milestones[0]?.id}>
-                  {project.milestones.map((milestone) => {
+              <Accordion type="single" collapsible className="w-full" defaultValue={initialProject.milestones[0]?.id}>
+                  {initialProject.milestones.map((milestone: any) => {
                       const completedTaskWeight = milestone.tasks
-                          .filter(t => t.status === 'done')
-                          .reduce((sum, task) => sum + task.weight, 0);
+                          .filter((t: any) => t.status === 'done')
+                          .reduce((sum: number, task: any) => sum + task.weight, 0);
 
-                      const responsibleDepts = departments.filter(d => milestone.responsibleDepartmentIds.includes(d.id));
+                      const responsibleDepts = milestone.responsibleDepartmentIds.map((id: string) => departmentMap.get(id)).filter(Boolean);
                       return (
                           <AccordionItem value={milestone.id} key={milestone.id}>
                               <AccordionTrigger>
@@ -108,10 +113,10 @@ export function ProjectMilestones({ initialProject }: ProjectMilestonesProps) {
                                           Weight: {milestone.weight}%
                                       </Badge>
                                       <Badge variant="outline">
-                                          Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
+                                          Due: {format(parseISO(milestone.dueDate), 'MMM dd, yyyy')}
                                       </Badge>
                                       {responsibleDepts.map(dept => (
-                                          <Badge key={dept.id} variant="secondary">{dept.name}</Badge>
+                                          <Badge key={dept!.id} variant="secondary">{dept!.name}</Badge>
                                       ))}
                                   </div>
                                 </div>
@@ -127,6 +132,7 @@ export function ProjectMilestones({ initialProject }: ProjectMilestonesProps) {
                                   </div>
                                   <TaskList 
                                       tasks={milestone.tasks} 
+                                      users={users}
                                       onEditTask={(task) => setEditingTaskInfo({ task, milestone })}
                                   />
                               </AccordionContent>
@@ -142,8 +148,9 @@ export function ProjectMilestones({ initialProject }: ProjectMilestonesProps) {
             isOpen={!!editingMilestone}
             onOpenChange={(open) => !open && setEditingMilestone(null)}
             milestone={editingMilestone}
-            projectMilestones={project.milestones}
+            projectMilestones={initialProject.milestones}
             onMilestoneUpdate={handleMilestoneUpdate}
+            departments={departments}
         />
       )}
 
@@ -153,6 +160,7 @@ export function ProjectMilestones({ initialProject }: ProjectMilestonesProps) {
             onOpenChange={(open) => !open && setAddingTaskToMilestone(null)}
             milestone={addingTaskToMilestone}
             onTaskAdd={handleTaskAdd}
+            users={users}
         />
       )}
       
@@ -163,6 +171,7 @@ export function ProjectMilestones({ initialProject }: ProjectMilestonesProps) {
             milestone={editingTaskInfo.milestone}
             task={editingTaskInfo.task}
             onTaskUpdate={handleTaskUpdate}
+            users={users}
         />
       )}
     </div>

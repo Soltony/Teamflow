@@ -27,10 +27,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import type { Milestone, Task } from "@/lib/types";
+import { format, parseISO } from "date-fns";
+import type { Milestone, Task, User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { users } from "@/lib/data";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -54,11 +53,11 @@ type EditTaskDialogProps = {
   onOpenChange: (open: boolean) => void;
   milestone: Milestone;
   task: Task;
-  onTaskUpdate: (milestoneId: string, updatedTask: Task) => void;
+  users: User[];
+  onTaskUpdate: (milestoneId: string, updatedTask: Task) => Promise<void>;
 };
 
-export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, onTaskUpdate }: EditTaskDialogProps) {
-  const { toast } = useToast();
+export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, onTaskUpdate }: EditTaskDialogProps) {
 
   const weightOfOtherTasks = useMemo(() => {
     return milestone.tasks
@@ -81,7 +80,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, onTaskUp
   }).refine(data => {
       return data.weight <= maxWeightForThisTask;
   }, {
-      message: `Total task weight cannot exceed 100. Max for this task: ${maxWeightForThisTask}%.`,
+      message: `Total task weight for this milestone cannot exceed 100%. Max for this task: ${maxWeightForThisTask}%.`,
       path: ["weight"],
   }), [maxWeightForThisTask]);
 
@@ -96,8 +95,8 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, onTaskUp
       form.reset({
         title: task.title,
         description: task.description,
-        startDate: new Date(task.startDate),
-        endDate: new Date(task.endDate),
+        startDate: parseISO(task.startDate),
+        endDate: parseISO(task.endDate),
         assignedUserIds: task.assignedUserIds,
         weight: task.weight,
         status: task.status,
@@ -109,23 +108,18 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, onTaskUp
   const selectedUsers = users.filter(user => form.watch('assignedUserIds')?.includes(user.id));
   const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-  function onSubmit(data: TaskFormValues) {
+  async function onSubmit(data: TaskFormValues) {
     const updatedTask: Task = {
       ...task,
       title: data.title,
       description: data.description || "",
       status: data.status,
-      startDate: data.startDate.toISOString().split('T')[0],
-      endDate: data.endDate.toISOString().split('T')[0],
+      startDate: data.startDate.toISOString(),
+      endDate: data.endDate.toISOString(),
       assignedUserIds: data.assignedUserIds,
       weight: data.weight,
     };
-    onTaskUpdate(milestone.id, updatedTask);
-    toast({
-      title: "Task Updated!",
-      description: `The task "${data.title}" has been successfully updated.`,
-    });
-    onOpenChange(false);
+    await onTaskUpdate(milestone.id, updatedTask);
   }
 
   return (
@@ -312,7 +306,9 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, onTaskUp
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

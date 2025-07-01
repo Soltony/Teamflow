@@ -1,23 +1,18 @@
+
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { Project, ProjectStatus } from '@/lib/types';
 
-type ProjectCardProps = {
-  project: Project;
-  projectStatuses: ProjectStatus[];
-};
+export function ProjectCard({ project }: { project: any }) {
+  const allTasks = project.milestones.flatMap((m: any) => m.tasks);
+  const completedTasks = allTasks.filter((task: any) => task.status === 'DONE').length;
 
-export function ProjectCard({ project, projectStatuses }: ProjectCardProps) {
-  const allTasks = project.milestones.flatMap(m => m.tasks);
-  const completedTasks = allTasks.filter(task => task.status === 'done').length;
-
-  const weightedProgress = project.milestones.reduce((progress, milestone) => {
+  const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
     const completedTaskWeightInMilestone = milestone.tasks
-      .filter(task => task.status === 'done')
-      .reduce((sum, task) => sum + task.weight, 0);
+      .filter((task: any) => task.status === 'DONE')
+      .reduce((sum: number, task: any) => sum + task.weight, 0);
     
     // Milestone progress is (completed weight / 100), as task weights are designed to sum to 100
     const milestoneProgress = completedTaskWeightInMilestone / 100;
@@ -26,7 +21,7 @@ export function ProjectCard({ project, projectStatuses }: ProjectCardProps) {
     return progress + (milestoneProgress * milestone.weight);
   }, 0);
   
-  const status = projectStatuses.find(s => s.id === project.statusId);
+  const status = project.status;
   
   return (
     <Card className="flex flex-col">

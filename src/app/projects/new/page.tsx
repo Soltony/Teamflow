@@ -1,7 +1,13 @@
+
 import { ProjectForm } from "@/components/projects/project-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import prisma from "@/lib/db";
 
-export default function NewProjectPage() {
+export default async function NewProjectPage() {
+  const users = await prisma.user.findMany();
+  const departments = await prisma.department.findMany();
+  const projectStatuses = await prisma.projectStatus.findMany();
+
   return (
     <div className="p-4 sm:p-6">
       <Card className="max-w-4xl mx-auto">
@@ -12,7 +18,11 @@ export default function NewProjectPage() {
             </CardDescription>
         </CardHeader>
         <CardContent>
-            <ProjectForm />
+            <ProjectForm 
+              users={JSON.parse(JSON.stringify(users))}
+              departments={JSON.parse(JSON.stringify(departments))}
+              projectStatuses={JSON.parse(JSON.stringify(projectStatuses))}
+            />
         </CardContent>
       </Card>
     </div>

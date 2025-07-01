@@ -1,13 +1,50 @@
-import { notFound } from "next/navigation";
-import { projects } from "@/lib/data";
-import { ProjectMilestones } from "@/components/projects/project-milestones";
 
-export default function ProjectMilestonesPage({ params }: { params: { id: string } }) {
-  const project = projects.find((p) => p.id === params.id);
+import { notFound } from "next/navigation";
+import { ProjectMilestones } from "@/components/projects/project-milestones";
+import prisma from "@/lib/db";
+import { Task } from "@/lib/types";
+
+export default async function ProjectMilestonesPage({ params }: { params: { id: string } }) {
+  const project = await prisma.project.findUnique({
+    where: { id: params.id },
+    include: {
+        milestones: {
+            include: {
+                tasks: {
+                    include: {
+                        assignees: true,
+                    }
+                },
+                responsibleDepartments: true
+            }
+        }
+    }
+  });
 
   if (!project) {
     notFound();
   }
+  
+  const users = await prisma.user.findMany();
+  const departments = await prisma.department.findMany();
 
-  return <ProjectMilestones initialProject={project} />;
+  // Normalize data before sending to client
+  const normalizedProject = {
+    ...project,
+    milestones: project.milestones.map(m => ({
+      ...m,
+      responsibleDepartmentIds: m.responsibleDepartments.map(d => d.id),
+      tasks: m.tasks.map(t => ({
+        ...t,
+        status: t.status.replace(/_/g, '-').toLowerCase() as Task['status'],
+        assignedUserIds: t.assignees.map(a => a.id),
+      }))
+    }))
+  };
+
+  return <ProjectMilestones 
+            initialProject={JSON.parse(JSON.stringify(normalizedProject))} 
+            users={JSON.parse(JSON.stringify(users))}
+            departments={JSON.parse(JSON.stringify(departments))}
+        />;
 }

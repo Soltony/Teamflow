@@ -1,12 +1,28 @@
 
-import { projects, departments } from "@/lib/data";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Link from 'next/link';
 import { Badge } from "@/components/ui/badge";
-import { format } from 'date-fns';
+import { format, parseISO } from 'date-fns';
+import prisma from "@/lib/db";
 
-export default function AllMilestonesPage() {
+export default async function AllMilestonesPage() {
+  const projects = await prisma.project.findMany({
+    include: {
+        milestones: {
+            include: {
+                responsibleDepartments: true
+            },
+            orderBy: {
+                dueDate: 'asc'
+            }
+        }
+    },
+    orderBy: {
+        name: 'asc'
+    }
+  });
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <Card>
@@ -26,7 +42,6 @@ export default function AllMilestonesPage() {
                 <AccordionContent>
                   <div className="space-y-4 pl-4 border-l-2 ml-2">
                     {project.milestones.map(milestone => {
-                      const responsibleDepts = departments.filter(d => milestone.responsibleDepartmentIds.includes(d.id));
                       return (
                         <div key={milestone.id} className="p-4 border rounded-md">
                           <h4 className="font-semibold">{milestone.title}</h4>
@@ -36,9 +51,9 @@ export default function AllMilestonesPage() {
                                   Weight: {milestone.weight}%
                               </Badge>
                               <Badge variant="outline">
-                                  Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
+                                  Due: {format(parseISO(milestone.dueDate.toISOString()), 'MMM dd, yyyy')}
                               </Badge>
-                              {responsibleDepts.map(dept => (
+                              {milestone.responsibleDepartments.map(dept => (
                                   <Badge key={dept.id} variant="secondary">{dept.name}</Badge>
                               ))}
                           </div>

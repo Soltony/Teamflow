@@ -28,9 +28,8 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import type { Milestone, Task } from "@/lib/types";
+import type { Milestone, Task, User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
-import { users } from "@/lib/data";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -44,11 +43,11 @@ type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   milestone: Milestone;
-  onTaskAdd: (milestoneId: string, newTask: Task) => void;
+  users: User[];
+  onTaskAdd: (milestoneId: string, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
 
-export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd }: AddTaskDialogProps) {
-  const { toast } = useToast();
+export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, users }: AddTaskDialogProps) {
 
   const existingTasksWeight = useMemo(() => {
     return milestone.tasks.reduce((sum, task) => sum + task.weight, 0);
@@ -68,7 +67,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd }: Ad
   }).refine(data => {
       return data.weight <= remainingWeight;
   }, {
-      message: `Total task weight cannot exceed 100. Remaining: ${remainingWeight}%.`,
+      message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${remainingWeight}%.`,
       path: ["weight"],
   }), [remainingWeight]);
 
@@ -94,23 +93,16 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd }: Ad
 
   const selectedUsers = users.filter(user => form.watch('assignedUserIds')?.includes(user.id));
 
-  function onSubmit(data: TaskFormValues) {
-    const newTask: Task = {
-      id: `task-${Date.now()}`,
+  async function onSubmit(data: TaskFormValues) {
+    const newTask = {
       title: data.title,
       description: data.description || "",
-      status: 'todo',
-      startDate: data.startDate.toISOString().split('T')[0],
-      endDate: data.endDate.toISOString().split('T')[0],
+      startDate: data.startDate,
+      endDate: data.endDate,
       assignedUserIds: data.assignedUserIds,
       weight: data.weight,
     };
-    onTaskAdd(milestone.id, newTask);
-    toast({
-      title: "Task Added!",
-      description: `The task "${data.title}" has been successfully added.`,
-    });
-    onOpenChange(false);
+    await onTaskAdd(milestone.id, newTask as any);
   }
 
   return (
@@ -277,7 +269,9 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd }: Ad
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Add Task</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Adding..." : "Add Task"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

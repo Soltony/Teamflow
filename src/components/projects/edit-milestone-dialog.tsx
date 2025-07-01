@@ -27,11 +27,10 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
-import type { Milestone } from "@/lib/types";
+import { format, parseISO } from "date-fns";
+import type { Milestone, Department } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect, useMemo } from "react";
-import { departments } from "@/lib/data";
 import {
     DropdownMenu,
     DropdownMenuCheckboxItem,
@@ -44,11 +43,11 @@ type EditMilestoneDialogProps = {
   onOpenChange: (open: boolean) => void;
   milestone: Milestone;
   projectMilestones: Milestone[];
-  onMilestoneUpdate: (updatedMilestone: Milestone) => void;
+  departments: Department[];
+  onMilestoneUpdate: (updatedMilestone: Milestone) => Promise<void>;
 };
 
-export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMilestones, onMilestoneUpdate }: EditMilestoneDialogProps) {
-  const { toast } = useToast();
+export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMilestones, departments, onMilestoneUpdate }: EditMilestoneDialogProps) {
 
   const milestoneSchema = useMemo(() => {
     return z.object({
@@ -63,10 +62,10 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
           .reduce((sum, m) => sum + m.weight, 0);
         const newTotalWeight = weightOfOtherMilestones + data.weight;
 
-        if (newTotalWeight !== 100) {
+        if (newTotalWeight > 100) {
             ctx.addIssue({
                 code: z.ZodIssueCode.custom,
-                message: `The sum of all milestone weights must be 100. With this change, the total would be ${newTotalWeight}%.`,
+                message: `The sum of all milestone weights cannot exceed 100. With this change, the total would be ${newTotalWeight}%.`,
                 path: ['weight']
             });
         }
@@ -85,25 +84,20 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
       form.reset({
         title: milestone.title,
         description: milestone.description,
-        dueDate: new Date(milestone.dueDate),
+        dueDate: parseISO(milestone.dueDate),
         weight: milestone.weight,
         responsibleDepartmentIds: milestone.responsibleDepartmentIds,
       });
     }
   }, [isOpen, milestone, form]);
 
-  function onSubmit(data: MilestoneFormValues) {
+  async function onSubmit(data: MilestoneFormValues) {
     const updatedMilestone = {
       ...milestone,
       ...data,
-      dueDate: data.dueDate.toISOString().split('T')[0],
+      dueDate: data.dueDate.toISOString(),
     };
-    onMilestoneUpdate(updatedMilestone);
-    toast({
-      title: "Milestone Updated!",
-      description: `The milestone "${data.title}" has been successfully updated.`,
-    });
-    onOpenChange(false);
+    await onMilestoneUpdate(updatedMilestone as Milestone);
   }
 
   return (
@@ -230,7 +224,9 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" disabled={form.formState.isSubmitting}>
+                {form.formState.isSubmitting ? "Saving..." : "Save Changes"}
+              </Button>
             </DialogFooter>
           </form>
         </Form>

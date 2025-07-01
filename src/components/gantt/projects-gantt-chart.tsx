@@ -3,13 +3,13 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Text } from 'recharts';
 import { differenceInDays, parseISO, min as dateMin, format } from 'date-fns';
-import { projects } from '@/lib/data';
+import type { Project } from "@prisma/client";
 import Link from 'next/link';
 
 // Custom Y-axis tick to make project names clickable and handle text wrapping
 const CustomYAxisTick = (props: any) => {
-    const { x, y, payload, width } = props;
-    const project = projects.find(p => p.name === payload.value);
+    const { x, y, payload, width, projects } = props;
+    const project = projects.find((p:Project) => p.name === payload.value);
 
     return (
       <g transform={`translate(${x},${y})`}>
@@ -31,7 +31,7 @@ const CustomYAxisTick = (props: any) => {
     );
 };
 
-export function ProjectsGanttChart() {
+export function ProjectsGanttChart({ projects }: { projects: Project[] }) {
   if (!projects || projects.length === 0) {
     return (
       <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
@@ -40,12 +40,12 @@ export function ProjectsGanttChart() {
     );
   }
 
-  const allStartDates = projects.map(p => parseISO(p.startDate));
+  const allStartDates = projects.map(p => parseISO(p.startDate.toString()));
   const chartStartDate = dateMin(allStartDates);
 
   const data = projects.map(project => {
-    const projectStartDate = parseISO(project.startDate);
-    const projectEndDate = parseISO(project.endDate);
+    const projectStartDate = parseISO(project.startDate.toString());
+    const projectEndDate = parseISO(project.endDate.toString());
     
     const startDay = differenceInDays(projectStartDate, chartStartDate);
     const duration = differenceInDays(projectEndDate, projectStartDate) + 1;
@@ -67,8 +67,8 @@ export function ProjectsGanttChart() {
       return (
         <div className="p-2 bg-card border rounded-md shadow-lg">
           <p className="font-bold">{label}</p>
-          <p className="text-sm text-muted-foreground">Start: {format(parseISO(project.startDate), 'MMM dd, yyyy')}</p>
-          <p className="text-sm text-muted-foreground">End: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</p>
+          <p className="text-sm text-muted-foreground">Start: {format(parseISO(project.startDate.toString()), 'MMM dd, yyyy')}</p>
+          <p className="text-sm text-muted-foreground">End: {format(parseISO(project.endDate.toString()), 'MMM dd, yyyy')}</p>
           <p className="text-sm text-muted-foreground">Duration: {projectData.duration} days</p>
         </div>
       );
@@ -94,7 +94,7 @@ export function ProjectsGanttChart() {
         >
           <CartesianGrid strokeDasharray="3 3" horizontal={false} />
           <XAxis type="number" domain={['dataMin', 'dataMax']} label={{ value: `Days from ${format(chartStartDate, 'MMM dd, yyyy')}`, position: 'insideBottom', offset: 0 }} height={50} />
-          <YAxis dataKey="name" type="category" width={200} tick={<CustomYAxisTick />} interval={0} />
+          <YAxis dataKey="name" type="category" width={200} tick={<CustomYAxisTick projects={projects} />} interval={0} />
           <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsl(var(--card))'}}/>
           <Bar dataKey="startOffset" stackId="a" fill="transparent" />
           <Bar dataKey="duration" stackId="a" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]} />

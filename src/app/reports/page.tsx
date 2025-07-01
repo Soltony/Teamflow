@@ -1,71 +1,84 @@
-"use client";
 
-import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
-import { projects, projectStatuses } from "@/lib/data";
 import { ProjectCard } from "@/components/projects/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { isPast, parseISO, max as dateMax } from 'date-fns';
-import type { Project } from '@/lib/types';
+import type { Project } from '@prisma/client';
 import { Suspense } from 'react';
+import prisma from '@/lib/db';
 
-function ReportsContent() {
-    const searchParams = useSearchParams();
-    const type = searchParams.get('type');
+async function ReportsContent({ searchParams }: { searchParams: { type?: string, year?: string } }) {
+    const type = searchParams.type;
+    const year = searchParams.year;
 
     let title = "Projects Report";
     let description = "A list of projects based on the selected filter.";
-    let filteredProjects: Project[] = [];
+    
+    const projectStatuses = await prisma.projectStatus.findMany();
 
-    const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
+    const allProjectsQuery = prisma.project.findMany({
+        where: year && year !== 'all' ? { workingYear: year } : {},
+        include: { 
+            status: true,
+            milestones: {
+                include: {
+                    tasks: true
+                }
+            },
+            blockers: true
+        }
+    });
+    
+    let [allProjects, allProjectStatuses] = await Promise.all([allProjectsQuery, projectStatuses]);
+
+    let filteredProjects: any[] = [];
+    const completedStatusId = allProjectStatuses.find(s => s.name === 'Completed')?.id;
     
     if (type) {
-        const allCompletedProjects = projects.filter(p => p.statusId === completedStatusId);
+        const allCompletedProjects = allProjects.filter(p => p.statusId === completedStatusId);
         
         switch (type) {
             case 'on-time':
                 title = "On-Time Completion Projects";
                 description = "Projects that were completed on or before their scheduled end date.";
                 filteredProjects = allCompletedProjects.filter(project => {
-                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate)));
+                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.endDate));
                     if (allTaskEndDates.length === 0) return true;
                     const lastTaskDate = dateMax(allTaskEndDates);
-                    return lastTaskDate <= parseISO(project.endDate);
+                    return lastTaskDate <= project.endDate;
                 });
                 break;
             case 'late':
                 title = "Late Completion Projects";
                 description = "Projects that were completed after their scheduled end date.";
-                const onTimeProjectIds = allCompletedProjects.filter(project => {
-                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate)));
-                    if (allTaskEndDates.length === 0) return true;
+                 filteredProjects = allCompletedProjects.filter(project => {
+                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.endDate));
+                    if (allTaskEndDates.length === 0) return false; // Or true based on requirements
                     const lastTaskDate = dateMax(allTaskEndDates);
-                    return lastTaskDate <= parseISO(project.endDate);
-                }).map(p => p.id);
-                filteredProjects = allCompletedProjects.filter(p => !onTimeProjectIds.includes(p.id));
+                    return lastTaskDate > project.endDate;
+                });
                 break;
             case 'overdue':
                 title = "Overdue Projects";
                 description = "Active projects that are past their deadline.";
-                filteredProjects = projects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate)));
+                filteredProjects = allProjects.filter(p => p.statusId !== completedStatusId && isPast(p.endDate));
                 break;
             case 'active-blockers':
                 title = "Projects with Active Blockers";
                 description = "Projects that have open issues requiring attention.";
-                filteredProjects = projects.filter(p => p.blockers?.some(b => b.status === 'open'));
+                filteredProjects = allProjects.filter(p => p.blockers?.some(b => b.status === 'OPEN'));
                 break;
             default:
                 title = "All Projects";
                 description = "A list of all projects.";
-                filteredProjects = projects;
+                filteredProjects = allProjects;
         }
     } else {
         title = "All Projects";
         description = "A list of all projects.";
-        filteredProjects = projects;
+        filteredProjects = allProjects;
     }
-
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -96,10 +109,10 @@ function ReportsContent() {
     );
 }
 
-export default function ReportsPage() {
+export default function ReportsPage({ searchParams }: { searchParams: { type?: string, year?: string }}) {
     return (
         <Suspense fallback={<div>Loading...</div>}>
-            <ReportsContent />
+            <ReportsContent searchParams={searchParams} />
         </Suspense>
     );
 }

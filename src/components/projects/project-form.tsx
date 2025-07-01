@@ -38,11 +38,13 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { departments, users, projectStatuses } from "@/lib/data";
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useEffect } from "react";
+import type { User, Department, ProjectStatus } from "@prisma/client";
+import { createProject } from "@/app/projects/actions";
+import { useRouter } from "next/navigation";
 
 
 const milestoneSchema = z.object({
@@ -77,8 +79,15 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
-export function ProjectForm() {
+type ProjectFormProps = {
+  users: User[];
+  departments: Department[];
+  projectStatuses: ProjectStatus[];
+}
+
+export function ProjectForm({ users, departments, projectStatuses }: ProjectFormProps) {
   const { toast } = useToast();
+  const router = useRouter();
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
@@ -107,12 +116,21 @@ export function ProjectForm() {
 
   const milestonesError = form.formState.errors.milestones?.root;
 
-  function onSubmit(data: ProjectFormValues) {
-    console.log(data);
-    toast({
-        title: "Project Created!",
-        description: `Project "${data.name}" has been successfully created.`,
-      });
+  async function onSubmit(data: ProjectFormValues) {
+    try {
+      await createProject(data);
+      toast({
+          title: "Project Created!",
+          description: `Project "${data.name}" has been successfully created.`,
+        });
+      router.push('/dashboard');
+    } catch(error) {
+       toast({
+          title: "Error",
+          description: "Failed to create project. Please try again.",
+          variant: "destructive"
+       });
+    }
   }
 
   return (
@@ -452,7 +470,7 @@ export function ProjectForm() {
         </div>
         <Separator />
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline">Cancel</Button>
+            <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
             <Button type="submit">Create Project</Button>
         </div>
       </form>

@@ -5,8 +5,7 @@ import { useState } from "react";
 import Link from 'next/link';
 import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
-import { departments, users, projectStatuses } from "@/lib/data";
-import type { Project, Blocker } from "@/lib/types";
+import type { Blocker } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -17,71 +16,46 @@ import { ResolveBlockerDialog } from "./resolve-blocker-dialog";
 import { Separator } from "../ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GanttChart } from "./gantt-chart";
+import { addBlocker, resolveBlocker } from "@/app/projects/actions";
 
 type ProjectViewProps = {
-  initialProject: Project;
+  initialProject: any; // Using any because of complex nested types from prisma and normalization
 }
 
 export function ProjectView({ initialProject }: ProjectViewProps) {
   const { toast } = useToast();
-  const [project, setProject] = useState<Project>(initialProject);
+  // We no longer manage project state here, we rely on server revalidation.
+  // The prop is the source of truth.
   const [addingBlocker, setAddingBlocker] = useState(false);
   const [resolvingBlocker, setResolvingBlocker] = useState<Blocker | null>(null);
 
-
-  const department = departments.find(d => d.id === project.departmentId);
-  const projectManager = users.find(u => u.id === project.projectManagerId);
-  const status = projectStatuses.find(s => s.id === project.statusId);
-
-  const weightedProgress = project.milestones.reduce((progress, milestone) => {
+  const weightedProgress = initialProject.milestones.reduce((progress: number, milestone: any) => {
     const completedTaskWeightInMilestone = milestone.tasks
-      .filter(task => task.status === 'done')
-      .reduce((sum, task) => sum + task.weight, 0);
+      .filter((task: any) => task.status === 'done')
+      .reduce((sum: number, task: any) => sum + task.weight, 0);
     
-    // Milestone progress is (completed weight / 100), as task weights are designed to sum to 100
     const milestoneProgress = completedTaskWeightInMilestone / 100;
 
-    // Add this milestone's weighted contribution to the total project progress
     return progress + (milestoneProgress * milestone.weight);
   }, 0);
 
-  const handleBlockerAdd = (data: { description: string }) => {
-    const newBlocker: Blocker = {
-      id: `blocker-${Date.now()}`,
-      description: data.description,
-      status: 'open',
-      createdAt: new Date().toISOString().split('T')[0],
-    };
-    setProject(prev => ({
-      ...prev,
-      blockers: [...(prev.blockers || []), newBlocker],
-    }));
+  const handleBlockerAdd = async (data: { description: string }) => {
+    setAddingBlocker(false);
+    await addBlocker(initialProject.id, data.description);
     toast({
       title: "Blocker Added",
       description: "The project blocker has been recorded and is now visible to management.",
     });
   };
 
-  const handleBlockerResolve = (blockerId: string, resolution: string) => {
-    setProject(prev => ({
-      ...prev,
-      blockers: (prev.blockers || []).map(b => 
-        b.id === blockerId 
-          ? { 
-              ...b, 
-              status: 'resolved', 
-              resolution, 
-              resolvedAt: new Date().toISOString().split('T')[0] 
-            } 
-          : b
-      ),
-    }));
+  const handleBlockerResolve = async (blockerId: string, resolution: string) => {
+    setResolvingBlocker(null);
+    await resolveBlocker(blockerId, resolution, initialProject.id);
     toast({
       title: "Blocker Resolved",
       description: "The blocker has been marked as resolved.",
     });
   };
-
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -94,13 +68,13 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-                <CardTitle className="text-3xl">{project.name}</CardTitle>
-                <CardDescription>{project.description}</CardDescription>
+                <CardTitle className="text-3xl">{initialProject.name}</CardTitle>
+                <CardDescription>{initialProject.description}</CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-                {status && <Badge className="text-base" variant="secondary">{status.name}</Badge>}
+                {initialProject.status && <Badge className="text-base" variant="secondary">{initialProject.status.name}</Badge>}
                 <Button asChild variant="outline">
-                    <Link href={`/projects/${project.id}/milestones`}>
+                    <Link href={`/projects/${initialProject.id}/milestones`}>
                         Manage Milestones
                         <ExternalLink className="ml-2 h-4 w-4" />
                     </Link>
@@ -112,22 +86,22 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              <span>{format(new Date(project.startDate), "MMM d, yyyy")} - {format(new Date(project.endDate), "MMM d, yyyy")}</span>
+              <span>{format(parseISO(initialProject.startDate), "MMM d, yyyy")} - {format(parseISO(initialProject.endDate), "MMM d, yyyy")}</span>
             </div>
              <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
-                <span>Owning Dept: {department?.name || 'N/A'}</span>
+                <span>Owning Dept: {initialProject.owningDepartment?.name || 'N/A'}</span>
             </div>
              <div className="flex items-center gap-2">
                 <UserCircle className="w-4 h-4" />
-                <span>PM: {projectManager?.name || 'N/A'}</span>
+                <span>PM: {initialProject.projectManager?.name || 'N/A'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4" />
-              <span>{project.milestones.length} Milestones</span>
+              <span>{initialProject.milestones.length} Milestones</span>
             </div>
              <div className="flex items-center gap-2">
-              <span>{differenceInDays(new Date(project.endDate), new Date())} days left</span>
+              <span>{differenceInDays(parseISO(initialProject.endDate), new Date())} days left</span>
             </div>
           </div>
           <div>
@@ -152,7 +126,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                 <CardDescription>A timeline view of all tasks for this project, relative to the project start date.</CardDescription>
             </CardHeader>
             <CardContent>
-                <GanttChart project={project} />
+                <GanttChart project={initialProject} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -171,10 +145,10 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                 </CardHeader>
                 <CardContent>
                 <div className="space-y-4">
-                    {!project.blockers || project.blockers.length === 0 ? (
+                    {!initialProject.blockers || initialProject.blockers.length === 0 ? (
                     <p className="text-muted-foreground text-sm">No blockers have been reported for this project.</p>
                     ) : (
-                    project.blockers.map((blocker, index) => (
+                    initialProject.blockers.map((blocker: any, index: number) => (
                         <div key={blocker.id}>
                         <div className="flex items-start gap-4">
                             <div>
@@ -208,7 +182,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                             )}
                             </div>
                         </div>
-                        {index < project.blockers.length - 1 && <Separator className="my-4" />}
+                        {index < initialProject.blockers.length - 1 && <Separator className="my-4" />}
                         </div>
                     ))
                     )}
