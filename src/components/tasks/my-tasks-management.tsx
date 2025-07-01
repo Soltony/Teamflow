@@ -29,6 +29,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Milestone, Task, User, TaskUpdate } from "@/lib/types";
 import { format, formatDistanceToNow } from "date-fns";
+import { CheckCircle, XCircle } from "lucide-react";
 
 type MyTasksManagementProps = {
   allProjects: Project[];
@@ -120,6 +121,7 @@ export function MyTasksManagement({ allProjects, allUsers, currentUser }: MyTask
         text: data.text,
         userId: currentUser.id,
         createdAt: new Date().toISOString(),
+        type: 'comment',
     };
 
     setProjects(prevProjects =>
@@ -180,12 +182,13 @@ export function MyTasksManagement({ allProjects, allUsers, currentUser }: MyTask
                             <Select 
                                 value={task.status} 
                                 onValueChange={(newStatus: Task['status']) => handleStatusChange(task.id, task.milestoneId, task.projectId, newStatus)}
+                                disabled={task.status === 'done'}
                             >
                                 <SelectTrigger><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                 {taskStatuses.map(status => (
-                                    <SelectItem key={status} value={status}>
-                                    {capitalize(status.replace('-', ' '))}
+                                    <SelectItem key={status} value={status} disabled={status === 'done'}>
+                                        {capitalize(status.replace('-', ' '))}
                                     </SelectItem>
                                 ))}
                                 </SelectContent>
@@ -206,6 +209,29 @@ export function MyTasksManagement({ allProjects, allUsers, currentUser }: MyTask
                                 {task.updates && task.updates.length > 0 ? (
                                     task.updates.slice().reverse().map(update => {
                                         const author = userMap.get(update.userId);
+                                        
+                                        if (update.type === 'status-change') {
+                                            const isApproval = update.text.includes('approved');
+                                            return (
+                                                <div key={update.id} className="flex items-start gap-3">
+                                                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                                                        {isApproval ? (
+                                                            <CheckCircle className="w-6 h-6 text-green-500" />
+                                                        ) : (
+                                                            <XCircle className="w-6 h-6 text-destructive" />
+                                                        )}
+                                                    </div>
+                                                    <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
+                                                        <div className="flex justify-between items-center mb-1">
+                                                            <span className="font-semibold">{isApproval ? 'Task Approved' : 'Task Declined'}</span>
+                                                            <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</span>
+                                                        </div>
+                                                        <p className="text-muted-foreground italic">{update.text}</p>
+                                                    </div>
+                                                </div>
+                                            );
+                                        }
+
                                         return (
                                             <div key={update.id} className="flex items-start gap-3">
                                                 <Avatar className="w-8 h-8 border">
@@ -226,24 +252,30 @@ export function MyTasksManagement({ allProjects, allUsers, currentUser }: MyTask
                             </div>
                         </div>
                         <div>
-                             <Form {...form}>
-                                <form onSubmit={form.handleSubmit((data) => handleUpdateSubmit(task.id, task.milestoneId, task.projectId, data))} className="space-y-2">
-                                    <FormField
-                                    control={form.control}
-                                    name="text"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="sr-only">Add Update</FormLabel>
-                                            <FormControl>
-                                                <Textarea placeholder="Post a new update..." {...field} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )}
-                                    />
-                                    <Button type="submit" size="sm">Post Update</Button>
-                                </form>
-                            </Form>
+                             {task.status === 'done' ? (
+                                <div className="text-sm text-green-700 font-medium p-3 bg-green-50 rounded-md border border-green-200 mt-4 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                                    This task has been completed and approved. No further updates can be made.
+                                </div>
+                            ) : (
+                                <Form {...form}>
+                                    <form onSubmit={form.handleSubmit((data) => handleUpdateSubmit(task.id, task.milestoneId, task.projectId, data))} className="space-y-2 mt-4">
+                                        <FormField
+                                        control={form.control}
+                                        name="text"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel className="sr-only">Add Update</FormLabel>
+                                                <FormControl>
+                                                    <Textarea placeholder="Post a new update..." {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                        />
+                                        <Button type="submit" size="sm">Post Update</Button>
+                                    </form>
+                                </Form>
+                            )}
                         </div>
                     </CardContent>
                   </Card>

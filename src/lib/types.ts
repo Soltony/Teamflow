@@ -18,6 +18,7 @@ export type TaskUpdate = {
   text: string;
   userId: string;
   createdAt: string;
+  type?: 'comment' | 'status-change';
 };
 
 export type Task = {
