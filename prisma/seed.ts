@@ -12,57 +12,67 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log(`Start seeding ...`);
-  
-  // Seed Users
+
+  // Seed Users and create a map
+  const userMap = new Map<string, string>();
   for (const user of usersData) {
-      await prisma.user.upsert({
-          where: { email: `${user.name.toLowerCase().replace(/\s+/g, '.')}@teamflow.com` },
+      const createdUser = await prisma.user.upsert({
+          where: { email: user.email },
           update: {},
           create: {
-            id: user.id,
+            id: user.id, // using predefined IDs from data
             name: user.name,
-            email: `${user.name.toLowerCase().replace(/\s+/g, '.')}@teamflow.com`,
+            email: user.email,
             password: 'password123', // In a real app, this should be hashed
             avatar: user.avatar,
             phone: user.phone,
           }
       });
+      userMap.set(createdUser.email, createdUser.id);
   }
   console.log(`Seeded ${usersData.length} users.`);
 
-  // Seed Departments
+  // Seed Departments and create a map
+  const departmentMap = new Map<string, string>();
   for (const department of departmentsData) {
-      await prisma.department.upsert({
-          where: { id: (department as any).id },
+      const createdDept = await prisma.department.upsert({
+          where: { name: department.name },
           update: {},
           create: {
-            id: (department as any).id,
             name: department.name,
             responsibleName: department.responsible.name,
             responsibleTitle: department.responsible.title,
             responsiblePhone: department.responsible.phone,
           }
       });
+      departmentMap.set(createdDept.name, createdDept.id);
   }
   console.log(`Seeded ${departmentsData.length} departments.`);
 
-  // Seed Project Statuses
+  // Seed Project Statuses and create a map
+  const statusMap = new Map<string, string>();
   for (const status of projectStatusesData) {
-    await prisma.projectStatus.upsert({
-        where: { id: (status as any).id },
+    const createdStatus = await prisma.projectStatus.upsert({
+        where: { name: status.name },
         update: {},
-        create: {
-            id: (status as any).id,
-            name: status.name,
-        },
+        create: { name: status.name },
     });
+    statusMap.set(createdStatus.name, createdStatus.id);
   }
   console.log(`Seeded ${projectStatusesData.length} project statuses.`);
 
   // Seed Projects, Milestones, Tasks, Updates, and Blockers
   for (const project of projectsData) {
-    // Upsert Project
-    await prisma.project.upsert({
+    const projectManagerId = userMap.get(project.projectManagerEmail);
+    const statusId = statusMap.get(project.statusName);
+    const departmentId = departmentMap.get(project.departmentName);
+
+    if (!projectManagerId || !statusId || !departmentId) {
+        console.warn(`Skipping project "${project.name}" due to missing relations.`);
+        continue;
+    }
+
+    const createdProject = await prisma.project.upsert({
       where: { id: project.id },
       update: {},
       create: {
@@ -72,13 +82,12 @@ async function main() {
         startDate: new Date(project.startDate),
         endDate: new Date(project.endDate),
         workingYear: project.workingYear,
-        status: { connect: { id: project.statusId } },
-        owningDepartment: { connect: { id: project.departmentId } },
-        projectManager: { connect: { id: project.projectManagerId } },
+        statusId: statusId,
+        departmentId: departmentId,
+        projectManagerId: projectManagerId,
       },
     });
 
-    // Upsert Blockers
     if (project.blockers) {
       for (const blocker of project.blockers) {
         await prisma.blocker.upsert({
@@ -91,19 +100,22 @@ async function main() {
             createdAt: new Date(blocker.createdAt),
             resolvedAt: blocker.resolvedAt ? new Date(blocker.resolvedAt) : undefined,
             resolution: blocker.resolution,
-            project: { connect: { id: project.id } },
+            projectId: createdProject.id,
           },
         });
       }
     }
 
-    // Upsert Milestones
     for (const milestone of project.milestones) {
+      const responsibleDepartmentIds = milestone.responsibleDepartmentNames
+        .map(name => departmentMap.get(name))
+        .filter((id): id is string => !!id);
+
       const createdMilestone = await prisma.milestone.upsert({
         where: { id: milestone.id },
         update: {
           responsibleDepartments: {
-            set: milestone.responsibleDepartmentIds.map(id => ({ id: id as string }))
+            set: responsibleDepartmentIds.map(id => ({ id }))
           }
         },
         create: {
@@ -113,29 +125,29 @@ async function main() {
           startDate: new Date(milestone.startDate),
           dueDate: new Date(milestone.dueDate),
           weight: milestone.weight,
-          project: { connect: { id: project.id } },
+          projectId: createdProject.id,
           responsibleDepartments: {
-            connect: milestone.responsibleDepartmentIds.map(id => ({ id: id as string })),
+            connect: responsibleDepartmentIds.map(id => ({ id })),
           },
         },
       });
 
-      // Upsert Tasks
       for (const task of milestone.tasks) {
-        const statusMap = {
+        const taskStatusMap: Record<string, TaskStatus> = {
             'todo': TaskStatus.TODO,
             'in-progress': TaskStatus.IN_PROGRESS,
             'pending-review': TaskStatus.PENDING_REVIEW,
             'done': TaskStatus.DONE
         };
-        const taskStatus = statusMap[task.status as keyof typeof statusMap] || TaskStatus.TODO;
+        const taskStatus = taskStatusMap[task.status] || TaskStatus.TODO;
+        const assigneeIds = task.assignedUserEmails
+            .map(email => userMap.get(email))
+            .filter((id): id is string => !!id);
         
         const createdTask = await prisma.task.upsert({
           where: { id: task.id },
           update: {
-            assignees: {
-              set: task.assignedUserIds.map(id => ({ id: id as string }))
-            }
+            assignees: { set: assigneeIds.map(id => ({ id })) }
           },
           create: {
             id: task.id,
@@ -146,21 +158,23 @@ async function main() {
             endDate: new Date(task.endDate),
             weight: task.weight,
             completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
-            milestone: { connect: { id: createdMilestone.id } },
+            milestoneId: createdMilestone.id,
             assignees: {
-              connect: task.assignedUserIds.map(id => ({ id: id as string })),
+              connect: assigneeIds.map(id => ({ id })),
             },
           },
         });
         
-        // Upsert Task Updates
         if (task.updates) {
           for (const update of task.updates) {
-            const updateTypeMap = {
+            const authorId = userMap.get(update.userEmail);
+            if (!authorId) continue;
+            
+            const updateTypeMap: Record<string, TaskUpdateType> = {
                 'comment': TaskUpdateType.COMMENT,
                 'status-change': TaskUpdateType.STATUS_CHANGE
             };
-            const updateType = updateTypeMap[update.type as keyof typeof updateTypeMap] || TaskUpdateType.COMMENT;
+            const updateType = updateTypeMap[update.type] || TaskUpdateType.COMMENT;
 
             await prisma.taskUpdate.upsert({
                 where: { id: update.id },
@@ -170,8 +184,8 @@ async function main() {
                     text: update.text,
                     type: updateType,
                     createdAt: new Date(update.createdAt),
-                    author: { connect: { id: update.authorId } },
-                    task: { connect: { id: createdTask.id } }
+                    authorId: authorId,
+                    taskId: createdTask.id
                 }
             })
           }
@@ -183,20 +197,25 @@ async function main() {
 
   // Seed Teams
   for (const team of teamsData) {
+    const teamLeadId = userMap.get(team.teamLeadEmail);
+    const memberIds = team.memberEmails
+        .map(email => userMap.get(email))
+        .filter((id): id is string => !!id);
+
+    if (!teamLeadId) continue;
+
     await prisma.team.upsert({
       where: { id: team.id },
       update: {
-        members: {
-          set: team.memberIds.map(id => ({ id }))
-        }
+        members: { set: memberIds.map(id => ({ id })) }
       },
       create: {
         id: team.id,
         name: team.name,
-        project: { connect: { id: team.projectId } },
-        teamLead: { connect: { id: team.teamLeadId } },
+        projectId: team.projectId,
+        teamLeadId: teamLeadId,
         members: {
-          connect: team.memberIds.map(id => ({ id }))
+          connect: memberIds.map(id => ({ id }))
         }
       }
     });

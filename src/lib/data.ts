@@ -1,7 +1,5 @@
 
-import type { User, Team, Project, ProjectStatus, Task, Milestone, TaskUpdate, Blocker } from './types';
-
-export const users: User[] = [
+export const users = [
   { id: 'user-1', name: 'Alice Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phone: '123-456-7890' },
   { id: 'user-2', name: 'Bob Williams', email: 'bob.williams@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-2', phone: '234-567-8901' },
   { id: 'user-3', name: 'Charlie Brown', email: 'charlie.brown@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-3', phone: '345-678-9012' },
@@ -15,14 +13,14 @@ export const departments = [
     { name: 'Marketing', responsible: { name: 'Marcus Holloway', title: 'CMO', phone: '444-555-6666' } },
 ];
 
-export const projectStatuses: Omit<ProjectStatus, 'id'>[] = [
+export const projectStatuses = [
   { name: 'Active' },
   { name: 'Pending' },
   { name: 'Parked' },
   { name: 'Completed' },
 ];
 
-const tempProjects: any[] = [
+export const projects = [
   {
     id: 'proj-1',
     name: 'E-commerce Platform Relaunch',
@@ -136,53 +134,26 @@ const tempProjects: any[] = [
   },
 ];
 
-const userMap = new Map(users.map(u => [u.email, u.id]));
-const departmentMap = new Map(departments.map((d, i) => [d.name, `dept-${i+1}`]));
-const statusMap = new Map(projectStatuses.map((s, i) => [s.name, `status-${i+1}`]));
-
-departments.forEach((d, i) => { (d as any).id = `dept-${i+1}` });
-projectStatuses.forEach((s, i) => { (s as any).id = `status-${i+1}` });
-
-
-export const projects: Project[] = tempProjects.map(p => ({
-  ...p,
-  statusId: statusMap.get(p.statusName)!,
-  departmentId: departmentMap.get(p.departmentName)!,
-  projectManagerId: userMap.get(p.projectManagerEmail)!,
-  milestones: p.milestones.map((m:any) => ({
-    ...m,
-    responsibleDepartmentIds: m.responsibleDepartmentNames.map((name:string) => departmentMap.get(name)!),
-    tasks: m.tasks.map((t:any) => ({
-      ...t,
-      assignedUserIds: t.assignedUserEmails.map((email:string) => userMap.get(email)!),
-      updates: t.updates?.map((u:any) => ({
-        ...u,
-        authorId: userMap.get(u.userEmail)!,
-      }))
-    }))
-  }))
-}));
-
-export const teams: Team[] = [
+export const teams = [
   { 
     id: 'team-1', 
     name: 'Frontend Wizards', 
     projectId: 'proj-1', 
-    teamLeadId: 'user-1', 
-    memberIds: ['user-1', 'user-3'] 
+    teamLeadEmail: 'alice.johnson@teamflow.com', 
+    memberEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'] 
   },
   { 
     id: 'team-2', 
     name: 'Backend Titans', 
     projectId: 'proj-1', 
-    teamLeadId: 'user-2', 
-    memberIds: ['user-2', 'user-4'] 
+    teamLeadEmail: 'bob.williams@teamflow.com', 
+    memberEmails: ['bob.williams@teamflow.com', 'diana.miller@teamflow.com'] 
   },
   { 
     id: 'team-3', 
     name: 'Marketing Squad', 
     projectId: 'proj-2', 
-    teamLeadId: 'user-4', 
-    memberIds: ['user-4', 'user-6'] 
+    teamLeadEmail: 'diana.miller@teamflow.com', 
+    memberEmails: ['diana.miller@teamflow.com', 'fiona.garcia@teamflow.com'] 
   },
 ];

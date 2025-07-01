@@ -3,7 +3,7 @@
 
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
-import { PlusCircle, CheckCircle, Clock, AlertOctagon, ShieldAlert } from "lucide-react";
+import { PlusCircle, CheckCircle, Clock, AlertOctagon, ShieldAlert, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
 import { DepartmentProjectsChart } from "@/components/dashboard/department-projects-chart";
@@ -23,6 +23,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Separator } from "../ui/separator";
 
 const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode, count: number, href: string }) => {
   if (count > 0) {
@@ -176,6 +177,46 @@ export function DashboardClient({ projects, projectStatuses, departments, availa
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Organization Departments</CardTitle>
+          <CardDescription>
+            A list of all departments. Manage them in the{' '}
+            <Link href="/departments" className="text-primary hover:underline">
+              Departments page
+            </Link>
+            .
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2">
+            {departments.length > 0 ? (
+              departments.map((dept: any, index: number) => (
+                <React.Fragment key={dept.id}>
+                  <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                    <div>
+                      <p className="font-semibold">{dept.name}</p>
+                      <p className="text-sm text-muted-foreground">
+                        {dept.responsibleName}, {dept.responsibleTitle}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                      <Phone className="h-4 w-4" />
+                      <span>{dept.responsiblePhone}</span>
+                    </div>
+                  </div>
+                  {index < departments.length - 1 && <Separator />}
+                </React.Fragment>
+              ))
+            ) : (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                No departments found. Add one on the Departments page.
+              </p>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       <div>
         <h2 className="text-xl font-bold mt-6 mb-4">{selectedYear === 'all' ? 'All Projects' : `Projects for ${selectedYear}`}</h2>
