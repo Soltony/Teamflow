@@ -17,9 +17,9 @@ import { useToast } from "@/hooks/use-toast";
 import type { Project, Task, User, Team, TaskUpdate } from "@/lib/types";
 import { format, formatDistanceToNow } from "date-fns";
 import { CheckCircle, XCircle, User as UserIcon } from "lucide-react";
+import { useProjects } from "@/hooks/use-projects";
 
 type TeamTasksManagementProps = {
-  allProjects: Project[];
   allUsers: User[];
   allTeams: Team[];
   currentUser: User;
@@ -34,9 +34,9 @@ type UserTask = Task & {
 
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function TeamTasksManagement({ allProjects, allUsers, allTeams, currentUser }: TeamTasksManagementProps) {
+export function TeamTasksManagement({ allUsers, allTeams, currentUser }: TeamTasksManagementProps) {
   const { toast } = useToast();
-  const [projects, setProjects] = useState<Project[]>(allProjects);
+  const [projects, setProjects] = useProjects();
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
   const ledTeams = useMemo(() => {

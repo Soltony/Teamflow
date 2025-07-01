@@ -1,5 +1,5 @@
 import { MyTasksManagement } from "@/components/tasks/my-tasks-management";
-import { projects, users } from "@/lib/data";
+import { users } from "@/lib/data";
 
 export default function MyTasksPage() {
   // For demonstration, we'll hardcode the current user.
@@ -8,7 +8,6 @@ export default function MyTasksPage() {
 
   return (
     <MyTasksManagement 
-        allProjects={projects} 
         allUsers={users}
         currentUser={currentUser} 
     />

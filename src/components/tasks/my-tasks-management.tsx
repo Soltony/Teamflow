@@ -30,9 +30,9 @@ import { useToast } from "@/hooks/use-toast";
 import type { Project, Milestone, Task, User, TaskUpdate } from "@/lib/types";
 import { format, formatDistanceToNow } from "date-fns";
 import { CheckCircle, XCircle } from "lucide-react";
+import { useProjects } from "@/hooks/use-projects";
 
 type MyTasksManagementProps = {
-  allProjects: Project[];
   allUsers: User[];
   currentUser: User;
 };
@@ -53,9 +53,9 @@ type TaskUpdateFormValues = z.infer<typeof taskUpdateSchema>;
 const taskStatuses: Task['status'][] = ['todo', 'in-progress', 'pending-review', 'done'];
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export function MyTasksManagement({ allProjects, allUsers, currentUser }: MyTasksManagementProps) {
+export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementProps) {
   const { toast } = useToast();
-  const [projects, setProjects] = useState<Project[]>(allProjects);
+  const [projects, setProjects] = useProjects();
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
   const form = useForm<TaskUpdateFormValues>({

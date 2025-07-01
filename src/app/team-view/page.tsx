@@ -1,5 +1,5 @@
 import { TeamTasksManagement } from "@/components/tasks/team-tasks-management";
-import { projects, users, teams } from "@/lib/data";
+import { users, teams } from "@/lib/data";
 
 export default function TeamViewPage() {
   // For demonstration, we'll hardcode the current user.
@@ -10,7 +10,6 @@ export default function TeamViewPage() {
 
   return (
     <TeamTasksManagement 
-        allProjects={projects} 
         allUsers={users}
         allTeams={teams}
         currentUser={currentUser} 
