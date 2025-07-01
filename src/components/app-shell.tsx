@@ -10,9 +10,11 @@ import {
   Home,
   PanelLeft,
   Settings,
-  Users,
+  UsersRound,
   Building2,
   Milestone,
+  ClipboardCheck,
+  ClipboardList,
 } from "lucide-react";
 
 import {
@@ -41,11 +43,13 @@ import { ThemeToggle } from "./theme-toggle";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
+  { href: "/my-tasks", label: "My Tasks", icon: ClipboardCheck },
+  { href: "/team-view", label: "Team View", icon: ClipboardList },
   { href: "/projects", label: "Projects", icon: FolderKanban },
   { href: "/milestones", label: "Milestones", icon: Milestone },
-  { href: "/departments", label: "Departments", icon: Building2 },
-  { href: "/teams", label: "Teams", icon: Users },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare },
+  { href: "/departments", label: "Departments", icon: Building2 },
+  { href: "/teams", label: "Teams", icon: UsersRound },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

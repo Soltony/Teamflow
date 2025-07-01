@@ -13,15 +13,23 @@ export type Team = {
   memberIds: string[];
 };
 
+export type TaskUpdate = {
+  id: string;
+  text: string;
+  userId: string;
+  createdAt: string;
+};
+
 export type Task = {
   id: string;
   title: string;
   description: string;
-  status: 'todo' | 'in-progress' | 'done';
+  status: 'todo' | 'in-progress' | 'pending-review' | 'done';
   startDate: string;
   endDate: string;
   weight: number;
   assignedUserIds: string[];
+  updates?: TaskUpdate[];
 };
 
 export type Milestone = {

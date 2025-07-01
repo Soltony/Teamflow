@@ -77,7 +77,12 @@ export const projects: Project[] = [
             weight: 60,
             responsibleDepartmentIds: ['dept-1'],
             tasks: [
-                { id: 'task-1-3', title: 'Frontend Development', description: 'Develop the client-side of the application using Next.js.', status: 'in-progress', startDate: '2024-09-11', endDate: '2024-10-31', weight: 70, assignedUserIds: ['user-1', 'user-3'] },
+                { id: 'task-1-3', title: 'Frontend Development', description: 'Develop the client-side of the application using Next.js.', status: 'pending-review', startDate: '2024-09-11', endDate: '2024-10-31', weight: 70, assignedUserIds: ['user-1', 'user-3'],
+                  updates: [
+                    { id: 'update-1', text: 'Initial component structure is complete. Starting on data binding.', userId: 'user-1', createdAt: '2024-10-15T10:00:00Z' },
+                    { id: 'update-2', text: 'Data binding is done. Ready for review.', userId: 'user-1', createdAt: '2024-10-20T14:30:00Z' },
+                  ]
+                },
                 { id: 'task-1-4', title: 'Backend Development', description: 'Build the server-side logic and database schema.', status: 'todo', startDate: '2024-09-11', endDate: '2024-10-31', weight: 30, assignedUserIds: ['user-2', 'user-4'] },
             ]
         },

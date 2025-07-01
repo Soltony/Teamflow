@@ -3,7 +3,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import type { Task } from '@/lib/types';
 import { users } from '@/lib/data';
 import { format, isPast } from 'date-fns';
-import { Circle, CheckCircle2, CircleDot, AlertTriangle, Pencil } from 'lucide-react';
+import { Circle, CheckCircle2, CircleDot, AlertTriangle, Pencil, FileClock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -13,9 +13,10 @@ type TaskListProps = {
   onEditTask: (task: Task) => void;
 };
 
-const statusIcons = {
+const statusIcons: Record<Task['status'], React.ReactNode> = {
   todo: <Circle className="w-4 h-4 text-muted-foreground" />,
   'in-progress': <CircleDot className="w-4 h-4 text-blue-500" />,
+  'pending-review': <FileClock className="w-4 h-4 text-amber-500" />,
   done: <CheckCircle2 className="w-4 h-4 text-green-500" />,
 };
 

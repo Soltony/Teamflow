@@ -47,7 +47,7 @@ import {
 } from "@/components/ui/select";
 import { useMemo, useEffect } from "react";
 
-const taskStatuses: Task['status'][] = ['todo', 'in-progress', 'done'];
+const taskStatuses: Task['status'][] = ['todo', 'in-progress', 'pending-review', 'done'];
 
 type EditTaskDialogProps = {
   isOpen: boolean;
