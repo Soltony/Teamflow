@@ -29,8 +29,9 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { Task, User, TaskUpdate } from "@/lib/types";
 import { format, formatDistanceToNow, isPast, parseISO, differenceInDays } from "date-fns";
-import { CheckCircle, XCircle, AlertTriangle, Clock, Check } from "lucide-react";
+import { CheckCircle, XCircle, AlertTriangle, Clock, Check, Target, Award } from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
+import { Progress } from "@/components/ui/progress";
 
 type MyTasksManagementProps = {
   allUsers: User[];
@@ -225,7 +226,7 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
   const [projects, setProjects] = useProjects();
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
-  const { overdueTasks, activeTasks, accomplishedThisWeek } = useMemo(() => {
+  const { overdueTasks, activeTasks, accomplishedThisWeek, onTimePerformance } = useMemo(() => {
     const overdue: UserTask[] = [];
     const active: UserTask[] = [];
     const accomplished: UserTask[] = [];
@@ -261,10 +262,20 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
     active.sort((a,b) => parseISO(a.endDate).getTime() - parseISO(b.endDate).getTime());
     accomplished.sort((a,b) => parseISO(b.completedAt!).getTime() - parseISO(a.completedAt!).getTime());
 
+    const allCompletedTasks = allMyTasks.filter(t => t.status === 'done' && t.completedAt);
+    const onTimeCount = allCompletedTasks.filter(t => 
+        t.completedAt && parseISO(t.completedAt) <= parseISO(t.endDate)
+    ).length;
+    
+    const performance = allCompletedTasks.length > 0 
+        ? (onTimeCount / allCompletedTasks.length) * 100 
+        : 100;
+
     return { 
         overdueTasks: overdue, 
         activeTasks: active, 
-        accomplishedThisWeek: accomplished 
+        accomplishedThisWeek: accomplished,
+        onTimePerformance: performance,
     };
   }, [projects, currentUser.id]);
 
@@ -352,14 +363,55 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>My Tasks</CardTitle>
-          <CardDescription>
-            A centralized view of all tasks assigned to you across all projects.
-          </CardDescription>
-        </CardHeader>
-      </Card>
+      <div className="space-y-1">
+        <h1 className="text-2xl font-bold">My Tasks</h1>
+        <p className="text-muted-foreground">
+          Your personal dashboard for managing all assigned tasks and tracking performance.
+        </p>
+      </div>
+      
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{overdueTasks.length}</div>
+              <p className="text-xs text-muted-foreground">Tasks past their due date</p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
+              <Clock className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{activeTasks.length}</div>
+              <p className="text-xs text-muted-foreground">Upcoming or in-progress tasks</p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Accomplished (Week)</CardTitle>
+              <Award className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{accomplishedThisWeek.length}</div>
+               <p className="text-xs text-muted-foreground">Tasks completed in the last 7 days</p>
+            </CardContent>
+        </Card>
+        <Card>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">On-Time Performance</CardTitle>
+              <Target className="h-4 w-4 text-muted-foreground" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{Math.round(onTimePerformance)}%</div>
+              <Progress value={onTimePerformance} className="h-2 mt-2" />
+            </CardContent>
+        </Card>
+      </div>
 
       {overdueTasks.length === 0 && activeTasks.length === 0 && accomplishedThisWeek.length === 0 && (
         <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
@@ -368,25 +420,30 @@ export function MyTasksManagement({ allUsers, currentUser }: MyTasksManagementPr
         </div>
       )}
 
+      {overdueTasks.length > 0 &&
         <TaskSection 
             title="Overdue"
             icon={<AlertTriangle className="w-6 h-6 text-destructive" />}
             tasks={overdueTasks}
             {...commonTaskSectionProps}
         />
+      }
+      {activeTasks.length > 0 &&
         <TaskSection 
             title="Active"
             icon={<Clock className="w-6 h-6 text-blue-500" />}
             tasks={activeTasks}
             {...commonTaskSectionProps}
         />
+      }
+      {accomplishedThisWeek.length > 0 && 
         <TaskSection 
             title="Accomplished This Week"
             icon={<Check className="w-6 h-6 text-green-500" />}
             tasks={accomplishedThisWeek}
             {...commonTaskSectionProps}
         />
-      
+      }
     </div>
   );
 }
