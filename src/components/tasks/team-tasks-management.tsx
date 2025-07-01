@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { Project, Task, User, Team, TaskUpdate } from "@/lib/types";
+import { projectStatuses } from "@/lib/data";
 import { format, formatDistanceToNow } from "date-fns";
 import { CheckCircle, XCircle, User as UserIcon } from "lucide-react";
 import { useProjects } from "@/hooks/use-projects";
@@ -48,19 +49,20 @@ export function TeamTasksManagement({ allUsers, allTeams, currentUser }: TeamTas
   }, [ledTeams]);
   
   const teamTasksByProject = useMemo(() => {
-    const projectsWithTasks: Record<string, { tasks: UserTask[]; stats: { pending: number; inProgress: number; done: number; todo: number; total: number } }> = {};
+    const projectsWithTasks: Record<string, { project: Project; tasks: UserTask[]; stats: { pending: number; inProgress: number; done: number; todo: number; total: number } }> = {};
 
     projects.forEach(project => {
       project.milestones.forEach(milestone => {
         milestone.tasks.forEach(task => {
           if (task.assignedUserIds.some(userId => teamMemberIds.has(userId))) {
-            if (!projectsWithTasks[project.name]) {
-              projectsWithTasks[project.name] = {
+            if (!projectsWithTasks[project.id]) {
+              projectsWithTasks[project.id] = {
+                project,
                 tasks: [],
                 stats: { pending: 0, inProgress: 0, done: 0, todo: 0, total: 0 }
               };
             }
-            projectsWithTasks[project.name].tasks.push({
+            projectsWithTasks[project.id].tasks.push({
               ...task,
               projectId: project.id,
               projectName: project.name,
@@ -68,17 +70,28 @@ export function TeamTasksManagement({ allUsers, allTeams, currentUser }: TeamTas
               milestoneTitle: milestone.title,
             });
             
-            projectsWithTasks[project.name].stats.total++;
-            if (task.status === 'pending-review') projectsWithTasks[project.name].stats.pending++;
-            else if (task.status === 'in-progress') projectsWithTasks[project.name].stats.inProgress++;
-            else if (task.status === 'done') projectsWithTasks[project.name].stats.done++;
-            else if (task.status === 'todo') projectsWithTasks[project.name].stats.todo++;
+            projectsWithTasks[project.id].stats.total++;
+            if (task.status === 'pending-review') projectsWithTasks[project.id].stats.pending++;
+            else if (task.status === 'in-progress') projectsWithTasks[project.id].stats.inProgress++;
+            else if (task.status === 'done') projectsWithTasks[project.id].stats.done++;
+            else if (task.status === 'todo') projectsWithTasks[project.id].stats.todo++;
           }
         });
       });
     });
     return projectsWithTasks;
   }, [projects, teamMemberIds]);
+
+  const sortedProjects = useMemo(() => {
+    const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
+    return Object.values(teamTasksByProject).sort((a, b) => {
+        const aIsCompleted = a.project.statusId === completedStatusId;
+        const bIsCompleted = b.project.statusId === completedStatusId;
+        if (aIsCompleted && !bIsCompleted) return 1;
+        if (!aIsCompleted && bIsCompleted) return -1;
+        return a.project.name.localeCompare(b.project.name);
+    });
+  }, [teamTasksByProject]);
 
   const handleApprove = (task: UserTask) => {
     const updateText = `Task approved by ${currentUser.name}. Status changed to Done.`;
@@ -147,6 +160,13 @@ export function TeamTasksManagement({ allUsers, allTeams, currentUser }: TeamTas
     );
     toast({ title: "Task Declined", description: `"${task.title}" has been sent back to In Progress.`, variant: 'destructive' });
   };
+  
+  const defaultOpenProjects = useMemo(() => {
+    const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
+    return sortedProjects
+      .filter(({ project }) => project.statusId !== completedStatusId)
+      .map(({ project }) => project.id);
+  }, [sortedProjects]);
 
 
   return (
@@ -160,23 +180,37 @@ export function TeamTasksManagement({ allUsers, allTeams, currentUser }: TeamTas
         </CardHeader>
       </Card>
 
-      <Accordion type="multiple" className="w-full space-y-4" defaultValue={Object.keys(teamTasksByProject)}>
-        {Object.entries(teamTasksByProject).map(([projectName, { tasks, stats }]) => (
-          <AccordionItem value={projectName} key={projectName} className="border rounded-lg bg-card">
+      <Accordion type="multiple" className="w-full space-y-4" defaultValue={defaultOpenProjects}>
+        {sortedProjects.map(({ project, tasks, stats }) => {
+            const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
+            
+            let statusBadge;
+            if (project.statusId === completedStatusId) {
+                statusBadge = <Badge className="bg-zinc-500 hover:bg-zinc-500/90 text-primary-foreground">Closed</Badge>;
+            } else if (stats.pending > 0) {
+                statusBadge = <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending Review</Badge>;
+            } else if (stats.inProgress > 0 || stats.todo > 0) {
+                statusBadge = <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">Active</Badge>;
+            } else if (stats.total > 0) {
+                statusBadge = <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Completed</Badge>;
+            } else {
+                statusBadge = <Badge variant="secondary">No Team Tasks</Badge>;
+            }
+          
+          return (
+          <AccordionItem value={project.id} key={project.id} className="border rounded-lg bg-card">
             <AccordionTrigger className="p-4 text-lg hover:no-underline">
                 <div className="flex justify-between items-center w-full">
-                    <span className="font-semibold">{projectName}</span>
+                    <span className="font-semibold">{project.name}</span>
                     <div className="flex items-center gap-2 mr-4">
-                        <Badge variant="secondary">Total: {stats.total}</Badge>
-                        {stats.pending > 0 && <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending: {stats.pending}</Badge>}
-                        {stats.inProgress > 0 && <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">In Progress: {stats.inProgress}</Badge>}
-                        {stats.done > 0 && <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Done: {stats.done}</Badge>}
+                        {statusBadge}
+                        <Badge variant="outline">Team Tasks: {stats.total}</Badge>
                     </div>
                 </div>
             </AccordionTrigger>
             <AccordionContent className="p-4 pt-0">
               <div className="space-y-4">
-                {tasks.map(task => {
+                {tasks.length > 0 ? tasks.map(task => {
                     const assignees = task.assignedUserIds.map(id => userMap.get(id)).filter(Boolean) as User[];
                     return (
                         <Card key={task.id} className={task.status === 'pending-review' ? 'border-primary' : ''}>
@@ -240,11 +274,14 @@ export function TeamTasksManagement({ allUsers, allTeams, currentUser }: TeamTas
                             </CardContent>
                         </Card>
                     )
-                })}
+                }) : (
+                    <p className="text-muted-foreground text-sm pl-2">No tasks assigned to your team members for this project.</p>
+                )}
               </div>
             </AccordionContent>
           </AccordionItem>
-        ))}
+          )
+        })}
       </Accordion>
        {ledTeams.length === 0 && (
         <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
