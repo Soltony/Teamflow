@@ -2,7 +2,6 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Task } from '@/lib/types';
 import { users } from '@/lib/data';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { format, isPast } from 'date-fns';
 import { Circle, CheckCircle2, CircleDot, AlertTriangle, Pencil } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -58,25 +57,12 @@ export function TaskList({ tasks, onEditTask }: TaskListProps) {
                 </TableCell>
                 <TableCell className="font-medium">{task.title}</TableCell>
                 <TableCell>
-                  <div className="flex items-center -space-x-2">
-                    {task.assignedUserIds.map(userId => {
-                      const user = users.find(u => u.id === userId);
-                      if (!user) return null;
-                      return (
-                          <Tooltip key={user.id}>
-                              <TooltipTrigger asChild>
-                                  <Avatar className="w-8 h-8 border-2 border-background">
-                                      <AvatarImage src={user.avatar} alt={user.name} />
-                                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                                  </Avatar>
-                              </TooltipTrigger>
-                              <TooltipContent>
-                                  <p>{user.name}</p>
-                              </TooltipContent>
-                          </Tooltip>
-                      )
-                    })}
-                  </div>
+                  <span className="text-sm text-muted-foreground">
+                    {task.assignedUserIds
+                      .map(userId => users.find(u => u.id === userId)?.name)
+                      .filter(Boolean)
+                      .join(', ')}
+                  </span>
                 </TableCell>
                 <TableCell>
                   <div className={cn("flex items-center gap-1.5", isOverdue && "text-destructive")}>
