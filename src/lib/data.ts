@@ -34,6 +34,7 @@ export const projects: Project[] = [
     description: 'Complete overhaul of the existing e-commerce platform to improve user experience and performance.',
     startDate: '2024-08-01',
     endDate: '2024-11-30',
+    workingYear: '2024/2025',
     statusId: 'status-1',
     departmentId: 'dept-1',
     projectManagerId: 'user-1',
@@ -97,6 +98,7 @@ export const projects: Project[] = [
     description: 'A new mobile application for users to manage their daily tasks and improve productivity.',
     startDate: '2024-09-01',
     endDate: '2024-12-31',
+    workingYear: '2024/2025',
     statusId: 'status-2',
     departmentId: 'dept-2',
     projectManagerId: 'user-2',
@@ -127,4 +129,64 @@ export const projects: Project[] = [
         }
     ]
   },
+  {
+    id: 'proj-3',
+    name: 'Data Analytics Dashboard Q1',
+    description: 'Implementation of a new data analytics dashboard for the marketing team.',
+    startDate: '2025-01-15',
+    endDate: '2025-03-31',
+    workingYear: '2024/2025',
+    statusId: 'status-1',
+    departmentId: 'dept-2',
+    projectManagerId: 'user-4',
+    milestones: [
+        {
+            id: 'mile-3-1',
+            title: 'Q1: Data Source Integration',
+            description: 'Connect to all required data sources.',
+            dueDate: '2025-02-15',
+            weight: 50,
+            responsibleDepartmentIds: ['dept-1'],
+            tasks: [
+                { id: 'task-3-1', title: 'Integrate CRM Data', description: 'Pull customer data from the CRM.', status: 'in-progress', startDate: '2025-01-15', endDate: '2025-01-31', weight: 100, assignedUserIds: ['user-2'] },
+            ]
+        },
+        {
+            id: 'mile-3-2',
+            title: 'Q1: Dashboard UI/UX',
+            description: 'Design and implement the dashboard user interface.',
+            dueDate: '2025-03-31',
+            weight: 50,
+            responsibleDepartmentIds: ['dept-2'],
+            tasks: [
+                 { id: 'task-3-2', title: 'Design Dashboard Mockups', description: 'Create mockups for all dashboard views.', status: 'todo', startDate: '2025-02-01', endDate: '2025-02-28', weight: 50, assignedUserIds: ['user-5', 'user-6'] },
+                 { id: 'task-3-3', title: 'Develop UI Components', description: 'Build the React components for the dashboard.', status: 'todo', startDate: '2025-03-01', endDate: '2025-03-31', weight: 50, assignedUserIds: ['user-1', 'user-3'] },
+            ]
+        }
+    ]
+  },
+  {
+    id: 'proj-4',
+    name: 'Annual Company Offsite Planning',
+    description: 'Organize and plan the annual company-wide offsite event.',
+    startDate: '2025-08-01',
+    endDate: '2025-10-31',
+    workingYear: '2025/2026',
+    statusId: 'status-2',
+    departmentId: 'dept-2',
+    projectManagerId: 'user-6',
+    milestones: [
+      {
+        id: 'mile-4-1',
+        title: 'Venue and Logistics',
+        description: 'Finalize venue, travel, and accommodation.',
+        dueDate: '2025-09-15',
+        weight: 100,
+        responsibleDepartmentIds: ['dept-2'],
+        tasks: [
+          { id: 'task-4-1', title: 'Venue Selection', description: 'Research and book the event venue.', status: 'todo', startDate: '2025-08-01', endDate: '2025-08-31', weight: 100, assignedUserIds: ['user-6'] },
+        ]
+      }
+    ]
+  }
 ];

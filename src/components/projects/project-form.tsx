@@ -57,6 +57,7 @@ const projectSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   startDate: z.date({ required_error: "A start date is required."}),
   endDate: z.date({ required_error: "An end date is required."}),
+  workingYear: z.string().regex(/^\d{4}\/\d{4}$/, "Working year must be in YYYY/YYYY format."),
   statusId: z.string().nonempty("Please select a project status."),
   departmentId: z.string().nonempty("Please select a department."),
   projectManagerId: z.string().nonempty("Please select a project manager."),
@@ -83,6 +84,7 @@ export function ProjectForm() {
     defaultValues: {
       name: "",
       description: "",
+      workingYear: "",
       statusId: "",
       departmentId: "",
       projectManagerId: "",
@@ -221,7 +223,7 @@ export function ProjectForm() {
                         )}
                     />
                 </div>
-                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
                         name="departmentId"
@@ -273,6 +275,19 @@ export function ProjectForm() {
                                     </SelectContent>
                                 </Select>
                                 <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="workingYear"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Working Year</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., 2024/2025" {...field} />
+                            </FormControl>
+                            <FormMessage />
                             </FormItem>
                         )}
                     />

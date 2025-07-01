@@ -1,9 +1,11 @@
+"use client";
 
 import Link from "next/link";
+import { useState, useMemo } from "react";
 import { PlusCircle, CheckCircle, Clock, AlertOctagon, ShieldAlert } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
-import { projects, projectStatuses } from "@/lib/data";
+import { projects as allProjects, projectStatuses } from "@/lib/data";
 import { DepartmentProjectsChart } from "@/components/dashboard/department-projects-chart";
 import { ProjectStatusChart } from "@/components/dashboard/project-status-chart";
 import { ResponsibleDepartmentChart } from "@/components/dashboard/responsible-department-chart";
@@ -14,6 +16,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { isPast, parseISO, max as dateMax } from 'date-fns';
 
 const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode, count: number, href: string }) => {
@@ -25,6 +34,20 @@ const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode,
 
 
 export default function DashboardPage() {
+  const [selectedYear, setSelectedYear] = useState<string>("all");
+
+  const availableYears = useMemo(() => {
+    const years = new Set(allProjects.map(p => p.workingYear));
+    return ["all", ...Array.from(years).sort().reverse()];
+  }, []);
+
+  const projects = useMemo(() => {
+    if (selectedYear === "all") {
+      return allProjects;
+    }
+    return allProjects.filter(p => p.workingYear === selectedYear);
+  }, [selectedYear]);
+
   const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
   const completedProjects = projects.filter(p => p.statusId === completedStatusId);
   const overdueProjects = projects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate)));
@@ -43,7 +66,21 @@ export default function DashboardPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Projects Dashboard</h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold">Projects Dashboard</h1>
+          <Select value={selectedYear} onValueChange={setSelectedYear}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select a year" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableYears.map(year => (
+                <SelectItem key={year} value={year}>
+                  {year === 'all' ? 'All Years' : year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
         <Button asChild>
           <Link href="/projects/new">
             <PlusCircle className="w-4 h-4 mr-2" />
@@ -70,7 +107,7 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCardWrapper count={onTimeProjectsCount} href="/reports?type=on-time">
+        <StatCardWrapper count={onTimeProjectsCount} href={`/reports?type=on-time&year=${selectedYear}`}>
           <Card className={onTimeProjectsCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">On-Time Completion</CardTitle>
@@ -83,7 +120,7 @@ export default function DashboardPage() {
           </Card>
         </StatCardWrapper>
         
-        <StatCardWrapper count={lateProjectsCount} href="/reports?type=late">
+        <StatCardWrapper count={lateProjectsCount} href={`/reports?type=late&year=${selectedYear}`}>
           <Card className={lateProjectsCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Late Completion</CardTitle>
@@ -96,7 +133,7 @@ export default function DashboardPage() {
           </Card>
         </StatCardWrapper>
 
-        <StatCardWrapper count={overdueProjects.length} href="/reports?type=overdue">
+        <StatCardWrapper count={overdueProjects.length} href={`/reports?type=overdue&year=${selectedYear}`}>
           <Card className={overdueProjects.length > 0 ? 'hover:bg-muted transition-colors' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Overdue Projects</CardTitle>
@@ -109,7 +146,7 @@ export default function DashboardPage() {
           </Card>
         </StatCardWrapper>
 
-        <StatCardWrapper count={totalBlockersCount} href="/reports?type=active-blockers">
+        <StatCardWrapper count={totalBlockersCount} href={`/reports?type=active-blockers&year=${selectedYear}`}>
           <Card className={totalBlockersCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Blockers</CardTitle>
@@ -132,7 +169,7 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <DepartmentProjectsChart />
+            <DepartmentProjectsChart projects={projects} />
           </CardContent>
         </Card>
         <Card>
@@ -143,7 +180,7 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ProjectStatusChart />
+            <ProjectStatusChart projects={projects} />
           </CardContent>
         </Card>
         <Card>
@@ -154,18 +191,24 @@ export default function DashboardPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsibleDepartmentChart />
+            <ResponsibleDepartmentChart projects={projects} />
           </CardContent>
         </Card>
       </div>
 
       <div>
-        <h2 className="text-xl font-bold mt-6 mb-4">All Projects</h2>
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {projects.map((project) => (
-            <ProjectCard key={project.id} project={project} />
-          ))}
-        </div>
+        <h2 className="text-xl font-bold mt-6 mb-4">{selectedYear === 'all' ? 'All Projects' : `Projects for ${selectedYear}`}</h2>
+        {projects.length > 0 ? (
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {projects.map((project) => (
+              <ProjectCard key={project.id} project={project} />
+            ))}
+          </div>
+        ) : (
+          <div className="text-center py-12 text-muted-foreground">
+            <p>No projects found for the selected year.</p>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -11,35 +11,36 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { projects, departments } from "@/lib/data";
+import { departments } from "@/lib/data";
+import type { Project } from "@/lib/types";
 
-const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
+export function ResponsibleDepartmentChart({ projects }: { projects: Project[] }) {
+  const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 
-const milestonesByDept = projects.reduce((acc, project) => {
-    project.milestones.forEach(milestone => {
-        milestone.responsibleDepartmentIds.forEach(deptId => {
-            const deptName = departmentMap.get(deptId) || "Unknown Department";
-            acc[deptName] = (acc[deptName] || 0) + 1;
-        })
-    });
-    return acc;
-}, {} as Record<string, number>);
+  const milestonesByDept = projects.reduce((acc, project) => {
+      project.milestones.forEach(milestone => {
+          milestone.responsibleDepartmentIds.forEach(deptId => {
+              const deptName = departmentMap.get(deptId) || "Unknown Department";
+              acc[deptName] = (acc[deptName] || 0) + 1;
+          })
+      });
+      return acc;
+  }, {} as Record<string, number>);
 
 
-const chartData = Object.entries(milestonesByDept).map(([name, value]) => ({
-  name,
-  milestones: value,
-}));
+  const chartData = Object.entries(milestonesByDept).map(([name, value]) => ({
+    name,
+    milestones: value,
+  }));
 
-const chartConfig = {} as ChartConfig;
-chartData.forEach((item, index) => {
-  chartConfig[item.name] = {
-    label: item.name,
-    color: `hsl(var(--chart-${(index % 5) + 1}))`,
-  };
-});
+  const chartConfig = {} as ChartConfig;
+  chartData.forEach((item, index) => {
+    chartConfig[item.name] = {
+      label: item.name,
+      color: `hsl(var(--chart-${(index % 5) + 1}))`,
+    };
+  });
 
-export function ResponsibleDepartmentChart() {
   if (chartData.length === 0) {
     return (
       <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">

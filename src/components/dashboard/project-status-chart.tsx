@@ -10,30 +10,31 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { projects, projectStatuses } from "@/lib/data";
+import { projectStatuses } from "@/lib/data";
+import type { Project } from "@/lib/types";
 
-const statusMap = new Map(projectStatuses.map((s) => [s.id, s.name]));
+export function ProjectStatusChart({ projects }: { projects: Project[] }) {
+  const statusMap = new Map(projectStatuses.map((s) => [s.id, s.name]));
 
-const projectsByStatus = projects.reduce((acc, project) => {
-  const statusName = statusMap.get(project.statusId) || "Unknown Status";
-  acc[statusName] = (acc[statusName] || 0) + 1;
-  return acc;
-}, {} as Record<string, number>);
+  const projectsByStatus = projects.reduce((acc, project) => {
+    const statusName = statusMap.get(project.statusId) || "Unknown Status";
+    acc[statusName] = (acc[statusName] || 0) + 1;
+    return acc;
+  }, {} as Record<string, number>);
 
-const chartData = Object.entries(projectsByStatus).map(([name, value]) => ({
-  name,
-  projects: value,
-}));
+  const chartData = Object.entries(projectsByStatus).map(([name, value]) => ({
+    name,
+    projects: value,
+  }));
 
-const chartConfig = {} as ChartConfig;
-chartData.forEach((item, index) => {
-  chartConfig[item.name] = {
-    label: item.name,
-    color: `hsl(var(--chart-${(index % 5) + 1}))`,
-  };
-});
+  const chartConfig = {} as ChartConfig;
+  chartData.forEach((item, index) => {
+    chartConfig[item.name] = {
+      label: item.name,
+      color: `hsl(var(--chart-${(index % 5) + 1}))`,
+    };
+  });
 
-export function ProjectStatusChart() {
   if (chartData.length === 0) {
     return (
       <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">

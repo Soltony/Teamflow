@@ -64,6 +64,7 @@ export type Project = {
   statusId: string;
   departmentId: string;
   projectManagerId: string;
+  workingYear: string;
   milestones: Milestone[];
   blockers?: Blocker[];
 };
