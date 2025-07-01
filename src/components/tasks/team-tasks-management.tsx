@@ -35,6 +35,8 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
   const sortedProjects = useMemo(() => {
+    if (!projectStatuses || !initialTasksByProject) return [];
+    
     const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
     return [...initialTasksByProject].sort((a, b) => {
         const aIsCompleted = a.project.statusId === completedStatusId;
@@ -64,6 +66,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   };
   
   const defaultOpenProjects = useMemo(() => {
+    if (!projectStatuses) return [];
     const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
     return sortedProjects
       .filter(({ project }) => project.statusId !== completedStatusId)

@@ -48,11 +48,11 @@ export default async function TeamViewPage() {
   if (teamMemberIds.length === 0) {
     return (
         <TeamTasksManagement 
-            allUsers={[]}
-            ledTeams={[]}
-            currentUser={currentUser}
+            allUsers={JSON.parse(JSON.stringify(allUsers))}
+            ledTeams={JSON.parse(JSON.stringify(ledTeams))}
+            currentUser={JSON.parse(JSON.stringify(currentUser))}
             initialTasksByProject={[]}
-            projectStatuses={[]}
+            projectStatuses={JSON.parse(JSON.stringify(projectStatuses))}
         />
     )
   }
