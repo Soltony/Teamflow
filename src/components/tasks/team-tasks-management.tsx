@@ -48,27 +48,36 @@ export function TeamTasksManagement({ allProjects, allUsers, allTeams, currentUs
   }, [ledTeams]);
   
   const teamTasksByProject = useMemo(() => {
-    const tasksByProject: Record<string, UserTask[]> = {};
+    const projectsWithTasks: Record<string, { tasks: UserTask[]; stats: { pending: number; inProgress: number; done: number; todo: number; total: number } }> = {};
 
     projects.forEach(project => {
       project.milestones.forEach(milestone => {
         milestone.tasks.forEach(task => {
           if (task.assignedUserIds.some(userId => teamMemberIds.has(userId))) {
-            if (!tasksByProject[project.name]) {
-              tasksByProject[project.name] = [];
+            if (!projectsWithTasks[project.name]) {
+              projectsWithTasks[project.name] = {
+                tasks: [],
+                stats: { pending: 0, inProgress: 0, done: 0, todo: 0, total: 0 }
+              };
             }
-            tasksByProject[project.name].push({
+            projectsWithTasks[project.name].tasks.push({
               ...task,
               projectId: project.id,
               projectName: project.name,
               milestoneId: milestone.id,
               milestoneTitle: milestone.title,
             });
+            
+            projectsWithTasks[project.name].stats.total++;
+            if (task.status === 'pending-review') projectsWithTasks[project.name].stats.pending++;
+            else if (task.status === 'in-progress') projectsWithTasks[project.name].stats.inProgress++;
+            else if (task.status === 'done') projectsWithTasks[project.name].stats.done++;
+            else if (task.status === 'todo') projectsWithTasks[project.name].stats.todo++;
           }
         });
       });
     });
-    return tasksByProject;
+    return projectsWithTasks;
   }, [projects, teamMemberIds]);
 
   const handleApprove = (task: UserTask) => {
@@ -147,10 +156,18 @@ export function TeamTasksManagement({ allProjects, allUsers, allTeams, currentUs
       </Card>
 
       <Accordion type="multiple" className="w-full space-y-4" defaultValue={Object.keys(teamTasksByProject)}>
-        {Object.entries(teamTasksByProject).map(([projectName, tasks]) => (
+        {Object.entries(teamTasksByProject).map(([projectName, { tasks, stats }]) => (
           <AccordionItem value={projectName} key={projectName} className="border rounded-lg bg-card">
-            <AccordionTrigger className="p-4 font-semibold text-lg hover:no-underline">
-              {projectName}
+            <AccordionTrigger className="p-4 text-lg hover:no-underline">
+                <div className="flex justify-between items-center w-full">
+                    <span className="font-semibold">{projectName}</span>
+                    <div className="flex items-center gap-2 mr-4">
+                        <Badge variant="secondary">Total: {stats.total}</Badge>
+                        {stats.pending > 0 && <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending: {stats.pending}</Badge>}
+                        {stats.inProgress > 0 && <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">In Progress: {stats.inProgress}</Badge>}
+                        {stats.done > 0 && <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Done: {stats.done}</Badge>}
+                    </div>
+                </div>
             </AccordionTrigger>
             <AccordionContent className="p-4 pt-0">
               <div className="space-y-4">
