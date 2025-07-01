@@ -1,3 +1,4 @@
+
 export type User = {
   id: string;
   name: string;
@@ -16,7 +17,7 @@ export type Team = {
 export type TaskUpdate = {
   id: string;
   text: string;
-  userId: string;
+  authorId: string;
   createdAt: string;
   type?: 'comment' | 'status-change';
 };
@@ -38,6 +39,7 @@ export type Milestone = {
     id: string;
     title: string;
     description: string;
+    startDate: string;
     dueDate: string;
     weight: number;
     tasks: Task[];

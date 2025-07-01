@@ -145,7 +145,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                   {tasks.length > 0 ? tasks.sort((a, b) => a.title.localeCompare(b.title)).map(task => {
                       const assignees = task.assignedUserIds.map(id => userMap.get(id)).filter(Boolean) as User[];
                       const latestUpdate = task.updates && task.updates.length > 0 ? task.updates[task.updates.length - 1] : null;
-                      const latestUpdateAuthor = latestUpdate ? userMap.get(latestUpdate.userId) : null;
+                      const latestUpdateAuthor = latestUpdate ? userMap.get(latestUpdate.authorId) : null;
                       return (
                           <Card key={task.id} className={task.status === 'pending-review' ? 'border-primary' : ''}>
                               <CardHeader>

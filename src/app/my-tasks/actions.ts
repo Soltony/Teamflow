@@ -5,18 +5,23 @@ import { revalidatePath } from "next/cache";
 import type { Task, TaskUpdate } from "@/lib/types";
 
 export async function updateTaskStatusAction(taskId: string, newStatus: Task['status']) {
-  const updateData: { status: Task['status'], completedAt?: string } = {
+  const updateData: { status: Task['status'], completedAt?: Date } = {
     status: newStatus
   };
 
+  const prismaStatus = newStatus.replace('-', '_').toUpperCase() as any;
+
   if (newStatus === 'done') {
-    updateData.completedAt = new Date().toISOString();
+    updateData.completedAt = new Date();
   }
 
   try {
     await prisma.task.update({
       where: { id: taskId },
-      data: updateData,
+      data: {
+        status: prismaStatus,
+        completedAt: newStatus === 'done' ? new Date() : undefined
+      },
     });
     revalidatePath('/my-tasks');
     return { success: true };
@@ -26,33 +31,27 @@ export async function updateTaskStatusAction(taskId: string, newStatus: Task['st
   }
 }
 
-export async function addTaskUpdateAction(taskId: string, text: string, userId: string) {
+export async function addTaskUpdateAction(taskId: string, text: string, authorId: string) {
     try {
         await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({ where: { id: taskId } });
             if (!task) {
                 throw new Error("Task not found.");
             }
-
-            const newUpdate: Omit<TaskUpdate, 'id'> = {
-                text,
-                userId,
-                createdAt: new Date().toISOString(),
-                type: 'comment',
-            };
             
             await tx.taskUpdate.create({
                 data: {
-                    ...newUpdate,
+                    text,
+                    authorId,
                     taskId: taskId,
+                    type: 'COMMENT',
                 }
             });
 
-            // If task was in-progress (e.g., after being declined), resubmit for review.
-            if (task.status === 'in-progress') {
+            if (task.status === 'IN_PROGRESS') {
                 await tx.task.update({
                     where: { id: taskId },
-                    data: { status: 'pending-review' }
+                    data: { status: 'PENDING_REVIEW' }
                 });
             }
         });

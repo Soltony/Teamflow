@@ -108,7 +108,7 @@ const TaskItem = ({
                                 <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
                                     {task.updates && task.updates.length > 0 ? (
                                         task.updates.slice().reverse().map(update => {
-                                            const author = userMap.get(update.userId);
+                                            const author = userMap.get(update.authorId);
                                             
                                             if (update.type === 'status-change') {
                                                 const isApproval = update.text.includes('approved');

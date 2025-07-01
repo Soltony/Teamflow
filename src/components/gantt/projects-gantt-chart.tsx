@@ -3,17 +3,17 @@
 
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Text } from 'recharts';
 import { differenceInDays, parseISO, min as dateMin, format } from 'date-fns';
-import type { Project } from "@prisma/client";
 import Link from 'next/link';
 
-// Custom Y-axis tick to make project names clickable and handle text wrapping
 const CustomYAxisTick = (props: any) => {
-    const { x, y, payload, width, projects } = props;
-    const project = projects.find((p:Project) => p.name === payload.value);
+    const { x, y, payload, width, data } = props;
+    const item = data.find((d:any) => d.name === payload.value);
+
+    if (!item) return null;
 
     return (
       <g transform={`translate(${x},${y})`}>
-          <Link href={`/projects/${project?.id}`}>
+          <Link href={`/projects/${item?.projectId}`}>
             <Text
                 x={0}
                 y={0}
@@ -24,6 +24,7 @@ const CustomYAxisTick = (props: any) => {
                 verticalAnchor="middle"
                 className="text-sm fill-muted-foreground hover:underline hover:fill-primary transition-colors cursor-pointer"
             >
+                <title>{item.projectName}: {item.milestoneTitle}</title>
                 {payload.value}
             </Text>
         </Link>
@@ -31,7 +32,7 @@ const CustomYAxisTick = (props: any) => {
     );
 };
 
-export function ProjectsGanttChart({ projects }: { projects: Project[] }) {
+export function ProjectsGanttChart({ projects }: { projects: any[] }) {
   if (!projects || projects.length === 0) {
     return (
       <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
@@ -40,43 +41,67 @@ export function ProjectsGanttChart({ projects }: { projects: Project[] }) {
     );
   }
 
-  const allStartDates = projects.map(p => parseISO(p.startDate.toString()));
+  const allMilestones = projects.flatMap(p => 
+      p.milestones.map((m: any) => ({
+          ...m,
+          projectId: p.id,
+          projectName: p.name,
+          milestoneTitle: m.title
+      }))
+  );
+
+  if (allMilestones.length === 0) {
+      return (
+        <div className="flex h-[400px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
+          No milestones found across all projects.
+        </div>
+      );
+  }
+
+  const allStartDates = allMilestones.map(m => parseISO(m.startDate.toString()));
   const chartStartDate = dateMin(allStartDates);
 
-  const data = projects.map(project => {
-    const projectStartDate = parseISO(project.startDate.toString());
-    const projectEndDate = parseISO(project.endDate.toString());
+  const data = allMilestones.map(milestone => {
+    const milestoneStartDate = parseISO(milestone.startDate.toString());
+    const milestoneDueDate = parseISO(milestone.dueDate.toString());
     
-    const startDay = differenceInDays(projectStartDate, chartStartDate);
-    const duration = differenceInDays(projectEndDate, projectStartDate) + 1;
+    const startDay = differenceInDays(milestoneStartDate, chartStartDate);
+    const duration = differenceInDays(milestoneDueDate, milestoneStartDate) + 1;
 
     return {
-      id: project.id,
-      name: project.name,
+      projectId: milestone.projectId,
+      projectName: milestone.projectName,
+      milestoneTitle: milestone.milestoneTitle,
+      name: `${milestone.projectName}: ${milestone.milestoneTitle}`,
       startOffset: startDay,
-      duration: duration
+      duration: duration,
+      startDate: milestone.startDate,
+      dueDate: milestone.dueDate,
     };
-  }).sort((a, b) => a.startOffset - b.startOffset); // Sort projects by start date
+  }).sort((a, b) => {
+      if (a.projectName !== b.projectName) {
+          return a.projectName.localeCompare(b.projectName);
+      }
+      return a.startOffset - b.startOffset;
+  });
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
+  const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
-      const projectData = payload[0].payload;
-      const project = projects.find(p => p.id === projectData.id);
-      if (!project) return null;
-
+      const itemData = payload[0].payload;
       return (
         <div className="p-2 bg-card border rounded-md shadow-lg">
-          <p className="font-bold">{label}</p>
-          <p className="text-sm text-muted-foreground">Start: {format(parseISO(project.startDate.toString()), 'MMM dd, yyyy')}</p>
-          <p className="text-sm text-muted-foreground">End: {format(parseISO(project.endDate.toString()), 'MMM dd, yyyy')}</p>
-          <p className="text-sm text-muted-foreground">Duration: {projectData.duration} days</p>
+          <p className="font-bold">{itemData.projectName}</p>
+          <p className="text-sm font-semibold">{itemData.milestoneTitle}</p>
+          <p className="text-sm text-muted-foreground">Start: {format(parseISO(itemData.startDate.toString()), 'MMM dd, yyyy')}</p>
+          <p className="text-sm text-muted-foreground">Due: {format(parseISO(itemData.dueDate.toString()), 'MMM dd, yyyy')}</p>
+          <p className="text-sm text-muted-foreground">Duration: {itemData.duration} days</p>
         </div>
       );
     }
     return null;
   };
 
-  const chartHeight = projects.length * 60 + 80; // Dynamically calculate height
+  const chartHeight = data.length * 60 + 80;
 
   return (
     <div style={{ width: '100%', height: chartHeight }}>
@@ -94,7 +119,7 @@ export function ProjectsGanttChart({ projects }: { projects: Project[] }) {
         >
           <CartesianGrid strokeDasharray="3 3" horizontal={false} />
           <XAxis type="number" domain={['dataMin', 'dataMax']} label={{ value: `Days from ${format(chartStartDate, 'MMM dd, yyyy')}`, position: 'insideBottom', offset: 0 }} height={50} />
-          <YAxis dataKey="name" type="category" width={200} tick={<CustomYAxisTick projects={projects} />} interval={0} />
+          <YAxis dataKey="name" type="category" width={300} tick={<CustomYAxisTick data={data} />} interval={0} />
           <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsl(var(--card))'}}/>
           <Bar dataKey="startOffset" stackId="a" fill="transparent" />
           <Bar dataKey="duration" stackId="a" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]} />

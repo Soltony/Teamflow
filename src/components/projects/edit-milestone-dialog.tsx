@@ -29,7 +29,6 @@ import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import type { Milestone, Department } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
 import { useEffect, useMemo } from "react";
 import {
     DropdownMenu,
@@ -53,9 +52,13 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
     return z.object({
       title: z.string().min(3, "Title must be at least 3 characters."),
       description: z.string().min(10, "Description must be at least 10 characters."),
+      startDate: z.date(),
       dueDate: z.date(),
       weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
       responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
+    }).refine(data => data.dueDate >= data.startDate, {
+        message: "Due date must be on or after start date.",
+        path: ["dueDate"],
     }).superRefine((data, ctx) => {
         const weightOfOtherMilestones = projectMilestones
           .filter(m => m.id !== milestone.id)
@@ -84,6 +87,7 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
       form.reset({
         title: milestone.title,
         description: milestone.description,
+        startDate: parseISO(milestone.startDate),
         dueDate: parseISO(milestone.dueDate),
         weight: milestone.weight,
         responsibleDepartmentIds: milestone.responsibleDepartmentIds,
@@ -95,14 +99,17 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
     const updatedMilestone = {
       ...milestone,
       ...data,
+      startDate: data.startDate.toISOString(),
       dueDate: data.dueDate.toISOString(),
     };
     await onMilestoneUpdate(updatedMilestone as Milestone);
   }
 
+  const selectedDepts = departments.filter(dept => form.watch('responsibleDepartmentIds')?.includes(dept.id));
+
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg">
         <DialogHeader>
           <DialogTitle>Edit Milestone</DialogTitle>
           <DialogDescription>Make changes to your milestone here. The total weight of all milestones must equal 100%.</DialogDescription>
@@ -135,35 +142,66 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name="dueDate"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Due Date</FormLabel>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <FormControl>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full pl-3 text-left font-normal",
-                            !field.value && "text-muted-foreground"
-                          )}
-                        >
-                          {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                        </Button>
-                      </FormControl>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
-                      <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                    </PopoverContent>
-                  </Popover>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <div className="grid grid-cols-2 gap-4">
+                <FormField
+                control={form.control}
+                name="startDate"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel>Start Date</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                            )}
+                            >
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+                <FormField
+                control={form.control}
+                name="dueDate"
+                render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                    <FormLabel>Due Date</FormLabel>
+                    <Popover>
+                        <PopoverTrigger asChild>
+                        <FormControl>
+                            <Button
+                            variant={"outline"}
+                            className={cn(
+                                "w-full pl-3 text-left font-normal",
+                                !field.value && "text-muted-foreground"
+                            )}
+                            >
+                            {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                            </Button>
+                        </FormControl>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                        </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            </div>
              <FormField
                 control={form.control}
                 name="weight"
@@ -180,47 +218,44 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
             <FormField
                 control={form.control}
                 name="responsibleDepartmentIds"
-                render={({ field }) => {
-                    const selectedDepts = departments.filter(dept => field.value?.includes(dept.id));
-                    return (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Responsible Departments</FormLabel>
-                        <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                            <FormControl>
-                            <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
-                                {selectedDepts.length > 0
-                                    ? selectedDepts.map(d => d.name).join(', ')
-                                    : "Select departments..."}
-                                <ChevronDown className="ml-auto h-4 w-4" />
-                            </Button>
-                            </FormControl>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                            {departments.map((dept) => (
-                            <DropdownMenuCheckboxItem
-                                key={dept.id}
-                                checked={field.value?.includes(dept.id)}
-                                onCheckedChange={(checked) => {
-                                const newValues = field.value ? [...field.value] : [];
-                                if (checked) {
-                                    newValues.push(dept.id);
-                                } else {
-                                    const idx = newValues.indexOf(dept.id);
-                                    if (idx > -1) newValues.splice(idx, 1);
-                                }
-                                field.onChange(newValues);
-                                }}
-                            >
-                                {dept.name}
-                            </DropdownMenuCheckboxItem>
-                            ))}
-                        </DropdownMenuContent>
-                        </DropdownMenu>
-                        <FormMessage />
-                    </FormItem>
-                    )
-                }}
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                      <FormLabel>Responsible Departments</FormLabel>
+                      <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                          <FormControl>
+                          <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
+                              {selectedDepts.length > 0
+                                  ? selectedDepts.map(d => d.name).join(', ')
+                                  : "Select departments..."}
+                              <ChevronDown className="ml-auto h-4 w-4" />
+                          </Button>
+                          </FormControl>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                          {departments.map((dept) => (
+                          <DropdownMenuCheckboxItem
+                              key={dept.id}
+                              checked={field.value?.includes(dept.id)}
+                              onCheckedChange={(checked) => {
+                              const newValues = field.value ? [...field.value] : [];
+                              if (checked) {
+                                  newValues.push(dept.id);
+                              } else {
+                                  const idx = newValues.indexOf(dept.id);
+                                  if (idx > -1) newValues.splice(idx, 1);
+                              }
+                              field.onChange(newValues);
+                              }}
+                          >
+                              {dept.name}
+                          </DropdownMenuCheckboxItem>
+                          ))}
+                      </DropdownMenuContent>
+                      </DropdownMenu>
+                      <FormMessage />
+                  </FormItem>
+                )}
             />
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>

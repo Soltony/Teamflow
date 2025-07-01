@@ -14,6 +14,7 @@ export async function createProject(data: any) {
                 create: milestones.map((m: any) => ({
                     title: m.title,
                     description: m.description,
+                    startDate: m.startDate,
                     dueDate: m.dueDate,
                     weight: m.weight,
                     responsibleDepartments: {
@@ -29,6 +30,7 @@ export async function createProject(data: any) {
 
     revalidatePath('/dashboard');
     revalidatePath('/projects');
+    revalidatePath('/gantt');
 }
 
 
@@ -68,6 +70,7 @@ export async function updateMilestone(milestoneId: string, projectId: string, da
         }
     });
     revalidatePath(`/projects/${projectId}/milestones`);
+    revalidatePath('/gantt');
 }
 
 export async function addTask(milestoneId: string, projectId: string, data: any) {
