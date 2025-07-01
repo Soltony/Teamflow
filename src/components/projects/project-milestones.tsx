@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState } from "react";
@@ -77,21 +78,9 @@ export function ProjectMilestones({ initialProject }: ProjectMilestonesProps) {
                       return (
                           <AccordionItem value={milestone.id} key={milestone.id}>
                               <AccordionTrigger>
-                                  <div className="flex-1 flex justify-between items-center pr-2">
-                                      <div className="flex flex-col items-start text-left gap-2">
-                                          <span className="font-semibold">{milestone.title}</span>
-                                          <div className="flex flex-wrap items-center gap-2">
-                                              <Badge variant="outline">
-                                                  Weight: {milestone.weight}%
-                                              </Badge>
-                                              <Badge variant="outline">
-                                                  Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
-                                              </Badge>
-                                              {responsibleDepts.map(dept => (
-                                                  <Badge key={dept.id} variant="secondary">{dept.name}</Badge>
-                                              ))}
-                                          </div>
-                                      </div>
+                                <div className="flex flex-1 flex-col items-start gap-3 text-left">
+                                  <div className="flex w-full items-start justify-between gap-4">
+                                      <span className="font-semibold text-base flex-1">{milestone.title}</span>
                                       <Button 
                                           variant="ghost" 
                                           size="icon" 
@@ -99,24 +88,37 @@ export function ProjectMilestones({ initialProject }: ProjectMilestonesProps) {
                                               e.stopPropagation(); 
                                               setEditingMilestone(milestone) 
                                           }}
-                                          className="h-8 w-8"
+                                          className="h-8 w-8 shrink-0"
                                       >
                                           <Pencil className="w-4 h-4" />
                                           <span className="sr-only">Edit Milestone</span>
                                       </Button>
                                   </div>
-                              </AccordionTrigger>
-                              <AccordionContent className="space-y-4">
-                                  <p className="text-muted-foreground">{milestone.description}</p>
                                   
-                                  <div className="space-y-1">
-                                      <div className="flex justify-between items-center">
-                                        <span className="text-sm font-medium">Milestone Progress</span>
-                                        <span className="text-sm font-medium text-primary">{completedTaskWeight}%</span>
+                                  <div className="w-full space-y-1">
+                                      <div className="flex justify-between text-xs text-muted-foreground">
+                                          <span>Milestone Progress</span>
+                                          <span className="font-semibold">{completedTaskWeight}%</span>
                                       </div>
                                       <Progress value={completedTaskWeight} className="h-2" />
                                   </div>
 
+                                  <div className="flex flex-wrap items-center gap-2">
+                                      <Badge variant="outline">
+                                          Weight: {milestone.weight}%
+                                      </Badge>
+                                      <Badge variant="outline">
+                                          Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
+                                      </Badge>
+                                      {responsibleDepts.map(dept => (
+                                          <Badge key={dept.id} variant="secondary">{dept.name}</Badge>
+                                      ))}
+                                  </div>
+                                </div>
+                              </AccordionTrigger>
+                              <AccordionContent className="space-y-4">
+                                  <p className="text-muted-foreground">{milestone.description}</p>
+                                  
                                   <div className="flex justify-between items-center pt-2">
                                       <h4 className="font-semibold">Tasks</h4>
                                       <Button onClick={() => setAddingTaskToMilestone(milestone)}>
