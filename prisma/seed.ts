@@ -141,7 +141,7 @@ async function main() {
                 create: {
                     id: update.id,
                     text: update.text,
-                    type: update.type?.replace('-', '_').toUpperCase() as any,
+                    type: (update.type ?? 'comment').replace('-', '_').toUpperCase() as any,
                     createdAt: new Date(update.createdAt),
                     author: { connect: { id: update.userId } },
                     task: { connect: { id: task.id } }
