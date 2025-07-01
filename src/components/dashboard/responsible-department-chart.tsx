@@ -14,6 +14,14 @@ import {
 import type { Department } from "@/lib/types";
 
 export function ResponsibleDepartmentChart({ projects, departments }: { projects: any[], departments: Department[] }) {
+  if (!projects || !departments) {
+    return (
+      <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
+        Loading chart data...
+      </div>
+    );
+  }
+  
   const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 
   const milestonesByDept = projects.reduce((acc, project) => {

@@ -13,6 +13,14 @@ import {
 import type { Project, ProjectStatus } from "@/lib/types";
 
 export function ProjectStatusChart({ projects, projectStatuses }: { projects: Project[], projectStatuses: ProjectStatus[] }) {
+  if (!projects || !projectStatuses) {
+    return (
+      <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
+        Loading chart data...
+      </div>
+    );
+  }
+
   const statusMap = new Map(projectStatuses.map((s) => [s.id, s.name]));
 
   const projectsByStatus = projects.reduce((acc, project) => {

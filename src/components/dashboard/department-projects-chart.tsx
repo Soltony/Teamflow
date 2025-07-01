@@ -13,6 +13,14 @@ import {
 import type { Department, Project } from "@/lib/types";
 
 export function DepartmentProjectsChart({ projects, departments }: { projects: Project[], departments: Department[] }) {
+  if (!projects || !departments) {
+    return (
+      <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
+        Loading chart data...
+      </div>
+    );
+  }
+
   const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 
   const projectsByDept = projects.reduce((acc, project) => {
