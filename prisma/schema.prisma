@@ -1,0 +1,164 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ENUMS
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  PENDING_REVIEW
+  DONE
+}
+
+enum BlockerStatus {
+  OPEN
+  RESOLVED
+}
+
+enum TaskUpdateType {
+  COMMENT
+  STATUS_CHANGE
+}
+
+
+// MODELS
+
+model User {
+  id              String       @id @default(cuid())
+  name            String
+  avatar          String
+  phone           String?
+  
+  // Relations
+  ledTeams        Team[]       @relation("TeamLead")
+  teams           Team[]       @relation("TeamMembers")
+  managedProjects Project[]    @relation("ProjectManager")
+  assignedTasks   Task[]       @relation("TaskAssignees")
+  taskUpdates     TaskUpdate[]
+}
+
+model Team {
+  id         String   @id @default(cuid())
+  name       String
+  
+  // Relations
+  project    Project  @relation(fields: [projectId], references: [id])
+  projectId  String
+  
+  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  teamLeadId String
+  
+  members    User[]   @relation("TeamMembers")
+}
+
+model Project {
+  id               String      @id @default(cuid())
+  name             String
+  description      String
+  startDate        DateTime
+  endDate          DateTime
+  workingYear      String
+  
+  // Relations
+  status           ProjectStatus @relation(fields: [statusId], references: [id])
+  statusId         String
+  
+  owningDepartment Department  @relation(fields: [departmentId], references: [id])
+  departmentId     String
+  
+  projectManager   User        @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  projectManagerId String
+  
+  teams            Team[]
+  milestones       Milestone[]
+  blockers         Blocker[]
+}
+
+model ProjectStatus {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  
+  // Relations
+  projects Project[]
+}
+
+model Department {
+  id                   String      @id @default(cuid())
+  name                 String      @unique
+  responsibleName      String
+  responsibleTitle     String
+  responsiblePhone     String
+  
+  // Relations
+  ownedProjects          Project[]
+  responsibleForMilestones Milestone[]
+}
+
+model Milestone {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  dueDate     DateTime
+  weight      Int
+  
+  // Relations
+  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   String
+  
+  tasks       Task[]
+  responsibleDepartments Department[]
+}
+
+model Task {
+  id            String      @id @default(cuid())
+  title         String
+  description   String
+  status        TaskStatus  @default(TODO)
+  startDate     DateTime
+  endDate       DateTime
+  weight        Int
+  completedAt   DateTime?
+  
+  // Relations
+  milestone     Milestone   @relation(fields: [milestoneId], references: [id])
+  milestoneId   String
+  
+  assignees     User[]      @relation("TaskAssignees")
+  updates       TaskUpdate[]
+}
+
+model TaskUpdate {
+  id        String         @id @default(cuid())
+  text      String
+  createdAt DateTime       @default(now())
+  type      TaskUpdateType @default(COMMENT)
+  
+  // Relations
+  author    User           @relation(fields: [userId], references: [id])
+  userId    String
+  
+  task      Task           @relation(fields: [taskId], references: [id])
+  taskId    String
+}
+
+model Blocker {
+  id          String        @id @default(cuid())
+  description String
+  status      BlockerStatus @default(OPEN)
+  createdAt   DateTime      @default(now())
+  resolvedAt  DateTime?
+  resolution  String?
+  
+  // Relations
+  project     Project       @relation(fields: [projectId], references: [id])
+  projectId   String
+}
