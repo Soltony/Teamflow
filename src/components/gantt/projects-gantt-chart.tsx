@@ -42,7 +42,7 @@ export function ProjectsGanttChart({ projects }: { projects: any[] }) {
   }
 
   const allMilestones = projects.flatMap(p => 
-      p.milestones.map((m: any) => ({
+      (p.milestones || []).map((m: any) => ({
           ...m,
           projectId: p.id,
           projectName: p.name,
