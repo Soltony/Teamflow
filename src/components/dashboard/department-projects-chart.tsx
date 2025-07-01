@@ -10,10 +10,9 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { departments } from "@/lib/data";
-import type { Project } from "@/lib/types";
+import type { Department, Project } from "@/lib/types";
 
-export function DepartmentProjectsChart({ projects }: { projects: Project[] }) {
+export function DepartmentProjectsChart({ projects, departments }: { projects: Project[], departments: Department[] }) {
   const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 
   const projectsByDept = projects.reduce((acc, project) => {

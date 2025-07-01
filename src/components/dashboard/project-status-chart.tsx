@@ -10,10 +10,9 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { projectStatuses } from "@/lib/data";
-import type { Project } from "@/lib/types";
+import type { Project, ProjectStatus } from "@/lib/types";
 
-export function ProjectStatusChart({ projects }: { projects: Project[] }) {
+export function ProjectStatusChart({ projects, projectStatuses }: { projects: Project[], projectStatuses: ProjectStatus[] }) {
   const statusMap = new Map(projectStatuses.map((s) => [s.id, s.name]));
 
   const projectsByStatus = projects.reduce((acc, project) => {

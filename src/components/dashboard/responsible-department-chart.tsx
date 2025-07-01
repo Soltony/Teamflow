@@ -11,18 +11,19 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import { departments } from "@/lib/data";
-import type { Project } from "@/lib/types";
+import type { Department } from "@/lib/types";
 
-export function ResponsibleDepartmentChart({ projects }: { projects: Project[] }) {
+export function ResponsibleDepartmentChart({ projects, departments }: { projects: any[], departments: Department[] }) {
   const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 
   const milestonesByDept = projects.reduce((acc, project) => {
-      project.milestones.forEach(milestone => {
-          milestone.responsibleDepartmentIds.forEach(deptId => {
-              const deptName = departmentMap.get(deptId) || "Unknown Department";
-              acc[deptName] = (acc[deptName] || 0) + 1;
-          })
+      project.milestones.forEach((milestone: any) => {
+          if (milestone.responsibleDepartments) {
+            milestone.responsibleDepartments.forEach((dept: any) => {
+                const deptName = departmentMap.get(dept.id) || "Unknown Department";
+                acc[deptName] = (acc[deptName] || 0) + 1;
+            })
+          }
       });
       return acc;
   }, {} as Record<string, number>);

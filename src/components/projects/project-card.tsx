@@ -3,14 +3,14 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import type { Project } from '@/lib/types';
-import { projectStatuses } from '@/lib/data';
+import type { Project, ProjectStatus } from '@/lib/types';
 
 type ProjectCardProps = {
   project: Project;
+  projectStatuses: ProjectStatus[];
 };
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({ project, projectStatuses }: ProjectCardProps) {
   const allTasks = project.milestones.flatMap(m => m.tasks);
   const completedTasks = allTasks.filter(task => task.status === 'done').length;
 
