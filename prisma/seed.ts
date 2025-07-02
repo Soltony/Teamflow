@@ -22,10 +22,12 @@ async function main() {
           create: {
             id: user.id, // using predefined IDs from data
             name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
             email: user.email,
             password: 'password123', // In a real app, this should be hashed
             avatar: user.avatar,
-            phone: user.phone,
+            phoneNumber: user.phoneNumber,
           }
       });
       userMap.set(createdUser.email, createdUser.id);

@@ -192,10 +192,10 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                                       {team.teamLead && (
                                           <div className="text-sm text-muted-foreground mt-1">
                                               <p className="font-medium">Lead: {team.teamLead.name}</p>
-                                              {team.teamLead.phone && (
-                                                  <a href={`tel:${team.teamLead.phone}`} className="flex items-center gap-1.5 hover:text-primary">
+                                              {team.teamLead.phoneNumber && (
+                                                  <a href={`tel:${team.teamLead.phoneNumber}`} className="flex items-center gap-1.5 hover:text-primary">
                                                       <Phone className="w-3 h-3"/>
-                                                      {team.teamLead.phone}
+                                                      {team.teamLead.phoneNumber}
                                                   </a>
                                               )}
                                           </div>

@@ -1,11 +1,11 @@
 
 export const users = [
-  { id: 'user-1', name: 'Alice Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phone: '123-456-7890' },
-  { id: 'user-2', name: 'Bob Williams', email: 'bob.williams@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-2', phone: '234-567-8901' },
-  { id: 'user-3', name: 'Charlie Brown', email: 'charlie.brown@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-3', phone: '345-678-9012' },
-  { id: 'user-4', name: 'Diana Miller', email: 'diana.miller@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-4', phone: '456-789-0123' },
-  { id: 'user-5', name: 'Ethan Davis', email: 'ethan.davis@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-5', phone: '567-890-1234' },
-  { id: 'user-6', name: 'Fiona Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phone: '678-901-2345' },
+  { id: 'user-1', name: 'Alice Johnson', firstName: 'Alice', lastName: 'Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phoneNumber: '123-456-7890' },
+  { id: 'user-2', name: 'Bob Williams', firstName: 'Bob', lastName: 'Williams', email: 'bob.williams@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-2', phoneNumber: '234-567-8901' },
+  { id: 'user-3', name: 'Charlie Brown', firstName: 'Charlie', lastName: 'Brown', email: 'charlie.brown@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-3', phoneNumber: '345-678-9012' },
+  { id: 'user-4', name: 'Diana Miller', firstName: 'Diana', lastName: 'Miller', email: 'diana.miller@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-4', phoneNumber: '456-789-0123' },
+  { id: 'user-5', name: 'Ethan Davis', firstName: 'Ethan', lastName: 'Davis', email: 'ethan.davis@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-5', phoneNumber: '567-890-1234' },
+  { id: 'user-6', name: 'Fiona Garcia', firstName: 'Fiona', lastName: 'Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phoneNumber: '678-901-2345' },
 ];
 
 export const departments = [
