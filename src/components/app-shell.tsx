@@ -6,7 +6,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   FolderKanban,
-  GanttChartSquare,
+  School,
   Home,
   PanelLeft,
   Settings,
@@ -15,6 +15,7 @@ import {
   Milestone,
   ClipboardCheck,
   ClipboardList,
+  GanttChartSquare,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 
@@ -62,8 +63,8 @@ function AppSidebar({ className }: { className?: string }) {
     <Sidebar className={className}>
       <SidebarHeader>
         <div className="flex items-center gap-2">
-          <GanttChartSquare className="w-8 h-8 text-primary" />
-          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-primary truncate">TeamFlow</h1>}
+          <School className="w-8 h-8 text-primary" />
+          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-primary truncate">Greenwood High</h1>}
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -115,24 +116,48 @@ function AppSidebar({ className }: { className?: string }) {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isMobile, toggleSidebar, isOpen, mounted } = useSidebar();
-  const { theme } = useTheme();
 
-  const sidebarAndHeaderClasses = mounted && theme === 'light' ? 'dark' : '';
+  if (!mounted) {
+    // Render a placeholder or null to avoid hydration mismatch
+    return (
+       <div
+        className={cn(
+            "min-h-screen w-full",
+            "pl-[56px]", // Use a fixed value for SSR
+            "transition-all duration-300 ease-in-out"
+        )}
+        >
+            <aside className={cn("fixed left-0 top-0 z-20 h-screen border-r bg-background transition-[width] duration-300 ease-in-out", "w-[56px]")}>
+                {/* Simplified sidebar for SSR */}
+            </aside>
+             <div className="flex flex-col">
+                <header className="sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6">
+                     <Button variant="ghost" size="icon" disabled>
+                        <PanelLeft className="w-6 h-6" />
+                     </Button>
+                     <div className="ml-auto">
+                        <ThemeToggle />
+                    </div>
+                </header>
+                <main className="flex-1 overflow-auto">{children}</main>
+            </div>
+       </div>
+    );
+  }
 
   return (
     <div
       className={cn(
         "min-h-screen w-full",
-        mounted && !isMobile && (isOpen ? "pl-[280px]" : "pl-[56px]"),
+        !isMobile && (isOpen ? "pl-[280px]" : "pl-[56px]"),
         "transition-all duration-300 ease-in-out"
       )}
     >
-      <AppSidebar className={sidebarAndHeaderClasses} />
+      <AppSidebar />
       <div className="flex flex-col">
         <header
           className={cn(
-            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6",
-            sidebarAndHeaderClasses
+            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6"
           )}
         >
           <Button
