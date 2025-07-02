@@ -72,7 +72,7 @@ type AssignRolesFormValues = z.infer<typeof assignRolesSchema>;
 const addUserSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
   lastName: z.string().min(1, "Last name is required."),
-  email: z.string().email("Invalid email address."),
+  email: z.string().email("Invalid email address.").optional().or(z.literal('')),
   phoneNumber: z.string().min(1, "Phone number is required."),
   roleIds: z.array(z.string()).optional(),
 });
@@ -196,7 +196,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
               {initialUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
-                  <TableCell>{user.email}</TableCell>
+                  <TableCell>{user.email ?? 'N/A'}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                         {user.roles.map(role => (
@@ -292,11 +292,11 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                         <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
-                <FormField control={addUserForm.control} name="email" render={({ field }) => (
-                    <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
                 <FormField control={addUserForm.control} name="phoneNumber" render={({ field }) => (
                     <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="123-456-7890" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={addUserForm.control} name="email" render={({ field }) => (
+                    <FormItem><FormLabel>Email (Optional)</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField
                     control={addUserForm.control}
@@ -369,5 +369,3 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
     </>
   );
 }
-
-    

@@ -22,14 +22,16 @@ export async function assignRolesToUser(userId: string, roleIds: string[]) {
     }
 }
 
-export async function createUser(data: { firstName: string, lastName: string, email: string, phoneNumber?: string, roleIds: string[] }) {
+export async function createUser(data: { firstName: string, lastName: string, email?: string | null, phoneNumber: string, roleIds: string[] }) {
     try {
-        const existingUser = await prisma.user.findUnique({
-            where: { email: data.email }
-        });
+        if (data.email) {
+            const existingUser = await prisma.user.findUnique({
+                where: { email: data.email }
+            });
 
-        if (existingUser) {
-            return { success: false, error: "A user with this email already exists." };
+            if (existingUser) {
+                return { success: false, error: "A user with this email already exists." };
+            }
         }
 
         await prisma.user.create({
@@ -37,7 +39,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
                 firstName: data.firstName,
                 lastName: data.lastName,
                 name: `${data.firstName} ${data.lastName}`,
-                email: data.email,
+                email: data.email || null,
                 phoneNumber: data.phoneNumber,
                 roles: {
                     connect: data.roleIds.map(id => ({ id }))
