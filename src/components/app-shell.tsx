@@ -4,6 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme } from "next-themes";
 import {
   FolderKanban,
   GanttChartSquare,
@@ -55,10 +56,15 @@ const menuItems = [
 
 function AppSidebar() {
   const pathname = usePathname();
+  const { theme } = useTheme();
   const { isOpen, isMobile } = useSidebar();
 
   return (
-    <Sidebar>
+    <Sidebar
+      className={cn({
+        dark: theme === "light",
+      })}
+    >
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <GanttChartSquare className="w-8 h-8 text-primary" />
@@ -114,6 +120,7 @@ function AppSidebar() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isMobile, toggleSidebar, isOpen } = useSidebar();
+  const { theme } = useTheme();
   return (
     <div
       className={cn(
@@ -124,7 +131,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     >
       <AppSidebar />
       <div className="flex flex-col">
-        <header className="sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6">
+        <header
+          className={cn(
+            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6",
+            {
+              dark: theme === "light",
+            }
+          )}
+        >
           <Button
             variant="ghost"
             size="icon"
