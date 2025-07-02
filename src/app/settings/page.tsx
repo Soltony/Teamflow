@@ -14,6 +14,11 @@ export default async function SettingsPage() {
     orderBy: { name: 'asc' }
   });
 
+  const activeYearSetting = await prisma.setting.findUnique({
+      where: { key: 'activeWorkingYear' },
+  });
+  const currentActiveYear = activeYearSetting?.value || "";
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
        <Card>
@@ -25,7 +30,10 @@ export default async function SettingsPage() {
           <ProjectStatusManagement initialStatuses={JSON.parse(JSON.stringify(projectStatuses))} />
         </CardContent>
       </Card>
-      <ActiveYearManagement availableYears={availableYears} />
+      <ActiveYearManagement 
+        availableYears={availableYears} 
+        currentActiveYear={currentActiveYear}
+      />
     </div>
   );
 }

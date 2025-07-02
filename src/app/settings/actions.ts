@@ -42,3 +42,20 @@ export async function deleteProjectStatus(id: string) {
         return { success: false, error: "Failed to delete status." };
     }
 }
+
+export async function updateActiveWorkingYear(year: string) {
+    try {
+        await prisma.setting.upsert({
+            where: { key: 'activeWorkingYear' },
+            update: { value: year },
+            create: { key: 'activeWorkingYear', value: year },
+        });
+        revalidatePath('/settings');
+        revalidatePath('/dashboard');
+        revalidatePath('/projects/new');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update active year:", error);
+        return { success: false, error: "Failed to update active working year." };
+    }
+}

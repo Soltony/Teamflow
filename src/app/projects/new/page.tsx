@@ -4,9 +4,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import prisma from "@/lib/db";
 
 export default async function NewProjectPage() {
-  const users = await prisma.user.findMany();
-  const departments = await prisma.department.findMany();
-  const projectStatuses = await prisma.projectStatus.findMany();
+  const [users, departments, projectStatuses, activeYearSetting] = await Promise.all([
+    prisma.user.findMany(),
+    prisma.department.findMany(),
+    prisma.projectStatus.findMany(),
+    prisma.setting.findUnique({ where: { key: 'activeWorkingYear' } }),
+  ]);
+  
+  const activeYear = activeYearSetting?.value || "";
 
   return (
     <div className="p-4 sm:p-6">
@@ -22,6 +27,7 @@ export default async function NewProjectPage() {
               users={JSON.parse(JSON.stringify(users))}
               departments={JSON.parse(JSON.stringify(departments))}
               projectStatuses={JSON.parse(JSON.stringify(projectStatuses))}
+              activeYear={activeYear}
             />
         </CardContent>
       </Card>

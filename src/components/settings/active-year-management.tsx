@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -22,6 +22,7 @@ import {
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
+import { updateActiveWorkingYear } from "@/app/settings/actions";
 
 const activeYearSchema = z.object({
   activeYear: z.string().nonempty("Please select an active year."),
@@ -29,30 +30,43 @@ const activeYearSchema = z.object({
 
 type ActiveYearFormValues = z.infer<typeof activeYearSchema>;
 
-export function ActiveYearManagement({ availableYears }: { availableYears: string[] }) {
+type ActiveYearManagementProps = {
+  availableYears: string[];
+  currentActiveYear: string;
+};
+
+export function ActiveYearManagement({ availableYears, currentActiveYear }: ActiveYearManagementProps) {
   const { toast } = useToast();
-  const [currentActiveYear, setCurrentActiveYear] = useState<string>("");
-  
+  const [isPending, startTransition] = useTransition();
+
   const form = useForm<ActiveYearFormValues>({
     resolver: zodResolver(activeYearSchema),
     defaultValues: {
-      activeYear: "",
+      activeYear: currentActiveYear,
     },
   });
-  
-  useEffect(() => {
-    const storedYear = localStorage.getItem("activeWorkingYear") || "";
-    setCurrentActiveYear(storedYear);
-    form.setValue("activeYear", storedYear);
-  }, [form]);
 
+  useEffect(() => {
+    form.setValue("activeYear", currentActiveYear);
+  }, [currentActiveYear, form]);
 
   function onSubmit(data: ActiveYearFormValues) {
-    localStorage.setItem("activeWorkingYear", data.activeYear);
-    setCurrentActiveYear(data.activeYear);
-    toast({
-      title: "Active Year Updated!",
-      description: `The default active working year has been set to ${data.activeYear}.`,
+    startTransition(async () => {
+      const result = await updateActiveWorkingYear(data.activeYear);
+      if (result.success) {
+        toast({
+          title: "Active Year Updated!",
+          description: `The default active working year has been set to ${data.activeYear}.`,
+        });
+        // This is kept for client-side components that might need immediate feedback without a full page reload.
+        localStorage.setItem("activeWorkingYear", data.activeYear);
+      } else {
+        toast({
+          title: "Error",
+          description: result.error,
+          variant: "destructive",
+        });
+      }
     });
   }
 
@@ -61,7 +75,7 @@ export function ActiveYearManagement({ availableYears }: { availableYears: strin
       <CardHeader>
         <CardTitle>Active Working Year</CardTitle>
         <CardDescription>
-          Set the default working year that will be displayed on the dashboard when the app loads.
+          Set the default working year that will be displayed on the dashboard when the app loads. This setting is shared across all users.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -73,7 +87,7 @@ export function ActiveYearManagement({ availableYears }: { availableYears: strin
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Default Active Year</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value || ""}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder="Select a year to be the default" />
@@ -91,7 +105,9 @@ export function ActiveYearManagement({ availableYears }: { availableYears: strin
                 </FormItem>
               )}
             />
-            <Button type="submit">Save Default Year</Button>
+            <Button type="submit" disabled={isPending}>
+              {isPending ? "Saving..." : "Save Default Year"}
+            </Button>
           </form>
         </Form>
         {currentActiveYear && (

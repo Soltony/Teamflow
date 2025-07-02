@@ -41,7 +41,6 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
 import { Separator } from "../ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from "react";
 import type { User, Department, ProjectStatus } from "@prisma/client";
 import { createProject } from "@/app/projects/actions";
 import { useRouter } from "next/navigation";
@@ -87,9 +86,10 @@ type ProjectFormProps = {
   users: User[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
+  activeYear: string;
 }
 
-export function ProjectForm({ users, departments, projectStatuses }: ProjectFormProps) {
+export function ProjectForm({ users, departments, projectStatuses, activeYear }: ProjectFormProps) {
   const { toast } = useToast();
   const router = useRouter();
 
@@ -98,20 +98,13 @@ export function ProjectForm({ users, departments, projectStatuses }: ProjectForm
     defaultValues: {
       name: "",
       description: "",
-      workingYear: "",
+      workingYear: activeYear,
       statusId: "",
       departmentId: "",
       projectManagerId: "",
       milestones: [],
     },
   });
-
-  useEffect(() => {
-    const activeYear = localStorage.getItem("activeWorkingYear");
-    if (activeYear) {
-      form.setValue("workingYear", activeYear);
-    }
-  }, [form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
