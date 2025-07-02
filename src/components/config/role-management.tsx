@@ -39,15 +39,31 @@ import { Input } from "../ui/input";
 import { Textarea } from "../ui/textarea";
 import { Separator } from "../ui/separator";
 import { createRole, deleteRole, updateRole } from "@/app/config/actions";
+import { Checkbox } from "../ui/checkbox";
+import { ScrollArea } from "../ui/scroll-area";
 
 type RoleManagementProps = {
   initialRoles: Role[];
 };
 
+const availablePermissions: Record<string, string[]> = {
+    'Dashboard': ['dashboard:view'],
+    'My Tasks': ['my-tasks:view'],
+    'Team View': ['team-view:view', 'team-view:manage'],
+    'Projects': ['projects:create', 'projects:read', 'projects:update', 'projects:delete'],
+    'Milestones': ['milestones:view'],
+    'Gantt': ['gantt:view'],
+    'Departments': ['departments:create', 'departments:read', 'departments:update', 'departments:delete'],
+    'Teams': ['teams:create', 'teams:read', 'teams:update', 'teams:delete'],
+    'Settings': ['settings:manage'],
+    'Configuration': ['config:manage-users', 'config:manage-roles'],
+};
+
+
 const roleSchema = z.object({
   name: z.string().min(3, "Role name must be at least 3 characters."),
   description: z.string().optional(),
-  permissions: z.string().optional(),
+  permissions: z.array(z.string()).optional(),
 });
 
 type RoleFormValues = z.infer<typeof roleSchema>;
@@ -67,7 +83,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
 
   const handleAddNew = () => {
     setEditingRole(null);
-    form.reset({ name: "", description: "", permissions: "" });
+    form.reset({ name: "", description: "", permissions: [] });
     setIsDialogOpen(true);
   };
   
@@ -76,7 +92,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
     form.reset({
         name: role.name,
         description: role.description || "",
-        permissions: role.permissions.join(", "),
+        permissions: role.permissions,
     });
     setIsDialogOpen(true);
   };
@@ -104,8 +120,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
   };
 
   const onSubmit = (data: RoleFormValues) => {
-    const permissionsArray = data.permissions ? data.permissions.split(",").map(p => p.trim()).filter(Boolean) : [];
-    const submissionData = { ...data, permissions: permissionsArray };
+    const submissionData = { ...data, permissions: data.permissions || [] };
 
     startTransition(async () => {
       const result = isEditing && editingRole
@@ -180,7 +195,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
             <DialogHeader>
                 <DialogTitle>{isEditing ? "Edit Role" : "Create New Role"}</DialogTitle>
                 <DialogDescription>
@@ -218,19 +233,51 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
                     <FormField
                         control={form.control}
                         name="permissions"
-                        render={({ field }) => (
+                        render={() => (
                             <FormItem>
-                                <FormLabel>Permissions</FormLabel>
-                                <FormControl>
-                                    <Textarea placeholder="e.g., manage_billing, view_reports" {...field} />
-                                </FormControl>
-                                <FormDescription>
-                                    Enter a comma-separated list of permissions.
-                                </FormDescription>
-                                <FormMessage />
+                            <FormLabel>Permissions</FormLabel>
+                            <FormDescription>Select the permissions for this role.</FormDescription>
+                            <ScrollArea className="h-72 w-full rounded-md border p-4">
+                                <div className="space-y-4">
+                                    {Object.entries(availablePermissions).map(([groupName, permissions]) => (
+                                    <div key={groupName}>
+                                        <h4 className="font-medium text-sm mb-2">{groupName}</h4>
+                                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pl-2">
+                                        {permissions.map((permission) => (
+                                            <FormField
+                                            key={permission}
+                                            control={form.control}
+                                            name="permissions"
+                                            render={({ field }) => {
+                                                return (
+                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                                                    <FormControl>
+                                                    <Checkbox
+                                                        checked={field.value?.includes(permission)}
+                                                        onCheckedChange={(checked) => {
+                                                        return checked
+                                                            ? field.onChange([...(field.value || []), permission])
+                                                            : field.onChange(
+                                                                field.value?.filter((value) => value !== permission)
+                                                            );
+                                                        }}
+                                                    />
+                                                    </FormControl>
+                                                    <FormLabel className="font-normal text-sm">{permission.split(':')[1]}</FormLabel>
+                                                </FormItem>
+                                                );
+                                            }}
+                                            />
+                                        ))}
+                                        </div>
+                                    </div>
+                                    ))}
+                                </div>
+                            </ScrollArea>
+                            <FormMessage />
                             </FormItem>
                         )}
-                    />
+                        />
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isPending}>Cancel</Button>
                         <Button type="submit" disabled={isPending}>
