@@ -9,26 +9,26 @@ body {
 
 @layer base {
   :root {
-    --background: 40 60% 97%;
-    --foreground: 13 27% 20%;
+    --background: 50 100% 96%; /* Light Yellow */
+    --foreground: 25 30% 15%; /* Darker Brown */
     --card: 0 0% 100%;
-    --card-foreground: 13 27% 20%;
+    --card-foreground: 25 30% 15%;
     --popover: 0 0% 100%;
-    --popover-foreground: 13 27% 20%;
-    --primary: 42 100% 50%;
-    --primary-foreground: 25 30% 5%;
-    --secondary: 40 20% 94%;
-    --secondary-foreground: 13 27% 20%;
-    --muted: 40 20% 94%;
-    --muted-foreground: 13 20% 55%;
-    --accent: 40 20% 94%;
-    --accent-foreground: 13 27% 20%;
+    --popover-foreground: 25 30% 15%;
+    --primary: 45 90% 55%;
+    --primary-foreground: 45 90% 5%;
+    --secondary: 50 50% 92%;
+    --secondary-foreground: 25 30% 15%;
+    --muted: 50 50% 92%;
+    --muted-foreground: 25 20% 45%;
+    --accent: 50 50% 92%;
+    --accent-foreground: 25 30% 15%;
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 40 20% 90%;
+    --border: 50 30% 88%;
     --input: 0 0% 100%;
-    --ring: 42 100% 50%;
-    --chart-1: 42 100% 50%;
+    --ring: 45 90% 55%;
+    --chart-1: 45 90% 55%;
     --chart-2: 160 70% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 70% 60%;

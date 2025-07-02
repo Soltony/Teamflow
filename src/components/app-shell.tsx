@@ -114,7 +114,10 @@ function AppSidebar({ className }: { className?: string }) {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
+  const { theme } = useTheme();
   const { isMobile, toggleSidebar, isOpen, mounted } = useSidebar();
+  
+  const isLightFrame = mounted && theme === 'light';
 
   if (!mounted) {
     // Render a placeholder or null to avoid hydration mismatch
@@ -152,11 +155,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         "transition-all duration-300 ease-in-out"
       )}
     >
-      <AppSidebar />
+      <AppSidebar className={isLightFrame ? 'dark' : ''} />
       <div className="flex flex-col">
         <header
           className={cn(
-            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6"
+            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6",
+            isLightFrame && 'dark'
           )}
         >
           <Button
