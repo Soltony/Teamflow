@@ -1,28 +1,6 @@
 
 "use client";
 
-<<<<<<< HEAD
-import { useState, useTransition, useEffect } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
-import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-  FormDescription
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
-import type { Role } from "@prisma/client";
-import { useToast } from "@/hooks/use-toast";
-import { Pencil, Trash2 } from "lucide-react";
-=======
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -38,7 +16,6 @@ import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Role } from "@prisma/client";
->>>>>>> d1997e7eced32ba05aee3b3f4b5b652fab47b1f8
 import {
   AlertDialog,
   AlertDialogAction,
@@ -49,10 +26,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-<<<<<<< HEAD
-import { createRole, updateRole, deleteRole } from "@/app/config/actions";
-import { Textarea } from "../ui/textarea";
-=======
 import {
   Dialog,
   DialogContent,
@@ -70,83 +43,24 @@ import { createRole, deleteRole, updateRole } from "@/app/config/actions";
 type RoleManagementProps = {
   initialRoles: Role[];
 };
->>>>>>> d1997e7eced32ba05aee3b3f4b5b652fab47b1f8
 
 const roleSchema = z.object({
   name: z.string().min(3, "Role name must be at least 3 characters."),
   description: z.string().optional(),
-<<<<<<< HEAD
-  permissions: z.string().min(1, "At least one permission is required."),
-=======
   permissions: z.string().optional(),
->>>>>>> d1997e7eced32ba05aee3b3f4b5b652fab47b1f8
 });
 
 type RoleFormValues = z.infer<typeof roleSchema>;
 
-<<<<<<< HEAD
-export function RoleManagement({ initialRoles }: { initialRoles: Role[] }) {
-  const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
-  const [editingRole, setEditingRole] = useState<Role | null>(null);
-=======
 export function RoleManagement({ initialRoles }: RoleManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
->>>>>>> d1997e7eced32ba05aee3b3f4b5b652fab47b1f8
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
 
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleSchema),
-<<<<<<< HEAD
-    defaultValues: { name: "", description: "", permissions: "" },
-  });
-  
-  const isEditing = editingRole !== null;
-
-  useEffect(() => {
-    if (editingRole) {
-        form.reset({
-            name: editingRole.name,
-            description: editingRole.description || "",
-            permissions: editingRole.permissions.join(', '),
-        });
-    } else {
-        form.reset({ name: "", description: "", permissions: "" });
-    }
-  }, [editingRole, form]);
-
-
-  function onSubmit(data: RoleFormValues) {
-    const permissionsArray = data.permissions.split(',').map(p => p.trim()).filter(Boolean);
-    const roleData = { ...data, permissions: permissionsArray };
-
-    startTransition(async () => {
-      const result = isEditing
-        ? await updateRole(editingRole.id, roleData)
-        : await createRole(roleData);
-
-      if (result.success) {
-        toast({
-          title: isEditing ? "Role Updated!" : "Role Added!",
-          description: `The "${data.name}" role has been successfully saved.`,
-        });
-        setEditingRole(null);
-      } else {
-        toast({ title: "Error", description: result.error, variant: "destructive" });
-      }
-    });
-  }
-
-  function handleCancelEdit() {
-    setEditingRole(null);
-  }
-
-  function handleDeleteConfirm() {
-    if (!roleToDelete) return;
-=======
   });
 
   const isEditing = editingRole !== null;
@@ -175,7 +89,6 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
   const handleDeleteConfirm = () => {
     if (!roleToDelete) return;
 
->>>>>>> d1997e7eced32ba05aee3b3f4b5b652fab47b1f8
     startTransition(async () => {
       const result = await deleteRole(roleToDelete.id);
       if (result.success) {
@@ -188,121 +101,6 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
       }
       setRoleToDelete(null);
     });
-<<<<<<< HEAD
-  }
-
-  return (
-    <>
-      <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>{isEditing ? "Edit Role" : "Add New Role"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Role Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Administrator" {...field} disabled={isPending} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                   <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea placeholder="Describe what this role can do." {...field} disabled={isPending} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="permissions"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Permissions</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., manage:users, view:reports" {...field} disabled={isPending} />
-                        </FormControl>
-                        <FormDescription>
-                          Enter permissions separated by commas.
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="space-y-2 pt-2">
-                    <Button type="submit" className="w-full" disabled={isPending}>
-                      {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Role" : "Add Role")}
-                    </Button>
-                    {isEditing && (
-                      <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit} disabled={isPending}>
-                        Cancel
-                      </Button>
-                    )}
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="md:col-span-2">
-          <Card>
-            <CardHeader>
-              <CardTitle>Existing Roles</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {initialRoles.length === 0 && (
-                <p className="text-muted-foreground">No roles have been added yet.</p>
-              )}
-              {initialRoles.map((role, index) => (
-                <div key={role.id}>
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="font-semibold">{role.name}</h3>
-                      <p className="text-sm text-muted-foreground">{role.description}</p>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        Permissions: {role.permissions.join(', ')}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => setEditingRole(role)}>
-                        <Pencil className="w-4 h-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setRoleToDelete(role)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
-                    </div>
-                  </div>
-                  {index < initialRoles.length - 1 && <Separator className="my-4" />}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </div>
-      </div>
-
-=======
   };
 
   const onSubmit = (data: RoleFormValues) => {
@@ -310,7 +108,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
     const submissionData = { ...data, permissions: permissionsArray };
 
     startTransition(async () => {
-      const result = isEditing
+      const result = isEditing && editingRole
         ? await updateRole(editingRole.id, submissionData)
         : await createRole(submissionData);
 
@@ -444,7 +242,6 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
         </DialogContent>
       </Dialog>
       
->>>>>>> d1997e7eced32ba05aee3b3f4b5b652fab47b1f8
       <AlertDialog open={!!roleToDelete} onOpenChange={(open) => !open && setRoleToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
