@@ -9,32 +9,45 @@ generator client {
 }
 
 model User {
-  id               String       @id
+  id               String        @id
+  email            String        @unique
   name             String
   firstName        String
   lastName         String
-  email            String       @unique
   avatar           String?
   phoneNumber      String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
-  
-  roles            Role[]       @relation("UserRoles")
-  
-  managedProjects  Project[]    @relation("ManagedBy")
-  assignedTasks    Task[]       @relation("AssignedTo")
-  taskUpdates      TaskUpdate[] @relation("AuthoredBy")
-  
-  teams            Team[]       @relation("TeamMembers")
-  ledTeams         Team[]       @relation("TeamLead")
+  roles            Role[]        @relation("UserRoles")
+  managedProjects  Project[]     @relation("ProjectManager")
+  ledTeams         Team[]        @relation("TeamLead")
+  teams            Team[]        @relation("TeamMembers")
+  assignedTasks    Task[]        @relation("TaskAssignees")
+  taskUpdates      TaskUpdate[]
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime?     @updatedAt
 }
 
 model Role {
-  id          String   @id @default(cuid())
-  name        String   @unique
+  id          String    @id @default(cuid())
+  name        String    @unique
   description String?
-  permissions String[] @default([])
-  users       User[]   @relation("UserRoles")
+  permissions String[]
+  users       User[]    @relation("UserRoles")
+}
+
+model Department {
+  id                      String       @id @default(cuid())
+  name                    String       @unique
+  responsibleName         String
+  responsibleTitle        String
+  responsiblePhone        String
+  ownedProjects           Project[]
+  responsibleForMilestones Milestone[]  @relation("ResponsibleDepartments")
+}
+
+model ProjectStatus {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  projects Project[]
 }
 
 model Project {
@@ -44,51 +57,42 @@ model Project {
   startDate        DateTime
   endDate          DateTime
   workingYear      String
-  
-  statusId         String
   status           ProjectStatus @relation(fields: [statusId], references: [id])
-  
-  departmentId     String
+  statusId         String
   owningDepartment Department    @relation(fields: [departmentId], references: [id])
-  
+  departmentId     String
+  projectManager   User          @relation("ProjectManager", fields: [projectManagerId], references: [id])
   projectManagerId String
-  projectManager   User          @relation("ManagedBy", fields: [projectManagerId], references: [id])
-  
   milestones       Milestone[]
   blockers         Blocker[]
   teams            Team[]
 }
 
 model Milestone {
-  id          String       @id
-  title       String
-  description String
-  startDate   DateTime
-  dueDate     DateTime
-  weight      Int
-  
-  projectId   String
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  tasks       Task[]
-  
-  responsibleDepartments Department[] @relation("ResponsibleDepartments")
+  id                      String       @id
+  title                   String
+  description             String
+  startDate               DateTime
+  dueDate                 DateTime
+  weight                  Int
+  project                 Project      @relation(fields: [projectId], references: [id])
+  projectId               String
+  tasks                   Task[]
+  responsibleDepartments  Department[] @relation("ResponsibleDepartments")
 }
 
 model Task {
-  id          String   @id
+  id          String       @id
   title       String
   description String
-  status      String
+  status      String       // TODO, IN_PROGRESS, PENDING_REVIEW, DONE
   startDate   DateTime
   endDate     DateTime
   weight      Int
   completedAt DateTime?
-  
+  milestone   Milestone    @relation(fields: [milestoneId], references: [id])
   milestoneId String
-  milestone   Milestone    @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
-  
-  assignees   User[]       @relation("AssignedTo")
+  assignees   User[]       @relation("TaskAssignees")
   updates     TaskUpdate[]
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
@@ -97,55 +101,32 @@ model Task {
 model TaskUpdate {
   id        String   @id @default(cuid())
   text      String
-  type      String   @default("COMMENT")
+  type      String   // COMMENT, STATUS_CHANGE
   createdAt DateTime @default(now())
-  
+  author    User     @relation(fields: [authorId], references: [id])
   authorId  String
-  author    User     @relation("AuthoredBy", fields: [authorId], references: [id])
-  
+  task      Task     @relation(fields: [taskId], references: [id])
   taskId    String
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-}
-
-model Department {
-  id                 String      @id @default(cuid())
-  name               String      @unique
-  responsibleName    String
-  responsibleTitle   String
-  responsiblePhone   String
-  
-  ownedProjects      Project[]
-  responsibleFor     Milestone[] @relation("ResponsibleDepartments")
-}
-
-model ProjectStatus {
-  id       String    @id @default(cuid())
-  name     String    @unique
-  projects Project[]
 }
 
 model Blocker {
-  id          String    @id
+  id          String   @id @default(cuid())
   description String
-  status      String
-  createdAt   DateTime  @default(now())
+  status      String   // OPEN, RESOLVED
+  createdAt   DateTime @default(now())
   resolvedAt  DateTime?
   resolution  String?
-  
+  project     Project  @relation(fields: [projectId], references: [id])
   projectId   String
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
 }
 
 model Team {
   id         String   @id
   name       String
-  
-  projectId  String
   project    Project  @relation(fields: [projectId], references: [id])
-  
-  teamLeadId String
+  projectId  String
   teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
-  
+  teamLeadId String
   members    User[]   @relation("TeamMembers")
 }
 
