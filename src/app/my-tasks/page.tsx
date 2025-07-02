@@ -1,80 +1,65 @@
 
+'use client';
+
+import { useEffect, useState } from 'react';
+import { useAuth } from '@/context/auth-context';
 import { MyTasksManagement } from "@/components/tasks/my-tasks-management";
-import prisma from "@/lib/db";
-import type { Task, User, TaskStatus, TaskUpdate } from "@/lib/types";
-import { notFound } from "next/navigation";
+import { getMyTasks } from './actions';
+import type { UserTask } from './actions';
+import type { User } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
-// Define a more detailed type for tasks that includes project/milestone info
-export type UserTask = Task & {
-  projectId: string;
-  projectName: string;
-  milestoneId: string;
-  milestoneTitle: string;
-};
-
-export default async function MyTasksPage() {
-  // In a real application, this would come from an authentication context.
-  const currentUserId = 'user-1';
-
-  const currentUser = await prisma.user.findUnique({
-    where: { id: currentUserId },
-  });
-
-  if (!currentUser) {
-    notFound();
-  }
-
-  const allUsers = await prisma.user.findMany();
-
-  const assignedTasks = await prisma.task.findMany({
-    where: {
-      assignees: {
-        some: {
-          id: currentUserId,
-        },
-      },
-    },
-    include: {
-      milestone: {
-        select: {
-          id: true,
-          title: true,
-          project: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-        },
-      },
-      updates: {
-        include: {
-          author: true,
-        },
-        orderBy: {
-          createdAt: 'asc',
-        },
-      },
-      assignees: true,
-    },
-  });
-
-  const userTasks: UserTask[] = assignedTasks.map(task => ({
-    ...task,
-    status: task.status as TaskStatus,
-    projectId: task.milestone.project.id,
-    projectName: task.milestone.project.name,
-    milestoneId: task.milestone.id,
-    milestoneTitle: task.milestone.title,
-    updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'] })),
-    assignedUserIds: task.assignees.map(a => a.id),
-  }));
-
+function LoadingSkeleton() {
   return (
-    <MyTasksManagement
-      allUsers={JSON.parse(JSON.stringify(allUsers))}
-      currentUser={JSON.parse(JSON.stringify(currentUser))}
-      initialTasks={JSON.parse(JSON.stringify(userTasks))}
-    />
-  );
+    <div className="p-4 sm:p-6 space-y-6">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-6 w-96" />
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+            <Skeleton className="h-24" />
+        </div>
+        <Skeleton className="h-64 w-full" />
+    </div>
+  )
+}
+
+export default function MyTasksPage() {
+    const { localUser, loading: authLoading } = useAuth();
+    const [tasksData, setTasksData] = useState<{ userTasks: UserTask[], allUsers: User[] } | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
+
+    useEffect(() => {
+        if (localUser?.id) {
+            setIsLoading(true);
+            getMyTasks(localUser.id).then(data => {
+                setTasksData(data);
+                setIsLoading(false);
+            });
+        } else if (!authLoading) {
+            // If auth is done loading and there's no user, stop loading.
+            setIsLoading(false);
+        }
+    }, [localUser, authLoading]);
+
+    if (isLoading || authLoading) {
+        return <LoadingSkeleton />;
+    }
+
+    if (!localUser || !tasksData) {
+        return (
+             <div className="p-4 sm:p-6">
+                <p>Could not load tasks. Please try logging in again.</p>
+            </div>
+        )
+    }
+
+    return (
+        <MyTasksManagement
+            allUsers={tasksData.allUsers}
+            currentUser={localUser}
+            initialTasks={tasksData.userTasks}
+        />
+    );
 }

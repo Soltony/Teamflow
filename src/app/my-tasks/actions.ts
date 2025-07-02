@@ -3,7 +3,71 @@
 
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import type { TaskStatus } from "@/lib/types";
+import type { Task, User, TaskStatus, TaskUpdate } from "@/lib/types";
+
+export type UserTask = Task & {
+  projectId: string;
+  projectName: string;
+  milestoneId: string;
+  milestoneTitle: string;
+};
+
+export async function getMyTasks(userId: string) {
+  const allUsers = await prisma.user.findMany();
+
+  const assignedTasks = await prisma.task.findMany({
+    where: {
+      assignees: {
+        some: {
+          id: userId,
+        },
+      },
+    },
+    include: {
+      milestone: {
+        select: {
+          id: true,
+          title: true,
+          project: {
+            select: {
+              id: true,
+              name: true,
+            },
+          },
+        },
+      },
+      updates: {
+        include: {
+          author: true,
+        },
+        orderBy: {
+          createdAt: 'asc',
+        },
+      },
+      assignees: true,
+    },
+    orderBy: {
+        endDate: 'asc'
+    }
+  });
+
+  const userTasks: UserTask[] = assignedTasks.map(task => ({
+    ...task,
+    status: task.status as TaskStatus,
+    projectId: task.milestone.project.id,
+    projectName: task.milestone.project.name,
+    milestoneId: task.milestone.id,
+    milestoneTitle: task.milestone.title,
+    updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'] })),
+    assignedUserIds: task.assignees.map(a => a.id),
+  }));
+
+  return {
+    userTasks: JSON.parse(JSON.stringify(userTasks)),
+    allUsers: JSON.parse(JSON.stringify(allUsers))
+  };
+}
+
 
 export async function updateTaskStatusAction(taskId: string, newStatus: TaskStatus) {
   try {

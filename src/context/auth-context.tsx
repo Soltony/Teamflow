@@ -4,7 +4,9 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios, { AxiosError } from 'axios';
-const jwtDecode = require('jwt-decode');
+import { jwtDecode } from 'jwt-decode';
+import { syncUser } from '@/app/auth/actions';
+import type { User as PrismaUser } from '@prisma/client';
 
 interface AuthenticatedUser {
   email: string;
@@ -24,6 +26,7 @@ interface AuthResponse {
 
 interface AuthContextType {
   user: AuthenticatedUser | null;
+  localUser: PrismaUser | null;
   accessToken: string | null;
   loading: boolean;
   login: (data: any) => Promise<AuthResponse>;
@@ -39,12 +42,13 @@ const axiosInstance = axios.create({
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthenticatedUser | null>(null);
+  const [localUser, setLocalUser] = useState<PrismaUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const setSession = useCallback((newAccessToken: string | null, newRefreshToken: string | null) => {
+  const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, registrationData?: any) => {
     if (newAccessToken && newRefreshToken) {
       try {
         const decodedUser = jwtDecode<AuthenticatedUser>(newAccessToken);
@@ -54,12 +58,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setAccessToken(newAccessToken);
         setRefreshToken(newRefreshToken);
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+
+        const syncInput = {
+            nameid: decodedUser.nameid,
+            email: decodedUser.email,
+            given_name: decodedUser.given_name,
+            family_name: decodedUser.family_name,
+            picture: decodedUser.picture,
+            phoneNumber: registrationData?.phoneNumber,
+        };
+
+        const syncedUser = await syncUser(syncInput);
+        setLocalUser(syncedUser);
+        if (syncedUser) {
+            localStorage.setItem('localUser', JSON.stringify(syncedUser));
+        } else {
+            localStorage.removeItem('localUser');
+        }
+
       } catch (error) {
-        console.error("Failed to decode token:", error);
+        console.error("Failed to decode token or sync user:", error);
         // Clear session if token is invalid
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
+        localStorage.removeItem('localUser');
         setUser(null);
+        setLocalUser(null);
         setAccessToken(null);
         setRefreshToken(null);
         delete axiosInstance.defaults.headers.common['Authorization'];
@@ -67,7 +91,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } else {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('localUser');
       setUser(null);
+      setLocalUser(null);
       setAccessToken(null);
       setRefreshToken(null);
       delete axiosInstance.defaults.headers.common['Authorization'];
@@ -79,8 +105,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     try {
       const storedAccessToken = localStorage.getItem('accessToken');
       const storedRefreshToken = localStorage.getItem('refreshToken');
+      const storedLocalUser = localStorage.getItem('localUser');
       if (storedAccessToken && storedRefreshToken) {
         setSession(storedAccessToken, storedRefreshToken);
+        if (storedLocalUser) {
+            setLocalUser(JSON.parse(storedLocalUser));
+        }
       } else {
         setLoading(false);
       }
@@ -90,9 +120,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [setSession]);
 
-  const handleAuthResponse = (response: AuthResponse) => {
+  const handleAuthResponse = async (response: AuthResponse, registrationData?: any) => {
     if (response.isSuccess && response.accessToken && response.refreshToken) {
-      setSession(response.accessToken, response.refreshToken);
+      await setSession(response.accessToken, response.refreshToken, registrationData);
     }
     return response;
   }
@@ -101,7 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       const response = await axiosInstance.post<AuthResponse>('/api/Auth/login', data);
-      return handleAuthResponse(response.data);
+      return await handleAuthResponse(response.data);
     } catch (error) {
       const axiosError = error as AxiosError<AuthResponse>;
       setLoading(false);
@@ -113,7 +143,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       const response = await axiosInstance.post<AuthResponse>('/api/Auth/register', data);
-      return handleAuthResponse(response.data);
+      return await handleAuthResponse(response.data, data);
     } catch (error) {
        const axiosError = error as AxiosError<AuthResponse>;
        setLoading(false);
@@ -128,6 +158,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const value = {
     user,
+    localUser,
     accessToken,
     loading,
     login,
