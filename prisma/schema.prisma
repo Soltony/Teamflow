@@ -11,8 +11,8 @@ generator client {
 model User {
   id              String       @id
   name            String
-  firstName       String
-  lastName        String
+  firstName       String?
+  lastName        String?
   email           String       @unique
   avatar          String?
   phoneNumber     String?
@@ -22,8 +22,8 @@ model User {
   taskUpdates     TaskUpdate[] @relation("TaskUpdateAuthor")
   ledTeams        Team[]       @relation("TeamLead")
   teams           Team[]       @relation("TeamMembers")
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+
+  @@map("users")
 }
 
 model Role {
@@ -32,8 +32,28 @@ model Role {
   description String?
   permissions String[]
   users       User[]   @relation("UserRoles")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+
+  @@map("roles")
+}
+
+model Department {
+  id                       String      @id @default(cuid())
+  name                     String      @unique
+  responsibleName          String
+  responsibleTitle         String
+  responsiblePhone         String
+  projects                 Project[]
+  responsibleForMilestones Milestone[] @relation("ResponsibleDepartments")
+
+  @@map("departments")
+}
+
+model ProjectStatus {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  projects Project[]
+
+  @@map("project_statuses")
 }
 
 model Project {
@@ -52,27 +72,27 @@ model Project {
   milestones       Milestone[]
   blockers         Blocker[]
   teams            Team[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+
+  @@map("projects")
 }
 
 model Milestone {
-  id                     String       @id
+  id                     String     @id
   title                  String
   description            String
   startDate              DateTime
   dueDate                DateTime
   weight                 Int
-  project                Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project                Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId              String
-  tasks                  Task[]
   responsibleDepartments Department[] @relation("ResponsibleDepartments")
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @updatedAt
+  tasks                  Task[]
+
+  @@map("milestones")
 }
 
 model Task {
-  id          String       @id
+  id          String     @id
   title       String
   description String
   status      String
@@ -80,16 +100,16 @@ model Task {
   endDate     DateTime
   weight      Int
   completedAt DateTime?
-  milestone   Milestone    @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  milestone   Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
   milestoneId String
-  assignees   User[]       @relation("TaskAssignees")
+  assignees   User[]     @relation("TaskAssignees")
   updates     TaskUpdate[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
+
+  @@map("tasks")
 }
 
 model TaskUpdate {
-  id        String   @id
+  id        String   @id @default(cuid())
   text      String
   type      String
   createdAt DateTime @default(now())
@@ -97,6 +117,8 @@ model TaskUpdate {
   authorId  String
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   taskId    String
+
+  @@map("task_updates")
 }
 
 model Blocker {
@@ -108,43 +130,25 @@ model Blocker {
   resolution  String?
   project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId   String
-}
 
-model Department {
-  id                       String      @id @default(cuid())
-  name                     String      @unique
-  responsibleName          String
-  responsibleTitle         String
-  responsiblePhone         String
-  ownedProjects            Project[]
-  responsibleForMilestones Milestone[] @relation("ResponsibleDepartments")
-  createdAt                DateTime    @default(now())
-  updatedAt                DateTime    @updatedAt
-}
-
-model ProjectStatus {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  projects  Project[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  @@map("blockers")
 }
 
 model Team {
-  id         String   @id
+  id         String  @id
   name       String
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId  String
-  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  teamLead   User    @relation("TeamLead", fields: [teamLeadId], references: [id])
   teamLeadId String
-  members    User[]   @relation("TeamMembers")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  members    User[]  @relation("TeamMembers")
+
+  @@map("teams")
 }
 
 model Setting {
-  key       String   @id
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  key   String @id
+  value String
+
+  @@map("settings")
 }
