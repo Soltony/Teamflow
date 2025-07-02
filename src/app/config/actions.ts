@@ -1,7 +1,5 @@
 
 'use server';
-<<<<<<< HEAD
-=======
 
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
@@ -71,4 +69,3 @@ export async function deleteRole(id: string) {
         return { success: false, error: 'Failed to delete role.' };
     }
 }
->>>>>>> d1997e7eced32ba05aee3b3f4b5b652fab47b1f8
