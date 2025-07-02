@@ -15,6 +15,7 @@ import {
   Milestone,
   ClipboardCheck,
   ClipboardList,
+  Wrench,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/context/auth-context";
@@ -53,6 +54,7 @@ const menuItems = [
   { href: "/departments", label: "Departments", icon: Building2 },
   { href: "/teams", label: "Teams", icon: UsersRound },
   { href: "/settings", label: "Settings", icon: Settings },
+  { href: "/config", label: "Config", icon: Wrench },
 ];
 
 function AppSidebar({ className }: { className?: string }) {
