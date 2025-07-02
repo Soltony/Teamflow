@@ -40,7 +40,7 @@ import { Textarea } from "../ui/textarea";
 import { Separator } from "../ui/separator";
 import { createRole, deleteRole, updateRole } from "@/app/config/actions";
 import { Checkbox } from "../ui/checkbox";
-import { Accordion, AccordionContent, AccordionItem } from "../ui/accordion";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import { Badge } from "../ui/badge";
 
@@ -245,7 +245,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
                             {Object.entries(availablePermissions).map(([groupName, permissions]) => {
                               const totalPermissionsInGroup = permissions.length;
                               const selectedPermissionsInGroup = permissions.filter(p => field.value?.includes(p)).length;
-                              const allSelected = totalPermissionsInGroup === selectedPermissionsInGroup;
+                              const allSelected = totalPermissionsInGroup > 0 && totalPermissionsInGroup === selectedPermissionsInGroup;
 
                               const handleGroupCheckedChange = (checked: boolean | string) => {
                                 const currentPermissions = field.value || [];
@@ -260,21 +260,18 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
 
                               return (
                                 <AccordionItem value={groupName} key={groupName} className="border rounded-lg data-[state=open]:shadow-md">
-                                  <AccordionPrimitive.Header className="flex w-full">
-                                      <AccordionPrimitive.Trigger className="flex flex-1 items-center justify-between px-4 py-2 font-medium text-base transition-all hover:no-underline [&[data-state=open]>div>svg]:rotate-180">
-                                          <div className="flex items-center gap-3">
-                                              <Checkbox
-                                                  checked={allSelected}
-                                                  onCheckedChange={handleGroupCheckedChange}
-                                                  onClick={(e) => e.stopPropagation()}
-                                              />
-                                              <span className="font-semibold text-base">{groupName}</span>
-                                          </div>
-                                          <div className="flex items-center gap-2">
-                                              <Badge variant="secondary">{`${selectedPermissionsInGroup}/${totalPermissionsInGroup}`}</Badge>
-                                              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                          </div>
-                                      </AccordionPrimitive.Trigger>
+                                  <AccordionPrimitive.Header className="flex w-full items-center justify-between px-4 py-2">
+                                    <div className="flex items-center gap-3">
+                                      <Checkbox
+                                        checked={allSelected}
+                                        onCheckedChange={handleGroupCheckedChange}
+                                      />
+                                      <span className="font-semibold text-base">{groupName}</span>
+                                    </div>
+                                    <AccordionTrigger className="flex items-center gap-2 p-0">
+                                      <Badge variant="secondary">{`${selectedPermissionsInGroup}/${totalPermissionsInGroup}`}</Badge>
+                                      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                    </AccordionTrigger>
                                   </AccordionPrimitive.Header>
 
                                   <AccordionContent className="p-4 border-t">
@@ -299,7 +296,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
                                             />
                                           </FormControl>
                                           <FormLabel className="font-normal text-sm leading-none cursor-pointer w-full">
-                                            {permission.split(':')[1].charAt(0).toUpperCase() + permission.split(':')[1].slice(1)}
+                                            {permission.split(':')[1].replace('-', ' ').replace(/\b\w/g, l => l.toUpperCase())}
                                           </FormLabel>
                                         </FormItem>
                                       ))}
