@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -11,6 +12,7 @@ type SidebarContextProps = {
   isMobile: boolean
   toggleSidebar: () => void
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
+  mounted: boolean
 }
 
 const SidebarContext = React.createContext<SidebarContextProps | undefined>(
@@ -28,8 +30,10 @@ export function useSidebar() {
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = React.useState(true)
   const [isMobile, setIsMobile] = React.useState(false)
+  const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
+    setMounted(true);
     const checkIsMobile = () => {
       const mobile = window.innerWidth < 768
       setIsMobile(mobile)
@@ -46,7 +50,7 @@ export function SidebarProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <SidebarContext.Provider
-      value={{ isOpen, isMobile, toggleSidebar, setIsOpen }}
+      value={{ isOpen, isMobile, toggleSidebar, setIsOpen, mounted }}
     >
       {children}
     </SidebarContext.Provider>

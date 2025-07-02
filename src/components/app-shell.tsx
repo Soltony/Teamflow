@@ -57,12 +57,12 @@ const menuItems = [
 function AppSidebar() {
   const pathname = usePathname();
   const { theme } = useTheme();
-  const { isOpen, isMobile } = useSidebar();
+  const { isOpen, isMobile, mounted } = useSidebar();
 
   return (
     <Sidebar
       className={cn({
-        dark: theme === "light",
+        dark: mounted && theme === "light",
       })}
     >
       <SidebarHeader>
@@ -119,13 +119,13 @@ function AppSidebar() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isMobile, toggleSidebar, isOpen } = useSidebar();
+  const { isMobile, toggleSidebar, isOpen, mounted } = useSidebar();
   const { theme } = useTheme();
   return (
     <div
       className={cn(
         "min-h-screen w-full",
-        !isMobile && (isOpen ? "pl-[280px]" : "pl-[56px]"),
+        mounted && !isMobile && (isOpen ? "pl-[280px]" : "pl-[56px]"),
         "transition-all duration-300 ease-in-out"
       )}
     >
@@ -135,7 +135,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className={cn(
             "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6",
             {
-              dark: theme === "light",
+              dark: mounted && theme === "light",
             }
           )}
         >
