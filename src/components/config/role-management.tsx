@@ -13,7 +13,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { PlusCircle, Pencil, Trash2 } from "lucide-react";
+import { PlusCircle, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Role } from "@prisma/client";
 import {
@@ -40,7 +40,8 @@ import { Textarea } from "../ui/textarea";
 import { Separator } from "../ui/separator";
 import { createRole, deleteRole, updateRole } from "@/app/config/actions";
 import { Checkbox } from "../ui/checkbox";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
+import { Accordion, AccordionContent, AccordionItem } from "../ui/accordion";
+import * as AccordionPrimitive from "@radix-ui/react-accordion"
 import { Badge } from "../ui/badge";
 
 type RoleManagementProps = {
@@ -259,19 +260,23 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
 
                               return (
                                 <AccordionItem value={groupName} key={groupName} className="border rounded-lg data-[state=open]:shadow-md">
-                                  <AccordionTrigger className="px-4 py-2 hover:no-underline">
-                                    <div className="flex items-center gap-3 flex-1">
-                                      <Checkbox
-                                        checked={allSelected}
-                                        onCheckedChange={handleGroupCheckedChange}
-                                        onClick={(e) => e.stopPropagation()}
-                                      />
-                                      <span className="font-semibold text-base">{groupName}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Badge variant="secondary">{`${selectedPermissionsInGroup}/${totalPermissionsInGroup}`}</Badge>
-                                    </div>
-                                  </AccordionTrigger>
+                                  <AccordionPrimitive.Header className="flex w-full">
+                                      <AccordionPrimitive.Trigger className="flex flex-1 items-center justify-between px-4 py-2 font-medium text-base transition-all hover:no-underline [&[data-state=open]>div>svg]:rotate-180">
+                                          <div className="flex items-center gap-3">
+                                              <Checkbox
+                                                  checked={allSelected}
+                                                  onCheckedChange={handleGroupCheckedChange}
+                                                  onClick={(e) => e.stopPropagation()}
+                                              />
+                                              <span className="font-semibold text-base">{groupName}</span>
+                                          </div>
+                                          <div className="flex items-center gap-2">
+                                              <Badge variant="secondary">{`${selectedPermissionsInGroup}/${totalPermissionsInGroup}`}</Badge>
+                                              <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                                          </div>
+                                      </AccordionPrimitive.Trigger>
+                                  </AccordionPrimitive.Header>
+
                                   <AccordionContent className="p-4 border-t">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                       {permissions.map((permission) => (
