@@ -1,10 +1,20 @@
 
+export type Role = {
+  id: string;
+  name: string;
+  description?: string | null;
+  permissions: string[];
+};
+
 export type User = {
   id: string;
   name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   avatar: string;
   phoneNumber?: string;
+  roles?: Role[];
 };
 
 export type Team = {

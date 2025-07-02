@@ -1,6 +1,24 @@
 
+export const roles = [
+    { 
+        name: 'Admin', 
+        description: 'Has access to all system features, including user management.', 
+        permissions: ['manage:users', 'manage:roles', 'manage:settings', 'manage:projects'] 
+    },
+    { 
+        name: 'Project Manager', 
+        description: 'Can create and manage projects, milestones, and tasks.', 
+        permissions: ['create:project', 'edit:project', 'delete:project'] 
+    },
+    { 
+        name: 'Member', 
+        description: 'Can view assigned tasks and update their status.', 
+        permissions: ['view:task', 'update:task'] 
+    },
+];
+
 export const users = [
-  { id: 'user-1', name: 'Alice Johnson', firstName: 'Alice', lastName: 'Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phoneNumber: '123-456-7890' },
+  { id: 'b1e55c84-9055-4eb5-8bd4-a262538f7e66', name: 'Alice Johnson', firstName: 'Alice', lastName: 'Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phoneNumber: '123-456-7890' },
   { id: 'user-2', name: 'Bob Williams', firstName: 'Bob', lastName: 'Williams', email: 'bob.williams@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-2', phoneNumber: '234-567-8901' },
   { id: 'user-3', name: 'Charlie Brown', firstName: 'Charlie', lastName: 'Brown', email: 'charlie.brown@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-3', phoneNumber: '345-678-9012' },
   { id: 'user-4', name: 'Diana Miller', firstName: 'Diana', lastName: 'Miller', email: 'diana.miller@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-4', phoneNumber: '456-789-0123' },

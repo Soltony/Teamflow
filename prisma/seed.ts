@@ -5,7 +5,8 @@ import {
     departments as departmentsData, 
     projectStatuses as projectStatusesData, 
     projects as projectsData, 
-    teams as teamsData 
+    teams as teamsData,
+    roles as rolesData
 } from '../src/lib/data';
 
 const prisma = new PrismaClient();
@@ -13,8 +14,27 @@ const prisma = new PrismaClient();
 async function main() {
   console.log(`Start seeding ...`);
 
+  // Seed Roles and create a map
+  const roleMap = new Map<string, string>();
+  for (const role of rolesData) {
+      const createdRole = await prisma.role.upsert({
+          where: { name: role.name },
+          update: {},
+          create: {
+            name: role.name,
+            description: role.description,
+            permissions: role.permissions,
+          }
+      });
+      roleMap.set(createdRole.name, createdRole.id);
+  }
+  console.log(`Seeded ${rolesData.length} roles.`);
+
   // Seed Users and create a map
   const userMap = new Map<string, string>();
+  const adminRoleId = roleMap.get('Admin');
+  const memberRoleId = roleMap.get('Member');
+
   for (const user of usersData) {
       const createdUser = await prisma.user.upsert({
           where: { email: user.email },
@@ -27,6 +47,9 @@ async function main() {
             email: user.email,
             avatar: user.avatar,
             phoneNumber: user.phoneNumber,
+            roles: {
+              connect: user.email.includes('alice') ? [{ id: adminRoleId }] : [{ id: memberRoleId }]
+            }
           }
       });
       userMap.set(createdUser.email, createdUser.id);
