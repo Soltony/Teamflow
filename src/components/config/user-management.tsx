@@ -73,7 +73,7 @@ const addUserSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
   lastName: z.string().min(1, "Last name is required."),
   email: z.string().email("Invalid email address."),
-  phoneNumber: z.string().optional(),
+  phoneNumber: z.string().min(1, "Phone number is required."),
   roleIds: z.array(z.string()).optional(),
 });
 type AddUserFormValues = z.infer<typeof addUserSchema>;
@@ -296,7 +296,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                     <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={addUserForm.control} name="phoneNumber" render={({ field }) => (
-                    <FormItem><FormLabel>Phone Number (Optional)</FormLabel><FormControl><Input placeholder="123-456-7890" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="123-456-7890" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField
                     control={addUserForm.control}
@@ -369,3 +369,5 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
     </>
   );
 }
+
+    
