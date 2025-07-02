@@ -284,73 +284,75 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
       </Dialog>
       
       <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
+        <DialogContent className="p-0 flex flex-col max-h-[90dvh]">
+          <DialogHeader className="p-6 pb-4">
             <DialogTitle>Add New User</DialogTitle>
             <DialogDescription>Create a new user account and assign initial roles.</DialogDescription>
           </DialogHeader>
-          <Form {...addUserForm}>
-            <form id="add-user-form" onSubmit={addUserForm.handleSubmit(onAddUserSubmit)} className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                     <FormField control={addUserForm.control} name="firstName" render={({ field }) => (
-                        <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                    <FormField control={addUserForm.control} name="lastName" render={({ field }) => (
-                        <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>
-                    )} />
-                </div>
-                <FormField control={addUserForm.control} name="phoneNumber" render={({ field }) => (
-                    <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="123-456-7890" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={addUserForm.control} name="email" render={({ field }) => (
-                    <FormItem><FormLabel>Email (Optional)</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={addUserForm.control} name="password" render={({ field }) => (
-                    <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                 <FormField control={addUserForm.control} name="confirmPassword" render={({ field }) => (
-                    <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField
-                    control={addUserForm.control}
-                    name="roleIds"
-                    render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Roles</FormLabel>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <FormControl>
-                                    <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
-                                        {selectedRolesForNewUser.length > 0 ? selectedRolesForNewUser.map(r => r.name).join(', ') : "Select initial roles..."}
-                                        <ChevronDown className="ml-auto h-4 w-4" />
-                                    </Button>
-                                    </FormControl>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                                    {initialRoles.map((role) => (
-                                    <DropdownMenuCheckboxItem
-                                        key={role.id}
-                                        checked={field.value?.includes(role.id)}
-                                        onCheckedChange={(checked) => {
-                                            const currentValues = field.value || [];
-                                            const newValues = checked
-                                                ? [...currentValues, role.id]
-                                                : currentValues.filter(id => id !== role.id);
-                                            field.onChange(newValues);
-                                        }}
-                                    >
-                                        {role.name}
-                                    </DropdownMenuCheckboxItem>
-                                    ))}
-                                </DropdownMenuContent>
-                            </DropdownMenu>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </form>
-          </Form>
-          <DialogFooter>
+          <div className="flex-1 overflow-y-auto px-6">
+            <Form {...addUserForm}>
+              <form id="add-user-form" onSubmit={addUserForm.handleSubmit(onAddUserSubmit)} className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                       <FormField control={addUserForm.control} name="firstName" render={({ field }) => (
+                          <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={addUserForm.control} name="lastName" render={({ field }) => (
+                          <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                  </div>
+                  <FormField control={addUserForm.control} name="phoneNumber" render={({ field }) => (
+                      <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="123-456-7890" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={addUserForm.control} name="email" render={({ field }) => (
+                      <FormItem><FormLabel>Email (Optional)</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={addUserForm.control} name="password" render={({ field }) => (
+                      <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                   <FormField control={addUserForm.control} name="confirmPassword" render={({ field }) => (
+                      <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField
+                      control={addUserForm.control}
+                      name="roleIds"
+                      render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                              <FormLabel>Roles</FormLabel>
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <FormControl>
+                                      <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
+                                          {selectedRolesForNewUser.length > 0 ? selectedRolesForNewUser.map(r => r.name).join(', ') : "Select initial roles..."}
+                                          <ChevronDown className="ml-auto h-4 w-4" />
+                                      </Button>
+                                      </FormControl>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                      {initialRoles.map((role) => (
+                                      <DropdownMenuCheckboxItem
+                                          key={role.id}
+                                          checked={field.value?.includes(role.id)}
+                                          onCheckedChange={(checked) => {
+                                              const currentValues = field.value || [];
+                                              const newValues = checked
+                                                  ? [...currentValues, role.id]
+                                                  : currentValues.filter(id => id !== role.id);
+                                              field.onChange(newValues);
+                                          }}
+                                      >
+                                          {role.name}
+                                      </DropdownMenuCheckboxItem>
+                                      ))}
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+              </form>
+            </Form>
+          </div>
+          <DialogFooter className="p-6 pt-4 border-t">
              <Button type="button" variant="outline" onClick={handleCloseAddUserDialog} disabled={isPending}>Cancel</Button>
              <Button type="submit" form="add-user-form" disabled={isPending}>
                  {isPending ? "Creating..." : "Create User"}
