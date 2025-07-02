@@ -1,3 +1,5 @@
+
+import React from 'react';
 import prisma from "@/lib/db";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { isPast, max as dateMax } from 'date-fns';
