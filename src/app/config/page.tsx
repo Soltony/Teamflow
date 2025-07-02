@@ -1,10 +1,4 @@
 
-<<<<<<< HEAD
-import { redirect } from 'next/navigation';
-
-export default function ConfigPage() {
-  redirect('/dashboard');
-=======
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import prisma from "@/lib/db";
@@ -53,5 +47,4 @@ export default async function ConfigPage() {
       </Tabs>
     </div>
   );
->>>>>>> d1997e7eced32ba05aee3b3f4b5b652fab47b1f8
 }
