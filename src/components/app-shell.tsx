@@ -4,7 +4,6 @@
 import * as React from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useTheme } from "next-themes";
 import {
   FolderKanban,
   GanttChartSquare,
@@ -56,15 +55,10 @@ const menuItems = [
 
 function AppSidebar() {
   const pathname = usePathname();
-  const { theme } = useTheme();
-  const { isOpen, isMobile, mounted } = useSidebar();
+  const { isOpen, isMobile } = useSidebar();
 
   return (
-    <Sidebar
-      className={cn({
-        dark: mounted && theme === "light",
-      })}
-    >
+    <Sidebar>
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <GanttChartSquare className="w-8 h-8 text-primary" />
@@ -120,7 +114,6 @@ function AppSidebar() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isMobile, toggleSidebar, isOpen, mounted } = useSidebar();
-  const { theme } = useTheme();
   return (
     <div
       className={cn(
@@ -133,10 +126,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col">
         <header
           className={cn(
-            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6",
-            {
-              dark: mounted && theme === "light",
-            }
+            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6"
           )}
         >
           <Button
@@ -151,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <ThemeToggle />
           </div>
         </header>
-        <main className="flex-1 overflow-auto bg-muted/40">{children}</main>
+        <main className="flex-1 overflow-auto">{children}</main>
       </div>
     </div>
   );
