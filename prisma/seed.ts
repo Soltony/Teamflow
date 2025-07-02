@@ -38,8 +38,6 @@ async function main() {
 
   // Seed Users and create a map
   const userMap = new Map<string, string>();
-  const adminRoleId = roleMap.get('Admin');
-  const memberRoleId = roleMap.get('Member');
 
   for (const user of usersData) {
       const createdUser = await prisma.user.upsert({
