@@ -2,7 +2,7 @@
 import { notFound } from "next/navigation";
 import { ProjectMilestones } from "@/components/projects/project-milestones";
 import prisma from "@/lib/db";
-import { Task } from "@/lib/types";
+import { BlockerStatus, Task, TaskStatus } from "@/lib/types";
 
 export default async function ProjectMilestonesPage({ params }: { params: { id: string } }) {
   const project = await prisma.project.findUnique({
@@ -36,7 +36,7 @@ export default async function ProjectMilestonesPage({ params }: { params: { id: 
       responsibleDepartmentIds: m.responsibleDepartments.map(d => d.id),
       tasks: m.tasks.map(t => ({
         ...t,
-        status: t.status.replace(/_/g, '-').toLowerCase() as Task['status'],
+        status: t.status as TaskStatus,
         assignedUserIds: t.assignees.map(a => a.id),
       }))
     }))

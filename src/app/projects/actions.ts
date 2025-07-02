@@ -3,7 +3,7 @@
 
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import type { Task } from "@/lib/types";
+import type { TaskStatus } from "@/lib/types";
 
 export async function createProject(data: any) {
     const { milestones, ...projectData } = data;
@@ -90,15 +90,12 @@ export async function addTask(milestoneId: string, projectId: string, data: any)
 }
 
 export async function updateTask(taskId: string, projectId: string, data: any) {
-    const { assignedUserIds, status, ...taskData } = data;
+    const { assignedUserIds, ...taskData } = data;
     
-    const prismaStatus = status ? (status as Task['status']).replace(/-/g, '_').toUpperCase() : undefined;
-
     await prisma.task.update({
         where: { id: taskId },
         data: {
             ...taskData,
-            status: prismaStatus,
             assignees: assignedUserIds ? {
                 set: assignedUserIds.map((id:string) => ({ id }))
             } : undefined,

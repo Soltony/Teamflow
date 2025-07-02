@@ -1,9 +1,8 @@
 
-
 import { TeamTasksManagement } from "@/components/tasks/team-tasks-management";
 import prisma from "@/lib/db";
 import { notFound } from "next/navigation";
-import type { Task, User, Team, ProjectStatus, TaskUpdate } from "@/lib/types";
+import type { Task, User, Team, ProjectStatus, TaskUpdate, TaskStatus as TaskStatusType } from "@/lib/types";
 
 export type TeamViewTask = Task & {
   projectId: string;
@@ -110,8 +109,8 @@ export default async function TeamViewPage() {
       
       const userTask: TeamViewTask = {
           ...task,
-          status: task.status.replace(/_/g,'-').toLowerCase() as Task['status'],
-          updates: task.updates.map(u => ({ ...u, type: u.type?.replace(/_/g,'-').toLowerCase() as TaskUpdate['type'], createdAt: u.createdAt.toISOString(), author: u.author, authorId: u.authorId, id: u.id, text: u.text })),
+          status: task.status as TaskStatusType,
+          updates: task.updates.map(u => ({ ...u, type: u.type as TaskUpdate['type'], createdAt: u.createdAt.toISOString(), author: u.author, authorId: u.authorId, id: u.id, text: u.text })),
           projectId: task.milestone.project.id,
           projectName: task.milestone.project.name,
           milestoneId: task.milestone.id,

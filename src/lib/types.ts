@@ -1,5 +1,4 @@
 
-
 export type User = {
   id: string;
   name: string;
@@ -16,25 +15,29 @@ export type Team = {
   memberIds: string[];
 };
 
+export type TaskUpdateType = 'COMMENT' | 'STATUS_CHANGE';
+
 export type TaskUpdate = {
   id: string;
   text: string;
   authorId: string;
   createdAt: string;
-  type?: 'comment' | 'status-change';
+  type: TaskUpdateType;
 };
+
+export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'PENDING_REVIEW' | 'DONE';
 
 export type Task = {
   id: string;
   title: string;
   description: string;
-  status: 'todo' | 'in-progress' | 'pending-review' | 'done';
+  status: TaskStatus;
   startDate: string;
   endDate: string;
   weight: number;
   assignedUserIds: string[];
   updates?: TaskUpdate[];
-  completedAt?: string;
+  completedAt?: string | null;
 };
 
 export type Milestone = {
@@ -61,13 +64,15 @@ export type ProjectStatus = {
   name: string;
 };
 
+export type BlockerStatus = 'OPEN' | 'RESOLVED';
+
 export type Blocker = {
   id: string;
   description: string;
-  status: 'open' | 'resolved';
+  status: BlockerStatus;
   createdAt: string;
-  resolvedAt?: string;
-  resolution?: string;
+  resolvedAt?: string | null;
+  resolution?: string | null;
 };
 
 export type Project = {
@@ -83,4 +88,3 @@ export type Project = {
   milestones: Milestone[];
   blockers?: Blocker[];
 };
-

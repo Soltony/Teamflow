@@ -1,6 +1,7 @@
+
 import { MyTasksManagement } from "@/components/tasks/my-tasks-management";
 import prisma from "@/lib/db";
-import type { Task, User } from "@/lib/types";
+import type { Task, User, TaskStatus, TaskUpdate } from "@/lib/types";
 import { notFound } from "next/navigation";
 
 // Define a more detailed type for tasks that includes project/milestone info
@@ -60,12 +61,12 @@ export default async function MyTasksPage() {
 
   const userTasks: UserTask[] = assignedTasks.map(task => ({
     ...task,
+    status: task.status as TaskStatus,
     projectId: task.milestone.project.id,
     projectName: task.milestone.project.name,
     milestoneId: task.milestone.id,
     milestoneTitle: task.milestone.title,
-    // Ensure nested relations are properly typed or handled if needed
-    updates: task.updates.map(u => ({...u, author: u.author as User})),
+    updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'] })),
     assignedUserIds: task.assignees.map(a => a.id),
   }));
 

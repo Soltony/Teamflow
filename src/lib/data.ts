@@ -41,8 +41,8 @@ export const projects = [
             weight: 30,
             responsibleDepartmentNames: ['Marketing'],
             tasks: [
-                { id: 'task-1-1', title: 'User Research & Analysis', description: 'Conduct user surveys and interviews to gather requirements.', status: 'done', startDate: '2024-08-01', endDate: '2024-08-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com'] },
-                { id: 'task-1-2', title: 'Design Wireframes & Mockups', description: 'Create high-fidelity mockups for the new platform.', status: 'in-progress', startDate: '2024-08-16', endDate: '2024-09-10', weight: 60, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
+                { id: 'task-1-1', title: 'User Research & Analysis', description: 'Conduct user surveys and interviews to gather requirements.', status: 'DONE', startDate: '2024-08-01', endDate: '2024-08-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com'], completedAt: '2024-08-14' },
+                { id: 'task-1-2', title: 'Design Wireframes & Mockups', description: 'Create high-fidelity mockups for the new platform.', status: 'IN_PROGRESS', startDate: '2024-08-16', endDate: '2024-09-10', weight: 60, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
             ]
         },
         {
@@ -54,13 +54,13 @@ export const projects = [
             weight: 60,
             responsibleDepartmentNames: ['Technology'],
             tasks: [
-                { id: 'task-1-3', title: 'Frontend Development', description: 'Develop the client-side of the application using Next.js.', status: 'pending-review', startDate: '2024-09-11', endDate: '2024-10-31', weight: 70, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'],
+                { id: 'task-1-3', title: 'Frontend Development', description: 'Develop the client-side of the application using Next.js.', status: 'PENDING_REVIEW', startDate: '2024-09-11', endDate: '2024-10-31', weight: 70, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'],
                   updates: [
-                    { id: 'update-1', text: 'Initial component structure is complete. Starting on data binding.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-15T10:00:00Z', type: 'comment' },
-                    { id: 'update-2', text: 'Data binding is done. Ready for review.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-20T14:30:00Z', type: 'comment' },
+                    { id: 'update-1', text: 'Initial component structure is complete. Starting on data binding.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-15T10:00:00Z', type: 'COMMENT' },
+                    { id: 'update-2', text: 'Data binding is done. Ready for review.', userEmail: 'alice.johnson@teamflow.com', createdAt: '2024-10-20T14:30:00Z', type: 'COMMENT' },
                   ]
                 },
-                { id: 'task-1-4', title: 'Backend Development', description: 'Build the server-side logic and database schema.', status: 'todo', startDate: '2024-09-11', endDate: '2024-10-31', weight: 30, assignedUserEmails: ['bob.williams@teamflow.com', 'diana.miller@teamflow.com'] },
+                { id: 'task-1-4', title: 'Backend Development', description: 'Build the server-side logic and database schema.', status: 'TODO', startDate: '2024-09-11', endDate: '2024-10-31', weight: 30, assignedUserEmails: ['bob.williams@teamflow.com', 'diana.miller@teamflow.com'] },
             ]
         },
         {
@@ -72,7 +72,7 @@ export const projects = [
             weight: 10,
             responsibleDepartmentNames: ['Technology', 'Marketing'],
             tasks: [
-                { id: 'task-1-5', title: 'Deployment & QA', description: 'Deploy the application and perform quality assurance testing.', status: 'todo', startDate: '2024-11-01', endDate: '2024-11-30', weight: 100, assignedUserEmails: ['alice.johnson@teamflow.com', 'bob.williams@teamflow.com', 'charlie.brown@teamflow.com'] },
+                { id: 'task-1-5', title: 'Deployment & QA', description: 'Deploy the application and perform quality assurance testing.', status: 'TODO', startDate: '2024-11-01', endDate: '2024-11-30', weight: 100, assignedUserEmails: ['alice.johnson@teamflow.com', 'bob.williams@teamflow.com', 'charlie.brown@teamflow.com'] },
             ]
         }
     ],
@@ -80,13 +80,13 @@ export const projects = [
         {
             id: 'blocker-1',
             description: 'The third-party payment gateway API is not providing the expected responses for international transactions.',
-            status: 'open',
+            status: 'OPEN',
             createdAt: '2024-10-25',
         },
         {
             id: 'blocker-2',
             description: 'Design team has not finalized the new logo, which is blocking the creation of marketing materials.',
-            status: 'resolved',
+            status: 'RESOLVED',
             createdAt: '2024-10-20',
             resolvedAt: '2024-10-22',
             resolution: 'An emergency meeting was held with the design team and stakeholders. A final logo was approved and delivered.'
@@ -113,8 +113,8 @@ export const projects = [
             weight: 50,
             responsibleDepartmentNames: ['Technology', 'Marketing'],
             tasks: [
-                { id: 'task-2-1', title: 'Market Research', description: 'Analyze competitor apps and market trends.', status: 'done', startDate: '2024-09-01', endDate: '2024-09-15', weight: 30, assignedUserEmails: ['diana.miller@teamflow.com'] },
-                { id: 'task-2-2', title: 'API Development', description: 'Develop REST APIs for the mobile app.', status: 'in-progress', startDate: '2024-09-16', endDate: '2024-11-15', weight: 70, assignedUserEmails: ['bob.williams@teamflow.com'] },
+                { id: 'task-2-1', title: 'Market Research', description: 'Analyze competitor apps and market trends.', status: 'DONE', startDate: '2024-09-01', endDate: '2024-09-15', weight: 30, assignedUserEmails: ['diana.miller@teamflow.com'] },
+                { id: 'task-2-2', title: 'API Development', description: 'Develop REST APIs for the mobile app.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-11-15', weight: 70, assignedUserEmails: ['bob.williams@teamflow.com'] },
             ]
         },
         {
@@ -126,8 +126,8 @@ export const projects = [
             weight: 50,
             responsibleDepartmentNames: ['Technology'],
             tasks: [
-                { id: 'task-2-3', title: 'Mobile UI/UX Design', description: 'Design the user interface and experience for iOS and Android.', status: 'in-progress', startDate: '2024-09-16', endDate: '2024-10-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
-                { id: 'task-2-4', title: 'Mobile App Development', description: 'Develop the native mobile application.', status: 'todo', startDate: '2024-10-16', endDate: '2024-12-15', weight: 60, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'] },
+                { id: 'task-2-3', title: 'Mobile UI/UX Design', description: 'Design the user interface and experience for iOS and Android.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-10-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
+                { id: 'task-2-4', title: 'Mobile App Development', description: 'Develop the native mobile application.', status: 'TODO', startDate: '2024-10-16', endDate: '2024-12-15', weight: 60, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'] },
             ]
         }
     ]

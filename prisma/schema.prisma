@@ -1,15 +1,13 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+datasource db {
+  provider     = "sqlite"
+  url          = "file:./dev.db"
+  relationMode = "prisma"
+}
 
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "debian-openssl-3.0.x"]
-  engineType    = "binary"
-}
-
-datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
 }
 
 model User {
@@ -19,13 +17,14 @@ model User {
   password        String
   avatar          String?
   phone           String?
-  tasks           Task[]       @relation("TaskAssignees")
-  taskUpdates     TaskUpdate[]
-  managedProjects Project[]
-  teams           Team[]       @relation("TeamMembers")
-  ledTeams        Team[]       @relation("TeamLead")
+  projectsManaged Project[]    @relation("ProjectManager")
+  tasks           Task[]       @relation(name: "TaskAssignees")
+  teamsAsLead     Team[]       @relation("TeamLead")
+  teamsAsMember   Team[]       @relation(name: "TeamMembers")
+  updates         TaskUpdate[]
 
-  @@map("users")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Department {
@@ -34,10 +33,11 @@ model Department {
   responsibleName          String
   responsibleTitle         String
   responsiblePhone         String
-  projects                 Project[]
-  responsibleForMilestones Milestone[] @relation("ResponsibleDepartments")
+  projects                 Project[]   @relation("OwningDepartment")
+  milestonesResponsibleFor Milestone[] @relation("ResponsibleDepartments")
 
-  @@map("departments")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProjectStatus {
@@ -45,7 +45,8 @@ model ProjectStatus {
   name     String    @unique
   projects Project[]
 
-  @@map("project_statuses")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Project {
@@ -57,15 +58,20 @@ model Project {
   workingYear      String
   status           ProjectStatus @relation(fields: [statusId], references: [id])
   statusId         String
-  owningDepartment Department    @relation(fields: [departmentId], references: [id])
+  owningDepartment Department    @relation("OwningDepartment", fields: [departmentId], references: [id])
   departmentId     String
-  projectManager   User          @relation(fields: [projectManagerId], references: [id])
+  projectManager   User          @relation("ProjectManager", fields: [projectManagerId], references: [id])
   projectManagerId String
   milestones       Milestone[]
   blockers         Blocker[]
   teams            Team[]
 
-  @@map("projects")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([departmentId])
+  @@index([projectManagerId])
+  @@index([statusId])
 }
 
 model Milestone {
@@ -77,53 +83,60 @@ model Milestone {
   weight                 Int
   project                Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId              String
-  responsibleDepartments Department[] @relation("ResponsibleDepartments")
   tasks                  Task[]
+  responsibleDepartments Department[] @relation("ResponsibleDepartments")
 
-  @@map("milestones")
-}
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-model Blocker {
-  id          String   @id @default(cuid())
-  description String
-  status      String   @default("OPEN")
-  createdAt   DateTime @default(now())
-  resolvedAt  DateTime?
-  resolution  String?
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId   String
-
-  @@map("blockers")
+  @@index([projectId])
 }
 
 model Task {
-  id          String       @id @default(cuid())
+  id          String     @id @default(cuid())
   title       String
   description String
-  status      String       @default("TODO")
+  status      String
   startDate   DateTime
   endDate     DateTime
   weight      Int
   completedAt DateTime?
-  milestone   Milestone    @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  milestone   Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
   milestoneId String
-  assignees   User[]       @relation("TaskAssignees")
+  assignees   User[]     @relation(name: "TaskAssignees")
   updates     TaskUpdate[]
 
-  @@map("tasks")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([milestoneId])
 }
 
 model TaskUpdate {
   id        String   @id @default(cuid())
   text      String
-  type      String   @default("COMMENT")
+  type      String
   createdAt DateTime @default(now())
   author    User     @relation(fields: [authorId], references: [id])
   authorId  String
   task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   taskId    String
 
-  @@map("task_updates")
+  @@index([authorId])
+  @@index([taskId])
+}
+
+model Blocker {
+  id          String    @id @default(cuid())
+  description String
+  status      String
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+  resolution  String?
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+
+  @@index([projectId])
 }
 
 model Team {
@@ -135,5 +148,9 @@ model Team {
   teamLeadId String
   members    User[]   @relation("TeamMembers")
 
-  @@map("teams")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([teamLeadId])
 }

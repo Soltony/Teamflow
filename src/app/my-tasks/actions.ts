@@ -3,21 +3,15 @@
 
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
-import type { Task, TaskUpdate } from "@/lib/types";
+import type { TaskStatus } from "@/lib/types";
 
-export async function updateTaskStatusAction(taskId: string, newStatus: Task['status']) {
-  const prismaStatus = newStatus.replace(/-/g, '_').toUpperCase();
-
-  if (!prismaStatus) {
-      return { success: false, error: "Invalid task status." };
-  }
-
+export async function updateTaskStatusAction(taskId: string, newStatus: TaskStatus) {
   try {
     await prisma.task.update({
       where: { id: taskId },
       data: {
-        status: prismaStatus,
-        completedAt: newStatus === 'done' ? new Date() : undefined
+        status: newStatus,
+        completedAt: newStatus === 'DONE' ? new Date() : null
       },
     });
     revalidatePath('/my-tasks');

@@ -28,7 +28,7 @@ type TeamTasksManagementProps = {
   projectStatuses: ProjectStatus[];
 };
 
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
 
 export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTasksByProject, projectStatuses }: TeamTasksManagementProps) {
   const { toast } = useToast();
@@ -147,15 +147,15 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                       const latestUpdate = task.updates && task.updates.length > 0 ? task.updates[task.updates.length - 1] : null;
                       const latestUpdateAuthor = latestUpdate ? userMap.get(latestUpdate.authorId) : null;
                       return (
-                          <Card key={task.id} className={task.status === 'pending-review' ? 'border-primary' : ''}>
+                          <Card key={task.id} className={task.status === 'PENDING_REVIEW' ? 'border-primary' : ''}>
                               <CardHeader>
                                   <div className="flex justify-between items-start gap-4">
                                       <div>
                                           <CardTitle className="text-xl">{task.title}</CardTitle>
                                           <CardDescription>In Milestone: {task.milestoneTitle}</CardDescription>
                                       </div>
-                                      <Badge variant={task.status === 'done' ? 'default' : 'secondary'}>
-                                          {capitalize(task.status.replace('-', ' '))}
+                                      <Badge variant={task.status === 'DONE' ? 'default' : 'secondary'}>
+                                          {formatStatus(task.status)}
                                       </Badge>
                                   </div>
                               </CardHeader>
@@ -190,7 +190,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                           </div>
                                        </>
                                   )}
-                                  {task.status === 'pending-review' && (
+                                  {task.status === 'PENDING_REVIEW' && (
                                       <>
                                           <Separator />
                                           <div className="flex justify-end gap-2">

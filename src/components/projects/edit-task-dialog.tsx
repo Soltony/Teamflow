@@ -28,7 +28,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import type { Milestone, Task, User } from "@/lib/types";
+import type { Milestone, Task, User, TaskStatus } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "../ui/slider";
 import {
@@ -46,7 +46,10 @@ import {
 } from "@/components/ui/select";
 import { useMemo, useEffect } from "react";
 
-const taskStatuses: Task['status'][] = ['todo', 'in-progress', 'pending-review', 'done'];
+const taskStatuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'PENDING_REVIEW', 'DONE'];
+const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const formatStatus = (s: string) => capitalize(s.replace(/_/g, ' ').toLowerCase());
+
 
 type EditTaskDialogProps = {
   isOpen: boolean;
@@ -106,8 +109,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
 
 
   const selectedUsers = users.filter(user => form.watch('assignedUserIds')?.includes(user.id));
-  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
-
+  
   async function onSubmit(data: TaskFormValues) {
     const updatedTask: Task = {
       ...task,
@@ -296,7 +298,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
                                     <SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {taskStatuses.map(status => <SelectItem key={status} value={status}>{capitalize(status.replace('-', ' '))}</SelectItem>)}
+                                    {taskStatuses.map(status => <SelectItem key={status} value={status}>{formatStatus(status)}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />

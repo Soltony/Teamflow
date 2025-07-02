@@ -1,6 +1,6 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import type { Task, User } from '@/lib/types';
+import type { Task, TaskStatus } from '@/lib/types';
 import { format, isPast, parseISO } from 'date-fns';
 import { Circle, CheckCircle2, CircleDot, AlertTriangle, Pencil, FileClock } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
@@ -9,16 +9,18 @@ import { Button } from '@/components/ui/button';
 
 type TaskListProps = {
   tasks: Task[];
-  users: User[];
+  users: any[];
   onEditTask: (task: Task) => void;
 };
 
-const statusIcons: Record<Task['status'], React.ReactNode> = {
-  todo: <Circle className="w-4 h-4 text-muted-foreground" />,
-  'in-progress': <CircleDot className="w-4 h-4 text-blue-500" />,
-  'pending-review': <FileClock className="w-4 h-4 text-amber-500" />,
-  done: <CheckCircle2 className="w-4 h-4 text-green-500" />,
+const statusIcons: Record<TaskStatus, React.ReactNode> = {
+  TODO: <Circle className="w-4 h-4 text-muted-foreground" />,
+  IN_PROGRESS: <CircleDot className="w-4 h-4 text-blue-500" />,
+  PENDING_REVIEW: <FileClock className="w-4 h-4 text-amber-500" />,
+  DONE: <CheckCircle2 className="w-4 h-4 text-green-500" />,
 };
+
+const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
 
 export function TaskList({ tasks, onEditTask, users }: TaskListProps) {
   if (tasks.length === 0) {
@@ -30,7 +32,6 @@ export function TaskList({ tasks, onEditTask, users }: TaskListProps) {
     );
   }
 
-  const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
   const userMap = new Map(users.map(u => [u.id, u.name]));
 
   return (
@@ -48,13 +49,13 @@ export function TaskList({ tasks, onEditTask, users }: TaskListProps) {
         </TableHeader>
         <TableBody>
           {tasks.map((task) => {
-            const isOverdue = isPast(parseISO(task.endDate)) && task.status !== 'done';
+            const isOverdue = isPast(parseISO(task.endDate)) && task.status !== 'DONE';
             return (
               <TableRow key={task.id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     {statusIcons[task.status]}
-                    <span className="capitalize hidden md:inline-block">{capitalize(task.status.replace('-', ' '))}</span>
+                    <span className="capitalize hidden md:inline-block">{formatStatus(task.status)}</span>
                   </div>
                 </TableCell>
                 <TableCell className="font-medium">{task.title}</TableCell>

@@ -96,7 +96,7 @@ async function main() {
           create: {
             id: blocker.id,
             description: blocker.description,
-            status: blocker.status.toUpperCase(),
+            status: blocker.status,
             createdAt: new Date(blocker.createdAt),
             resolvedAt: blocker.resolvedAt ? new Date(blocker.resolvedAt) : undefined,
             resolution: blocker.resolution,
@@ -133,7 +133,6 @@ async function main() {
       });
 
       for (const task of milestone.tasks) {
-        const taskStatus = task.status.replace(/-/g, '_').toUpperCase();
         const assigneeIds = task.assignedUserEmails
             .map(email => userMap.get(email))
             .filter((id): id is string => !!id);
@@ -147,11 +146,11 @@ async function main() {
             id: task.id,
             title: task.title,
             description: task.description,
-            status: taskStatus,
+            status: task.status,
             startDate: new Date(task.startDate),
             endDate: new Date(task.endDate),
             weight: task.weight,
-            completedAt: task.completedAt ? new Date(task.completedAt) : undefined,
+            completedAt: task.status === 'DONE' && !task.completedAt ? new Date() : (task.completedAt ? new Date(task.completedAt) : undefined),
             milestoneId: createdMilestone.id,
             assignees: {
               connect: assigneeIds.map(id => ({ id })),
@@ -164,15 +163,13 @@ async function main() {
             const authorId = userMap.get(update.userEmail);
             if (!authorId) continue;
             
-            const updateType = update.type.replace(/-/g, '_').toUpperCase();
-
             await prisma.taskUpdate.upsert({
                 where: { id: update.id },
                 update: {},
                 create: {
                     id: update.id,
                     text: update.text,
-                    type: updateType,
+                    type: update.type,
                     createdAt: new Date(update.createdAt),
                     authorId: authorId,
                     taskId: createdTask.id

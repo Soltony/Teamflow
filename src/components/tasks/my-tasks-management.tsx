@@ -27,7 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import type { Task, User, TaskUpdate } from "@/lib/types";
+import type { Task, User, TaskUpdate, TaskStatus } from "@/lib/types";
 import { format, formatDistanceToNow, isPast, parseISO, differenceInDays } from "date-fns";
 import { CheckCircle, XCircle, AlertTriangle, Clock, Check, Target, Award } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -46,8 +46,8 @@ const taskUpdateSchema = z.object({
 
 type TaskUpdateFormValues = z.infer<typeof taskUpdateSchema>;
 
-const taskStatuses: Task['status'][] = ['todo', 'in-progress', 'pending-review', 'done'];
-const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const taskStatuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'PENDING_REVIEW', 'DONE'];
+const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
 
 const TaskItem = ({ 
     task, 
@@ -57,7 +57,7 @@ const TaskItem = ({
 }: { 
     task: UserTask; 
     userMap: Map<string, User>;
-    onStatusChange: (newStatus: Task['status']) => void;
+    onStatusChange: (newStatus: TaskStatus) => void;
     onUpdateSubmit: (data: TaskUpdateFormValues) => void;
 }) => {
     const form = useForm<TaskUpdateFormValues>({
@@ -83,14 +83,14 @@ const TaskItem = ({
                                 <div className="w-48">
                                     <Select 
                                         value={task.status} 
-                                        onValueChange={(newStatus: Task['status']) => onStatusChange(newStatus)}
-                                        disabled={task.status === 'done'}
+                                        onValueChange={(newStatus: TaskStatus) => onStatusChange(newStatus)}
+                                        disabled={task.status === 'DONE'}
                                     >
                                         <SelectTrigger><SelectValue /></SelectTrigger>
                                         <SelectContent>
                                         {taskStatuses.map(status => (
-                                            <SelectItem key={status} value={status} disabled={status === 'done'}>
-                                                {capitalize(status.replace('-', ' '))}
+                                            <SelectItem key={status} value={status} disabled={status === 'DONE'}>
+                                                {formatStatus(status)}
                                             </SelectItem>
                                         ))}
                                         </SelectContent>
@@ -110,7 +110,7 @@ const TaskItem = ({
                                         task.updates.slice().reverse().map(update => {
                                             const author = userMap.get(update.authorId);
                                             
-                                            if (update.type === 'status-change') {
+                                            if (update.type === 'STATUS_CHANGE') {
                                                 const isApproval = update.text.includes('approved');
                                                 return (
                                                     <div key={update.id} className="flex items-start gap-3">
@@ -152,7 +152,7 @@ const TaskItem = ({
                                 </div>
                             </div>
                             <div>
-                                {task.status === 'done' ? (
+                                {task.status === 'DONE' ? (
                                     <div className="text-sm text-green-700 font-medium p-3 bg-green-50 rounded-md border border-green-200 mt-4 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
                                         This task has been completed and approved. No further updates can be made.
                                     </div>
@@ -190,7 +190,7 @@ const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubm
     icon: React.ReactNode;
     tasks: UserTask[];
     userMap: Map<string, User>;
-    onStatusChange: (task: UserTask, newStatus: Task['status']) => void;
+    onStatusChange: (task: UserTask, newStatus: TaskStatus) => void;
     onUpdateSubmit: (task: UserTask, data: TaskUpdateFormValues) => void;
 }) => (
     <Card>
@@ -226,10 +226,10 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
     const accomplished: UserTask[] = [];
 
     initialTasks.forEach(task => {
-        const isTaskOverdue = isPast(parseISO(task.endDate)) && task.status !== 'done';
+        const isTaskOverdue = isPast(parseISO(task.endDate)) && task.status !== 'DONE';
         if (isTaskOverdue) {
             overdue.push(task);
-        } else if (task.status === 'done') {
+        } else if (task.status === 'DONE') {
             if (task.completedAt && differenceInDays(new Date(), parseISO(task.completedAt)) <= 7) {
                 accomplished.push(task);
             }
@@ -242,7 +242,7 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
     active.sort((a,b) => parseISO(a.endDate).getTime() - parseISO(b.endDate).getTime());
     accomplished.sort((a,b) => parseISO(b.completedAt!).getTime() - parseISO(a.completedAt!).getTime());
 
-    const allCompletedTasks = initialTasks.filter(t => t.status === 'done' && t.completedAt);
+    const allCompletedTasks = initialTasks.filter(t => t.status === 'DONE' && t.completedAt);
     const onTimeCount = allCompletedTasks.filter(t => 
         t.completedAt && parseISO(t.completedAt) <= parseISO(t.endDate)
     ).length;
@@ -260,12 +260,12 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
   }, [initialTasks]);
 
 
-  const handleStatusChange = async (task: UserTask, newStatus: Task['status']) => {
+  const handleStatusChange = async (task: UserTask, newStatus: TaskStatus) => {
     const result = await updateTaskStatusAction(task.id, newStatus);
     if (result.success) {
         toast({
             title: "Status Updated",
-            description: `Task status has been changed to "${capitalize(newStatus.replace('-', ' '))}".`
+            description: `Task status has been changed to "${formatStatus(newStatus)}".`
         });
     } else {
         toast({
@@ -281,7 +281,7 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
     let toastDescription = "Your progress update has been recorded.";
 
     if (result.success) {
-        if (task.status === 'in-progress') {
+        if (task.status === 'IN_PROGRESS') {
             toastDescription = "Your update has been posted and the task is resubmitted for review.";
         }
         toast({
