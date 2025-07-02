@@ -61,7 +61,7 @@ function AppSidebar() {
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <GanttChartSquare className="w-8 h-8 text-primary" />
-          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-primary truncate">TeamFlow</h1>}
+          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-primary truncate">NIB Team</h1>}
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -95,7 +95,7 @@ function AppSidebar() {
               <div className="flex flex-col space-y-1">
                 <p className="text-sm font-medium leading-none">Admin</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  admin@teamflow.com
+                  admin@nibteam.com
                 </p>
               </div>
             </DropdownMenuLabel>
