@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, registrationData?: any) => {
+  const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, authData?: any) => {
     if (newAccessToken && newRefreshToken) {
       try {
         const decodedUser = jwtDecode<AuthenticatedUser>(newAccessToken);
@@ -65,7 +65,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             given_name: decodedUser.given_name,
             family_name: decodedUser.family_name,
             picture: decodedUser.picture,
-            phoneNumber: registrationData?.phoneNumber,
+            phoneNumber: authData?.phoneNumber,
         };
 
         const syncedUser = await syncUser(syncInput);
@@ -120,9 +120,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [setSession]);
 
-  const handleAuthResponse = async (response: AuthResponse, registrationData?: any) => {
+  const handleAuthResponse = async (response: AuthResponse, authData?: any) => {
     if (response.isSuccess && response.accessToken && response.refreshToken) {
-      await setSession(response.accessToken, response.refreshToken, registrationData);
+      await setSession(response.accessToken, response.refreshToken, authData);
     }
     return response;
   }
@@ -131,7 +131,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(true);
     try {
       const response = await axiosInstance.post<AuthResponse>('/api/Auth/login', data);
-      return await handleAuthResponse(response.data);
+      return await handleAuthResponse(response.data, data);
     } catch (error) {
       const axiosError = error as AxiosError<AuthResponse>;
       setLoading(false);

@@ -26,7 +26,7 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
     return null;
   }
 
-  const isAdminLogin = input.phoneNumber === '0912345678';
+  const isAdminLogin = input.phoneNumber === '123-456-7890';
 
   try {
     if (isAdminLogin) {
