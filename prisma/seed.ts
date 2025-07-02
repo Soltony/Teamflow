@@ -1,5 +1,5 @@
 
-import { PrismaClient, BlockerStatus, TaskStatus, TaskUpdateType } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { 
     users as usersData, 
     departments as departmentsData, 
@@ -96,7 +96,7 @@ async function main() {
           create: {
             id: blocker.id,
             description: blocker.description,
-            status: blocker.status === 'open' ? BlockerStatus.OPEN : BlockerStatus.RESOLVED,
+            status: blocker.status.toUpperCase(),
             createdAt: new Date(blocker.createdAt),
             resolvedAt: blocker.resolvedAt ? new Date(blocker.resolvedAt) : undefined,
             resolution: blocker.resolution,
@@ -133,13 +133,7 @@ async function main() {
       });
 
       for (const task of milestone.tasks) {
-        const taskStatusMap: Record<string, TaskStatus> = {
-            'todo': TaskStatus.TODO,
-            'in-progress': TaskStatus.IN_PROGRESS,
-            'pending-review': TaskStatus.PENDING_REVIEW,
-            'done': TaskStatus.DONE
-        };
-        const taskStatus = taskStatusMap[task.status] || TaskStatus.TODO;
+        const taskStatus = task.status.replace(/-/g, '_').toUpperCase();
         const assigneeIds = task.assignedUserEmails
             .map(email => userMap.get(email))
             .filter((id): id is string => !!id);
@@ -170,11 +164,7 @@ async function main() {
             const authorId = userMap.get(update.userEmail);
             if (!authorId) continue;
             
-            const updateTypeMap: Record<string, TaskUpdateType> = {
-                'comment': TaskUpdateType.COMMENT,
-                'status-change': TaskUpdateType.STATUS_CHANGE
-            };
-            const updateType = updateTypeMap[update.type] || TaskUpdateType.COMMENT;
+            const updateType = update.type.replace(/-/g, '_').toUpperCase();
 
             await prisma.taskUpdate.upsert({
                 where: { id: update.id },

@@ -4,17 +4,9 @@
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { Task, TaskUpdate } from "@/lib/types";
-import { TaskStatus, TaskUpdateType } from "@prisma/client";
-
-const statusMap: Record<Task['status'], TaskStatus> = {
-    'todo': TaskStatus.TODO,
-    'in-progress': TaskStatus.IN_PROGRESS,
-    'pending-review': TaskStatus.PENDING_REVIEW,
-    'done': TaskStatus.DONE
-};
 
 export async function updateTaskStatusAction(taskId: string, newStatus: Task['status']) {
-  const prismaStatus = statusMap[newStatus];
+  const prismaStatus = newStatus.replace(/-/g, '_').toUpperCase();
 
   if (!prismaStatus) {
       return { success: false, error: "Invalid task status." };
@@ -49,14 +41,14 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
                     text,
                     authorId,
                     taskId: taskId,
-                    type: TaskUpdateType.COMMENT,
+                    type: 'COMMENT',
                 }
             });
 
-            if (task.status === TaskStatus.IN_PROGRESS) {
+            if (task.status === 'IN_PROGRESS') {
                 await tx.task.update({
                     where: { id: taskId },
-                    data: { status: TaskStatus.PENDING_REVIEW }
+                    data: { status: 'PENDING_REVIEW' }
                 });
             }
         });
