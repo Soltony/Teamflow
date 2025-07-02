@@ -40,8 +40,8 @@ import { Textarea } from "../ui/textarea";
 import { Separator } from "../ui/separator";
 import { createRole, deleteRole, updateRole } from "@/app/config/actions";
 import { Checkbox } from "../ui/checkbox";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
-import * as AccordionPrimitive from "@radix-ui/react-accordion"
+import { Accordion, AccordionContent, AccordionItem } from "../ui/accordion";
+import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Badge } from "../ui/badge";
 
 type RoleManagementProps = {
@@ -265,15 +265,15 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
                                       <Checkbox
                                         checked={allSelected}
                                         onCheckedChange={handleGroupCheckedChange}
+                                        onClick={(e) => e.stopPropagation()}
                                       />
                                       <span className="font-semibold text-base">{groupName}</span>
                                     </div>
-                                    <AccordionTrigger className="flex items-center gap-2 p-0">
+                                    <AccordionPrimitive.Trigger className="flex items-center gap-2 p-0">
                                       <Badge variant="secondary">{`${selectedPermissionsInGroup}/${totalPermissionsInGroup}`}</Badge>
-                                      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
-                                    </AccordionTrigger>
+                                      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                    </AccordionPrimitive.Trigger>
                                   </AccordionPrimitive.Header>
-
                                   <AccordionContent className="p-4 border-t">
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                       {permissions.map((permission) => (
@@ -345,3 +345,5 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
     </>
   );
 }
+
+    
