@@ -40,7 +40,8 @@ import { Textarea } from "../ui/textarea";
 import { Separator } from "../ui/separator";
 import { createRole, deleteRole, updateRole } from "@/app/config/actions";
 import { Checkbox } from "../ui/checkbox";
-import { ScrollArea } from "../ui/scroll-area";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
+import { Badge } from "../ui/badge";
 
 type RoleManagementProps = {
   initialRoles: Role[];
@@ -231,53 +232,82 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
                         )}
                     />
                     <FormField
-                        control={form.control}
-                        name="permissions"
-                        render={() => (
-                            <FormItem>
-                            <FormLabel>Permissions</FormLabel>
-                            <FormDescription>Select the permissions for this role.</FormDescription>
-                            <ScrollArea className="h-72 w-full rounded-md border p-4">
-                                <div className="space-y-4">
-                                    {Object.entries(availablePermissions).map(([groupName, permissions]) => (
-                                    <div key={groupName}>
-                                        <h4 className="font-medium text-sm mb-2">{groupName}</h4>
-                                        <div className="grid grid-cols-2 gap-x-4 gap-y-2 pl-2">
-                                        {permissions.map((permission) => (
-                                            <FormField
-                                            key={permission}
-                                            control={form.control}
-                                            name="permissions"
-                                            render={({ field }) => {
-                                                return (
-                                                <FormItem className="flex flex-row items-start space-x-3 space-y-0">
-                                                    <FormControl>
-                                                    <Checkbox
-                                                        checked={field.value?.includes(permission)}
-                                                        onCheckedChange={(checked) => {
-                                                        return checked
-                                                            ? field.onChange([...(field.value || []), permission])
-                                                            : field.onChange(
-                                                                field.value?.filter((value) => value !== permission)
-                                                            );
-                                                        }}
-                                                    />
-                                                    </FormControl>
-                                                    <FormLabel className="font-normal text-sm">{permission.split(':')[1]}</FormLabel>
-                                                </FormItem>
-                                                );
-                                            }}
-                                            />
-                                        ))}
-                                        </div>
+                      control={form.control}
+                      name="permissions"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Permissions</FormLabel>
+                          <FormDescription>
+                            Select permissions for this role. Expand a section to see individual permissions.
+                          </FormDescription>
+                          <Accordion type="multiple" className="w-full space-y-2">
+                            {Object.entries(availablePermissions).map(([groupName, permissions]) => {
+                              const totalPermissionsInGroup = permissions.length;
+                              const selectedPermissionsInGroup = permissions.filter(p => field.value?.includes(p)).length;
+                              const allSelected = totalPermissionsInGroup === selectedPermissionsInGroup;
+
+                              const handleGroupCheckedChange = (checked: boolean | string) => {
+                                const currentPermissions = field.value || [];
+                                let newPermissions;
+                                if (checked) {
+                                  newPermissions = [...new Set([...currentPermissions, ...permissions])];
+                                } else {
+                                  newPermissions = currentPermissions.filter(p => !permissions.includes(p));
+                                }
+                                field.onChange(newPermissions);
+                              };
+
+                              return (
+                                <AccordionItem value={groupName} key={groupName} className="border rounded-lg data-[state=open]:shadow-md">
+                                  <AccordionTrigger className="px-4 py-2 hover:no-underline">
+                                    <div className="flex items-center gap-3 flex-1">
+                                      <Checkbox
+                                        checked={allSelected}
+                                        onCheckedChange={handleGroupCheckedChange}
+                                        onClick={(e) => e.stopPropagation()}
+                                      />
+                                      <span className="font-semibold text-base">{groupName}</span>
                                     </div>
-                                    ))}
-                                </div>
-                            </ScrollArea>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
+                                    <div className="flex items-center gap-2">
+                                        <Badge variant="secondary">{`${selectedPermissionsInGroup}/${totalPermissionsInGroup}`}</Badge>
+                                    </div>
+                                  </AccordionTrigger>
+                                  <AccordionContent className="p-4 border-t">
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                      {permissions.map((permission) => (
+                                        <FormItem
+                                          key={permission}
+                                          className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 bg-background hover:bg-muted/50 transition-colors"
+                                        >
+                                          <FormControl>
+                                            <Checkbox
+                                              checked={field.value?.includes(permission)}
+                                              onCheckedChange={(checked) => {
+                                                return checked
+                                                  ? field.onChange([...(field.value || []), permission])
+                                                  : field.onChange(
+                                                      field.value?.filter(
+                                                        (value) => value !== permission
+                                                      )
+                                                    );
+                                              }}
+                                            />
+                                          </FormControl>
+                                          <FormLabel className="font-normal text-sm leading-none cursor-pointer w-full">
+                                            {permission.split(':')[1].charAt(0).toUpperCase() + permission.split(':')[1].slice(1)}
+                                          </FormLabel>
+                                        </FormItem>
+                                      ))}
+                                    </div>
+                                  </AccordionContent>
+                                </AccordionItem>
+                              );
+                            })}
+                          </Accordion>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
                     <DialogFooter>
                         <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isPending}>Cancel</Button>
                         <Button type="submit" disabled={isPending}>
