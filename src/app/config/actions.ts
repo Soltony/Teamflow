@@ -22,6 +22,50 @@ export async function assignRolesToUser(userId: string, roleIds: string[]) {
     }
 }
 
+export async function createUser(data: { firstName: string, lastName: string, email: string, phoneNumber?: string, roleIds: string[] }) {
+    try {
+        const existingUser = await prisma.user.findUnique({
+            where: { email: data.email }
+        });
+
+        if (existingUser) {
+            return { success: false, error: "A user with this email already exists." };
+        }
+
+        await prisma.user.create({
+            data: {
+                firstName: data.firstName,
+                lastName: data.lastName,
+                name: `${data.firstName} ${data.lastName}`,
+                email: data.email,
+                phoneNumber: data.phoneNumber,
+                roles: {
+                    connect: data.roleIds.map(id => ({ id }))
+                }
+            }
+        });
+        revalidatePath('/config');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to create user:", error);
+        return { success: false, error: 'Failed to create user.' };
+    }
+}
+
+export async function deleteUser(userId: string) {
+    try {
+        await prisma.user.delete({
+            where: { id: userId },
+        });
+        revalidatePath('/config');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete user:", error);
+        return { success: false, error: "Failed to delete user. They may be associated with projects, tasks, or teams. Please reassign their responsibilities before deleting." };
+    }
+}
+
+
 export async function createRole(data: { name: string, description?: string, permissions?: string[] }) {
     try {
         await prisma.role.create({
