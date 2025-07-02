@@ -3,7 +3,7 @@
 
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { jwtDecode } from 'jwt-decode';
 
 interface AuthResponse {
@@ -49,13 +49,15 @@ export async function createUser(data: { firstName: string, lastName: string, em
     try {
         const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/register`;
 
-        const registrationResponse = await axios.post<AuthResponse>(authApiUrl, {
+        const registrationPayload = {
             firstName: data.firstName,
             lastName: data.lastName,
-            email: data.email,
+            email: data.email || null, // Ensure empty string is sent as null
             phoneNumber: data.phoneNumber,
             password: data.password,
-        });
+        };
+
+        const registrationResponse = await axios.post<AuthResponse>(authApiUrl, registrationPayload);
 
         if (!registrationResponse.data.isSuccess || !registrationResponse.data.accessToken) {
             const errorMessage = registrationResponse.data.errors?.join(', ') || 'Failed to register user with the authentication service.';
@@ -99,13 +101,16 @@ export async function createUser(data: { firstName: string, lastName: string, em
         return { success: true };
 
     } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            const responseData = error.response.data as AuthResponse;
-            const errorMessage = responseData.errors?.join(', ') || 'An unexpected error occurred during registration with the auth service.';
-            return { success: false, error: errorMessage };
+        if (axios.isAxiosError(error)) {
+            console.error("Auth service registration failed. Response:", error.response?.status, error.response?.data);
+            if (error.response) {
+                const responseData = error.response.data as AuthResponse;
+                const errorMessage = responseData.errors?.join(', ') || 'An unexpected error occurred during registration with the auth service.';
+                return { success: false, error: errorMessage };
+            }
         }
         console.error("Failed to create user:", error);
-        return { success: false, error: 'An unexpected server error occurred.' };
+        return { success: false, error: 'An unexpected server error occurred. Could not connect to the authentication service.' };
     }
 }
 

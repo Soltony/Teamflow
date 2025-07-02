@@ -135,7 +135,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
       const axiosError = error as AxiosError<AuthResponse>;
       setLoading(false);
-      return axiosError.response?.data || { isSuccess: false, errors: ['An unknown error occurred'] };
+      if (axiosError.response) {
+          console.error("Auth service login failed on client. Response:", axiosError.response.data);
+          return axiosError.response?.data;
+      }
+      console.error("Client-side login request failed:", axiosError.message);
+      return { isSuccess: false, errors: ['Could not connect to the authentication service.'] };
     }
   };
 
@@ -147,7 +152,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } catch (error) {
        const axiosError = error as AxiosError<AuthResponse>;
        setLoading(false);
-       return axiosError.response?.data || { isSuccess: false, errors: ['An unknown error occurred'] };
+       if (axiosError.response) {
+            console.error("Auth service registration failed on client. Response:", axiosError.response.data);
+            return axiosError.response.data;
+       }
+       console.error("Client-side registration request failed:", axiosError.message);
+       // This could be a CORS issue or network error.
+       return { isSuccess: false, errors: ['Could not connect to the authentication service. Please check your network or contact support.'] };
     }
   };
 
