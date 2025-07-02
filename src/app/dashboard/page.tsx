@@ -21,6 +21,15 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
     
     const projectStatuses = await prisma.projectStatus.findMany();
     const departments = await prisma.department.findMany();
+    const teams = await prisma.team.findMany({
+        include: {
+            teamLead: true,
+            project: true,
+        },
+        orderBy: {
+            name: 'asc'
+        }
+    });
 
     const selectedYear = searchParams?.year || "all";
     
@@ -57,6 +66,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
             projects={JSON.parse(JSON.stringify(projects))}
             projectStatuses={JSON.parse(JSON.stringify(projectStatuses))}
             departments={JSON.parse(JSON.stringify(departments))}
+            teams={JSON.parse(JSON.stringify(teams))}
             availableYears={availableYears}
             selectedYear={selectedYear}
             stats={stats}

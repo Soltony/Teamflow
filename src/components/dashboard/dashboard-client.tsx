@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "../ui/separator";
+import { Badge } from "../ui/badge";
 
 const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode, count: number, href: string }) => {
   if (count > 0) {
@@ -33,7 +34,7 @@ const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode,
   return <>{children}</>;
 };
 
-export function DashboardClient({ projects, projectStatuses, departments, availableYears, selectedYear, stats }: any) {
+export function DashboardClient({ projects, projectStatuses, departments, teams, availableYears, selectedYear, stats }: any) {
   const router = useRouter();
   const pathname = usePathname();
 
@@ -179,45 +180,83 @@ export function DashboardClient({ projects, projectStatuses, departments, availa
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Organization Departments</CardTitle>
-          <CardDescription>
-            A list of all departments. Manage them in the{' '}
-            <Link href="/departments" className="text-primary hover:underline">
-              Departments page
-            </Link>
-            .
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-2">
-            {departments.length > 0 ? (
-              departments.map((dept: any, index: number) => (
-                <React.Fragment key={dept.id}>
-                  <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                    <div>
-                      <p className="font-semibold">{dept.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {dept.responsibleName}, {dept.responsibleTitle}
-                      </p>
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Organization Departments</CardTitle>
+            <CardDescription>
+              A list of all departments. Manage them in the{' '}
+              <Link href="/departments" className="text-primary hover:underline">
+                Departments page
+              </Link>
+              .
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {departments.length > 0 ? (
+                departments.map((dept: any, index: number) => (
+                  <React.Fragment key={dept.id}>
+                    <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
+                      <div>
+                        <p className="font-semibold">{dept.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                          {dept.responsibleName}, {dept.responsibleTitle}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <Phone className="h-4 w-4" />
+                        <span>{dept.responsiblePhone}</span>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <Phone className="h-4 w-4" />
-                      <span>{dept.responsiblePhone}</span>
+                    {index < departments.length - 1 && <Separator />}
+                  </React.Fragment>
+                ))
+              ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  No departments found. Add one on the Departments page.
+                </p>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+            <CardHeader>
+            <CardTitle>Project Teams</CardTitle>
+            <CardDescription>
+                A list of all teams. Manage them in the{' '}
+                <Link href="/teams" className="text-primary hover:underline">
+                Teams page
+                </Link>
+                .
+            </CardDescription>
+            </CardHeader>
+            <CardContent>
+            <div className="space-y-2">
+                {teams.length > 0 ? (
+                teams.map((team: any, index: number) => (
+                    <React.Fragment key={team.id}>
+                    <div className="flex items-start justify-between p-2 rounded-md hover:bg-muted/50">
+                        <div>
+                        <p className="font-semibold">{team.name}</p>
+                        <p className="text-sm text-muted-foreground">
+                            Lead: {team.teamLead.name}
+                        </p>
+                        </div>
+                        <Badge variant="secondary">{team.project.name}</Badge>
                     </div>
-                  </div>
-                  {index < departments.length - 1 && <Separator />}
-                </React.Fragment>
-              ))
-            ) : (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                No departments found. Add one on the Departments page.
-              </p>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+                    {index < teams.length - 1 && <Separator />}
+                    </React.Fragment>
+                ))
+                ) : (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                    No teams found. Add one on the Teams page.
+                </p>
+                )}
+            </div>
+            </CardContent>
+        </Card>
+      </div>
 
       <div>
         <h2 className="text-xl font-bold mt-6 mb-4">{selectedYear === 'all' ? 'All Projects' : `Projects for ${selectedYear}`}</h2>
