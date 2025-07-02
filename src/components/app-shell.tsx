@@ -16,6 +16,7 @@ import {
   ClipboardCheck,
   ClipboardList,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 
 import {
   SidebarProvider,
@@ -53,12 +54,12 @@ const menuItems = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
-function AppSidebar() {
+function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { isOpen, isMobile } = useSidebar();
 
   return (
-    <Sidebar>
+    <Sidebar className={className}>
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <GanttChartSquare className="w-8 h-8 text-primary" />
@@ -114,6 +115,10 @@ function AppSidebar() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { isMobile, toggleSidebar, isOpen, mounted } = useSidebar();
+  const { theme } = useTheme();
+
+  const sidebarAndHeaderClasses = mounted && theme === 'light' ? 'dark' : '';
+
   return (
     <div
       className={cn(
@@ -122,11 +127,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         "transition-all duration-300 ease-in-out"
       )}
     >
-      <AppSidebar />
+      <AppSidebar className={sidebarAndHeaderClasses} />
       <div className="flex flex-col">
         <header
           className={cn(
-            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6"
+            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6",
+            sidebarAndHeaderClasses
           )}
         >
           <Button
