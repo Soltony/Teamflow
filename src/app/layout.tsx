@@ -9,13 +9,13 @@ import { AuthProvider } from "@/context/auth-context";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "NIB Team",
+  title: "TeamFlow",
   description: "A project management solution to assign tasks and manage activity online.",
   manifest: "/manifest.json",
 };
 
 export const viewport: Viewport = {
-  themeColor: "#121829",
+  themeColor: "#4db6ac",
 };
 
 export default function RootLayout({

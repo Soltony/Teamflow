@@ -18,7 +18,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/hooks/use-toast';
-import { School } from 'lucide-react';
+import { GanttChartSquare } from 'lucide-react';
 import Link from 'next/link';
 
 const loginSchema = z.object({
@@ -64,9 +64,9 @@ export default function LoginPage() {
     <Card className="w-full max-w-sm">
       <CardHeader className="text-center">
         <div className="mx-auto mb-4">
-          <School className="w-12 h-12 text-primary" />
+          <GanttChartSquare className="w-12 h-12 text-primary" />
         </div>
-        <CardTitle>Welcome Back to NIB Team</CardTitle>
+        <CardTitle>Welcome Back to TeamFlow</CardTitle>
         <CardDescription>Enter your credentials to access your account.</CardDescription>
       </CardHeader>
       <CardContent>

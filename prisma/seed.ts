@@ -25,7 +25,6 @@ async function main() {
             firstName: user.firstName,
             lastName: user.lastName,
             email: user.email,
-            password: 'password123', // In a real app, this should be hashed
             avatar: user.avatar,
             phoneNumber: user.phoneNumber,
           }

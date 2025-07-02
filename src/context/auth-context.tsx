@@ -46,13 +46,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const setSession = useCallback((newAccessToken: string | null, newRefreshToken: string | null) => {
     if (newAccessToken && newRefreshToken) {
-      const decodedUser = jwtDecode<AuthenticatedUser>(newAccessToken);
-      localStorage.setItem('accessToken', newAccessToken);
-      localStorage.setItem('refreshToken', newRefreshToken);
-      setUser(decodedUser);
-      setAccessToken(newAccessToken);
-      setRefreshToken(newRefreshToken);
-      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+      try {
+        const decodedUser = jwtDecode<AuthenticatedUser>(newAccessToken);
+        localStorage.setItem('accessToken', newAccessToken);
+        localStorage.setItem('refreshToken', newRefreshToken);
+        setUser(decodedUser);
+        setAccessToken(newAccessToken);
+        setRefreshToken(newRefreshToken);
+        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
+      } catch (error) {
+        console.error("Failed to decode token:", error);
+        // Clear session if token is invalid
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        setUser(null);
+        setAccessToken(null);
+        setRefreshToken(null);
+        delete axiosInstance.defaults.headers.common['Authorization'];
+      }
     } else {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
