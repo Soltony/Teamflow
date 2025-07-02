@@ -4,7 +4,7 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import axios, { AxiosError } from 'axios';
-import jwtDecode from 'jwt-decode';
+const jwtDecode = require('jwt-decode');
 
 interface AuthenticatedUser {
   email: string;
