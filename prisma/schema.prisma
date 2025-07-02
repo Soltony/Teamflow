@@ -1,141 +1,163 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id              String         @id @default(cuid())
-  name            String
-  email           String         @unique
-  password        String
-  avatar          String?
-  phone           String?
-  assignedTasks   Task[]         @relation("Assignees")
-  taskUpdates     TaskUpdate[]
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  password  String
+  avatar    String?
+  phone     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
   managedProjects Project[]
-  ledTeams        Team[]         @relation("TeamLead")
-  teams           Team[]         @relation("TeamMembers")
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-}
-
-model Department {
-  id                       String      @id @default(cuid())
-  name                     String      @unique
-  responsibleName          String
-  responsibleTitle         String
-  responsiblePhone         String
-  projects                 Project[]
-  responsibleForMilestones Milestone[] @relation("ResponsibleDepartments")
-  createdAt                DateTime    @default(now())
-  updatedAt                DateTime    @updatedAt
-}
-
-model ProjectStatus {
-  id        String    @id @default(cuid())
-  name      String    @unique
-  projects  Project[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  tasks           Task[]    @relation("TaskAssignees")
+  teams           Team[]    @relation("TeamMembers")
+  ledTeams        Team[]    @relation("TeamLeads")
+  updates         TaskUpdate[]
 }
 
 model Project {
-  id               String        @id @default(cuid())
-  name             String
-  description      String
-  startDate        DateTime
-  endDate          DateTime
-  workingYear      String
-  status           ProjectStatus @relation(fields: [statusId], references: [id])
-  statusId         String
-  owningDepartment Department    @relation(fields: [departmentId], references: [id])
-  departmentId     String
-  projectManager   User          @relation(fields: [projectManagerId], references: [id])
+  id          String    @id @default(cuid())
+  name        String
+  description String
+  startDate   DateTime
+  endDate     DateTime
+  workingYear String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  status          ProjectStatus @relation(fields: [statusId], references: [id])
+  statusId        String
+  owningDepartment Department   @relation(fields: [departmentId], references: [id])
+  departmentId    String
+  projectManager  User          @relation(fields: [projectManagerId], references: [id])
   projectManagerId String
-  milestones       Milestone[]
-  teams            Team[]
-  blockers         Blocker[]
-  createdAt        DateTime      @default(now())
-  updatedAt        DateTime      @updatedAt
+
+  milestones Milestone[]
+  blockers   Blocker[]
+  teams      Team[]
+}
+
+model Department {
+  id               String      @id @default(cuid())
+  name             String      @unique
+  responsibleName  String
+  responsibleTitle String
+  responsiblePhone String
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  projects             Project[]
+  responsibleMilestones Milestone[] @relation("ResponsibleDepartments")
+}
+
+model ProjectStatus {
+  id     String    @id @default(cuid())
+  name   String    @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  projects Project[]
 }
 
 model Milestone {
-  id                     String       @id @default(cuid())
-  title                  String
-  description            String
-  startDate              DateTime
-  dueDate                DateTime
-  weight                 Int
-  project                Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId              String
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  startDate   DateTime
+  dueDate     DateTime
+  weight      Float
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+
   tasks                  Task[]
   responsibleDepartments Department[] @relation("ResponsibleDepartments")
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @updatedAt
 }
 
 model Task {
-  id          String       @id @default(cuid())
+  id          String     @id @default(cuid())
   title       String
-  description String
-  status      String
+  description String?
+  status      TaskStatus
   startDate   DateTime
   endDate     DateTime
-  weight      Int
+  weight      Float
   completedAt DateTime?
-  milestone   Milestone    @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
   milestoneId String
-  assignees   User[]       @relation("Assignees")
+  assignees   User[]    @relation("TaskAssignees")
   updates     TaskUpdate[]
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
 }
 
 model Blocker {
-  id          String    @id @default(cuid())
+  id          String        @id @default(cuid())
   description String
-  status      String
-  createdAt   DateTime  @default(now())
+  status      BlockerStatus
+  createdAt   DateTime      @default(now())
   resolvedAt  DateTime?
   resolution  String?
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId   String
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
 }
 
 model TaskUpdate {
-  id        String   @id @default(cuid())
+  id        String         @id @default(cuid())
   text      String
-  type      String
-  createdAt DateTime @default(now())
-  author    User     @relation(fields: [authorId], references: [id])
-  authorId  String
-  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  taskId    String
+  type      TaskUpdateType
+  createdAt DateTime       @default(now())
+
+  author   User   @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  authorId String
+  task     Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId   String
 }
 
 model Team {
-  id         String   @id @default(cuid())
-  name       String
-  project    Project  @relation(fields: [projectId], references: [id])
-  projectId  String
-  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  id      String @id @default(cuid())
+  name    String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  teamLead  User    @relation("TeamLeads", fields: [teamLeadId], references: [id])
   teamLeadId String
-  members    User[]   @relation("TeamMembers")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  members   User[]  @relation("TeamMembers")
 }
 
 model Setting {
-  id        String   @id @default(cuid())
-  key       String   @unique
-  value     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  key   String @id
+  value String
+}
+
+enum BlockerStatus {
+  OPEN
+  RESOLVED
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  PENDING_REVIEW
+  DONE
+}
+
+enum TaskUpdateType {
+  COMMENT
+  STATUS_CHANGE
 }
