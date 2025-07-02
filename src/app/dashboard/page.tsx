@@ -4,6 +4,8 @@ import prisma from "@/lib/db";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
 import { isPast, max as dateMax } from 'date-fns';
 
+export const dynamic = 'force-dynamic';
+
 export default async function DashboardPage({ searchParams }: { searchParams?: { year?: string } }) {
     const allProjects = await prisma.project.findMany({
         include: {
