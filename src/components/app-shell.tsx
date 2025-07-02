@@ -63,7 +63,7 @@ function AppSidebar({ className }: { className?: string }) {
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <GanttChartSquare className="w-8 h-8 text-primary" />
-          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-primary truncate">NIB Team</h1>}
+          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-foreground truncate">NIB Team</h1>}
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -159,8 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col">
         <header
           className={cn(
-            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6",
-            isLightFrame && 'dark'
+            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6"
           )}
         >
           <Button
