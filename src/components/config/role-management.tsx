@@ -197,15 +197,16 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={(open) => !open && handleCloseDialog()}>
-        <DialogContent className="sm:max-w-2xl">
-            <DialogHeader>
-                <DialogTitle>{isEditing ? "Edit Role" : "Create New Role"}</DialogTitle>
-                <DialogDescription>
-                    {isEditing ? "Update the details for this role." : "Define a new role and its permissions."}
-                </DialogDescription>
-            </DialogHeader>
+        <DialogContent className="sm:max-w-2xl p-0 flex flex-col max-h-[90dvh]">
+          <DialogHeader className="p-6 pb-4">
+              <DialogTitle>{isEditing ? "Edit Role" : "Create New Role"}</DialogTitle>
+              <DialogDescription>
+                  {isEditing ? "Update the details for this role." : "Define a new role and its permissions."}
+              </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-6">
             <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                <form id="role-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                     <FormField
                         control={form.control}
                         name="name"
@@ -271,7 +272,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
                                     </div>
                                     <AccordionPrimitive.Trigger className="flex items-center gap-2 p-0">
                                       <Badge variant="secondary">{`${selectedPermissionsInGroup}/${totalPermissionsInGroup}`}</Badge>
-                                      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200 data-[state=open]:rotate-180" />
+                                      <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                                     </AccordionPrimitive.Trigger>
                                   </AccordionPrimitive.Header>
                                   <AccordionContent className="p-4 border-t">
@@ -310,14 +311,15 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
                         </FormItem>
                       )}
                     />
-                    <DialogFooter>
-                        <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isPending}>Cancel</Button>
-                        <Button type="submit" disabled={isPending}>
-                            {isPending ? "Saving..." : "Save Role"}
-                        </Button>
-                    </DialogFooter>
                 </form>
             </Form>
+          </div>
+          <DialogFooter className="p-6 pt-4 border-t">
+              <Button type="button" variant="outline" onClick={handleCloseDialog} disabled={isPending}>Cancel</Button>
+              <Button type="submit" form="role-form" disabled={isPending}>
+                  {isPending ? "Saving..." : "Save Role"}
+              </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       
@@ -345,5 +347,3 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
     </>
   );
 }
-
-    
