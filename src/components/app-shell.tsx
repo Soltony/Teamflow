@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -59,7 +60,7 @@ function AppSidebar({ className }: { className?: string }) {
   const { isOpen, isMobile } = useSidebar();
 
   return (
-    <Sidebar className={className}>
+    <Sidebar className={cn(className, "text-muted-foreground")}>
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <GanttChartSquare className="w-8 h-8 text-primary" />
@@ -159,7 +160,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-col">
         <header
           className={cn(
-            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6"
+            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b sm:px-6",
+            isLightFrame ? 'bg-background' : 'bg-background'
           )}
         >
           <Button
