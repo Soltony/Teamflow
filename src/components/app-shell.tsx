@@ -53,7 +53,6 @@ const menuItems = [
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare },
   { href: "/departments", label: "Departments", icon: Building2 },
   { href: "/teams", label: "Teams", icon: UsersRound },
-  { href: "/settings", label: "Settings", icon: Settings },
   { href: "/config", label: "Config", icon: Wrench },
 ];
 
