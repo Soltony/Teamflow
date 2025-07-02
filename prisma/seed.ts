@@ -16,19 +16,143 @@ async function main() {
   // Seed Roles
   const adminRole = await prisma.role.upsert({
     where: { name: 'Admin' },
-    update: {},
-    create: { name: 'Admin', description: 'Full access to all system features.', permissions: ['manage_users', 'manage_roles', 'manage_projects'] },
+    update: {
+        description: 'Full access to all system features.',
+        permissions: [
+            'config:manage-users',
+            'config:manage-roles',
+            'settings:manage',
+            'departments:create',
+            'departments:read',
+            'departments:update',
+            'departments:delete',
+            'teams:create',
+            'teams:read',
+            'teams:update',
+            'teams:delete',
+            'projects:create',
+            'projects:read',
+            'projects:update',
+            'projects:delete',
+            'team-view:manage',
+            'dashboard:view',
+            'my-tasks:view',
+            'team-view:view',
+            'milestones:view',
+            'gantt:view'
+        ]
+    },
+    create: { 
+        name: 'Admin', 
+        description: 'Full access to all system features.', 
+        permissions: [
+            'config:manage-users',
+            'config:manage-roles',
+            'settings:manage',
+            'departments:create',
+            'departments:read',
+            'departments:update',
+            'departments:delete',
+            'teams:create',
+            'teams:read',
+            'teams:update',
+            'teams:delete',
+            'projects:create',
+            'projects:read',
+            'projects:update',
+            'projects:delete',
+            'team-view:manage',
+            'dashboard:view',
+            'my-tasks:view',
+            'team-view:view',
+            'milestones:view',
+            'gantt:view'
+        ] 
+    },
   });
+
+  const projectManagerRole = await prisma.role.upsert({
+    where: { name: 'Project Manager' },
+    update: {
+        description: 'Can create and manage assigned projects, teams, and tasks.',
+        permissions: [
+            'dashboard:view',
+            'my-tasks:view',
+            'team-view:view',
+            'team-view:manage',
+            'projects:create',
+            'projects:read',
+            'projects:update',
+            'milestones:view',
+            'gantt:view',
+            'departments:read',
+            'teams:create',
+            'teams:read',
+            'teams:update',
+        ]
+    },
+    create: { 
+        name: 'Project Manager', 
+        description: 'Can create and manage assigned projects, teams, and tasks.', 
+        permissions: [
+            'dashboard:view',
+            'my-tasks:view',
+            'team-view:view',
+            'team-view:manage',
+            'projects:create',
+            'projects:read',
+            'projects:update',
+            'milestones:view',
+            'gantt:view',
+            'departments:read',
+            'teams:create',
+            'teams:read',
+            'teams:update',
+        ] 
+    },
+  });
+
   const memberRole = await prisma.role.upsert({
     where: { name: 'Member' },
-    update: {},
-    create: { name: 'Member', description: 'Can view projects and manage assigned tasks.', permissions: ['view_projects', 'manage_own_tasks'] },
+    update: {
+        description: 'Can view projects and manage assigned tasks.',
+        permissions: [
+            'dashboard:view',
+            'my-tasks:view',
+            'projects:read',
+            'milestones:view',
+            'gantt:view',
+        ]
+    },
+    create: { 
+        name: 'Member', 
+        description: 'Can view projects and manage assigned tasks.', 
+        permissions: [
+            'dashboard:view',
+            'my-tasks:view',
+            'projects:read',
+            'milestones:view',
+            'gantt:view',
+        ] 
+    },
   });
   console.log('Seeded roles.');
 
   // Seed Users and create a map
   const userMap = new Map<string, string>();
   for (const user of usersData) {
+      let roleId;
+      switch (user.email) {
+          case 'alice.johnson@teamflow.com':
+              roleId = adminRole.id;
+              break;
+          case 'bob.williams@teamflow.com':
+              roleId = projectManagerRole.id;
+              break;
+          default:
+              roleId = memberRole.id;
+      }
+
       const createdUser = await prisma.user.upsert({
           where: { email: user.email },
           update: {},
@@ -41,7 +165,7 @@ async function main() {
             avatar: user.avatar,
             phoneNumber: user.phoneNumber,
             roles: {
-              connect: { id: user.email === 'alice.johnson@teamflow.com' ? adminRole.id : memberRole.id }
+              connect: { id: roleId }
             }
           }
       });
