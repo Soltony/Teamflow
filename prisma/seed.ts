@@ -5,8 +5,7 @@ import {
     departments as departmentsData, 
     projectStatuses as projectStatusesData, 
     projects as projectsData, 
-    teams as teamsData,
-    roles as rolesData
+    teams as teamsData
 } from '../src/lib/data';
 
 const prisma = new PrismaClient();
@@ -14,31 +13,8 @@ const prisma = new PrismaClient();
 async function main() {
   console.log(`Start seeding ...`);
 
-  // Seed Roles
-  const adminRole = await prisma.role.upsert({
-    where: { name: 'Admin' },
-    update: {},
-    create: {
-      name: 'Admin',
-      description: 'Has all permissions and can manage the system.',
-      permissions: ['manage:users', 'manage:roles', 'manage:projects'],
-    },
-  });
-
-  const memberRole = await prisma.role.upsert({
-    where: { name: 'Member' },
-    update: {},
-    create: {
-      name: 'Member',
-      description: 'Can view projects and manage assigned tasks.',
-      permissions: ['view:projects', 'manage:tasks'],
-    },
-  });
-  console.log(`Seeded 2 roles.`);
-
   // Seed Users and create a map
   const userMap = new Map<string, string>();
-
   for (const user of usersData) {
       const createdUser = await prisma.user.upsert({
           where: { email: user.email },
@@ -50,15 +26,12 @@ async function main() {
             lastName: user.lastName,
             email: user.email,
             avatar: user.avatar,
-            phoneNumber: user.phoneNumber,
-            roles: {
-              connect: { id: user.email === 'alice.johnson@teamflow.com' ? adminRole.id : memberRole.id }
-            }
+            phoneNumber: user.phoneNumber
           }
       });
       userMap.set(createdUser.email, createdUser.id);
   }
-  console.log(`Seeded ${usersData.length} users and assigned roles.`);
+  console.log(`Seeded ${usersData.length} users.`);
 
 
   // Seed Departments and create a map

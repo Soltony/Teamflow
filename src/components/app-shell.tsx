@@ -15,7 +15,6 @@ import {
   Milestone,
   ClipboardCheck,
   ClipboardList,
-  Wrench,
 } from "lucide-react";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/context/auth-context";
@@ -53,7 +52,7 @@ const menuItems = [
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare },
   { href: "/departments", label: "Departments", icon: Building2 },
   { href: "/teams", label: "Teams", icon: UsersRound },
-  { href: "/config", label: "Config", icon: Wrench },
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 function AppSidebar({ className }: { className?: string }) {
