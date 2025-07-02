@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import {
   FolderKanban,
   School,
@@ -18,6 +18,7 @@ import {
   GanttChartSquare,
 } from "lucide-react";
 import { useTheme } from "next-themes";
+import { useAuth } from "@/context/auth-context";
 
 import {
   SidebarProvider,
@@ -58,12 +59,17 @@ const menuItems = [
 function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { isOpen, isMobile } = useSidebar();
+  const { user, logout } = useAuth();
+  
+  const userInitials = user 
+    ? `${user.given_name?.[0] ?? ''}${user.family_name?.[0] ?? ''}`.toUpperCase() 
+    : '...';
 
   return (
     <Sidebar className={cn(className, "text-muted-foreground")}>
       <SidebarHeader>
         <div className="flex items-center gap-2">
-          <GanttChartSquare className="w-8 h-8 text-primary" />
+          <School className="w-8 h-8 text-primary" />
           {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-foreground truncate">NIB Team</h1>}
         </div>
       </SidebarHeader>
@@ -87,26 +93,23 @@ function AppSidebar({ className }: { className?: string }) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="justify-start w-full gap-2 px-2">
               <Avatar className="w-8 h-8">
-                <AvatarImage src="https://i.pravatar.cc/150?u=admin" />
-                <AvatarFallback>AD</AvatarFallback>
+                 <AvatarImage src={user?.picture} />
+                 <AvatarFallback>{userInitials}</AvatarFallback>
               </Avatar>
-              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">Admin User</span>}
+              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">{user ? `${user.given_name} ${user.family_name}`: 'Loading...'}</span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">Admin</p>
+                <p className="text-sm font-medium leading-none">{user ? `${user.given_name} ${user.family_name}`: 'Loading...'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  admin@nibteam.com
+                  {user?.email}
                 </p>
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem>Log out</DropdownMenuItem>
+            <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
       </SidebarFooter>
@@ -114,39 +117,34 @@ function AppSidebar({ className }: { className?: string }) {
   );
 }
 
+function AuthLoadingScreen() {
+    return (
+        <div className="h-screen w-full flex items-center justify-center bg-background">
+            <div className="flex flex-col items-center gap-4">
+                <School className="w-12 h-12 text-primary animate-pulse" />
+                <p className="text-muted-foreground">Loading your workspace...</p>
+            </div>
+        </div>
+    );
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const { isMobile, toggleSidebar, isOpen, mounted } = useSidebar();
+  const { accessToken, loading } = useAuth();
+  const router = useRouter();
   
-  const isLightFrame = mounted && theme === 'light';
+  React.useEffect(() => {
+    if (!loading && !accessToken) {
+        router.replace('/login');
+    }
+  }, [loading, accessToken, router]);
 
-  if (!mounted) {
-    // Render a placeholder or null to avoid hydration mismatch
-    return (
-       <div
-        className={cn(
-            "min-h-screen w-full",
-            "pl-[56px]", // Use a fixed value for SSR
-            "transition-all duration-300 ease-in-out"
-        )}
-        >
-            <aside className={cn("fixed left-0 top-0 z-20 h-screen border-r bg-background transition-[width] duration-300 ease-in-out", "w-[56px]")}>
-                {/* Simplified sidebar for SSR */}
-            </aside>
-             <div className="flex flex-col">
-                <header className="sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b bg-background sm:px-6">
-                     <Button variant="ghost" size="icon" disabled>
-                        <PanelLeft className="w-6 h-6" />
-                     </Button>
-                     <div className="ml-auto">
-                        <ThemeToggle />
-                    </div>
-                </header>
-                <main className="flex-1 overflow-auto">{children}</main>
-            </div>
-       </div>
-    );
+  if (loading || !accessToken) {
+    return <AuthLoadingScreen />;
   }
+
+  const isLightFrame = mounted && theme === 'light';
 
   return (
     <div
@@ -161,7 +159,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <header
           className={cn(
             "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b sm:px-6",
-            isLightFrame ? 'bg-background' : 'bg-background'
+             'bg-background'
           )}
         >
           <Button
