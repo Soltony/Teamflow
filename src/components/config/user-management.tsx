@@ -74,7 +74,12 @@ const addUserSchema = z.object({
   lastName: z.string().min(1, "Last name is required."),
   email: z.string().email("Invalid email address.").optional().or(z.literal('')),
   phoneNumber: z.string().min(1, "Phone number is required."),
+  password: z.string().min(6, 'Password must be at least 6 characters'),
+  confirmPassword: z.string(),
   roleIds: z.array(z.string()).optional(),
+}).refine(data => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
 });
 type AddUserFormValues = z.infer<typeof addUserSchema>;
 
@@ -98,6 +103,8 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
       lastName: "",
       email: "",
       phoneNumber: "",
+      password: "",
+      confirmPassword: "",
       roleIds: [],
     },
   });
@@ -297,6 +304,12 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                 )} />
                 <FormField control={addUserForm.control} name="email" render={({ field }) => (
                     <FormItem><FormLabel>Email (Optional)</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                <FormField control={addUserForm.control} name="password" render={({ field }) => (
+                    <FormItem><FormLabel>Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
+                )} />
+                 <FormField control={addUserForm.control} name="confirmPassword" render={({ field }) => (
+                    <FormItem><FormLabel>Confirm Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField
                     control={addUserForm.control}

@@ -1,26 +1,36 @@
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
   provider = "prisma-client-js"
 }
 
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model User {
-  id                 String       @id @default(cuid())
-  name               String
-  firstName          String
-  lastName           String
-  email              String?      @unique
-  avatar             String?
-  phoneNumber        String?
-  roles              Role[]       @relation("UserRoles")
-  tasks              Task[]       @relation("TaskAssignees")
-  ledTeams           Team[]       @relation("TeamLead")
-  teams              Team[]       @relation("TeamMembers")
-  managedProjects    Project[]
-  createdTaskUpdates TaskUpdate[]
+  id          String   @id
+  name        String?
+  firstName   String?
+  lastName    String?
+  email       String?  @unique
+  avatar      String?
+  phoneNumber String?
+  roles       Role[]   @relation("UserRoles")
+
+  // Relations
+  ledTeams      Team[]         @relation("TeamLead")
+  teams         Team[]         @relation("TeamMembers")
+  assignedTasks Task[]         @relation("TaskAssignees")
+  taskUpdates   TaskUpdate[]
+  projects      Project[]
+  
+  @@map("users")
 }
 
 model Role {
@@ -29,6 +39,34 @@ model Role {
   description String?
   permissions String[] @default([])
   users       User[]   @relation("UserRoles")
+
+   @@map("roles")
+}
+
+model Department {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  responsibleName   String
+  responsibleTitle  String
+  responsiblePhone  String
+  
+  // Relations
+  projects            Project[] @relation("OwningDepartment")
+  responsibleMilestones Milestone[] @relation("ResponsibleDepartments")
+
+  @@map("departments")
+}
+
+model Team {
+  id         String   @id @default(cuid())
+  name       String
+  project    Project  @relation(fields: [projectId], references: [id])
+  projectId  String
+  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  teamLeadId String
+  members    User[]   @relation("TeamMembers")
+
+  @@map("teams")
 }
 
 model Project {
@@ -38,54 +76,76 @@ model Project {
   startDate        DateTime
   endDate          DateTime
   workingYear      String
-  statusId         String
   status           ProjectStatus @relation(fields: [statusId], references: [id])
+  statusId         String
+  owningDepartment Department    @relation("OwningDepartment", fields: [departmentId], references: [id])
   departmentId     String
-  owningDepartment Department    @relation(name: "ProjectOwner", fields: [departmentId], references: [id])
-  projectManagerId String
   projectManager   User          @relation(fields: [projectManagerId], references: [id])
-  milestones       Milestone[]
-  blockers         Blocker[]
-  teams            Team[]
+  projectManagerId String
+
+  // Relations
+  milestones Milestone[]
+  teams      Team[]
+  blockers   Blocker[]
+
+  @@map("projects")
+}
+
+model ProjectStatus {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  projects Project[]
+
+  @@map("project_statuses")
 }
 
 model Milestone {
-  id                       String       @id @default(cuid())
-  title                    String
-  description              String
-  startDate                DateTime
-  dueDate                  DateTime
-  weight                   Int
-  projectId                String
-  project                  Project      @relation(fields: [projectId], references: [id])
-  tasks                    Task[]
-  responsibleDepartments   Department[] @relation("MilestoneResponsibleDepartments")
+  id          String    @id @default(cuid())
+  title       String
+  description String
+  startDate   DateTime
+  dueDate     DateTime
+  weight      Int
+  project     Project   @relation(fields: [projectId], references: [id])
+  projectId   String
+
+  // Relations
+  tasks                  Task[]
+  responsibleDepartments Department[] @relation("ResponsibleDepartments")
+
+  @@map("milestones")
 }
 
 model Task {
-  id          String       @id @default(cuid())
+  id          String     @id @default(cuid())
   title       String
   description String
-  status      String       @default("TODO")
+  status      String     @default("TODO")
   startDate   DateTime
   endDate     DateTime
   weight      Int
   completedAt DateTime?
+  milestone   Milestone  @relation(fields: [milestoneId], references: [id])
   milestoneId String
-  milestone   Milestone    @relation(fields: [milestoneId], references: [id])
-  assignees   User[]       @relation("TaskAssignees")
-  updates     TaskUpdate[]
+
+  // Relations
+  assignees User[]       @relation("TaskAssignees")
+  updates   TaskUpdate[]
+
+  @@map("tasks")
 }
 
 model TaskUpdate {
   id        String   @id @default(cuid())
   text      String
-  createdAt DateTime @default(now())
   type      String   @default("COMMENT")
-  authorId  String
+  createdAt DateTime @default(now())
   author    User     @relation(fields: [authorId], references: [id])
-  taskId    String
+  authorId  String
   task      Task     @relation(fields: [taskId], references: [id])
+  taskId    String
+
+  @@map("task_updates")
 }
 
 model Blocker {
@@ -95,37 +155,15 @@ model Blocker {
   createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
   resolution  String?
-  projectId   String
   project     Project   @relation(fields: [projectId], references: [id])
-}
+  projectId   String
 
-model Department {
-  id                       String      @id @default(cuid())
-  name                     String      @unique
-  responsibleName          String
-  responsibleTitle         String
-  responsiblePhone         String
-  ownedProjects            Project[]   @relation("ProjectOwner")
-  responsibleForMilestones Milestone[] @relation("MilestoneResponsibleDepartments")
-}
-
-model ProjectStatus {
-  id       String    @id @default(cuid())
-  name     String    @unique
-  projects Project[]
-}
-
-model Team {
-  id         String  @id @default(cuid())
-  name       String
-  projectId  String
-  project    Project @relation(fields: [projectId], references: [id])
-  teamLeadId String
-  teamLead   User    @relation(name: "TeamLead", fields: [teamLeadId], references: [id])
-  members    User[]  @relation("TeamMembers")
+  @@map("blockers")
 }
 
 model Setting {
   key   String @id
   value String
+
+  @@map("settings")
 }
