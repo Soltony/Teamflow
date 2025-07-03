@@ -306,21 +306,6 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             </CardContent>
         </Card>
       </div>
-
-      <div>
-        <h2 className="text-xl font-bold mt-6 mb-4">{selectedYear === 'all' ? 'All Projects' : `Projects for ${selectedYear}`}</h2>
-        {projects.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {projects.map((project: any) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
-          </div>
-        ) : (
-          <div className="text-center py-12 text-muted-foreground">
-            <p>No projects found for the selected year.</p>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
