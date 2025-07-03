@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "../ui/button";
-import { Pencil, PlusCircle, Trash2, ChevronDown } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, ChevronDown, Eye, EyeOff } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -90,6 +90,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
   const [editingUser, setEditingUser] = useState<UserWithRoles | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const assignRolesForm = useForm<AssignRolesFormValues>({
     resolver: zodResolver(assignRolesSchema),
@@ -314,7 +315,32 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                       <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={addUserForm.control} name="password" render={({ field }) => (
-                      <FormItem><FormLabel>Set Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem>
+                          <FormLabel>Set Password</FormLabel>
+                          <div className="relative">
+                            <FormControl>
+                                <Input
+                                    type={showPassword ? 'text' : 'password'}
+                                    placeholder="••••••••"
+                                    className="pr-10"
+                                    {...field}
+                                />
+                            </FormControl>
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                                aria-label={showPassword ? 'Hide password' : 'Show password'}
+                            >
+                                {showPassword ? (
+                                    <EyeOff className="h-5 w-5" />
+                                ) : (
+                                    <Eye className="h-5 w-5" />
+                                )}
+                            </button>
+                          </div>
+                          <FormMessage />
+                      </FormItem>
                   )} />
                   <FormField
                       control={addUserForm.control}
