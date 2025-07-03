@@ -54,6 +54,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+import { useAuth } from "@/context/auth-context";
 
 type UserWithRoles = User & { roles: Role[] };
 
@@ -82,6 +83,7 @@ type AddUserFormValues = z.infer<typeof addUserSchema>;
 export function UserManagement({ initialUsers, initialRoles }: UserManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
+  const { accessToken } = useAuth();
 
   const [editingUser, setEditingUser] = useState<UserWithRoles | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null);
@@ -143,7 +145,11 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
 
   const onAddUserSubmit = (data: AddUserFormValues) => {
     startTransition(async () => {
-        const result = await createUser({ ...data, roleIds: data.roleIds || [] });
+        if (!accessToken) {
+            toast({ title: "Authentication Error", description: "You are not authenticated. Please log in again.", variant: "destructive" });
+            return;
+        }
+        const result = await createUser({ ...data, roleIds: data.roleIds || [] }, accessToken);
         if (result.success) {
             toast({ title: "User Created", description: `User ${data.firstName} ${data.lastName} has been created.` });
             handleCloseAddUserDialog();

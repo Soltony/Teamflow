@@ -41,9 +41,12 @@ export async function assignRolesToUser(userId: string, roleIds: string[]) {
     }
 }
 
-export async function createUser(data: { firstName: string, lastName: string, email?: string | null, phoneNumber: string, password?: string, roleIds: string[] }) {
+export async function createUser(data: { firstName: string, lastName: string, email?: string | null, phoneNumber: string, password?: string, roleIds: string[] }, accessToken: string) {
     if (!data.password) {
         return { success: false, error: "Password is required." };
+    }
+    if (!accessToken) {
+        return { success: false, error: "Authentication token is missing. You may need to log in again." };
     }
 
     try {
@@ -52,12 +55,16 @@ export async function createUser(data: { firstName: string, lastName: string, em
         const registrationPayload = {
             firstName: data.firstName,
             lastName: data.lastName,
-            email: data.email || null, // Ensure empty string is sent as null
+            email: data.email || null,
             phoneNumber: data.phoneNumber,
             password: data.password,
         };
 
-        const registrationResponse = await axios.post<AuthResponse>(authApiUrl, registrationPayload);
+        const registrationResponse = await axios.post<AuthResponse>(authApiUrl, registrationPayload, {
+            headers: {
+                Authorization: `Bearer ${accessToken}`,
+            },
+        });
 
         if (!registrationResponse.data.isSuccess || !registrationResponse.data.accessToken) {
             const errorMessage = registrationResponse.data.errors?.join(', ') || 'Failed to register user with the authentication service.';
@@ -104,6 +111,9 @@ export async function createUser(data: { firstName: string, lastName: string, em
         if (axios.isAxiosError(error)) {
             console.error("Auth service registration failed. Response:", error.response?.status, error.response?.data);
             if (error.response) {
+                if (error.response.status === 401) {
+                    return { success: false, error: "Authentication failed. Your session may have expired. Please log in again." };
+                }
                 const responseData = error.response.data as AuthResponse;
                 const errorMessage = responseData.errors?.join(', ') || 'An unexpected error occurred during registration with the auth service.';
                 return { success: false, error: errorMessage };
