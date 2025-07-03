@@ -6,7 +6,7 @@ import { isPast, max as dateMax } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage({ searchParams }: { searchParams?: { year?: string } }) {
+export default async function DashboardPage({ searchParams }: { searchParams: { year?: string } }) {
     const allProjects = await prisma.project.findMany({
         include: {
             milestones: {
@@ -31,7 +31,7 @@ export default async function DashboardPage({ searchParams }: { searchParams?: {
         }
     });
 
-    const selectedYear = searchParams?.year || "all";
+    const selectedYear = searchParams.year || "all";
     
     const years = new Set(allProjects.map(p => p.workingYear));
     const availableYears = ["all", ...Array.from(years).sort((a, b) => b.localeCompare(a))];
