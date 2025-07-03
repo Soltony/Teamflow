@@ -66,6 +66,10 @@ function AppSidebar({ className }: { className?: string }) {
     ? `${localUser.firstName?.[0] ?? ''}${localUser.lastName?.[0] ?? ''}`.toUpperCase() 
     : '...';
 
+  const displayName = localUser
+    ? (localUser.firstName && localUser.lastName ? `${localUser.firstName} ${localUser.lastName}` : localUser.name)
+    : 'Loading...';
+
   const visibleMenuItems = React.useMemo(() => {
     if (loading) return []; // Don't show any items while permissions are loading
     return menuItems.filter(item => hasPermission(item.permission));
@@ -102,13 +106,13 @@ function AppSidebar({ className }: { className?: string }) {
                  <AvatarImage src={localUser?.avatar} />
                  <AvatarFallback>{userInitials}</AvatarFallback>
               </Avatar>
-              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">{localUser ? localUser.name : 'Loading...'}</span>}
+              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">{displayName}</span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{localUser ? localUser.name : 'Loading...'}</p>
+                <p className="text-sm font-medium leading-none">{displayName}</p>
                 <p className="text-xs leading-none text-muted-foreground">
                   {localUser?.email}
                 </p>

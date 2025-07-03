@@ -16,7 +16,7 @@ interface SyncUserInput {
 /**
  * Ensures a user record exists in the local database corresponding to the authenticated user from the JWT.
  * It uses the unique identifier from the token as the primary key.
- * For the admin user (identified by a specific phone number), it also ensures the Admin role is always assigned.
+ * For the admin user (identified by a specific ID), it also ensures the Admin role is always assigned.
  * @param input User data from the JWT token and login form.
  * @returns The local user record from the database.
  */
@@ -26,12 +26,11 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
     return null;
   }
 
-  // The admin user is identified by a specific phone number.
-  // This is a placeholder for a more robust admin identification strategy.
-  const isAdminByPhoneNumber = input.phoneNumber === '0912345678';
+  // The admin user is identified by a specific ID.
+  const isAdminById = input.id === 'b1e55c84-9055-4eb5-8bd4-a262538f7e66';
 
   try {
-    if (isAdminByPhoneNumber) {
+    if (isAdminById) {
       const adminRole = await prisma.role.findUnique({
           where: { name: 'Admin' },
           select: { id: true }
