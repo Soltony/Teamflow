@@ -11,14 +11,16 @@ export function NibLogo({ className }: { className?: string }) {
       <circle cx="50" cy="50" r="48" fill="#003366" />
       <text
         x="50"
-        y="65"
+        y="68"
         fontFamily="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif"
-        fontSize="40"
+        fontSize="48"
         fontWeight="600"
-        fill="white"
         textAnchor="middle"
+        letterSpacing="-2"
       >
-        NIB
+        <tspan fill="#fecb00">N</tspan>
+        <tspan fill="#00963f">I</tspan>
+        <tspan fill="#00aeef">B</tspan>
       </text>
     </svg>
   );
