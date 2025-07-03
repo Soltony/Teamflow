@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useTransition } from "react";
@@ -9,6 +8,7 @@ import {
   Card,
   CardContent,
   CardDescription,
+  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -91,6 +91,10 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const assignRolesForm = useForm<AssignRolesFormValues>({
     resolver: zodResolver(assignRolesSchema),
@@ -176,6 +180,24 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
   };
 
   const selectedRolesForNewUser = initialRoles.filter(role => addUserForm.watch('roleIds')?.includes(role.id));
+  
+  // Pagination logic
+  const totalPages = Math.ceil(initialUsers.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const currentUsers = initialUsers.slice(startIndex, endIndex);
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) {
+      setCurrentPage(currentPage + 1);
+    }
+  };
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(currentPage - 1);
+    }
+  };
 
   return (
     <>
@@ -206,7 +228,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
               </TableRow>
             </TableHeader>
             <TableBody>
-              {initialUsers.map((user) => (
+              {currentUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email ?? 'N/A'}</TableCell>
@@ -236,6 +258,29 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
             </TableBody>
           </Table>
         </CardContent>
+        <CardFooter>
+          <div className="flex items-center justify-end w-full space-x-2">
+            <span className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages}
+            </span>
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={handlePrevPage}
+                disabled={currentPage === 1}
+            >
+                Previous
+            </Button>
+            <Button
+                variant="outline"
+                size="sm"
+                onClick={handleNextPage}
+                disabled={currentPage === totalPages}
+            >
+                Next
+            </Button>
+          </div>
+        </CardFooter>
       </Card>
 
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && handleCloseEditDialog()}>
