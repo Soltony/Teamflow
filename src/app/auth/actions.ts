@@ -20,7 +20,7 @@ interface SyncUserInput {
  * @param input User data from the JWT token and login form.
  * @returns The local user record from the database.
  */
-export async function syncUser(input: SyncUserInput): Promise<User | null> {
+export async function syncUser(input: SyncUserInput) {
   if (!input.email || !input.id) {
     console.error("Sync user failed: email or id missing from input.");
     return null;
@@ -30,16 +30,10 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
   const isAdminById = input.id === 'b1e55c84-9055-4eb5-8bd4-a262538f7e66';
 
   try {
-    if (isAdminById) {
-      const adminRole = await prisma.role.findUnique({
-          where: { name: 'Admin' },
-          select: { id: true }
-      });
-      if (!adminRole) {
-          throw new Error("Admin role not found in database. Please seed the database to create it.");
-      }
-      
-      const adminUpdatePayload = {
+    let user;
+    if (isAdminLogin) {
+      const adminId = 'b1e55c84-9055-4eb5-8bd4-a262538f7e66';
+      const adminData = {
         name: `${input.given_name} ${input.family_name}`,
         firstName: input.given_name,
         lastName: input.family_name,
@@ -56,42 +50,49 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
         phoneNumber: input.phoneNumber,
       };
 
-      const user = await prisma.user.upsert({
-        where: { id: input.id },
-        update: adminUpdatePayload,
-        create: adminCreatePayload,
+      // For the admin, we upsert based on their unique email to find them reliably.
+      // On creation, we assign the specific admin ID.
+      user = await prisma.user.upsert({
+        where: { email: input.email },
+        update: adminData,
+        create: {
+          ...adminData,
+          id: adminId,
+        },
         include: {
-            roles: true,
+          roles: true,
         },
       });
 
-      return user;
-
+      // Note: This logic cannot change the ID of a pre-existing admin user with a different ID.
+      // It ensures that on first creation, the correct ID is assigned.
+      if (user.id !== adminId) {
+        console.warn(`Admin user with email ${input.email} has a non-standard ID (${user.id}). This cannot be automatically corrected due to database constraints.`);
+      }
     } else {
       // For all other users, the ID from the authentication server is the source of truth.
-      // Their roles are managed in the UI and are not modified on login.
-      const userData = {
-            name: `${input.given_name} ${input.family_name}`,
-            firstName: input.given_name,
-            lastName: input.family_name,
-            avatar: input.picture,
-            email: input.email,
-      };
-
-      const user = await prisma.user.upsert({
+      user = await prisma.user.upsert({
           where: { id: input.id },
-          update: userData,
+          update: {
+              name: `${input.given_name} ${input.family_name}`,
+              firstName: input.given_name,
+              lastName: input.family_name,
+              avatar: input.picture,
+              email: input.email,
+          },
           create: {
               ...userData,
               id: input.id,
               phoneNumber: input.phoneNumber,
           },
           include: {
-              roles: true,
+            roles: true
           }
       });
-      return user;
     }
+    
+    return user;
+
   } catch (error) {
     console.error("Failed to sync user in database:", error);
     return null;

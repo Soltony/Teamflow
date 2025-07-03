@@ -60,20 +60,14 @@ const menuItems = [
 function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { isOpen, isMobile } = useSidebar();
-  const { localUser, logout, hasPermission, loading } = useAuth();
+  const { localUser, logout } = useAuth();
   
-  const userInitials = localUser 
-    ? `${localUser.firstName?.[0] ?? ''}${localUser.lastName?.[0] ?? ''}`.toUpperCase() 
+  const userInitials = localUser
+    ? `${localUser.firstName?.[0] ?? ''}${localUser.lastName?.[0] ?? ''}`.toUpperCase()
     : '...';
-
-  const displayName = localUser
-    ? (localUser.firstName && localUser.lastName ? `${localUser.firstName} ${localUser.lastName}` : localUser.name)
-    : 'Loading...';
-
-  const visibleMenuItems = React.useMemo(() => {
-    if (loading) return []; // Don't show any items while permissions are loading
-    return menuItems.filter(item => hasPermission(item.permission));
-  }, [hasPermission, loading]);
+  
+  const userName = localUser?.name ?? 'Loading...';
+  const userEmail = localUser?.email ?? '...';
 
   return (
     <Sidebar className={cn(className, "text-muted-foreground")}>
@@ -106,15 +100,15 @@ function AppSidebar({ className }: { className?: string }) {
                  <AvatarImage src={localUser?.avatar} />
                  <AvatarFallback>{userInitials}</AvatarFallback>
               </Avatar>
-              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">{displayName}</span>}
+              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">{userName}</span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{displayName}</p>
+                <p className="text-sm font-medium leading-none">{userName}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  {localUser?.email}
+                  {userEmail}
                 </p>
               </div>
             </DropdownMenuLabel>
@@ -141,7 +135,7 @@ function AuthLoadingScreen() {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const { theme } = useTheme();
   const { isMobile, toggleSidebar, isOpen, mounted } = useSidebar();
-  const { accessToken, loading } = useAuth();
+  const { accessToken, loading, localUser } = useAuth();
   const router = useRouter();
   
   React.useEffect(() => {
@@ -150,7 +144,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, [loading, accessToken, router]);
 
-  if (loading || !accessToken) {
+  if (loading || !accessToken || !localUser) {
     return <AuthLoadingScreen />;
   }
 
