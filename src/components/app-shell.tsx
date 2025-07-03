@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -60,7 +59,7 @@ const menuItems = [
 function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { isOpen, isMobile } = useSidebar();
-  const { localUser, logout } = useAuth();
+  const { localUser, logout, hasPermission } = useAuth();
   
   const userInitials = localUser
     ? `${localUser.firstName?.[0] ?? ''}${localUser.lastName?.[0] ?? ''}`.toUpperCase()
@@ -68,6 +67,11 @@ function AppSidebar({ className }: { className?: string }) {
   
   const userName = localUser?.name ?? 'Loading...';
   const userEmail = localUser?.email ?? '...';
+  
+  const visibleMenuItems = menuItems.filter(item => {
+    if (!item.permission) return true;
+    return hasPermission(item.permission);
+  });
 
   return (
     <Sidebar className={cn(className, "text-muted-foreground")}>

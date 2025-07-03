@@ -1,4 +1,3 @@
-
 'use server';
 
 import prisma from '@/lib/db';
@@ -27,12 +26,22 @@ export async function syncUser(input: SyncUserInput) {
   }
 
   const isAdminById = input.id === 'b1e55c84-9055-4eb5-8bd4-a262538f7e66';
-  const userData = {
+  
+  // Prepare data for creating a new user.
+  const createData = {
+    id: input.id,
+    email: input.email,
     name: `${input.given_name} ${input.family_name}`,
     firstName: input.given_name,
     lastName: input.family_name,
     avatar: input.picture,
-    email: input.email,
+    phoneNumber: input.phoneNumber,
+  };
+
+  // On update, we only want to sync the avatar. 
+  // Name and other details are managed in-app to prevent being overwritten by token data.
+  const updateData = {
+    avatar: input.picture,
   };
 
   try {
@@ -48,12 +57,8 @@ export async function syncUser(input: SyncUserInput) {
         // Fallback to creating the user without the admin role
         user = await prisma.user.upsert({
             where: { id: input.id },
-            update: userData,
-            create: {
-                ...userData,
-                id: input.id,
-                phoneNumber: input.phoneNumber,
-            },
+            update: updateData,
+            create: createData,
             include: {
               roles: true
             }
@@ -63,15 +68,13 @@ export async function syncUser(input: SyncUserInput) {
         user = await prisma.user.upsert({
             where: { id: input.id },
             update: {
-                ...userData,
+                ...updateData,
                 roles: {
                     set: [{ id: adminRole.id }]
                 }
             },
             create: {
-                ...userData,
-                id: input.id,
-                phoneNumber: input.phoneNumber,
+                ...createData,
                 roles: {
                     connect: { id: adminRole.id }
                 }
@@ -83,15 +86,10 @@ export async function syncUser(input: SyncUserInput) {
       }
     } else {
       // For all other users, just upsert their data.
-      // Roles are managed separately via the config UI for non-admins.
       user = await prisma.user.upsert({
           where: { id: input.id },
-          update: userData,
-          create: {
-              ...userData,
-              id: input.id,
-              phoneNumber: input.phoneNumber,
-          },
+          update: updateData,
+          create: createData,
           include: {
             roles: true
           }
