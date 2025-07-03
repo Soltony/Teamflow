@@ -7,6 +7,7 @@ import { getTeamsPageData } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { Project as PrismaProject, Team as PrismaTeam, User as PrismaUser } from '@prisma/client';
+import { useRouter } from "next/navigation";
 
 type TeamWithRelations = PrismaTeam & {
     project: PrismaProject;
@@ -44,21 +45,29 @@ function LoadingSkeleton() {
 }
 
 export default function TeamsPage() {
-    const { localUser, loading: authLoading } = useAuth();
+    const { localUser, loading: authLoading, hasPermission } = useAuth();
+    const router = useRouter();
     const [data, setData] = useState<TeamsPageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (localUser?.id) {
-            setIsLoading(true);
-            getTeamsPageData(localUser.id).then(fetchedData => {
-                setData(fetchedData);
+        if (!authLoading) {
+            if (!hasPermission('teams:read')) {
+                router.replace('/dashboard');
+                return;
+            }
+
+            if (localUser?.id) {
+                setIsLoading(true);
+                getTeamsPageData(localUser.id).then(fetchedData => {
+                    setData(fetchedData);
+                    setIsLoading(false);
+                });
+            } else {
                 setIsLoading(false);
-            });
-        } else if (!authLoading) {
-            setIsLoading(false);
+            }
         }
-    }, [localUser, authLoading]);
+    }, [localUser, authLoading, hasPermission, router]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;

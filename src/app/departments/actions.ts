@@ -6,6 +6,13 @@ import type { Department } from '@prisma/client';
 
 type DepartmentData = Omit<Department, 'id'>;
 
+export async function getDepartments() {
+    const departments = await prisma.department.findMany({
+        orderBy: { name: 'asc' }
+    });
+    return JSON.parse(JSON.stringify(departments));
+}
+
 export async function createDepartment(data: DepartmentData) {
     try {
         await prisma.department.create({ data });

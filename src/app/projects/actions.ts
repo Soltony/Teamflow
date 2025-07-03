@@ -187,3 +187,144 @@ export async function getProjectsForUser(userId: string) {
 
     return JSON.parse(JSON.stringify(projects));
 }
+
+
+export async function getProjectDetailsForUser(projectId: string, userId: string) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { roles: true },
+    });
+
+    if (!user) {
+        return null; // User not found
+    }
+
+    const project = await prisma.project.findUnique({
+        where: { id: projectId },
+        include: {
+            status: true,
+            owningDepartment: true,
+            projectManager: true,
+            blockers: true,
+            milestones: {
+                include: {
+                    tasks: {
+                        include: {
+                            assignees: true,
+                            updates: true,
+                        }
+                    }
+                }
+            }
+        }
+    });
+
+    if (!project) {
+        return null; // Project not found
+    }
+
+    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager');
+    if (isManagerOrAdmin) {
+        return JSON.parse(JSON.stringify(project));
+    }
+
+    // If not admin/manager, check for involvement
+    const userInvolvement = await prisma.project.findFirst({
+        where: {
+            id: projectId,
+            OR: [
+                { projectManagerId: userId },
+                {
+                    teams: {
+                        some: {
+                            members: {
+                                some: { id: userId }
+                            }
+                        }
+                    }
+                },
+                {
+                    milestones: {
+                        some: {
+                            tasks: {
+                                some: {
+                                    assignees: {
+                                        some: {
+                                            id: userId
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        }
+    });
+
+    if (!userInvolvement) {
+        return null; // User is not involved in this project
+    }
+
+    return JSON.parse(JSON.stringify(project));
+}
+
+export async function getProjectMilestonesForUser(projectId: string, userId: string) {
+    // First, verify the user has access to the project
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { roles: true },
+    });
+
+    if (!user) return null;
+
+    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager');
+    
+    let whereClause: Prisma.ProjectWhereUniqueInput = { id: projectId };
+    
+    if (!isManagerOrAdmin) {
+        const projectAccess = await prisma.project.findFirst({
+            where: {
+                id: projectId,
+                OR: [
+                    { projectManagerId: userId },
+                    { teams: { some: { members: { some: { id: userId } } } } },
+                    { milestones: { some: { tasks: { some: { assignees: { some: { id: userId } } } } } } }
+                ]
+            },
+            select: { id: true }
+        });
+
+        if (!projectAccess) return null; // No access
+    }
+    
+    // If access is confirmed, fetch the required data
+    const project = await prisma.project.findUnique({
+        where: whereClause,
+        include: {
+            milestones: {
+                include: {
+                    tasks: {
+                        include: {
+                            assignees: true,
+                        }
+                    },
+                    responsibleDepartments: true
+                }
+            }
+        }
+    });
+
+    if (!project) return null;
+
+    const [users, departments] = await Promise.all([
+        prisma.user.findMany(),
+        prisma.department.findMany()
+    ]);
+
+    return {
+        project: JSON.parse(JSON.stringify(project)),
+        users: JSON.parse(JSON.stringify(users)),
+        departments: JSON.parse(JSON.stringify(departments))
+    };
+}
