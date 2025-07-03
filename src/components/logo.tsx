@@ -1,4 +1,3 @@
-
 import { cn } from "@/lib/utils";
 
 export function NibLogo({ className }: { className?: string }) {
@@ -12,10 +11,10 @@ export function NibLogo({ className }: { className?: string }) {
       <circle cx="50" cy="50" r="48" fill="#003366" />
       <text
         x="50"
-        y="58"
-        fontFamily="Arial, sans-serif"
-        fontSize="30"
-        fontWeight="bold"
+        y="65"
+        fontFamily="Impact, Haettenschweiler, 'Arial Narrow Bold', sans-serif"
+        fontSize="40"
+        fontWeight="600"
         fill="white"
         textAnchor="middle"
       >
