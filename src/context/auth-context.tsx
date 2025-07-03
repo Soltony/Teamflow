@@ -1,13 +1,12 @@
-
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import axios, { AxiosError } from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { syncUser } from '@/app/auth/actions';
 import type { Role, User as PrismaUser } from '@prisma/client';
-import { ALL_PERMISSIONS } from '@/lib/permissions';
+import { allPermissions as ALL_PERMISSIONS } from '@/lib/permissions';
 
 interface AuthenticatedUser {
   email: string;
@@ -35,11 +34,10 @@ interface AuthContextType {
   loading: boolean;
   isAdmin: boolean;
   permissions: Set<string>;
-  hasPermission: (permission: string | string[]) => boolean;
   login: (data: any) => Promise<AuthResponse>;
   register: (data: any) => Promise<AuthResponse>;
   logout: () => void;
-  hasPermission: (permission: string) => boolean;
+  hasPermission: (permission: string | string[]) => boolean;
   isUserAdmin: () => boolean;
 }
 
@@ -62,12 +60,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return localUser?.roles?.some(role => role.name === 'Admin') ?? false;
   }, [localUser]);
 
-  const hasPermission = useCallback((permission: string) => {
+  const hasPermission = useCallback((permission: string | string[]) => {
     if (isUserAdmin()) {
         return true;
     }
+    if (Array.isArray(permission)) {
+      return permission.some(p => userPermissions.has(p));
+    }
     return userPermissions.has(permission);
   }, [userPermissions, isUserAdmin]);
+
+  const isAdmin = useMemo(() => isUserAdmin(), [isUserAdmin]);
+  const permissions = useMemo(() => userPermissions, [userPermissions]);
+
 
   const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, authData?: any) => {
     setLoading(true);
@@ -218,7 +223,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             console.error("Auth service registration failed on client. Response:", axiosError.response.data);
             const errorData = axiosError.response.data;
             const errorMessage = Array.isArray(errorData.errors) ? errorData.errors.join(', ') : (typeof errorData.errors === 'string' ? errorData.errors : 'An unexpected error occurred during registration.');
-            return { isSuccess: false, errors: errorMessage };
+            return { isSuccess: false, errors: [errorMessage] };
        }
        console.error("Client-side registration request failed:", axiosError.message);
        // This could be a CORS issue or network error.
@@ -238,7 +243,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     loading,
     isAdmin,
     permissions,
-    hasPermission,
     login,
     register,
     logout,
