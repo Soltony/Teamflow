@@ -36,7 +36,7 @@ body {
     --radius: 0.5rem;
 
     /* Sidebar specific colors */
-    --sidebar-background: 26 64% 33%; /* #8a4d1f */
+    --sidebar-background: 26 64% 28%; /* #733f19 */
     --sidebar-foreground: 47 58% 95%;
   }
 }
@@ -53,7 +53,7 @@ body {
     --secondary-foreground: 47 58% 98%;
     --accent: 26 64% 43%;
     --accent-foreground: 47 58% 98%;
-    --muted: 26 64% 28%;
+    --muted: 26 64% 23%;
     --muted-foreground: 47 58% 95%;
   }
 }
