@@ -16,7 +16,6 @@ import {
   ClipboardList,
   Wrench,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useAuth } from "@/context/auth-context";
 
 import {
@@ -41,7 +40,6 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
-import { ThemeToggle } from "./theme-toggle";
 import { NibLogo } from "./logo";
 
 const menuItems = [
@@ -138,8 +136,7 @@ function AuthLoadingScreen() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { theme } = useTheme();
-  const { isMobile, toggleSidebar, isOpen, mounted } = useSidebar();
+  const { isMobile, toggleSidebar, isOpen } = useSidebar();
   const { accessToken, loading, localUser } = useAuth();
   const router = useRouter();
   
@@ -153,8 +150,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return <AuthLoadingScreen />;
   }
 
-  const isLightFrame = mounted && theme === 'light';
-
   return (
     <div
       className={cn(
@@ -163,7 +158,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         "transition-all duration-300 ease-in-out"
       )}
     >
-      <AppSidebar className={isLightFrame ? 'dark' : ''} />
+      <AppSidebar />
       <div className="flex flex-col">
         <header
           className={cn(
@@ -179,9 +174,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <PanelLeft className="w-6 h-6" />
             <span className="sr-only">Toggle Menu</span>
           </Button>
-          <div className="ml-auto">
-            <ThemeToggle />
-          </div>
         </header>
         <main className="flex-1 overflow-auto">{children}</main>
       </div>
