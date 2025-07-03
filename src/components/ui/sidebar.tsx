@@ -70,7 +70,7 @@ const Sidebar = React.forwardRef<
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="left" className="w-[280px] p-0">
+        <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-r">
           <aside ref={ref} className={cn("h-full", className)} {...props}>
             {sidebarContent}
           </aside>
@@ -83,7 +83,7 @@ const Sidebar = React.forwardRef<
     <aside
       ref={ref}
       className={cn(
-        "fixed left-0 top-0 z-20 h-screen border-r bg-background transition-[width] duration-300 ease-in-out",
+        "fixed left-0 top-0 z-20 h-screen border-r bg-sidebar transition-[width] duration-300 ease-in-out",
         isOpen ? "w-[280px]" : "w-[56px]",
         className
       )}

@@ -34,6 +34,10 @@ body {
     --chart-4: 280 70% 60%;
     --chart-5: 210 80% 55%;
     --radius: 0.5rem;
+
+    /* Sidebar specific colors */
+    --sidebar-background: 26 64% 33%; /* #8a4d1f */
+    --sidebar-foreground: 47 58% 95%;
   }
 }
 
@@ -43,5 +47,13 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+  }
+  .sidebar {
+    --secondary: 26 64% 43%;
+    --secondary-foreground: 47 58% 98%;
+    --accent: 26 64% 43%;
+    --accent-foreground: 47 58% 98%;
+    --muted: 26 64% 28%;
+    --muted-foreground: 47 58% 95%;
   }
 }
