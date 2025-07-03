@@ -7,6 +7,7 @@ import {
     projects as projectsData, 
     teams as teamsData
 } from '../src/lib/data';
+import { allPermissions } from '../src/lib/permissions';
 
 const prisma = new PrismaClient();
 
@@ -18,56 +19,12 @@ async function main() {
     where: { name: 'Admin' },
     update: {
         description: 'Full access to all system features.',
-        permissions: [
-            'config:manage-users',
-            'config:manage-roles',
-            'settings:manage',
-            'departments:create',
-            'departments:read',
-            'departments:update',
-            'departments:delete',
-            'teams:create',
-            'teams:read',
-            'teams:update',
-            'teams:delete',
-            'projects:create',
-            'projects:read',
-            'projects:update',
-            'projects:delete',
-            'team-view:manage',
-            'dashboard:view',
-            'my-tasks:view',
-            'team-view:view',
-            'milestones:view',
-            'gantt:view'
-        ]
+        permissions: allPermissions,
     },
     create: { 
         name: 'Admin', 
         description: 'Full access to all system features.', 
-        permissions: [
-            'config:manage-users',
-            'config:manage-roles',
-            'settings:manage',
-            'departments:create',
-            'departments:read',
-            'departments:update',
-            'departments:delete',
-            'teams:create',
-            'teams:read',
-            'teams:update',
-            'teams:delete',
-            'projects:create',
-            'projects:read',
-            'projects:update',
-            'projects:delete',
-            'team-view:manage',
-            'dashboard:view',
-            'my-tasks:view',
-            'team-view:view',
-            'milestones:view',
-            'gantt:view'
-        ] 
+        permissions: allPermissions,
     },
   });
 

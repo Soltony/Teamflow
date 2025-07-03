@@ -44,24 +44,11 @@ import { Accordion, AccordionContent, AccordionItem } from "../ui/accordion";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Badge } from "../ui/badge";
 import { useAuth } from "@/context/auth-context";
+import { availablePermissions } from "@/lib/permissions";
 
 type RoleManagementProps = {
   initialRoles: Role[];
 };
-
-const availablePermissions: Record<string, string[]> = {
-    'Dashboard': ['dashboard:view'],
-    'My Tasks': ['my-tasks:view'],
-    'Team View': ['team-view:view', 'team-view:manage'],
-    'Projects': ['projects:create', 'projects:read', 'projects:update', 'projects:delete'],
-    'Milestones': ['milestones:view'],
-    'Gantt': ['gantt:view'],
-    'Departments': ['departments:create', 'departments:read', 'departments:update', 'departments:delete'],
-    'Teams': ['teams:create', 'teams:read', 'teams:update', 'teams:delete'],
-    'Settings': ['settings:manage'],
-    'Configuration': ['config:manage-users', 'config:manage-roles'],
-};
-
 
 const roleSchema = z.object({
   name: z.string().min(3, "Role name must be at least 3 characters."),
