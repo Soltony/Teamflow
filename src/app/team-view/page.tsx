@@ -7,6 +7,7 @@ import { TeamTasksManagement } from "@/components/tasks/team-tasks-management";
 import { getTeamViewData } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Task, User, Team, ProjectStatus, TaskUpdate, TaskStatus as TaskStatusType } from "@/lib/types";
+import { useRouter } from "next/navigation";
 
 
 export type TeamViewTask = Task & {
@@ -50,21 +51,29 @@ function LoadingSkeleton() {
 }
 
 export default function TeamViewPage() {
-    const { localUser, loading: authLoading } = useAuth();
+    const { localUser, loading: authLoading, hasPermission } = useAuth();
+    const router = useRouter();
     const [viewData, setViewData] = useState<TeamViewData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        if (localUser?.id) {
-            setIsLoading(true);
-            getTeamViewData(localUser.id).then(data => {
-                setViewData(data);
+        if (!authLoading) {
+            if (!hasPermission('team-view:view')) {
+                router.replace('/dashboard');
+                return;
+            }
+
+            if (localUser?.id) {
+                setIsLoading(true);
+                getTeamViewData(localUser.id).then(data => {
+                    setViewData(data);
+                    setIsLoading(false);
+                });
+            } else {
                 setIsLoading(false);
-            });
-        } else if (!authLoading) {
-            setIsLoading(false);
+            }
         }
-    }, [localUser, authLoading]);
+    }, [localUser, authLoading, hasPermission, router]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
