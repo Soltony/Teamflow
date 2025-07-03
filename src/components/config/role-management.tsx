@@ -43,6 +43,7 @@ import { Checkbox } from "../ui/checkbox";
 import { Accordion, AccordionContent, AccordionItem } from "../ui/accordion";
 import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Badge } from "../ui/badge";
+import { useAuth } from "@/context/auth-context";
 
 type RoleManagementProps = {
   initialRoles: Role[];
@@ -72,10 +73,15 @@ type RoleFormValues = z.infer<typeof roleSchema>;
 
 export function RoleManagement({ initialRoles }: RoleManagementProps) {
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
+  
+  const canCreate = hasPermission('config:manage-roles');
+  const canUpdate = hasPermission('config:manage-roles');
+  const canDelete = hasPermission('config:manage-roles');
 
   const form = useForm<RoleFormValues>({
     resolver: zodResolver(roleSchema),
@@ -152,9 +158,11 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
                 Define roles to control user access and permissions across the application.
               </CardDescription>
             </div>
-            <Button onClick={handleAddNew}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add Role
-            </Button>
+            {canCreate && (
+              <Button onClick={handleAddNew}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Role
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -171,19 +179,23 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">
-                                    <Button variant="ghost" size="icon" onClick={() => handleEdit(role)}>
-                                        <Pencil className="w-4 h-4" />
-                                        <span className="sr-only">Edit Role</span>
-                                    </Button>
-                                    <Button
-                                        variant="ghost"
-                                        size="icon"
-                                        className="text-destructive hover:text-destructive"
-                                        onClick={() => setRoleToDelete(role)}
-                                    >
-                                        <Trash2 className="w-4 h-4" />
-                                        <span className="sr-only">Delete Role</span>
-                                    </Button>
+                                    {canUpdate && (
+                                      <Button variant="ghost" size="icon" onClick={() => handleEdit(role)}>
+                                          <Pencil className="w-4 h-4" />
+                                          <span className="sr-only">Edit Role</span>
+                                      </Button>
+                                    )}
+                                    {canDelete && (
+                                      <Button
+                                          variant="ghost"
+                                          size="icon"
+                                          className="text-destructive hover:text-destructive"
+                                          onClick={() => setRoleToDelete(role)}
+                                      >
+                                          <Trash2 className="w-4 h-4" />
+                                          <span className="sr-only">Delete Role</span>
+                                      </Button>
+                                    )}
                                 </div>
                             </div>
                             {index < initialRoles.length - 1 && <Separator className="my-4" />}

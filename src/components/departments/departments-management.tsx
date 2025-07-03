@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -30,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { createDepartment, deleteDepartment, updateDepartment } from "@/app/departments/actions";
+import { useAuth } from "@/context/auth-context";
 
 const departmentSchema = z.object({
   name: z.string().min(3, "Department name must be at least 3 characters."),
@@ -45,6 +47,11 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
   const [isPending, startTransition] = useTransition();
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
+  const { hasPermission } = useAuth();
+  
+  const canCreate = hasPermission('departments:create');
+  const canUpdate = hasPermission('departments:update');
+  const canDelete = hasPermission('departments:delete');
 
   const form = useForm<DepartmentFormValues>({
     resolver: zodResolver(departmentSchema),
@@ -115,82 +122,84 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
   return (
     <>
       <div className="grid md:grid-cols-3 gap-6">
-        <div className="md:col-span-1">
-          <Card>
-            <CardHeader>
-              <CardTitle>{isEditing ? "Edit Department" : "Add New Department"}</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Department Name</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Marketing" {...field} disabled={isPending} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="responsibleName"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Responsible Person</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., John Doe" {...field} disabled={isPending} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="responsibleTitle"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Head of Marketing" {...field} disabled={isPending} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="responsiblePhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., (123) 456-7890" {...field} disabled={isPending} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="space-y-2 pt-2">
-                    <Button type="submit" className="w-full" disabled={isPending}>
-                       {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Department" : "Add Department")}
-                    </Button>
-                    {isEditing && (
-                      <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit} disabled={isPending}>
-                        Cancel
+        {(canCreate || canUpdate) && (
+          <div className="md:col-span-1">
+            <Card>
+              <CardHeader>
+                <CardTitle>{isEditing ? "Edit Department" : "Add New Department"}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="name"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Department Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Marketing" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="responsibleName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Responsible Person</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., John Doe" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="responsibleTitle"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Title</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Head of Marketing" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="responsiblePhone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., (123) 456-7890" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="space-y-2 pt-2">
+                      <Button type="submit" className="w-full" disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)}>
+                         {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Department" : "Add Department")}
                       </Button>
-                    )}
-                  </div>
-                </form>
-              </Form>
-            </CardContent>
-          </Card>
-        </div>
-        <div className="md:col-span-2">
+                      {isEditing && (
+                        <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit} disabled={isPending}>
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+        <div className={(canCreate || canUpdate) ? "md:col-span-2" : "md:col-span-3"}>
           <Card>
             <CardHeader>
               <CardTitle>Existing Departments</CardTitle>
@@ -210,19 +219,23 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                       <p className="text-sm text-muted-foreground">{dept.responsiblePhone}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(dept)}>
-                        <Pencil className="w-4 h-4" />
-                        <span className="sr-only">Edit</span>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="text-destructive hover:text-destructive"
-                        onClick={() => setDepartmentToDelete(dept)}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                        <span className="sr-only">Delete</span>
-                      </Button>
+                      {canUpdate && (
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(dept)}>
+                          <Pencil className="w-4 h-4" />
+                          <span className="sr-only">Edit</span>
+                        </Button>
+                      )}
+                      {canDelete && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="text-destructive hover:text-destructive"
+                          onClick={() => setDepartmentToDelete(dept)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          <span className="sr-only">Delete</span>
+                        </Button>
+                      )}
                     </div>
                   </div>
                   {index < initialDepartments.length - 1 && <Separator className="my-4" />}

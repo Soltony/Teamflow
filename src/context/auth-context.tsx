@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import axios, { AxiosError } from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { syncUser } from '@/app/auth/actions';
-import type { User as PrismaUser } from '@prisma/client';
+import type { User as PrismaUser, Role } from '@prisma/client';
 
 interface AuthenticatedUser {
   email: string;
@@ -25,11 +25,15 @@ interface AuthResponse {
   errors?: string[] | string | null;
 }
 
+type LocalUser = PrismaUser & { roles: Role[] };
+
 interface AuthContextType {
   user: (AuthenticatedUser & { nameid: string }) | null;
-  localUser: PrismaUser | null;
+  localUser: LocalUser | null;
   accessToken: string | null;
   loading: boolean;
+  permissions: Set<string>;
+  hasPermission: (permission: string | string[]) => boolean;
   login: (data: any) => Promise<AuthResponse>;
   register: (data: any) => Promise<AuthResponse>;
   logout: () => void;
@@ -43,11 +47,20 @@ const axiosInstance = axios.create({
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<(AuthenticatedUser & { nameid: string }) | null>(null);
-  const [localUser, setLocalUser] = useState<PrismaUser | null>(null);
+  const [localUser, setLocalUser] = useState<LocalUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [permissions, setPermissions] = useState(new Set<string>());
   const router = useRouter();
+  
+  const hasPermission = useCallback((requiredPermissions: string | string[]) => {
+    if (loading) return false;
+    if (typeof requiredPermissions === 'string') {
+        return permissions.has(requiredPermissions);
+    }
+    return requiredPermissions.some(p => permissions.has(p));
+  }, [permissions, loading]);
 
   const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, authData?: any) => {
     if (newAccessToken && newRefreshToken) {
@@ -56,17 +69,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         const userId = decodedUser.nameid || decodedUser.sub;
         
         if (!userId) {
-          console.error("Failed to decode token: no user identifier (nameid or sub) found.");
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('localUser');
-          setUser(null);
-          setLocalUser(null);
-          setAccessToken(null);
-          setRefreshToken(null);
-          delete axiosInstance.defaults.headers.common['Authorization'];
-          setLoading(false);
-          return;
+          throw new Error("Failed to decode token: no user identifier (nameid or sub) found.");
         }
 
         localStorage.setItem('accessToken', newAccessToken);
@@ -86,16 +89,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
 
         const syncedUser = await syncUser(syncInput);
-        setLocalUser(syncedUser);
+        setLocalUser(syncedUser as LocalUser);
+        
         if (syncedUser) {
             localStorage.setItem('localUser', JSON.stringify(syncedUser));
+            if (syncedUser.roles) {
+              const userPermissions = new Set((syncedUser.roles as Role[]).flatMap(role => role.permissions));
+              setPermissions(userPermissions);
+            } else {
+              setPermissions(new Set());
+            }
         } else {
             localStorage.removeItem('localUser');
+            setPermissions(new Set());
         }
 
       } catch (error) {
         console.error("Failed to decode token or sync user:", error);
-        // Clear session if token is invalid
         localStorage.removeItem('accessToken');
         localStorage.removeItem('refreshToken');
         localStorage.removeItem('localUser');
@@ -103,6 +113,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setLocalUser(null);
         setAccessToken(null);
         setRefreshToken(null);
+        setPermissions(new Set());
         delete axiosInstance.defaults.headers.common['Authorization'];
       }
     } else {
@@ -113,6 +124,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLocalUser(null);
       setAccessToken(null);
       setRefreshToken(null);
+      setPermissions(new Set());
       delete axiosInstance.defaults.headers.common['Authorization'];
     }
     setLoading(false);
@@ -126,7 +138,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (storedAccessToken && storedRefreshToken) {
         setSession(storedAccessToken, storedRefreshToken);
         if (storedLocalUser) {
-            setLocalUser(JSON.parse(storedLocalUser));
+            const parsedUser = JSON.parse(storedLocalUser);
+            setLocalUser(parsedUser);
+            if (parsedUser.roles) {
+              const userPermissions = new Set((parsedUser.roles as Role[]).flatMap(role => role.permissions));
+              setPermissions(userPermissions);
+            }
         }
       } else {
         setLoading(false);
@@ -190,6 +207,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localUser,
     accessToken,
     loading,
+    permissions,
+    hasPermission,
     login,
     register,
     logout,

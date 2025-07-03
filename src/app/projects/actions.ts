@@ -5,6 +5,24 @@ import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { TaskStatus } from "@/lib/types";
 
+export async function getNewProjectData() {
+    const [users, departments, projectStatuses, activeYearSetting] = await Promise.all([
+        prisma.user.findMany(),
+        prisma.department.findMany(),
+        prisma.projectStatus.findMany(),
+        prisma.setting.findUnique({ where: { key: 'activeWorkingYear' } }),
+      ]);
+      const activeYear = activeYearSetting?.value || "";
+
+      return {
+        users: JSON.parse(JSON.stringify(users)),
+        departments: JSON.parse(JSON.stringify(departments)),
+        projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
+        activeYear,
+      }
+}
+
+
 export async function createProject(data: any) {
     const { milestones, ...projectData } = data;
 

@@ -83,7 +83,9 @@ type AddUserFormValues = z.infer<typeof addUserSchema>;
 export function UserManagement({ initialUsers, initialRoles }: UserManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const { accessToken } = useAuth();
+  const { accessToken, hasPermission } = useAuth();
+  
+  const canManageUsers = hasPermission('config:manage-users');
 
   const [editingUser, setEditingUser] = useState<UserWithRoles | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null);
@@ -185,9 +187,11 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                 A list of all users in the system. Assign roles to manage their permissions.
               </CardDescription>
             </div>
-            <Button onClick={handleOpenAddUserDialog}>
-              <PlusCircle className="mr-2 h-4 w-4" /> Add User
-            </Button>
+            {canManageUsers && (
+              <Button onClick={handleOpenAddUserDialog}>
+                <PlusCircle className="mr-2 h-4 w-4" /> Add User
+              </Button>
+            )}
           </div>
         </CardHeader>
         <CardContent>
@@ -213,16 +217,18 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                     </div>
                   </TableCell>
                   <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
-                          <Pencil className="h-4 w-4" />
-                          <span className="sr-only">Edit Roles</span>
-                        </Button>
-                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setUserToDelete(user)}>
-                          <Trash2 className="h-4 w-4" />
-                          <span className="sr-only">Delete User</span>
-                        </Button>
-                    </div>
+                    {canManageUsers && (
+                      <div className="flex items-center justify-end gap-1">
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
+                            <Pencil className="h-4 w-4" />
+                            <span className="sr-only">Edit Roles</span>
+                          </Button>
+                           <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setUserToDelete(user)}>
+                            <Trash2 className="h-4 w-4" />
+                            <span className="sr-only">Delete User</span>
+                          </Button>
+                      </div>
+                    )}
                   </TableCell>
                 </TableRow>
               ))}

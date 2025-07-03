@@ -45,26 +45,31 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
 
 const menuItems = [
-  { href: "/dashboard", label: "Dashboard", icon: Home },
-  { href: "/my-tasks", label: "My Tasks", icon: ClipboardCheck },
-  { href: "/team-view", label: "Team View", icon: ClipboardList },
-  { href: "/projects", label: "Projects", icon: FolderKanban },
-  { href: "/milestones", label: "Milestones", icon: Milestone },
-  { href: "/gantt", label: "Gantt", icon: GanttChartSquare },
-  { href: "/departments", label: "Departments", icon: Building2 },
-  { href: "/teams", label: "Teams", icon: UsersRound },
-  { href: "/settings", label: "Settings", icon: Settings },
-  { href: "/config", label: "Config", icon: Wrench },
+  { href: "/dashboard", label: "Dashboard", icon: Home, permission: 'dashboard:view' },
+  { href: "/my-tasks", label: "My Tasks", icon: ClipboardCheck, permission: 'my-tasks:view' },
+  { href: "/team-view", label: "Team View", icon: ClipboardList, permission: 'team-view:view' },
+  { href: "/projects", label: "Projects", icon: FolderKanban, permission: 'projects:read' },
+  { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
+  { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
+  { href: "/departments", label: "Departments", icon: Building2, permission: 'departments:read' },
+  { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
+  { href: "/settings", label: "Settings", icon: Settings, permission: 'settings:manage' },
+  { href: "/config", label: "Config", icon: Wrench, permission: ['config:manage-users', 'config:manage-roles'] },
 ];
 
 function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { isOpen, isMobile } = useSidebar();
-  const { user, logout } = useAuth();
+  const { user, logout, hasPermission, loading } = useAuth();
   
   const userInitials = user 
     ? `${user.given_name?.[0] ?? ''}${user.family_name?.[0] ?? ''}`.toUpperCase() 
     : '...';
+
+  const visibleMenuItems = React.useMemo(() => {
+    if (loading) return []; // Don't show any items while permissions are loading
+    return menuItems.filter(item => hasPermission(item.permission));
+  }, [hasPermission, loading]);
 
   return (
     <Sidebar className={cn(className, "text-muted-foreground")}>
@@ -76,7 +81,7 @@ function AppSidebar({ className }: { className?: string }) {
       </SidebarHeader>
       <SidebarContent>
         <SidebarMenu>
-          {menuItems.map((item) => (
+          {visibleMenuItems.map((item) => (
             <SidebarMenuItem key={item.label}>
               <SidebarMenuButton
                 href={item.href}

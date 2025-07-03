@@ -27,6 +27,7 @@ import {
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
 import { isPast, max as dateMax, parseISO } from 'date-fns';
+import { useAuth } from "@/context/auth-context";
 
 const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode, count: number, href: string }) => {
   if (count > 0) {
@@ -38,6 +39,7 @@ const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode,
 export function DashboardClient({ initialProjects, projectStatuses, departments, teams, availableYears, searchParams }: any) {
   const router = useRouter();
   const pathname = usePathname();
+  const { hasPermission } = useAuth();
   
   // Add a guard to ensure all required data is present before rendering.
   // This prevents crashes on hot-reloads or if data fetching fails.
@@ -109,12 +111,14 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             </SelectContent>
           </Select>
         </div>
-        <Button asChild>
-          <Link href="/projects/new">
-            <PlusCircle className="w-4 h-4 mr-2" />
-            Create Project
-          </Link>
-        </Button>
+        {hasPermission('projects:create') && (
+          <Button asChild>
+            <Link href="/projects/new">
+              <PlusCircle className="w-4 h-4 mr-2" />
+              Create Project
+            </Link>
+          </Button>
+        )}
       </div>
 
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">

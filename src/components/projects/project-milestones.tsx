@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { EditTaskDialog } from "./edit-task-dialog";
 import { Progress } from "../ui/progress";
 import { addTask, updateMilestone, updateTask } from "@/app/projects/actions";
+import { useAuth } from "@/context/auth-context";
 
 type ProjectMilestonesProps = {
   initialProject: any;
@@ -26,6 +27,9 @@ type ProjectMilestonesProps = {
 
 export function ProjectMilestones({ initialProject, users, departments }: ProjectMilestonesProps) {
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
+  const canUpdateProject = hasPermission('projects:update');
+
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
   const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: Task; milestone: Milestone } | null>(null);
@@ -86,18 +90,20 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
                                 <div className="flex-1 flex flex-col items-start gap-3 text-left pr-4">
                                   <div className="flex w-full items-start justify-between gap-4">
                                       <span className="font-semibold text-base flex-1">{milestone.title}</span>
-                                      <Button 
-                                          variant="ghost" 
-                                          size="icon" 
-                                          onClick={(e) => { 
-                                              e.stopPropagation(); 
-                                              setEditingMilestone(milestone) 
-                                          }}
-                                          className="h-8 w-8 shrink-0"
-                                      >
-                                          <Pencil className="w-4 h-4" />
-                                          <span className="sr-only">Edit Milestone</span>
-                                      </Button>
+                                      {canUpdateProject && (
+                                        <Button 
+                                            variant="ghost" 
+                                            size="icon" 
+                                            onClick={(e) => { 
+                                                e.stopPropagation(); 
+                                                setEditingMilestone(milestone) 
+                                            }}
+                                            className="h-8 w-8 shrink-0"
+                                        >
+                                            <Pencil className="w-4 h-4" />
+                                            <span className="sr-only">Edit Milestone</span>
+                                        </Button>
+                                      )}
                                   </div>
                                   
                                   <div className="w-full space-y-1">
@@ -126,14 +132,17 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
                                   
                                   <div className="flex justify-between items-center pt-2">
                                       <h4 className="font-semibold">Tasks</h4>
-                                      <Button onClick={() => setAddingTaskToMilestone(milestone)}>
-                                          <PlusCircle className="mr-2 h-4 w-4" /> Add Task
-                                      </Button>
+                                      {canUpdateProject && (
+                                        <Button onClick={() => setAddingTaskToMilestone(milestone)}>
+                                            <PlusCircle className="mr-2 h-4 w-4" /> Add Task
+                                        </Button>
+                                      )}
                                   </div>
                                   <TaskList 
                                       tasks={milestone.tasks} 
                                       users={users}
                                       onEditTask={(task) => setEditingTaskInfo({ task, milestone })}
+                                      canUpdateProject={canUpdateProject}
                                   />
                               </AccordionContent>
                           </AccordionItem>
@@ -143,7 +152,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
           </CardContent>
       </Card>
 
-      {editingMilestone && (
+      {editingMilestone && canUpdateProject && (
         <EditMilestoneDialog 
             isOpen={!!editingMilestone}
             onOpenChange={(open) => !open && setEditingMilestone(null)}
@@ -154,7 +163,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
         />
       )}
 
-      {addingTaskToMilestone && (
+      {addingTaskToMilestone && canUpdateProject && (
         <AddTaskDialog
             isOpen={!!addingTaskToMilestone}
             onOpenChange={(open) => !open && setAddingTaskToMilestone(null)}
@@ -164,7 +173,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
         />
       )}
       
-      {editingTaskInfo && (
+      {editingTaskInfo && canUpdateProject && (
         <EditTaskDialog
             isOpen={!!editingTaskInfo}
             onOpenChange={(open) => !open && setEditingTaskInfo(null)}

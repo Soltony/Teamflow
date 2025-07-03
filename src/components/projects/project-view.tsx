@@ -17,6 +17,7 @@ import { Separator } from "../ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GanttChart } from "./gantt-chart";
 import { addBlocker, resolveBlocker } from "@/app/projects/actions";
+import { useAuth } from "@/context/auth-context";
 
 type ProjectViewProps = {
   initialProject: any; // Using any because of complex nested types from prisma and normalization
@@ -24,8 +25,9 @@ type ProjectViewProps = {
 
 export function ProjectView({ initialProject }: ProjectViewProps) {
   const { toast } = useToast();
-  // We no longer manage project state here, we rely on server revalidation.
-  // The prop is the source of truth.
+  const { hasPermission } = useAuth();
+  const canUpdateProject = hasPermission('projects:update');
+
   const [addingBlocker, setAddingBlocker] = useState(false);
   const [resolvingBlocker, setResolvingBlocker] = useState<Blocker | null>(null);
 
@@ -73,12 +75,14 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
                 {initialProject.status && <Badge className="text-base" variant="secondary">{initialProject.status.name}</Badge>}
-                <Button asChild variant="outline">
-                    <Link href={`/projects/${initialProject.id}/milestones`}>
-                        Manage Milestones
-                        <ExternalLink className="ml-2 h-4 w-4" />
-                    </Link>
-                </Button>
+                {canUpdateProject && (
+                  <Button asChild variant="outline">
+                      <Link href={`/projects/${initialProject.id}/milestones`}>
+                          Manage Milestones
+                          <ExternalLink className="ml-2 h-4 w-4" />
+                      </Link>
+                  </Button>
+                )}
             </div>
           </div>
         </CardHeader>
@@ -135,9 +139,11 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                 <CardHeader>
                 <div className="flex items-center justify-between">
                     <CardTitle>Project Blockers</CardTitle>
-                    <Button onClick={() => setAddingBlocker(true)}>
-                        <PlusCircle className="mr-2 h-4 w-4" /> Add Blocker
-                    </Button>
+                    {canUpdateProject && (
+                      <Button onClick={() => setAddingBlocker(true)}>
+                          <PlusCircle className="mr-2 h-4 w-4" /> Add Blocker
+                      </Button>
+                    )}
                 </div>
                 <CardDescription>
                     Issues that are impeding progress and require higher management attention.
@@ -175,7 +181,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                             )}
                             </div>
                             <div>
-                            {blocker.status === 'open' && (
+                            {blocker.status === 'open' && canUpdateProject && (
                             <Button variant="outline" size="sm" onClick={() => setResolvingBlocker(blocker)}>
                                 Resolve
                             </Button>

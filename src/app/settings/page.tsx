@@ -1,8 +1,6 @@
 
-import { ProjectStatusManagement } from "@/components/settings/status-management";
-import { ActiveYearManagement } from "@/components/settings/active-year-management";
+import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import prisma from "@/lib/db";
 
 export default async function SettingsPage() {
@@ -31,23 +29,11 @@ export default async function SettingsPage() {
           </CardDescription>
         </CardHeader>
       </Card>
-      <Tabs defaultValue="statuses" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="statuses">Project Statuses</TabsTrigger>
-          <TabsTrigger value="general">General</TabsTrigger>
-        </TabsList>
-        <TabsContent value="statuses" className="mt-6">
-          <ProjectStatusManagement 
-            initialStatuses={JSON.parse(JSON.stringify(projectStatuses))}
-          />
-        </TabsContent>
-        <TabsContent value="general" className="mt-6">
-          <ActiveYearManagement
-            availableYears={availableYears}
-            currentActiveYear={currentActiveYear}
-          />
-        </TabsContent>
-      </Tabs>
+      <SettingsTabs 
+        projectStatuses={JSON.parse(JSON.stringify(projectStatuses))}
+        availableYears={availableYears}
+        currentActiveYear={currentActiveYear}
+      />
     </div>
   );
 }

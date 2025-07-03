@@ -1,9 +1,7 @@
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import prisma from "@/lib/db";
-import { UserManagement } from "@/components/config/user-management";
-import { RoleManagement } from "@/components/config/role-management";
+import { ConfigTabs } from "@/components/config/config-tabs";
 
 export default async function ConfigPage() {
   const [users, roles] = await Promise.all([
@@ -28,23 +26,10 @@ export default async function ConfigPage() {
           </CardDescription>
         </CardHeader>
       </Card>
-      <Tabs defaultValue="users">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="users">User Management</TabsTrigger>
-          <TabsTrigger value="roles">Role Management</TabsTrigger>
-        </TabsList>
-        <TabsContent value="users" className="mt-6">
-          <UserManagement 
-            initialUsers={JSON.parse(JSON.stringify(users))} 
-            initialRoles={JSON.parse(JSON.stringify(roles))} 
-          />
-        </TabsContent>
-        <TabsContent value="roles" className="mt-6">
-          <RoleManagement 
-            initialRoles={JSON.parse(JSON.stringify(roles))} 
-          />
-        </TabsContent>
-      </Tabs>
+      <ConfigTabs
+        users={JSON.parse(JSON.stringify(users))}
+        roles={JSON.parse(JSON.stringify(roles))}
+      />
     </div>
   );
 }

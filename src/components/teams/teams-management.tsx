@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useMemo, useEffect } from "react";
@@ -40,6 +41,7 @@ import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { createTeam, updateTeam, deleteTeam } from "@/app/teams/actions";
 import type { Project as PrismaProject, Team as PrismaTeam, User as PrismaUser } from '@prisma/client';
+import { useAuth } from "@/context/auth-context";
 
 const teamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters."),
@@ -65,9 +67,14 @@ type TeamsManagementProps = {
 
 export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsManagementProps) {
   const { toast } = useToast();
+  const { hasPermission } = useAuth();
   const [editingTeam, setEditingTeam] = useState<TeamWithRelations | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [teamToDelete, setTeamToDelete] = useState<TeamWithRelations | null>(null);
+
+  const canCreate = hasPermission('teams:create');
+  const canUpdate = hasPermission('teams:update');
+  const canDelete = hasPermission('teams:delete');
 
   const form = useForm<TeamFormValues>({
     resolver: zodResolver(teamSchema),
@@ -165,10 +172,12 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
             <CardTitle>Team Management</CardTitle>
             <CardDescription>Create and manage project-specific teams, assign leads, and add members.</CardDescription>
           </div>
-          <Button onClick={handleAddNew}>
-              <PlusCircle className="mr-2 h-4 w-4" />
-              Add New Team
-          </Button>
+          {canCreate && (
+            <Button onClick={handleAddNew}>
+                <PlusCircle className="mr-2 h-4 w-4" />
+                Add New Team
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {Object.keys(teamsByProject).length === 0 ? (
@@ -206,19 +215,23 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                                       </div>
                                   </div>
                                   <div className="flex items-center gap-1 absolute top-2 right-2">
-                                      <Button variant="ghost" size="icon" onClick={() => handleEdit(team)}>
-                                          <Pencil className="w-4 h-4" />
-                                          <span className="sr-only">Edit</span>
-                                      </Button>
-                                      <Button
-                                          variant="ghost"
-                                          size="icon"
-                                          className="text-destructive hover:text-destructive"
-                                          onClick={() => setTeamToDelete(team)}
-                                      >
-                                          <Trash2 className="w-4 h-4" />
-                                          <span className="sr-only">Delete</span>
-                                      </Button>
+                                      {canUpdate && (
+                                        <Button variant="ghost" size="icon" onClick={() => handleEdit(team)}>
+                                            <Pencil className="w-4 h-4" />
+                                            <span className="sr-only">Edit</span>
+                                        </Button>
+                                      )}
+                                      {canDelete && (
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="text-destructive hover:text-destructive"
+                                            onClick={() => setTeamToDelete(team)}
+                                        >
+                                            <Trash2 className="w-4 h-4" />
+                                            <span className="sr-only">Delete</span>
+                                        </Button>
+                                      )}
                                   </div>
                               </div>
                             </div>

@@ -49,6 +49,9 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
           ...adminData,
           id: adminId,
         },
+        include: {
+            roles: true,
+        },
       });
 
       // Note: This logic cannot change the ID of a pre-existing admin user with a different ID.
@@ -77,6 +80,9 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
               lastName: input.family_name,
               avatar: input.picture,
               phoneNumber: input.phoneNumber,
+          },
+          include: {
+              roles: true,
           }
       });
       return user;
