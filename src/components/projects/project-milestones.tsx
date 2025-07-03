@@ -90,20 +90,6 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
                                 <div className="flex-1 flex flex-col items-start gap-3 text-left pr-4">
                                   <div className="flex w-full items-start justify-between gap-4">
                                       <span className="font-semibold text-base flex-1">{milestone.title}</span>
-                                      {canUpdateProject && (
-                                        <Button 
-                                            variant="ghost" 
-                                            size="icon" 
-                                            onClick={(e) => { 
-                                                e.stopPropagation(); 
-                                                setEditingMilestone(milestone) 
-                                            }}
-                                            className="h-8 w-8 shrink-0"
-                                        >
-                                            <Pencil className="w-4 h-4" />
-                                            <span className="sr-only">Edit Milestone</span>
-                                        </Button>
-                                      )}
                                   </div>
                                   
                                   <div className="w-full space-y-1">
@@ -132,11 +118,18 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
                                   
                                   <div className="flex justify-between items-center pt-2">
                                       <h4 className="font-semibold">Tasks</h4>
-                                      {canUpdateProject && (
-                                        <Button onClick={() => setAddingTaskToMilestone(milestone)}>
-                                            <PlusCircle className="mr-2 h-4 w-4" /> Add Task
-                                        </Button>
-                                      )}
+                                      <div className="flex items-center gap-2">
+                                        {canUpdateProject && (
+                                            <Button variant="outline" size="sm" onClick={() => setEditingMilestone(milestone)}>
+                                                <Pencil className="mr-2 h-4 w-4" /> Edit Milestone
+                                            </Button>
+                                        )}
+                                        {canUpdateProject && (
+                                            <Button size="sm" onClick={() => setAddingTaskToMilestone(milestone)}>
+                                                <PlusCircle className="mr-2 h-4 w-4" /> Add Task
+                                            </Button>
+                                        )}
+                                      </div>
                                   </div>
                                   <TaskList 
                                       tasks={milestone.tasks} 
