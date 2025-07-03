@@ -37,6 +37,7 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { createRole, updateRole, deleteRole } from "@/app/settings/actions";
@@ -177,6 +178,11 @@ export function RoleManagement({ initialRoles }: { initialRoles: Role[] }) {
         <DialogContent className="sm:max-w-md">
             <DialogHeader>
                 <DialogTitle>{isEditing ? "Edit Role" : "Create New Role"}</DialogTitle>
+                <DialogDescription>
+                  {isEditing
+                    ? "Update the details for this role."
+                    : "Define a new role and its permissions."}
+                </DialogDescription>
             </DialogHeader>
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
