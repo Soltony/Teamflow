@@ -6,8 +6,8 @@ import type { User } from '@prisma/client';
 interface SyncUserInput {
   id: string;
   email: string;
-  given_name: string;
-  family_name: string;
+  given_name?: string;
+  family_name?: string;
   picture?: string;
   phoneNumber?: string;
 }
@@ -27,13 +27,17 @@ export async function syncUser(input: SyncUserInput) {
 
   const isAdminById = input.id === 'b1e55c84-9055-4eb5-8bd4-a262538f7e66';
   
+  // Provide default names if they are not passed in the token
+  const firstName = input.given_name || (isAdminById ? 'Admin' : 'New');
+  const lastName = input.family_name || (isAdminById ? 'User' : 'User');
+
   // Prepare data for creating a new user.
   const createData = {
     id: input.id,
     email: input.email,
-    name: `${input.given_name} ${input.family_name}`,
-    firstName: input.given_name,
-    lastName: input.family_name,
+    name: `${firstName} ${lastName}`,
+    firstName: firstName,
+    lastName: lastName,
     avatar: input.picture,
     phoneNumber: input.phoneNumber,
   };
