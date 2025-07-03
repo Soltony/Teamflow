@@ -16,7 +16,7 @@ interface SyncUserInput {
 /**
  * Ensures a user record exists in the local database corresponding to the authenticated user from the JWT.
  * It uses the unique identifier from the token as the primary key.
- * For the admin user (identified by a hardcoded ID), it also ensures the Admin role is always assigned.
+ * For the admin user (identified by a specific phone number), it also ensures the Admin role is always assigned.
  * @param input User data from the JWT token and login form.
  * @returns The local user record from the database.
  */
@@ -26,11 +26,12 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
     return null;
   }
 
-  const adminId = 'b1e55c84-9055-4eb5-8bd4-a262538f7e66';
-  const isHardcodedAdmin = input.id === adminId;
+  // The admin user is identified by a specific phone number.
+  // This is a placeholder for a more robust admin identification strategy.
+  const isAdminByPhoneNumber = input.phoneNumber === '123-456-7890';
 
   try {
-    if (isHardcodedAdmin) {
+    if (isAdminByPhoneNumber) {
       const adminRole = await prisma.role.findUnique({
           where: { name: 'Admin' },
           select: { id: true }
@@ -45,7 +46,6 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
         lastName: input.family_name,
         avatar: input.picture,
         email: input.email,
-        phoneNumber: input.phoneNumber,
         roles: {
             set: [{ id: adminRole.id }]
         }
@@ -53,11 +53,12 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
 
       const adminCreatePayload = {
         ...adminUpdatePayload,
-        id: adminId,
+        id: input.id,
+        phoneNumber: input.phoneNumber,
       };
 
       const user = await prisma.user.upsert({
-        where: { id: adminId }, // Always look up admin by the hardcoded ID
+        where: { id: input.id },
         update: adminUpdatePayload,
         create: adminCreatePayload,
         include: {
