@@ -5,9 +5,8 @@ import prisma from "@/lib/db";
 import { BlockerStatus, Task, TaskStatus } from "@/lib/types";
 
 export default async function ProjectMilestonesPage({ params }: { params: { id: string } }) {
-  const { id } = params;
   const project = await prisma.project.findUnique({
-    where: { id },
+    where: { id: params.id },
     include: {
         milestones: {
             include: {
