@@ -12,6 +12,20 @@ import { allPermissions } from '../src/lib/permissions';
 const prisma = new PrismaClient();
 
 async function main() {
+  console.log(`Clearing existing data to ensure a clean seed...`);
+  // Delete records in an order that respects foreign key constraints.
+  await prisma.taskUpdate.deleteMany();
+  await prisma.blocker.deleteMany();
+  await prisma.team.deleteMany(); 
+  await prisma.task.deleteMany(); 
+  await prisma.milestone.deleteMany(); 
+  await prisma.project.deleteMany(); 
+  await prisma.user.deleteMany();
+  await prisma.role.deleteMany();
+  await prisma.department.deleteMany();
+  await prisma.projectStatus.deleteMany();
+  console.log('Existing data cleared.');
+  
   console.log(`Start seeding ...`);
 
   // Seed Roles
@@ -112,7 +126,11 @@ async function main() {
 
       const createdUser = await prisma.user.upsert({
           where: { email: user.email },
-          update: {},
+          update: {
+            roles: {
+                set: [{ id: roleId }]
+            }
+          },
           create: {
             id: user.id,
             name: user.name,
