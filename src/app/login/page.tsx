@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -52,9 +51,17 @@ export default function LoginPage() {
       });
       router.replace('/dashboard');
     } else {
+      const errorValue = result.errors;
+      let description = 'An unknown error occurred.';
+      if (Array.isArray(errorValue) && errorValue.length > 0) {
+        description = errorValue[0];
+      } else if (typeof errorValue === 'string') {
+        description = errorValue;
+      }
+      
       toast({
         title: 'Login Failed',
-        description: result.errors?.[0] || 'An unknown error occurred.',
+        description: description,
         variant: 'destructive',
       });
     }

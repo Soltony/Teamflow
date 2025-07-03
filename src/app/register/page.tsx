@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -25,7 +24,7 @@ const registerSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   phoneNumber: z.string().min(1, 'Phone number is required'),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Invalid email address').optional().or(z.literal('')),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   confirmPassword: z.string(),
 }).refine(data => data.password === data.confirmPassword, {
@@ -63,9 +62,17 @@ export default function RegisterPage() {
       });
       router.replace('/dashboard');
     } else {
+      const errorValue = result.errors;
+      let description = 'An unknown error occurred.';
+      if (Array.isArray(errorValue) && errorValue.length > 0) {
+        description = errorValue[0];
+      } else if (typeof errorValue === 'string') {
+        description = errorValue;
+      }
+
       toast({
         title: 'Registration Failed',
-        description: result.errors?.[0] || 'An unknown error occurred.',
+        description: description,
         variant: 'destructive',
       });
     }

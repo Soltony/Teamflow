@@ -1,4 +1,3 @@
-
 'use server';
 
 import prisma from '@/lib/db';
@@ -10,7 +9,7 @@ interface AuthResponse {
   isSuccess: boolean;
   accessToken?: string;
   refreshToken?: string;
-  errors?: string[] | null;
+  errors?: string[] | string | null;
 }
 
 interface AuthenticatedUser {
@@ -67,7 +66,8 @@ export async function createUser(data: { firstName: string, lastName: string, em
         });
 
         if (!registrationResponse.data.isSuccess || !registrationResponse.data.accessToken) {
-            const errorMessage = registrationResponse.data.errors?.join(', ') || 'Failed to register user with the authentication service.';
+            const errorValue = registrationResponse.data.errors;
+            const errorMessage = Array.isArray(errorValue) ? errorValue.join(', ') : (typeof errorValue === 'string' ? errorValue : 'Failed to register user with the authentication service.');
             return { success: false, error: errorMessage };
         }
 
@@ -114,8 +114,16 @@ export async function createUser(data: { firstName: string, lastName: string, em
                 if (error.response.status === 401) {
                     return { success: false, error: "Authentication failed. Your session may have expired. Please log in again." };
                 }
-                const responseData = error.response.data as AuthResponse;
-                const errorMessage = responseData.errors?.join(', ') || 'An unexpected error occurred during registration with the auth service.';
+                const responseData = error.response.data as any;
+                const errorValue = responseData.errors;
+
+                let errorMessage = 'An unexpected error occurred during registration with the auth service.';
+                if (Array.isArray(errorValue)) {
+                    errorMessage = errorValue.join(', ');
+                } else if (typeof errorValue === 'string') {
+                    errorMessage = errorValue;
+                }
+                
                 return { success: false, error: errorMessage };
             }
         }
