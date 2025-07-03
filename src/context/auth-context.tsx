@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
@@ -7,6 +8,7 @@ import { jwtDecode } from 'jwt-decode';
 import { syncUser } from '@/app/auth/actions';
 import type { Role, User as PrismaUser } from '@prisma/client';
 import { allPermissions as ALL_PERMISSIONS } from '@/lib/permissions';
+import { useToast } from '@/hooks/use-toast';
 
 interface AuthenticatedUser {
   email: string;
@@ -55,24 +57,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [loading, setLoading] = useState(true);
   const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
   const router = useRouter();
-
-  const isUserAdmin = useCallback(() => {
-    return localUser?.roles?.some(role => role.name === 'Admin') ?? false;
-  }, [localUser]);
-
-  const hasPermission = useCallback((permission: string | string[]) => {
-    if (isUserAdmin()) {
-        return true;
-    }
-    if (Array.isArray(permission)) {
-      return permission.some(p => userPermissions.has(p));
-    }
-    return userPermissions.has(permission);
-  }, [userPermissions, isUserAdmin]);
-
-  const isAdmin = useMemo(() => isUserAdmin(), [isUserAdmin]);
-  const permissions = useMemo(() => userPermissions, [userPermissions]);
-
+  const { toast } = useToast();
 
   const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, authData?: any) => {
     setLoading(true);
@@ -127,8 +112,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserPermissions(allPermissions);
 
         } else {
-            // If sync fails, it might be a new user who needs to be created, or an error.
-            // For now, let's clear local user data to avoid stale info.
             localStorage.removeItem('localUser');
             setLocalUser(null);
             setUserPermissions(new Set());
@@ -136,7 +119,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
       } catch (error) {
         console.error("Failed to decode token or sync user:", error);
-        // Clear session if token is invalid
         localStorage.clear();
         setUser(null);
         setLocalUser(null);
@@ -157,6 +139,32 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, []);
 
+  const logout = useCallback(() => {
+    setSession(null, null);
+    router.push('/login');
+  }, [setSession, router]);
+  
+  useEffect(() => {
+    const responseInterceptor = axiosInstance.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401 && accessToken) {
+          logout();
+          toast({
+            title: 'Session Expired',
+            description: 'You have been logged out. Please sign in again.',
+            variant: 'destructive',
+          });
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => {
+      axiosInstance.interceptors.response.eject(responseInterceptor);
+    };
+  }, [accessToken, logout, toast]);
+  
   useEffect(() => {
     try {
       const storedAccessToken = localStorage.getItem('accessToken');
@@ -185,6 +193,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setSession(null, null);
     }
   }, [setSession]);
+  
+  const isUserAdmin = useCallback(() => {
+    return localUser?.roles?.some(role => role.name === 'Admin') ?? false;
+  }, [localUser]);
+
+  const hasPermission = useCallback((permission: string | string[]) => {
+    if (isUserAdmin()) {
+        return true;
+    }
+    if (Array.isArray(permission)) {
+      return permission.some(p => userPermissions.has(p));
+    }
+    return userPermissions.has(permission);
+  }, [userPermissions, isUserAdmin]);
+
+  const isAdmin = useMemo(() => isUserAdmin(), [isUserAdmin]);
+  const permissions = useMemo(() => userPermissions, [userPermissions]);
 
   const handleAuthResponse = async (response: AuthResponse, authData?: any) => {
     if (response.isSuccess && response.accessToken && response.refreshToken) {
@@ -226,15 +251,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             return { isSuccess: false, errors: [errorMessage] };
        }
        console.error("Client-side registration request failed:", axiosError.message);
-       // This could be a CORS issue or network error.
        return { isSuccess: false, errors: ['Could not connect to the authentication service. Please check your network or contact support.'] };
     }
   };
-
-  const logout = useCallback(() => {
-    setSession(null, null);
-    router.push('/login');
-  }, [setSession, router]);
 
   const value: AuthContextType = {
     user,
