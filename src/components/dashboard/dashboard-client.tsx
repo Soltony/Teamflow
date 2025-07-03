@@ -234,11 +234,16 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
           <CardHeader>
             <CardTitle>Organization Departments</CardTitle>
             <CardDescription>
-              A list of all departments. Manage them in the{' '}
-              <Link href="/departments" className="text-primary hover:underline">
-                Departments page
-              </Link>
-              .
+              A list of all departments.
+              {hasPermission('departments:read') && (
+                <>
+                  {' '}Manage them in the{' '}
+                  <Link href="/departments" className="text-primary hover:underline">
+                    Departments page
+                  </Link>
+                  .
+                </>
+              )}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -273,11 +278,16 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             <CardHeader>
             <CardTitle>Project Teams</CardTitle>
             <CardDescription>
-                A list of all teams. Manage them in the{' '}
-                <Link href="/teams" className="text-primary hover:underline">
-                Teams page
-                </Link>
-                .
+              A list of all teams.
+              {hasPermission('teams:read') && (
+                <>
+                  {' '}Manage them in the{' '}
+                  <Link href="/teams" className="text-primary hover:underline">
+                    Teams page
+                  </Link>
+                  .
+                </>
+              )}
             </CardDescription>
             </CardHeader>
             <CardContent>
