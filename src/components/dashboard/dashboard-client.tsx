@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
+import { isPast, max as dateMax, parseISO } from 'date-fns';
 
 const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode, count: number, href: string }) => {
   if (count > 0) {
@@ -34,16 +35,49 @@ const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode,
   return <>{children}</>;
 };
 
-export function DashboardClient({ projects, projectStatuses, departments, teams, availableYears, selectedYear, stats }: any) {
+export function DashboardClient({ initialProjects, projectStatuses, departments, teams, availableYears, searchParams }: any) {
   const router = useRouter();
   const pathname = usePathname();
+  
+  const selectedYear = searchParams?.year || "all";
+
+  const projects = React.useMemo(() => {
+      return selectedYear === "all"
+        ? initialProjects
+        : initialProjects.filter((p: any) => p.workingYear === selectedYear);
+  }, [selectedYear, initialProjects]);
+
+  const stats = React.useMemo(() => {
+    const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
+    const completedProjects = projects.filter((p: any) => p.statusId === completedStatusId);
+    const overdueProjects = projects.filter((p: any) => p.statusId !== completedStatusId && isPast(parseISO(p.endDate)));
+
+    const onTimeProjectsCount = completedProjects.filter((project: any) => {
+        const allTaskEndDates = project.milestones.flatMap((m: any) => m.tasks.map((t: any) => parseISO(t.endDate)));
+        if (allTaskEndDates.length === 0) return true;
+        const lastTaskDate = dateMax(allTaskEndDates);
+        return lastTaskDate <= parseISO(project.endDate);
+    }).length;
+    
+    const lateProjectsCount = completedProjects.length - onTimeProjectsCount;
+    const totalBlockersCount = projects.reduce((acc: number, p: any) => acc + (p.blockers?.filter((b: any) => b.status === 'OPEN').length || 0), 0);
+    
+    return {
+        onTimeProjectsCount,
+        lateProjectsCount,
+        overdueProjectsCount: overdueProjects.length,
+        totalBlockersCount
+    };
+  }, [projects, projectStatuses]);
+
 
   const handleYearChange = (year: string) => {
-    const params = new URLSearchParams();
+    const params = new URLSearchParams(window.location.search);
     if (year !== "all") {
       params.set("year", year);
+    } else {
+      params.delete("year");
     }
-    // A full page refresh is better to ensure the server component re-fetches.
     router.push(`${pathname}?${params.toString()}`);
   };
 
