@@ -39,6 +39,16 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
   const router = useRouter();
   const pathname = usePathname();
   
+  // Add a guard to ensure all required data is present before rendering.
+  // This prevents crashes on hot-reloads or if data fetching fails.
+  if (!initialProjects || !projectStatuses || !departments || !teams) {
+    return (
+      <div className="p-4 sm:p-6 space-y-6">
+        <h1 className="text-2xl font-bold">Loading Dashboard...</h1>
+      </div>
+    );
+  }
+
   const selectedYear = searchParams?.year || "all";
 
   const projects = React.useMemo(() => {
