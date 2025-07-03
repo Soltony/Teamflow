@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./theme-toggle";
+import { NibLogo } from "./logo";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home, permission: 'dashboard:view' },
@@ -77,8 +78,8 @@ function AppSidebar({ className }: { className?: string }) {
     <Sidebar className={cn(className, "text-muted-foreground")}>
       <SidebarHeader>
         <div className="flex items-center gap-2">
-          <GanttChartSquare className="w-8 h-8 text-primary" />
-          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-foreground truncate">TeamFlow</h1>}
+          <NibLogo className="w-8 h-8" />
+          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-foreground truncate">NIB Team</h1>}
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -129,7 +130,7 @@ function AuthLoadingScreen() {
     return (
         <div className="h-screen w-full flex items-center justify-center bg-background">
             <div className="flex flex-col items-center gap-4">
-                <GanttChartSquare className="w-12 h-12 text-primary animate-pulse" />
+                <NibLogo className="w-12 h-12 animate-pulse" />
                 <p className="text-muted-foreground">Loading your workspace...</p>
             </div>
         </div>
