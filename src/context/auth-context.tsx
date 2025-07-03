@@ -32,6 +32,7 @@ interface AuthContextType {
   localUser: LocalUser | null;
   accessToken: string | null;
   loading: boolean;
+  isAdmin: boolean;
   permissions: Set<string>;
   hasPermission: (permission: string | string[]) => boolean;
   login: (data: any) => Promise<AuthResponse>;
@@ -52,15 +53,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [permissions, setPermissions] = useState(new Set<string>());
+  const [isAdmin, setIsAdmin] = useState(false);
   const router = useRouter();
   
   const hasPermission = useCallback((requiredPermissions: string | string[]) => {
     if (loading) return false;
+    if (isAdmin) return true; // Admin has all permissions
     if (typeof requiredPermissions === 'string') {
         return permissions.has(requiredPermissions);
     }
     return requiredPermissions.some(p => permissions.has(p));
-  }, [permissions, loading]);
+  }, [permissions, loading, isAdmin]);
 
   const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, authData?: any) => {
     if (newAccessToken && newRefreshToken) {
@@ -93,6 +96,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (syncedUser) {
             localStorage.setItem('localUser', JSON.stringify(syncedUser));
+            const userIsAdmin = (syncedUser.roles as Role[]).some(role => role.name === 'Admin');
+            setIsAdmin(userIsAdmin);
+
             if (syncedUser.roles) {
               const userPermissions = new Set((syncedUser.roles as Role[]).flatMap(role => role.permissions));
               setPermissions(userPermissions);
@@ -102,6 +108,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         } else {
             localStorage.removeItem('localUser');
             setPermissions(new Set());
+            setIsAdmin(false);
         }
 
       } catch (error) {
@@ -114,6 +121,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setAccessToken(null);
         setRefreshToken(null);
         setPermissions(new Set());
+        setIsAdmin(false);
         delete axiosInstance.defaults.headers.common['Authorization'];
       }
     } else {
@@ -125,6 +133,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setAccessToken(null);
       setRefreshToken(null);
       setPermissions(new Set());
+      setIsAdmin(false);
       delete axiosInstance.defaults.headers.common['Authorization'];
     }
     setLoading(false);
@@ -140,6 +149,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         if (storedLocalUser) {
             const parsedUser = JSON.parse(storedLocalUser);
             setLocalUser(parsedUser);
+            const userIsAdmin = (parsedUser.roles as Role[]).some(role => role.name === 'Admin');
+            setIsAdmin(userIsAdmin);
             if (parsedUser.roles) {
               const userPermissions = new Set((parsedUser.roles as Role[]).flatMap(role => role.permissions));
               setPermissions(userPermissions);
@@ -188,8 +199,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
        const axiosError = error as AxiosError<AuthResponse>;
        setLoading(false);
        if (axiosError.response) {
-            console.error("Auth service registration failed on client. Response:", axiosError.response.data);
-            return axiosError.response.data;
+            const responseData = axiosError.response.data as any;
+            let errorMessage = 'An unknown error occurred.';
+            if (responseData.errors) {
+              const errorValue = responseData.errors;
+              if (Array.isArray(errorValue) && errorValue.length > 0) {
+                  errorMessage = errorValue.join(', ');
+              } else if (typeof errorValue === 'string') {
+                  errorMessage = errorValue;
+              }
+            }
+            return { isSuccess: false, errors: [errorMessage] };
        }
        console.error("Client-side registration request failed:", axiosError.message);
        // This could be a CORS issue or network error.
@@ -207,6 +227,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localUser,
     accessToken,
     loading,
+    isAdmin,
     permissions,
     hasPermission,
     login,
