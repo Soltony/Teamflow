@@ -5,7 +5,7 @@ import * as React from "react"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
 type SidebarContextProps = {
   isOpen: boolean
@@ -71,6 +71,9 @@ const Sidebar = React.forwardRef<
     return (
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
         <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-r">
+          <SheetHeader className="sr-only">
+            <SheetTitle>Navigation Menu</SheetTitle>
+          </SheetHeader>
           <aside ref={ref} className={cn("h-full", className)} {...props}>
             {sidebarContent}
           </aside>
