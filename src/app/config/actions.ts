@@ -13,7 +13,8 @@ interface AuthResponse {
 }
 
 interface AuthenticatedUser {
-  nameid: string;
+  nameid?: string;
+  sub?: string;
   email: string;
   given_name: string;
   family_name: string;
@@ -72,7 +73,13 @@ export async function createUser(data: { firstName: string, lastName: string, em
         }
 
         const decodedToken = jwtDecode<AuthenticatedUser>(registrationResponse.data.accessToken);
-        const userIdFromIdp = decodedToken.nameid;
+        const userIdFromIdp = decodedToken.nameid || decodedToken.sub;
+
+        if (!userIdFromIdp) {
+            console.error("Could not find user identifier (nameid or sub) in the JWT token after registration.");
+            return { success: false, error: "Registration succeeded, but the returned authentication token is invalid and is missing a user ID." };
+        }
+
 
         const existingUser = await prisma.user.findUnique({
             where: { id: userIdFromIdp }

@@ -5,7 +5,7 @@ import prisma from '@/lib/db';
 import type { User } from '@prisma/client';
 
 interface SyncUserInput {
-  nameid: string;
+  id: string;
   email: string;
   given_name: string;
   family_name: string;
@@ -15,14 +15,14 @@ interface SyncUserInput {
 
 /**
  * Ensures a user record exists in the local database corresponding to the authenticated user from the JWT.
- * It uses the unique 'nameid' from the token as the primary key.
+ * It uses the unique identifier from the token as the primary key.
  * For the admin user (identified by phone number), it enforces a specific hardcoded ID.
  * @param input User data from the JWT token and login form.
  * @returns The local user record from the database.
  */
 export async function syncUser(input: SyncUserInput): Promise<User | null> {
-  if (!input.email || !input.nameid) {
-    console.error("Sync user failed: email or nameid missing from input.");
+  if (!input.email || !input.id) {
+    console.error("Sync user failed: email or id missing from input.");
     return null;
   }
 
@@ -61,7 +61,7 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
     } else {
       // For all other users, the ID from the authentication server is the source of truth.
       const user = await prisma.user.upsert({
-          where: { id: input.nameid },
+          where: { id: input.id },
           update: {
               name: `${input.given_name} ${input.family_name}`,
               firstName: input.given_name,
@@ -70,7 +70,7 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
               email: input.email,
           },
           create: {
-              id: input.nameid,
+              id: input.id,
               email: input.email,
               name: `${input.given_name} ${input.family_name}`,
               firstName: input.given_name,

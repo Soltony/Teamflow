@@ -12,7 +12,8 @@ interface AuthenticatedUser {
   email: string;
   given_name: string;
   family_name: string;
-  nameid: string;
+  nameid?: string;
+  sub?: string;
   picture?: string;
   [key: string]: any;
 }
@@ -21,11 +22,11 @@ interface AuthResponse {
   isSuccess: boolean;
   accessToken?: string;
   refreshToken?: string;
-  errors?: string[] | null;
+  errors?: string[] | string | null;
 }
 
 interface AuthContextType {
-  user: AuthenticatedUser | null;
+  user: (AuthenticatedUser & { nameid: string }) | null;
   localUser: PrismaUser | null;
   accessToken: string | null;
   loading: boolean;
@@ -41,7 +42,7 @@ const axiosInstance = axios.create({
 });
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<AuthenticatedUser | null>(null);
+  const [user, setUser] = useState<(AuthenticatedUser & { nameid: string }) | null>(null);
   const [localUser, setLocalUser] = useState<PrismaUser | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
@@ -52,15 +53,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (newAccessToken && newRefreshToken) {
       try {
         const decodedUser = jwtDecode<AuthenticatedUser>(newAccessToken);
+        const userId = decodedUser.nameid || decodedUser.sub;
+        
+        if (!userId) {
+          console.error("Failed to decode token: no user identifier (nameid or sub) found.");
+          localStorage.removeItem('accessToken');
+          localStorage.removeItem('refreshToken');
+          localStorage.removeItem('localUser');
+          setUser(null);
+          setLocalUser(null);
+          setAccessToken(null);
+          setRefreshToken(null);
+          delete axiosInstance.defaults.headers.common['Authorization'];
+          setLoading(false);
+          return;
+        }
+
         localStorage.setItem('accessToken', newAccessToken);
         localStorage.setItem('refreshToken', newRefreshToken);
-        setUser(decodedUser);
+        setUser({ ...decodedUser, nameid: userId });
         setAccessToken(newAccessToken);
         setRefreshToken(newRefreshToken);
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
 
         const syncInput = {
-            nameid: decodedUser.nameid,
+            id: userId,
             email: decodedUser.email,
             given_name: decodedUser.given_name,
             family_name: decodedUser.family_name,
@@ -146,8 +163,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const register = async (data: any) => {
     setLoading(true);
+    const payload = { ...data, email: data.email || null };
     try {
-      const response = await axiosInstance.post<AuthResponse>('/api/Auth/register', data);
+      const response = await axiosInstance.post<AuthResponse>('/api/Auth/register', payload);
       return await handleAuthResponse(response.data, data);
     } catch (error) {
        const axiosError = error as AxiosError<AuthResponse>;
@@ -167,7 +185,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     router.push('/login');
   }, [setSession, router]);
 
-  const value = {
+  const value: AuthContextType = {
     user,
     localUser,
     accessToken,
