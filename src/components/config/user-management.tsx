@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -259,7 +260,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
           </Table>
         </CardContent>
         <CardFooter>
-          <div className="flex items-center justify-end w-full space-x-2">
+          <div className="flex items-center justify-center w-full space-x-2">
             <span className="text-sm text-muted-foreground">
                 Page {currentPage} of {totalPages}
             </span>
