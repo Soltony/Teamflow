@@ -9,7 +9,7 @@ import { AuthProvider } from "@/context/auth-context";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "TeamFlow",
+  title: "NIB Team",
   description: "A project management solution to assign tasks and manage activity online.",
   manifest: "/manifest.json",
 };
