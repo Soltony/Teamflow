@@ -4,6 +4,7 @@
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { TaskStatus } from "@/lib/types";
+import type { Prisma } from '@prisma/client';
 
 export async function getNewProjectData() {
     const [users, departments, projectStatuses, activeYearSetting] = await Promise.all([
@@ -120,4 +121,69 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         }
     });
     revalidatePath(`/projects/${projectId}/milestones`);
+}
+
+export async function getProjectsForUser(userId: string) {
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        include: { roles: true },
+    });
+
+    if (!user) {
+        return [];
+    }
+
+    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager');
+
+    let whereClause: Prisma.ProjectWhereInput = {};
+
+    if (!isManagerOrAdmin) {
+        // User is a member, so filter projects to only ones they are involved in
+        whereClause = {
+            OR: [
+                { projectManagerId: userId },
+                {
+                    teams: {
+                        some: {
+                            members: {
+                                some: { id: userId }
+                            }
+                        }
+                    }
+                },
+                { // Also check if they are assigned to any task in the project
+                    milestones: {
+                        some: {
+                            tasks: {
+                                some: {
+                                    assignees: {
+                                        some: {
+                                            id: userId
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        };
+    }
+
+    const projects = await prisma.project.findMany({
+        where: whereClause,
+        include: {
+            status: true,
+            milestones: {
+                include: {
+                    tasks: true,
+                },
+            },
+        },
+        orderBy: {
+            name: 'asc'
+        }
+    });
+
+    return JSON.parse(JSON.stringify(projects));
 }
