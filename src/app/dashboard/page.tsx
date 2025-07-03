@@ -31,7 +31,8 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         }
     });
 
-    const selectedYear = searchParams.year || "all";
+    const { year } = searchParams;
+    const selectedYear = year || "all";
     
     const years = new Set(allProjects.map(p => p.workingYear));
     const availableYears = ["all", ...Array.from(years).sort((a, b) => b.localeCompare(a))];

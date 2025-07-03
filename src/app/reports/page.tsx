@@ -9,8 +9,7 @@ import { Suspense } from 'react';
 import prisma from '@/lib/db';
 
 async function ReportsContent({ searchParams }: { searchParams: { type?: string, year?: string } }) {
-    const type = searchParams.type;
-    const year = searchParams.year;
+    const { type, year } = searchParams;
 
     let title = "Projects Report";
     let description = "A list of projects based on the selected filter.";
