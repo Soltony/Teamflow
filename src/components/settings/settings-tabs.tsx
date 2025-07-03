@@ -6,7 +6,9 @@ import { useAuth } from "@/context/auth-context";
 import { ActiveYearManagement } from "./active-year-management";
 import { ProjectStatusManagement } from "./status-management";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
-import { Card, CardContent } from "../ui/card";
+import { Skeleton } from "../ui/skeleton";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 type SettingsTabsProps = {
     projectStatuses: ProjectStatus[];
@@ -15,16 +17,22 @@ type SettingsTabsProps = {
 }
 
 export function SettingsTabs({ projectStatuses, availableYears, currentActiveYear }: SettingsTabsProps) {
-    const { hasPermission } = useAuth();
+    const { hasPermission, loading } = useAuth();
+    const router = useRouter();
     const canManageSettings = hasPermission('settings:manage');
 
-    if (!canManageSettings) {
+    useEffect(() => {
+        if (!loading && !canManageSettings) {
+            router.replace('/dashboard');
+        }
+    }, [loading, canManageSettings, router]);
+
+    if (loading || !canManageSettings) {
         return (
-            <Card>
-                <CardContent className="p-6">
-                    <p>You do not have permission to manage settings.</p>
-                </CardContent>
-            </Card>
+            <div className="space-y-4">
+                <Skeleton className="h-10 w-1/2" />
+                <Skeleton className="h-64 w-full" />
+            </div>
         );
     }
 

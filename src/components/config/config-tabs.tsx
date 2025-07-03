@@ -7,6 +7,9 @@ import { UserManagement } from "@/components/config/user-management";
 import { RoleManagement } from "@/components/config/role-management";
 import type { Role, User } from "@prisma/client";
 import { Card, CardContent } from "../ui/card";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
+import { Skeleton } from "../ui/skeleton";
 
 type UserWithRoles = User & { roles: Role[] };
 
@@ -16,21 +19,27 @@ type ConfigTabsProps = {
 };
 
 export function ConfigTabs({ users, roles }: ConfigTabsProps) {
-    const { hasPermission } = useAuth();
+    const { hasPermission, loading } = useAuth();
+    const router = useRouter();
     
     const canManageUsers = hasPermission('config:manage-users');
     const canManageRoles = hasPermission('config:manage-roles');
+
+    useEffect(() => {
+        if (!loading && !canManageUsers && !canManageRoles) {
+            router.replace('/dashboard');
+        }
+    }, [loading, canManageUsers, canManageRoles, router]);
     
     // Determine default tab
     const defaultTab = canManageUsers ? "users" : canManageRoles ? "roles" : "";
 
-    if (!canManageUsers && !canManageRoles) {
+    if (loading || (!canManageUsers && !canManageRoles)) {
         return (
-            <Card>
-                <CardContent className="p-6">
-                    <p>You do not have permission to view this page.</p>
-                </CardContent>
-            </Card>
+            <div className="space-y-4">
+                <Skeleton className="h-10 w-1/2" />
+                <Skeleton className="h-96 w-full" />
+            </div>
         );
     }
     

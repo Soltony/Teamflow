@@ -60,10 +60,10 @@ const menuItems = [
 function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { isOpen, isMobile } = useSidebar();
-  const { user, logout, hasPermission, loading } = useAuth();
+  const { localUser, logout, hasPermission, loading } = useAuth();
   
-  const userInitials = user 
-    ? `${user.given_name?.[0] ?? ''}${user.family_name?.[0] ?? ''}`.toUpperCase() 
+  const userInitials = localUser 
+    ? `${localUser.firstName?.[0] ?? ''}${localUser.lastName?.[0] ?? ''}`.toUpperCase() 
     : '...';
 
   const visibleMenuItems = React.useMemo(() => {
@@ -99,18 +99,18 @@ function AppSidebar({ className }: { className?: string }) {
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="justify-start w-full gap-2 px-2">
               <Avatar className="w-8 h-8">
-                 <AvatarImage src={user?.picture} />
+                 <AvatarImage src={localUser?.avatar} />
                  <AvatarFallback>{userInitials}</AvatarFallback>
               </Avatar>
-              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">{user ? `${user.given_name} ${user.family_name}`: 'Loading...'}</span>}
+              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">{localUser ? localUser.name : 'Loading...'}</span>}
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
               <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{user ? `${user.given_name} ${user.family_name}`: 'Loading...'}</p>
+                <p className="text-sm font-medium leading-none">{localUser ? localUser.name : 'Loading...'}</p>
                 <p className="text-xs leading-none text-muted-foreground">
-                  {user?.email}
+                  {localUser?.email}
                 </p>
               </div>
             </DropdownMenuLabel>

@@ -28,7 +28,7 @@ export async function syncUser(input: SyncUserInput): Promise<User | null> {
 
   // The admin user is identified by a specific phone number.
   // This is a placeholder for a more robust admin identification strategy.
-  const isAdminByPhoneNumber = input.phoneNumber === '123-456-7890';
+  const isAdminByPhoneNumber = input.phoneNumber === '0912345678';
 
   try {
     if (isAdminByPhoneNumber) {
