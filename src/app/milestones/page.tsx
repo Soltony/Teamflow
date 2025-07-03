@@ -1,77 +1,136 @@
+'use client';
 
+import { useEffect, useState } from "react";
+import { useAuth } from "@/context/auth-context";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import Link from 'next/link';
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
-import prisma from "@/lib/db";
+import { getMilestonesPageData } from './actions';
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Project, Milestone, Department, Role } from "@prisma/client";
 
-export default async function AllMilestonesPage() {
-  const projects = await prisma.project.findMany({
-    include: {
-        milestones: {
-            include: {
-                responsibleDepartments: true
-            },
-            orderBy: {
-                dueDate: 'asc'
-            }
-        }
-    },
-    orderBy: {
-        name: 'asc'
-    }
-  });
+type ProjectWithMilestones = Project & {
+    milestones: (Milestone & { responsibleDepartments: Department[] })[]
+}
+
+function LoadingSkeleton() {
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            <Card>
+                <CardHeader>
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-4 w-96 mt-2" />
+                </CardHeader>
+                <CardContent>
+                    <div className="space-y-4">
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                        <Skeleton className="h-12 w-full" />
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    )
+}
+
+export default function AllMilestonesPage() {
+  const { localUser, loading: authLoading } = useAuth();
+  const [projects, setProjects] = useState<ProjectWithMilestones[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+      if (localUser?.id) {
+          setIsLoading(true);
+          getMilestonesPageData(localUser.id).then(data => {
+              setProjects(data);
+              setIsLoading(false);
+          });
+      } else if (!authLoading) {
+          setIsLoading(false);
+      }
+  }, [localUser, authLoading]);
+
+  if (isLoading || authLoading) {
+      return <LoadingSkeleton />;
+  }
+
+  if (!localUser) {
+    return (
+        <div className="p-4 sm:p-6">
+            <p>Could not load milestones. Please try logging in again.</p>
+        </div>
+    )
+  }
+
+  const isMemberOnly = localUser && !localUser.roles.some((r: Role) => r.name === 'Admin' || r.name === 'Project Manager');
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>All Project Milestones</CardTitle>
-          <CardDescription>A complete overview of all milestones across all active projects.</CardDescription>
+          <CardTitle>Project Milestones</CardTitle>
+          <CardDescription>
+            {isMemberOnly
+                ? "An overview of milestones from projects you are involved in."
+                : "A complete overview of all milestones across all active projects."
+            }
+          </CardDescription>
         </CardHeader>
         <CardContent>
-          <Accordion type="multiple" className="w-full">
-            {(projects || []).map(project => (
-              <AccordionItem value={project.id} key={project.id}>
-                <AccordionTrigger>
-                  <Link href={`/projects/${project.id}`} className="font-semibold hover:underline">
-                    {project.name}
-                  </Link>
-                </AccordionTrigger>
-                <AccordionContent>
-                  <div className="space-y-4 pl-4 border-l-2 ml-2">
-                    {(project.milestones && project.milestones.length > 0) ? (
-                      project.milestones.map(milestone => {
-                        return (
-                          <div key={milestone.id} className="p-4 border rounded-md">
-                            <h4 className="font-semibold">{milestone.title}</h4>
-                            <p className="text-sm text-muted-foreground mt-1">{milestone.description}</p>
-                            <div className="flex flex-wrap items-center gap-2 mt-2">
-                                <Badge variant="outline">
-                                    Weight: {milestone.weight}%
-                                </Badge>
-                                <Badge variant="outline">
-                                    Due: {format(milestone.dueDate, 'MMM dd, yyyy')}
-                                </Badge>
-                                {(milestone.responsibleDepartments || []).map(dept => (
-                                    <Badge key={dept.id} variant="secondary">{dept.name}</Badge>
-                                ))}
-                            </div>
-                            <Link href={`/projects/${project.id}/milestones`} className="text-sm text-primary hover:underline mt-2 inline-block">
-                                View Tasks &rarr;
-                            </Link>
-                          </div>
-                        )
-                      })
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No milestones for this project.</p>
-                    )}
-                  </div>
-                </AccordionContent>
-              </AccordionItem>
-            ))}
-          </Accordion>
+            {projects.length > 0 ? (
+                <Accordion type="multiple" className="w-full">
+                    {projects.map(project => (
+                    <AccordionItem value={project.id} key={project.id}>
+                        <AccordionTrigger>
+                        <Link href={`/projects/${project.id}`} className="font-semibold hover:underline">
+                            {project.name}
+                        </Link>
+                        </AccordionTrigger>
+                        <AccordionContent>
+                        <div className="space-y-4 pl-4 border-l-2 ml-2">
+                            {(project.milestones && project.milestones.length > 0) ? (
+                            project.milestones.map(milestone => {
+                                return (
+                                <div key={milestone.id} className="p-4 border rounded-md">
+                                    <h4 className="font-semibold">{milestone.title}</h4>
+                                    <p className="text-sm text-muted-foreground mt-1">{milestone.description}</p>
+                                    <div className="flex flex-wrap items-center gap-2 mt-2">
+                                        <Badge variant="outline">
+                                            Weight: {milestone.weight}%
+                                        </Badge>
+                                        <Badge variant="outline">
+                                            Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
+                                        </Badge>
+                                        {(milestone.responsibleDepartments || []).map(dept => (
+                                            <Badge key={dept.id} variant="secondary">{dept.name}</Badge>
+                                        ))}
+                                    </div>
+                                    <Link href={`/projects/${project.id}/milestones`} className="text-sm text-primary hover:underline mt-2 inline-block">
+                                        View Tasks &rarr;
+                                    </Link>
+                                </div>
+                                )
+                            })
+                            ) : (
+                            <p className="text-sm text-muted-foreground">No milestones for this project.</p>
+                            )}
+                        </div>
+                        </AccordionContent>
+                    </AccordionItem>
+                    ))}
+                </Accordion>
+            ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                    <p>
+                        {isMemberOnly 
+                            ? "No milestones found for the projects you are involved in."
+                            : "No projects have been created yet."
+                        }
+                    </p>
+                </div>
+            )}
         </CardContent>
       </Card>
     </div>
