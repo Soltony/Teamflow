@@ -1,3 +1,4 @@
+
 'use server';
 
 import prisma from '@/lib/db';
@@ -41,7 +42,7 @@ export async function assignRolesToUser(userId: string, roleIds: string[]) {
     }
 }
 
-export async function createUser(data: { firstName: string, lastName: string, email?: string | null, phoneNumber: string, password?: string, roleIds: string[] }, accessToken: string) {
+export async function createUser(data: { firstName: string, lastName: string, email: string, phoneNumber: string, password?: string, roleIds: string[] }, accessToken: string) {
     if (!data.password) {
         return { success: false, error: "Password is required." };
     }
@@ -55,7 +56,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
         const registrationPayload = {
             firstName: data.firstName,
             lastName: data.lastName,
-            email: data.email || null,
+            email: data.email,
             phoneNumber: data.phoneNumber,
             password: data.password,
         };
@@ -102,7 +103,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
                     firstName: data.firstName,
                     lastName: data.lastName,
                     name: `${data.firstName} ${data.lastName}`,
-                    email: data.email || null,
+                    email: data.email,
                     phoneNumber: data.phoneNumber,
                     roles: {
                         connect: data.roleIds.map(id => ({ id }))

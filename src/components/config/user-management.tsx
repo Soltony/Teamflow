@@ -73,7 +73,7 @@ type AssignRolesFormValues = z.infer<typeof assignRolesSchema>;
 const addUserSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
   lastName: z.string().min(1, "Last name is required."),
-  email: z.string().email("Invalid email address.").optional().or(z.literal('')),
+  email: z.string().email("A valid email is required."),
   phoneNumber: z.string().min(1, "Phone number is required."),
   password: z.string().min(6, 'Password must be at least 6 characters'),
   roleIds: z.array(z.string()).optional(),
@@ -311,7 +311,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                       <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="123-456-7890" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={addUserForm.control} name="email" render={({ field }) => (
-                      <FormItem><FormLabel>Email (Optional)</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={addUserForm.control} name="password" render={({ field }) => (
                       <FormItem><FormLabel>Set Password</FormLabel><FormControl><Input type="password" placeholder="••••••••" {...field} /></FormControl><FormMessage /></FormItem>
