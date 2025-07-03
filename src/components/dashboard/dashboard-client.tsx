@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { useRouter, usePathname } from "next/navigation";
+import { useRouter, usePathname, useSearchParams } from "next/navigation";
 import { PlusCircle, CheckCircle, Clock, AlertOctagon, ShieldAlert, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { ProjectCard } from "@/components/projects/project-card";
@@ -36,9 +36,10 @@ const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode,
   return <>{children}</>;
 };
 
-export function DashboardClient({ initialProjects, projectStatuses, departments, teams, availableYears, searchParams }: any) {
+export function DashboardClient({ initialProjects, projectStatuses, departments, teams, availableYears }: any) {
   const router = useRouter();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { hasPermission } = useAuth();
   
   // Add a guard to ensure all required data is present before rendering.
@@ -51,7 +52,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     );
   }
 
-  const selectedYear = searchParams?.year || "all";
+  const selectedYear = searchParams.get('year') || "all";
 
   const projects = React.useMemo(() => {
       return selectedYear === "all"
@@ -84,7 +85,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
 
 
   const handleYearChange = (year: string) => {
-    const params = new URLSearchParams(window.location.search);
+    const params = new URLSearchParams(searchParams.toString());
     if (year !== "all") {
       params.set("year", year);
     } else {

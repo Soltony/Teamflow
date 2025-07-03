@@ -42,7 +42,6 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             departments={JSON.parse(JSON.stringify(departments))}
             teams={JSON.parse(JSON.stringify(teams))}
             availableYears={availableYears}
-            searchParams={searchParams}
         />
     )
 }

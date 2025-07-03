@@ -26,60 +26,67 @@ export async function syncUser(input: SyncUserInput) {
     return null;
   }
 
-  // The admin user is identified by a specific ID.
   const isAdminById = input.id === 'b1e55c84-9055-4eb5-8bd4-a262538f7e66';
+  const userData = {
+    name: `${input.given_name} ${input.family_name}`,
+    firstName: input.given_name,
+    lastName: input.family_name,
+    avatar: input.picture,
+    email: input.email,
+  };
 
   try {
     let user;
-    if (isAdminLogin) {
-      const adminId = 'b1e55c84-9055-4eb5-8bd4-a262538f7e66';
-      const adminData = {
-        name: `${input.given_name} ${input.family_name}`,
-        firstName: input.given_name,
-        lastName: input.family_name,
-        avatar: input.picture,
-        email: input.email,
-        roles: {
-            set: [{ id: adminRole.id }]
-        }
-      };
-
-      const adminCreatePayload = {
-        ...adminUpdatePayload,
-        id: input.id,
-        phoneNumber: input.phoneNumber,
-      };
-
-      // For the admin, we upsert based on their unique email to find them reliably.
-      // On creation, we assign the specific admin ID.
-      user = await prisma.user.upsert({
-        where: { email: input.email },
-        update: adminData,
-        create: {
-          ...adminData,
-          id: adminId,
-        },
-        include: {
-          roles: true,
-        },
+    if (isAdminById) {
+      // It's the admin user, ensure they have the Admin role
+      const adminRole = await prisma.role.findUnique({
+        where: { name: 'Admin' },
       });
 
-      // Note: This logic cannot change the ID of a pre-existing admin user with a different ID.
-      // It ensures that on first creation, the correct ID is assigned.
-      if (user.id !== adminId) {
-        console.warn(`Admin user with email ${input.email} has a non-standard ID (${user.id}). This cannot be automatically corrected due to database constraints.`);
+      if (!adminRole) {
+        console.error("Admin role not found in database. Cannot assign admin privileges.");
+        // Fallback to creating the user without the admin role
+        user = await prisma.user.upsert({
+            where: { id: input.id },
+            update: userData,
+            create: {
+                ...userData,
+                id: input.id,
+                phoneNumber: input.phoneNumber,
+            },
+            include: {
+              roles: true
+            }
+        });
+      } else {
+        // Upsert the admin user and connect the Admin role
+        user = await prisma.user.upsert({
+            where: { id: input.id },
+            update: {
+                ...userData,
+                roles: {
+                    set: [{ id: adminRole.id }]
+                }
+            },
+            create: {
+                ...userData,
+                id: input.id,
+                phoneNumber: input.phoneNumber,
+                roles: {
+                    connect: { id: adminRole.id }
+                }
+            },
+            include: {
+              roles: true
+            }
+        });
       }
     } else {
-      // For all other users, the ID from the authentication server is the source of truth.
+      // For all other users, just upsert their data.
+      // Roles are managed separately via the config UI for non-admins.
       user = await prisma.user.upsert({
           where: { id: input.id },
-          update: {
-              name: `${input.given_name} ${input.family_name}`,
-              firstName: input.given_name,
-              lastName: input.family_name,
-              avatar: input.picture,
-              email: input.email,
-          },
+          update: userData,
           create: {
               ...userData,
               id: input.id,
