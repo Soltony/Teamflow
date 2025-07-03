@@ -6,7 +6,8 @@ import { useRouter } from 'next/navigation';
 import axios, { AxiosError } from 'axios';
 import { jwtDecode } from 'jwt-decode';
 import { syncUser } from '@/app/auth/actions';
-import type { User as PrismaUser } from '@prisma/client';
+import type { Role, User as PrismaUser } from '@prisma/client';
+import { ALL_PERMISSIONS } from '@/lib/permissions';
 
 interface AuthenticatedUser {
   email: string;
@@ -27,12 +28,14 @@ interface AuthResponse {
 
 interface AuthContextType {
   user: (AuthenticatedUser & { nameid: string }) | null;
-  localUser: PrismaUser | null;
+  localUser: (PrismaUser & { roles: Role[] }) | null;
   accessToken: string | null;
   loading: boolean;
   login: (data: any) => Promise<AuthResponse>;
   register: (data: any) => Promise<AuthResponse>;
   logout: () => void;
+  hasPermission: (permission: string) => boolean;
+  isUserAdmin: () => boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -43,13 +46,26 @@ const axiosInstance = axios.create({
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<(AuthenticatedUser & { nameid: string }) | null>(null);
-  const [localUser, setLocalUser] = useState<PrismaUser | null>(null);
+  const [localUser, setLocalUser] = useState<(PrismaUser & { roles: Role[] }) | null>(null);
   const [accessToken, setAccessToken] = useState<string | null>(null);
   const [refreshToken, setRefreshToken] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+  const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
   const router = useRouter();
 
+  const isUserAdmin = useCallback(() => {
+    return localUser?.roles?.some(role => role.name === 'Admin') ?? false;
+  }, [localUser]);
+
+  const hasPermission = useCallback((permission: string) => {
+    if (isUserAdmin()) {
+        return true;
+    }
+    return userPermissions.has(permission);
+  }, [userPermissions, isUserAdmin]);
+
   const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, authData?: any) => {
+    setLoading(true);
     if (newAccessToken && newRefreshToken) {
       try {
         const decodedUser = jwtDecode<AuthenticatedUser>(newAccessToken);
@@ -57,13 +73,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         
         if (!userId) {
           console.error("Failed to decode token: no user identifier (nameid or sub) found.");
-          localStorage.removeItem('accessToken');
-          localStorage.removeItem('refreshToken');
-          localStorage.removeItem('localUser');
+          // Clear everything if the token is invalid
+          localStorage.clear();
           setUser(null);
           setLocalUser(null);
           setAccessToken(null);
           setRefreshToken(null);
+          setUserPermissions(new Set());
           delete axiosInstance.defaults.headers.common['Authorization'];
           setLoading(false);
           return;
@@ -86,33 +102,46 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
 
         const syncedUser = await syncUser(syncInput);
-        setLocalUser(syncedUser);
         if (syncedUser) {
-            localStorage.setItem('localUser', JSON.stringify(syncedUser));
+          setLocalUser(syncedUser);
+          localStorage.setItem('localUser', JSON.stringify(syncedUser));
+          
+          const allPermissions = new Set<string>();
+          syncedUser.roles?.forEach(role => {
+              if (role.name === 'Admin') {
+                ALL_PERMISSIONS.forEach(p => allPermissions.add(p));
+              } else {
+                role.permissions?.forEach(p => allPermissions.add(p));
+              }
+          });
+          setUserPermissions(allPermissions);
+
         } else {
+            // If sync fails, it might be a new user who needs to be created, or an error.
+            // For now, let's clear local user data to avoid stale info.
             localStorage.removeItem('localUser');
+            setLocalUser(null);
+            setUserPermissions(new Set());
         }
 
       } catch (error) {
         console.error("Failed to decode token or sync user:", error);
         // Clear session if token is invalid
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        localStorage.removeItem('localUser');
+        localStorage.clear();
         setUser(null);
         setLocalUser(null);
         setAccessToken(null);
         setRefreshToken(null);
+        setUserPermissions(new Set());
         delete axiosInstance.defaults.headers.common['Authorization'];
       }
     } else {
-      localStorage.removeItem('accessToken');
-      localStorage.removeItem('refreshToken');
-      localStorage.removeItem('localUser');
+      localStorage.clear();
       setUser(null);
       setLocalUser(null);
       setAccessToken(null);
       setRefreshToken(null);
+      setUserPermissions(new Set());
       delete axiosInstance.defaults.headers.common['Authorization'];
     }
     setLoading(false);
@@ -126,13 +155,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (storedAccessToken && storedRefreshToken) {
         setSession(storedAccessToken, storedRefreshToken);
         if (storedLocalUser) {
-            setLocalUser(JSON.parse(storedLocalUser));
+            const parsedLocalUser = JSON.parse(storedLocalUser);
+            setLocalUser(parsedLocalUser);
+            const permissions = new Set<string>();
+             parsedLocalUser.roles?.forEach((role: Role) => {
+                if (role.name === 'Admin') {
+                    ALL_PERMISSIONS.forEach(p => permissions.add(p));
+                } else {
+                    role.permissions?.forEach(p => permissions.add(p));
+                }
+            });
+            setUserPermissions(permissions);
         }
       } else {
         setLoading(false);
       }
     } catch (error) {
-      console.error("Failed to initialize auth session", error);
+      console.error("Failed to initialize auth session from storage", error);
       setSession(null, null);
     }
   }, [setSession]);
@@ -172,7 +211,9 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
        setLoading(false);
        if (axiosError.response) {
             console.error("Auth service registration failed on client. Response:", axiosError.response.data);
-            return axiosError.response.data;
+            const errorData = axiosError.response.data;
+            const errorMessage = Array.isArray(errorData.errors) ? errorData.errors.join(', ') : (typeof errorData.errors === 'string' ? errorData.errors : 'An unexpected error occurred during registration.');
+            return { isSuccess: false, errors: errorMessage };
        }
        console.error("Client-side registration request failed:", axiosError.message);
        // This could be a CORS issue or network error.
@@ -193,6 +234,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     login,
     register,
     logout,
+    hasPermission,
+    isUserAdmin,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
