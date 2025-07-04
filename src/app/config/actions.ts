@@ -24,23 +24,29 @@ interface AuthenticatedUser {
 }
 
 
-export async function assignRolesToUser(userId: string, roleIds: string[]) {
+export async function updateUser(userId: string, data: { firstName: string, lastName: string, email: string, phoneNumber: string, roleIds: string[] }) {
     try {
         await prisma.user.update({
             where: { id: userId },
             data: {
+                firstName: data.firstName,
+                lastName: data.lastName,
+                name: `${data.firstName} ${data.lastName}`,
+                email: data.email,
+                phoneNumber: data.phoneNumber,
                 roles: {
-                    set: roleIds.map(id => ({ id })),
+                    set: data.roleIds.map(id => ({ id })),
                 }
             }
         });
         revalidatePath('/config');
         return { success: true };
     } catch (error) {
-        console.error("Failed to assign roles to user:", error);
-        return { success: false, error: 'Failed to assign roles.' };
+        console.error("Failed to update user:", error);
+        return { success: false, error: 'Failed to update user. The email might already be in use by another account.' };
     }
 }
+
 
 export async function createUser(data: { firstName: string, lastName: string, email: string, phoneNumber: string, password?: string, roleIds: string[] }, accessToken: string) {
     if (!data.password) {

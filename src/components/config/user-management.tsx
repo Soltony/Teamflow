@@ -46,7 +46,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "../ui/input";
 import { Checkbox } from "../ui/checkbox";
 import type { Role, User } from "@prisma/client";
-import { assignRolesToUser, createUser, deleteUser } from "@/app/config/actions";
+import { updateUser, createUser, deleteUser } from "@/app/config/actions";
 import { Badge } from "../ui/badge";
 import {
     DropdownMenu,
@@ -64,12 +64,16 @@ type UserManagementProps = {
   initialRoles: Role[];
 };
 
-const assignRolesSchema = z.object({
-    roleIds: z.array(z.string()).refine((value) => value.some((item) => item), {
-        message: "You have to select at least one role.",
-    }),
+const editUserSchema = z.object({
+  firstName: z.string().min(1, "First name is required."),
+  lastName: z.string().min(1, "Last name is required."),
+  email: z.string().email("A valid email is required."),
+  phoneNumber: z.string().min(1, "Phone number is required."),
+  roleIds: z.array(z.string()).refine((value) => value.some((item) => item), {
+      message: "You have to select at least one role.",
+  }),
 });
-type AssignRolesFormValues = z.infer<typeof assignRolesSchema>;
+type EditUserFormValues = z.infer<typeof editUserSchema>;
 
 const addUserSchema = z.object({
   firstName: z.string().min(1, "First name is required."),
@@ -93,13 +97,18 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const assignRolesForm = useForm<AssignRolesFormValues>({
-    resolver: zodResolver(assignRolesSchema),
-    defaultValues: { roleIds: [] },
+  const editUserForm = useForm<EditUserFormValues>({
+    resolver: zodResolver(editUserSchema),
+    defaultValues: {
+      firstName: "",
+      lastName: "",
+      email: "",
+      phoneNumber: "",
+      roleIds: [],
+    },
   });
 
   const addUserForm = useForm<AddUserFormValues>({
@@ -116,14 +125,18 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
 
   const handleEdit = (user: UserWithRoles) => {
     setEditingUser(user);
-    assignRolesForm.reset({
+    editUserForm.reset({
+      firstName: user.firstName,
+      lastName: user.lastName,
+      email: user.email,
+      phoneNumber: user.phoneNumber ?? '',
       roleIds: user.roles.map(role => role.id),
     });
   };
 
   const handleCloseEditDialog = () => {
     setEditingUser(null);
-    assignRolesForm.reset({ roleIds: [] });
+    editUserForm.reset();
   };
   
   const handleOpenAddUserDialog = () => {
@@ -135,14 +148,14 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
     setIsAddUserDialogOpen(false);
   };
 
-  function onAssignRolesSubmit(data: AssignRolesFormValues) {
+  function onEditUserSubmit(data: EditUserFormValues) {
     if (!editingUser) return;
     startTransition(async () => {
-        const result = await assignRolesToUser(editingUser.id, data.roleIds);
+        const result = await updateUser(editingUser.id, data);
         if (result.success) {
             toast({
-                title: "Roles Updated",
-                description: `Successfully updated roles for ${editingUser.name}.`,
+                title: "User Updated",
+                description: `Successfully updated details for ${editingUser.name}.`,
             });
             handleCloseEditDialog();
         } else {
@@ -180,9 +193,9 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
     });
   };
 
+  const selectedRolesForEditUser = initialRoles.filter(role => editUserForm.watch('roleIds')?.includes(role.id));
   const selectedRolesForNewUser = initialRoles.filter(role => addUserForm.watch('roleIds')?.includes(role.id));
   
-  // Pagination logic
   const totalPages = Math.ceil(initialUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
@@ -245,7 +258,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                       <div className="flex items-center justify-end gap-1">
                           <Button variant="ghost" size="icon" onClick={() => handleEdit(user)}>
                             <Pencil className="h-4 w-4" />
-                            <span className="sr-only">Edit Roles</span>
+                            <span className="sr-only">Edit User</span>
                           </Button>
                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setUserToDelete(user)}>
                             <Trash2 className="h-4 w-4" />
@@ -285,55 +298,74 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
       </Card>
 
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && handleCloseEditDialog()}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Edit Roles for {editingUser?.name}</DialogTitle>
-                <DialogDescription>Select the roles to be assigned to this user.</DialogDescription>
-            </DialogHeader>
-            <Form {...assignRolesForm}>
-                <form id="assign-roles-form" onSubmit={assignRolesForm.handleSubmit(onAssignRolesSubmit)} className="space-y-8 py-4">
-                    <FormField
-                        control={assignRolesForm.control}
-                        name="roleIds"
-                        render={() => (
-                            <FormItem>
-                            {initialRoles.map((role) => (
-                                <FormField
-                                key={role.id}
-                                control={assignRolesForm.control}
-                                name="roleIds"
-                                render={({ field }) => (
-                                    <FormItem
-                                        key={role.id}
-                                        className="flex flex-row items-start space-x-3 space-y-0"
-                                    >
-                                        <FormControl>
-                                        <Checkbox
-                                            checked={field.value?.includes(role.id)}
-                                            onCheckedChange={(checked) => {
-                                            return checked
-                                                ? field.onChange([...(field.value || []), role.id])
-                                                : field.onChange(field.value?.filter((value) => value !== role.id));
-                                            }}
-                                        />
-                                        </FormControl>
-                                        <FormLabel className="font-normal">{role.name}</FormLabel>
-                                    </FormItem>
-                                    )}
-                                />
-                            ))}
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                        />
-                </form>
+        <DialogContent className="p-0 flex flex-col max-h-[90dvh]">
+          <DialogHeader className="p-6 pb-4">
+            <DialogTitle>Edit User: {editingUser?.name}</DialogTitle>
+            <DialogDescription>Update the user's details and assigned roles.</DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto px-6">
+            <Form {...editUserForm}>
+              <form id="edit-user-form" onSubmit={editUserForm.handleSubmit(onEditUserSubmit)} className="space-y-4 py-4">
+                  <div className="grid grid-cols-2 gap-4">
+                       <FormField control={editUserForm.control} name="firstName" render={({ field }) => (
+                          <FormItem><FormLabel>First Name</FormLabel><FormControl><Input placeholder="John" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                      <FormField control={editUserForm.control} name="lastName" render={({ field }) => (
+                          <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input placeholder="Doe" {...field} /></FormControl><FormMessage /></FormItem>
+                      )} />
+                  </div>
+                  <FormField control={editUserForm.control} name="phoneNumber" render={({ field }) => (
+                      <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="123-456-7890" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField control={editUserForm.control} name="email" render={({ field }) => (
+                      <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
+                  <FormField
+                      control={editUserForm.control}
+                      name="roleIds"
+                      render={({ field }) => (
+                          <FormItem className="flex flex-col">
+                              <FormLabel>Roles</FormLabel>
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <FormControl>
+                                      <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
+                                          {selectedRolesForEditUser.length > 0 ? selectedRolesForEditUser.map(r => r.name).join(', ') : "Select roles..."}
+                                          <ChevronDown className="ml-auto h-4 w-4" />
+                                      </Button>
+                                      </FormControl>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                      {initialRoles.map((role) => (
+                                      <DropdownMenuCheckboxItem
+                                          key={role.id}
+                                          checked={field.value?.includes(role.id)}
+                                          onCheckedChange={(checked) => {
+                                              const currentValues = field.value || [];
+                                              const newValues = checked
+                                                  ? [...currentValues, role.id]
+                                                  : currentValues.filter(id => id !== role.id);
+                                              field.onChange(newValues);
+                                          }}
+                                      >
+                                          {role.name}
+                                      </DropdownMenuCheckboxItem>
+                                      ))}
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+              </form>
             </Form>
-            <DialogFooter>
-                <Button type="button" variant="outline" onClick={handleCloseEditDialog} disabled={isPending}>Cancel</Button>
-                <Button type="submit" form="assign-roles-form" disabled={isPending}>
-                    {isPending ? "Saving..." : "Save Roles"}
-                </Button>
-            </DialogFooter>
+          </div>
+          <DialogFooter className="p-6 pt-4 border-t">
+            <Button type="button" variant="outline" onClick={handleCloseEditDialog} disabled={isPending}>Cancel</Button>
+            <Button type="submit" form="edit-user-form" disabled={isPending}>
+                {isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
       
