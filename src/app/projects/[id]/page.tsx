@@ -23,8 +23,7 @@ function LoadingSkeleton() {
     );
 }
 
-export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
-  const { id } = params;
+export default function ProjectDetailsPage({ params: { id } }: { params: { id: string } }) {
   const { localUser, loading: authLoading, hasPermission } = useAuth();
   const router = useRouter();
   const [project, setProject] = useState<ProjectWithRelations | null>(null);

@@ -25,8 +25,7 @@ function LoadingSkeleton() {
     );
 }
 
-export default function ProjectMilestonesPage({ params }: { params: { id: string } }) {
-    const { id } = params;
+export default function ProjectMilestonesPage({ params: { id } }: { params: { id: string } }) {
     const { localUser, loading: authLoading, hasPermission } = useAuth();
     const router = useRouter();
     const [pageData, setPageData] = useState<PageData | null>(null);
