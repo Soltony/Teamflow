@@ -28,6 +28,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
   const router = useRouter();
   const [project, setProject] = useState<ProjectWithRelations | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { id } = params;
   
   useEffect(() => {
     if (!authLoading) {
@@ -36,9 +37,9 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
         return;
       }
       
-      if (localUser?.id && params.id) {
+      if (localUser?.id && id) {
         setIsLoading(true);
-        getProjectDetailsForUser(params.id, localUser.id)
+        getProjectDetailsForUser(id, localUser.id)
             .then(data => {
                 if (data) {
                     const normalizedProject = {
@@ -66,7 +67,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           setIsLoading(false);
       }
     }
-  }, [localUser, authLoading, hasPermission, router, params]);
+  }, [localUser, authLoading, hasPermission, router, id]);
 
   if (isLoading || authLoading) {
       return <LoadingSkeleton />;
