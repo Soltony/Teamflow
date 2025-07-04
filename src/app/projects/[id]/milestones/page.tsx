@@ -25,7 +25,7 @@ function LoadingSkeleton() {
     );
 }
 
-export default function ProjectMilestonesPage({ params: { id } }: { params: { id: string } }) {
+export default function ProjectMilestonesPage({ params }: { params: { id: string } }) {
     const { localUser, loading: authLoading, hasPermission } = useAuth();
     const router = useRouter();
     const [pageData, setPageData] = useState<PageData | null>(null);
@@ -38,9 +38,9 @@ export default function ProjectMilestonesPage({ params: { id } }: { params: { id
                 return;
             }
 
-            if (localUser?.id && id) {
+            if (localUser?.id && params.id) {
                 setIsLoading(true);
-                getProjectMilestonesForUser(id, localUser.id)
+                getProjectMilestonesForUser(params.id, localUser.id)
                     .then(data => {
                         if (data) {
                              const normalizedProject = {
@@ -69,7 +69,7 @@ export default function ProjectMilestonesPage({ params: { id } }: { params: { id
                 setIsLoading(false);
             }
         }
-    }, [localUser, authLoading, hasPermission, router, id]);
+    }, [localUser, authLoading, hasPermission, router, params]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;

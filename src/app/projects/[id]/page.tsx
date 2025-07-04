@@ -23,7 +23,7 @@ function LoadingSkeleton() {
     );
 }
 
-export default function ProjectDetailsPage({ params: { id } }: { params: { id: string } }) {
+export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
   const { localUser, loading: authLoading, hasPermission } = useAuth();
   const router = useRouter();
   const [project, setProject] = useState<ProjectWithRelations | null>(null);
@@ -36,9 +36,9 @@ export default function ProjectDetailsPage({ params: { id } }: { params: { id: s
         return;
       }
       
-      if (localUser?.id && id) {
+      if (localUser?.id && params.id) {
         setIsLoading(true);
-        getProjectDetailsForUser(id, localUser.id)
+        getProjectDetailsForUser(params.id, localUser.id)
             .then(data => {
                 if (data) {
                     const normalizedProject = {
@@ -66,7 +66,7 @@ export default function ProjectDetailsPage({ params: { id } }: { params: { id: s
           setIsLoading(false);
       }
     }
-  }, [localUser, authLoading, hasPermission, router, id]);
+  }, [localUser, authLoading, hasPermission, router, params]);
 
   if (isLoading || authLoading) {
       return <LoadingSkeleton />;
