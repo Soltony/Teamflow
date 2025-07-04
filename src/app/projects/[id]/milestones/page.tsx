@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
-import { notFound, useRouter } from "next/navigation";
+import { notFound, useRouter, useParams } from "next/navigation";
 import { ProjectMilestones } from "@/components/projects/project-milestones";
 import { getProjectMilestonesForUser } from "../../actions";
 import { useAuth } from "@/context/auth-context";
@@ -25,7 +26,10 @@ function LoadingSkeleton() {
     );
 }
 
-export default function ProjectMilestonesPage({ params: { id } }: { params: { id: string } }) {
+export default function ProjectMilestonesPage() {
+    const params = useParams();
+    const id = params.id as string;
+
     const { localUser, loading: authLoading, hasPermission } = useAuth();
     const router = useRouter();
     const [pageData, setPageData] = useState<PageData | null>(null);

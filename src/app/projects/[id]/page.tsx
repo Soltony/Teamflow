@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
-import { notFound, useRouter } from "next/navigation";
+import { notFound, useRouter, useParams } from "next/navigation";
 import { ProjectView } from "@/components/projects/project-view";
 import { getProjectDetailsForUser } from "../actions";
 import { useAuth } from "@/context/auth-context";
@@ -23,7 +24,10 @@ function LoadingSkeleton() {
     );
 }
 
-export default function ProjectDetailsPage({ params: { id } }: { params: { id: string } }) {
+export default function ProjectDetailsPage() {
+  const params = useParams();
+  const id = params.id as string;
+  
   const { localUser, loading: authLoading, hasPermission } = useAuth();
   const router = useRouter();
   const [project, setProject] = useState<ProjectWithRelations | null>(null);
