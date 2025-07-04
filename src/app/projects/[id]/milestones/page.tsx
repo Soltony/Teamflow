@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { notFound, useRouter } from "next/navigation";
 import { ProjectMilestones } from "@/components/projects/project-milestones";
 import { getProjectMilestonesForUser } from "../../actions";
@@ -30,7 +30,7 @@ export default function ProjectMilestonesPage({ params }: { params: { id: string
     const router = useRouter();
     const [pageData, setPageData] = useState<PageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const { id } = params;
+    const id = useMemo(() => params.id, [params.id]);
 
     useEffect(() => {
         if (!authLoading) {
