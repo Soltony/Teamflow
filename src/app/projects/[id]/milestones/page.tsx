@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import { ProjectMilestones } from "@/components/projects/project-milestones";
 import { getProjectMilestonesForUser } from "../../actions";
@@ -25,12 +25,11 @@ function LoadingSkeleton() {
     );
 }
 
-export default function ProjectMilestonesPage({ params }: { params: { id: string } }) {
+export default function ProjectMilestonesPage({ params: { id } }: { params: { id: string } }) {
     const { localUser, loading: authLoading, hasPermission } = useAuth();
     const router = useRouter();
     const [pageData, setPageData] = useState<PageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-    const id = useMemo(() => params.id, [params.id]);
 
     useEffect(() => {
         if (!authLoading) {
@@ -70,7 +69,7 @@ export default function ProjectMilestonesPage({ params }: { params: { id: string
                 setIsLoading(false);
             }
         }
-    }, [localUser, authLoading, hasPermission, router, id]);
+    }, [id, localUser, authLoading, hasPermission, router]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;

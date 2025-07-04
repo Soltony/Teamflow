@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState } from "react";
 import { notFound, useRouter } from "next/navigation";
 import { ProjectView } from "@/components/projects/project-view";
 import { getProjectDetailsForUser } from "../actions";
@@ -23,12 +23,11 @@ function LoadingSkeleton() {
     );
 }
 
-export default function ProjectDetailsPage({ params }: { params: { id: string } }) {
+export default function ProjectDetailsPage({ params: { id } }: { params: { id: string } }) {
   const { localUser, loading: authLoading, hasPermission } = useAuth();
   const router = useRouter();
   const [project, setProject] = useState<ProjectWithRelations | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const id = useMemo(() => params.id, [params.id]);
   
   useEffect(() => {
     if (!authLoading) {
@@ -67,7 +66,7 @@ export default function ProjectDetailsPage({ params }: { params: { id: string } 
           setIsLoading(false);
       }
     }
-  }, [localUser, authLoading, hasPermission, router, id]);
+  }, [id, localUser, authLoading, hasPermission, router]);
 
   if (isLoading || authLoading) {
       return <LoadingSkeleton />;
