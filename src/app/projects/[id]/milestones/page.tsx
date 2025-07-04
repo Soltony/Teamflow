@@ -26,6 +26,7 @@ function LoadingSkeleton() {
 }
 
 export default function ProjectMilestonesPage({ params }: { params: { id: string } }) {
+    const { id } = params;
     const { localUser, loading: authLoading, hasPermission } = useAuth();
     const router = useRouter();
     const [pageData, setPageData] = useState<PageData | null>(null);
@@ -38,9 +39,9 @@ export default function ProjectMilestonesPage({ params }: { params: { id: string
                 return;
             }
 
-            if (localUser?.id && params.id) {
+            if (localUser?.id && id) {
                 setIsLoading(true);
-                getProjectMilestonesForUser(params.id, localUser.id)
+                getProjectMilestonesForUser(id, localUser.id)
                     .then(data => {
                         if (data) {
                              const normalizedProject = {
@@ -69,7 +70,7 @@ export default function ProjectMilestonesPage({ params }: { params: { id: string
                 setIsLoading(false);
             }
         }
-    }, [localUser, authLoading, hasPermission, router, params.id]);
+    }, [localUser, authLoading, hasPermission, router, id]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
