@@ -76,7 +76,7 @@ export default function LoginPage() {
         <div className="mx-auto mb-4">
           <NibLogo className="w-12 h-12" />
         </div>
-        <CardTitle>Welcome Back to NIB Team</CardTitle>
+        <CardTitle>Welcome Back to NIB PMO</CardTitle>
         <CardDescription>Enter your credentials to access your account.</CardDescription>
       </CardHeader>
       <CardContent>

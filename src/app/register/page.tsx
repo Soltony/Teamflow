@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useForm } from 'react-hook-form';
@@ -90,7 +89,7 @@ export default function RegisterPage() {
           <NibLogo className="w-12 h-12" />
         </div>
         <CardTitle>Create an Account</CardTitle>
-        <CardDescription>Join NIB Team to start managing your projects.</CardDescription>
+        <CardDescription>Join NIB PMO to start managing your projects.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>

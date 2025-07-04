@@ -8,7 +8,7 @@ import { AuthProvider } from "@/context/auth-context";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  title: "NIB Team",
+  title: "NIB PMO",
   description: "A project management solution to assign tasks and manage activity online.",
   manifest: "/manifest.json",
   icons: {

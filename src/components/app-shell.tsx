@@ -1,4 +1,3 @@
-
 "use client";
 
 import * as React from "react";
@@ -78,7 +77,7 @@ function AppSidebar({ className }: { className?: string }) {
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <NibLogo className="w-8 h-8" />
-          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-sidebar-foreground truncate">NIB Team</h1>}
+          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-sidebar-foreground truncate">NIB PMO</h1>}
         </div>
       </SidebarHeader>
       <SidebarContent>
