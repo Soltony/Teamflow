@@ -228,7 +228,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setLoading(false);
       if (axiosError.response) {
           console.error("Auth service login failed on client. Response:", axiosError.response.data);
-          return axiosError.response?.data;
+          const errorData = axiosError.response.data;
+          
+          let errorMessage = 'Login failed. Please check your credentials and try again.'; // Default message
+          
+          if (errorData) {
+            if (typeof errorData === 'string') {
+              errorMessage = errorData;
+            } else if (Array.isArray(errorData) && errorData.length > 0 && typeof errorData[0] === 'string') {
+              errorMessage = errorData.join(', ');
+            } else if (errorData.errors) {
+              if (Array.isArray(errorData.errors) && errorData.errors.length > 0) {
+                  errorMessage = errorData.errors.join(', ');
+              } else if (typeof errorData.errors === 'string') {
+                  errorMessage = errorData.errors;
+              }
+            }
+          }
+
+          return { isSuccess: false, errors: [errorMessage] };
       }
       console.error("Client-side login request failed:", axiosError.message);
       return { isSuccess: false, errors: ['Could not connect to the authentication service.'] };
