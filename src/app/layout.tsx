@@ -13,8 +13,10 @@ export const metadata: Metadata = {
   title: "NIB PMO",
   description: "A project management solution to assign tasks and manage activity online.",
   manifest: "/manifest.json",
+  themeColor: "#4db6ac",
   icons: {
     icon: [
+      { url: "/favicon.ico", sizes: "any", type: "image/x-icon" },
       { url: "https://play-lh.googleusercontent.com/bXqMt9ROsGd0H9vPhib5hG-0NB-EJcAwZy6UUDhvlP-ykE595IMQtzr14R6IRWtJiGTh", sizes: "192x192", type: "image/png" },
       { url: "https://play-lh.googleusercontent.com/bXqMt9ROsGd0H9vPhib5hG-0NB-EJcAwZy6UUDhvlP-ykE595IMQtzr14R6IRWtJiGTh", sizes: "512x512", type: "image/png" },
     ],
