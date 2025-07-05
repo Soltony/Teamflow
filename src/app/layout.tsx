@@ -16,7 +16,6 @@ export const metadata: Metadata = {
   },
   description: "A project management solution to assign tasks and manage activity online.",
   manifest: "/manifest.json?v=4",
-  themeColor: "#4db6ac",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any", type: "image/x-icon" },
