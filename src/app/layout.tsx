@@ -14,6 +14,7 @@ export const metadata: Metadata = {
     template: "%s | NIB PMO",
   },
   description: "A project management solution to assign tasks and manage activity online.",
+  manifest: "/manifest.webmanifest",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any", type: "image/x-icon" },
