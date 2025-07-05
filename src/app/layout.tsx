@@ -10,9 +10,12 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   applicationName: "NIB PMO",
-  title: "NIB PMO",
+  title: {
+    default: "NIB PMO",
+    template: "%s | NIB PMO",
+  },
   description: "A project management solution to assign tasks and manage activity online.",
-  manifest: "/manifest.json",
+  manifest: "/manifest.json?v=4",
   themeColor: "#4db6ac",
   icons: {
     icon: [
