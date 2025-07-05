@@ -9,13 +9,11 @@ import { AuthProvider } from "@/context/auth-context";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-  applicationName: "NIB PMO",
   title: {
     default: "NIB PMO",
     template: "%s | NIB PMO",
   },
   description: "A project management solution to assign tasks and manage activity online.",
-  manifest: "/manifest.json?v=4",
   icons: {
     icon: [
       { url: "/favicon.ico", sizes: "any", type: "image/x-icon" },
