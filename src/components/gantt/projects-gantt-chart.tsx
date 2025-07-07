@@ -104,27 +104,31 @@ export function ProjectsGanttChart({ projects }: { projects: any[] }) {
   const chartHeight = data.length * 60 + 80;
 
   return (
-    <div style={{ width: '100%', height: chartHeight }}>
-      <ResponsiveContainer width="100%" height="100%">
-        <BarChart
-          data={data}
-          layout="vertical"
-          margin={{
-            top: 20,
-            right: 30,
-            left: 20,
-            bottom: 20,
-          }}
-          barCategoryGap="40%"
-        >
-          <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-          <XAxis type="number" domain={['dataMin', 'dataMax']} label={{ value: `Days from ${format(chartStartDate, 'MMM dd, yyyy')}`, position: 'insideBottom', offset: 0 }} height={50} />
-          <YAxis dataKey="name" type="category" width={300} tick={<CustomYAxisTick data={data} />} interval={0} />
-          <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsl(var(--card))'}}/>
-          <Bar dataKey="startOffset" stackId="a" fill="transparent" />
-          <Bar dataKey="duration" stackId="a" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]} />
-        </BarChart>
-      </ResponsiveContainer>
+    <div className="w-full overflow-x-auto">
+      <div style={{ width: '100%', minWidth: '800px', height: chartHeight }}>
+        <ResponsiveContainer width="100%" height="100%">
+          <BarChart
+            data={data}
+            layout="vertical"
+            margin={{
+              top: 20,
+              right: 30,
+              left: 20,
+              bottom: 20,
+            }}
+            barCategoryGap="40%"
+          >
+            <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+            <XAxis type="number" domain={['dataMin', 'dataMax']} label={{ value: `Days from ${format(chartStartDate, 'MMM dd, yyyy')}`, position: 'insideBottom', offset: 0 }} height={50} />
+            <YAxis dataKey="name" type="category" width={250} tick={<CustomYAxisTick data={data} />} interval={0} />
+            <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsl(var(--card))'}}/>
+            <Bar dataKey="startOffset" stackId="a" fill="transparent" />
+            <Bar dataKey="duration" stackId="a" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }
+
+    

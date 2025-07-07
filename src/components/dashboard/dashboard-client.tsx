@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -95,11 +96,11 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <h1 className="text-2xl font-bold">Projects Dashboard</h1>
           <Select value={selectedYear} onValueChange={handleYearChange}>
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Select a year" />
             </SelectTrigger>
             <SelectContent>
@@ -112,7 +113,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
           </Select>
         </div>
         {hasPermission('projects:create') && (
-          <Button asChild>
+          <Button asChild className="w-full sm:w-auto">
             <Link href="/projects/new">
               <PlusCircle className="w-4 h-4 mr-2" />
               Create Project
@@ -318,3 +319,5 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     </div>
   );
 }
+
+    
