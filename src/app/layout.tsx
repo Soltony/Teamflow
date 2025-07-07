@@ -14,19 +14,15 @@ export const metadata: Metadata = {
     template: "%s | NIB PMO",
   },
   description: "A project management solution to assign tasks and manage activity online.",
-  manifest: "/manifest.webmanifest?v=2",
+  manifest: "/manifest.json",
   icons: {
-    icon: [
-      { url: "/favicon.ico", sizes: "any", type: "image/x-icon" },
-      { url: "https://play-lh.googleusercontent.com/bXqMt9ROsGd0H9vPhib5hG-0NB-EJcAwZy6UUDhvlP-ykE595IMQtzr14R6IRWtJiGTh", sizes: "192x192", type: "image/png" },
-      { url: "https://play-lh.googleusercontent.com/bXqMt9ROsGd0H9vPhib5hG-0NB-EJcAwZy6UUDhvlP-ykE595IMQtzr14R6IRWtJiGTh", sizes: "512x512", type: "image/png" },
-    ],
+    icon: "/favicon.ico",
     apple: "https://play-lh.googleusercontent.com/bXqMt9ROsGd0H9vPhib5hG-0NB-EJcAwZy6UUDhvlP-ykE595IMQtzr14R6IRWtJiGTh",
   },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#4db6ac",
+  themeColor: "#733f19",
 };
 
 export default function RootLayout({
