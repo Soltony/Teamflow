@@ -311,13 +311,19 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <FormControl>
-                            <Button variant="outline" className={cn("w-full justify-start text-left h-auto min-h-10 py-2", !field.value?.length && "text-muted-foreground")}>
-                                <span className="truncate">
-                                    {selectedMembers.length > 0
-                                        ? selectedMembers.map(u => u.name).join(', ')
-                                        : "Select members..."}
-                                </span>
-                              <ChevronDown className="ml-auto h-4 w-4 shrink-0" />
+                            <Button
+                              variant="outline"
+                              className={cn(
+                                "w-full justify-start text-left h-auto min-h-10 py-2 whitespace-normal",
+                                !field.value?.length && "text-muted-foreground"
+                              )}
+                            >
+                              <span className="flex-grow">
+                                {selectedMembers.length > 0
+                                  ? selectedMembers.map((u) => u.name).join(", ")
+                                  : "Select members..."}
+                              </span>
+                              <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
                             </Button>
                           </FormControl>
                         </DropdownMenuTrigger>
