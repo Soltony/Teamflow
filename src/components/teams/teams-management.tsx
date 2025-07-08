@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Trash2, Phone, ChevronDown, PlusCircle } from "lucide-react";
+import { Pencil, Trash2, Phone, PlusCircle, Check, ChevronsUpDown, X } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,12 +36,14 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { createTeam, updateTeam, deleteTeam } from "@/app/teams/actions";
 import type { Project as PrismaProject, Team as PrismaTeam, User as PrismaUser } from '@prisma/client';
 import { useAuth } from "@/context/auth-context";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Badge } from "@/components/ui/badge";
 
 const teamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters."),
@@ -308,48 +310,74 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Team Members</FormLabel>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
+                      <Popover>
+                        <PopoverTrigger asChild>
                           <FormControl>
                             <Button
                               variant="outline"
+                              role="combobox"
                               className={cn(
-                                "w-full justify-start text-left h-auto min-h-10 py-2 whitespace-normal",
+                                "w-full justify-between h-auto",
                                 !field.value?.length && "text-muted-foreground"
                               )}
                             >
-                              <span className="flex-grow">
-                                {selectedMembers.length > 0
-                                  ? selectedMembers.map((u) => u.name).join(", ")
-                                  : "Select members..."}
-                              </span>
-                              <ChevronDown className="ml-2 h-4 w-4 shrink-0" />
+                              <div className="flex gap-1 flex-wrap">
+                                {selectedMembers.length > 0 ? selectedMembers.map((member) => (
+                                  <Badge
+                                    variant="secondary"
+                                    key={member.id}
+                                    className="mr-1 mb-1"
+                                    onClick={(e) => {
+                                      e.preventDefault();
+                                      field.onChange(field.value?.filter(id => id !== member.id))
+                                    }}
+                                  >
+                                    {member.name}
+                                    <X className="h-3 w-3 ml-1" />
+                                  </Badge>
+                                )) : (
+                                  <span>Select members...</span>
+                                )}
+                              </div>
+                              <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                           </FormControl>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                          {allUsers.map((user) => (
-                            <DropdownMenuCheckboxItem
-                              key={user.id}
-                              checked={field.value?.includes(user.id)}
-                              onCheckedChange={(checked) => {
-                                const newValues = field.value ? [...field.value] : [];
-                                if (checked) {
-                                  newValues.push(user.id);
-                                } else {
-                                  const index = newValues.indexOf(user.id);
-                                  if (index > -1) {
-                                    newValues.splice(index, 1);
-                                  }
-                                }
-                                field.onChange(newValues);
-                              }}
-                            >
-                              {user.name}
-                            </DropdownMenuCheckboxItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
+                          <Command>
+                            <CommandInput placeholder="Search members..." />
+                            <CommandList>
+                              <CommandEmpty>No user found.</CommandEmpty>
+                              <CommandGroup>
+                                {allUsers.map((user) => (
+                                  <CommandItem
+                                    value={user.name}
+                                    key={user.id}
+                                    onSelect={() => {
+                                      const selected = field.value || [];
+                                      if (selected.includes(user.id)) {
+                                        field.onChange(selected.filter((id) => id !== user.id));
+                                      } else {
+                                        field.onChange([...selected, user.id]);
+                                      }
+                                    }}
+                                  >
+                                    <Check
+                                      className={cn(
+                                        "mr-2 h-4 w-4",
+                                        field.value?.includes(user.id)
+                                          ? "opacity-100"
+                                          : "opacity-0"
+                                      )}
+                                    />
+                                    {user.name}
+                                  </CommandItem>
+                                ))}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <FormMessage />
                     </FormItem>
                   )}
