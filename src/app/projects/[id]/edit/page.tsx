@@ -2,20 +2,21 @@
 'use client';
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { ProjectForm } from "@/components/projects/project-form";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { getNewProjectData, createProject } from "../actions";
+import { useParams, useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
+import { ProjectForm } from "@/components/projects/project-form";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { getProjectForEdit, updateProject } from "../../actions";
 import type { User, Department, ProjectStatus } from "@prisma/client";
+import { parseISO } from "date-fns";
 
-type NewProjectData = {
+type EditProjectData = {
+  project: any;
   users: User[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
-  activeYear: string;
 };
 
 function LoadingSkeleton() {
@@ -42,43 +43,52 @@ function LoadingSkeleton() {
   );
 }
 
-export default function NewProjectPage() {
+export default function EditProjectPage() {
+  const { id } = useParams();
+  const projectId = id as string;
+
   const { hasPermission, loading: authLoading } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [data, setData] = useState<NewProjectData | null>(null);
+  
+  const [data, setData] = useState<EditProjectData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!authLoading) {
-      if (!hasPermission('projects:create')) {
+      if (!hasPermission('projects:update')) {
         router.replace('/dashboard');
       } else {
-        getNewProjectData().then(fetchedData => {
-          setData(fetchedData);
+        getProjectForEdit(projectId).then(fetchedData => {
+          if (fetchedData) {
+            setData(fetchedData);
+          } else {
+             router.replace('/projects');
+          }
           setLoading(false);
         });
       }
     }
-  }, [authLoading, hasPermission, router]);
+  }, [authLoading, hasPermission, router, projectId]);
 
-  const handleCreateProject = async (formData: any) => {
-    try {
-      await createProject(formData);
+  const handleUpdateProject = async (formData: any) => {
+    const result = await updateProject(projectId, formData);
+    if (result.success) {
       toast({
-        title: "Project Created!",
-        description: `Project "${formData.name}" has been successfully created.`,
+        title: "Project Updated!",
+        description: `Project "${formData.name}" has been successfully updated.`,
       });
-      router.push('/dashboard');
-    } catch (error) {
+      router.push(`/projects/${projectId}`);
+    } else {
       toast({
         title: "Error",
-        description: "Failed to create project. Please try again.",
-        variant: "destructive"
+        description: result.error || "Failed to update project. Please try again.",
+        variant: "destructive",
       });
     }
+    return result;
   };
-
+  
   if (loading || authLoading) {
     return <LoadingSkeleton />;
   }
@@ -86,28 +96,39 @@ export default function NewProjectPage() {
   if (!data) {
     return (
       <div className="p-4 sm:p-6">
-        <p>Could not load project creation form. Please try again later.</p>
+        <p>Could not load project data. It may have been deleted or you don't have permission to view it.</p>
       </div>
     );
   }
+  
+  const initialDataForForm = {
+      ...data.project,
+      startDate: parseISO(data.project.startDate),
+      endDate: parseISO(data.project.endDate),
+      milestones: data.project.milestones.map((m: any) => ({
+          ...m,
+          startDate: parseISO(m.startDate),
+          dueDate: parseISO(m.dueDate),
+      }))
+  };
 
   return (
     <div className="p-4 sm:p-6">
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
-          <CardTitle className="text-2xl">Create a New Project</CardTitle>
+          <CardTitle className="text-2xl">Edit Project: {data.project.name}</CardTitle>
           <CardDescription>
-            Fill in the project details, assign it to a department, and define the major milestones.
+            Update the project details and milestones below.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <ProjectForm
-            mode="create"
+            mode="edit"
+            initialData={initialDataForForm}
             users={data.users}
             departments={data.departments}
             projectStatuses={data.projectStatuses}
-            activeYear={data.activeYear}
-            onSubmit={handleCreateProject}
+            onSubmit={handleUpdateProject}
           />
         </CardContent>
       </Card>

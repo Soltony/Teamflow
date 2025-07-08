@@ -3,7 +3,7 @@
 
 import { useState } from "react";
 import Link from 'next/link';
-import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink } from "lucide-react";
+import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import type { Blocker } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -75,13 +75,21 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
                 {initialProject.status && <Badge className="text-base" variant="secondary">{initialProject.status.name}</Badge>}
-                {canUpdateProject && (
-                  <Button asChild variant="outline">
-                      <Link href={`/projects/${initialProject.id}/milestones`}>
-                          Manage Milestones
-                          <ExternalLink className="ml-2 h-4 w-4" />
+                 {canUpdateProject && (
+                  <>
+                    <Button asChild variant="outline">
+                      <Link href={`/projects/${initialProject.id}/edit`}>
+                        <Pencil className="mr-2 h-4 w-4" />
+                        Edit Project
                       </Link>
-                  </Button>
+                    </Button>
+                    <Button asChild variant="outline">
+                        <Link href={`/projects/${initialProject.id}/milestones`}>
+                            Manage Milestones
+                            <ExternalLink className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
+                  </>
                 )}
             </div>
           </div>

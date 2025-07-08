@@ -53,6 +53,135 @@ export async function createProject(data: any) {
     revalidatePath('/gantt');
 }
 
+export async function getProjectForEdit(projectId: string) {
+    const [project, users, departments, projectStatuses] = await Promise.all([
+        prisma.project.findUnique({
+            where: { id: projectId },
+            include: {
+                milestones: {
+                    include: {
+                        responsibleDepartments: {
+                            select: { id: true }
+                        }
+                    }
+                }
+            }
+        }),
+        prisma.user.findMany({ orderBy: { name: 'asc' } }),
+        prisma.department.findMany({ orderBy: { name: 'asc' } }),
+        prisma.projectStatus.findMany({ orderBy: { name: 'asc' } }),
+    ]);
+
+    if (!project) return null;
+
+    const normalizedProject = {
+        ...project,
+        milestones: project.milestones.map(m => ({
+            ...m,
+            responsibleDepartmentIds: m.responsibleDepartments.map(d => d.id)
+        }))
+    };
+
+    return {
+        project: JSON.parse(JSON.stringify(normalizedProject)),
+        users: JSON.parse(JSON.stringify(users)),
+        departments: JSON.parse(JSON.stringify(departments)),
+        projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
+    };
+}
+
+
+export async function updateProject(projectId: string, data: any) {
+    const { milestones, ...projectData } = data;
+
+    const existingMilestones = await prisma.milestone.findMany({
+        where: { projectId: projectId },
+        select: { id: true }
+    });
+    const existingMilestoneIds = existingMilestones.map(m => m.id);
+
+    const incomingMilestoneIds = milestones.filter((m: any) => m.id).map((m: any) => m.id);
+    const milestoneIdsToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
+
+    try {
+        await prisma.$transaction(async (tx) => {
+            if (milestoneIdsToDelete.length > 0) {
+                const tasksInDeletedMilestones = await tx.task.findMany({
+                    where: { milestoneId: { in: milestoneIdsToDelete }},
+                    select: { id: true }
+                });
+                const taskIdsToDelete = tasksInDeletedMilestones.map(t => t.id);
+
+                if (taskIdsToDelete.length > 0) {
+                     await tx.taskUpdate.deleteMany({
+                        where: { taskId: { in: taskIdsToDelete }}
+                    });
+                    await tx.task.deleteMany({
+                        where: { id: { in: taskIdsToDelete }}
+                    });
+                }
+                await tx.milestone.deleteMany({
+                    where: { id: { in: milestoneIdsToDelete } }
+                });
+            }
+
+            await tx.project.update({
+                where: { id: projectId },
+                data: {
+                  name: projectData.name,
+                  description: projectData.description,
+                  startDate: projectData.startDate,
+                  endDate: projectData.endDate,
+                  statusId: projectData.statusId,
+                  departmentId: projectData.departmentId,
+                  projectManagerId: projectData.projectManagerId,
+                  workingYear: projectData.workingYear
+                }
+            });
+
+            for (const milestone of milestones) {
+                const { id, responsibleDepartmentIds, ...milestoneData } = milestone;
+                
+                const dataForUpsert = {
+                    title: milestoneData.title,
+                    description: milestoneData.description,
+                    startDate: milestoneData.startDate,
+                    dueDate: milestoneData.dueDate,
+                    weight: milestoneData.weight,
+                    responsibleDepartments: {
+                        set: responsibleDepartmentIds.map((deptId: string) => ({ id: deptId }))
+                    }
+                };
+
+                if (id) {
+                    await tx.milestone.update({
+                        where: { id: id },
+                        data: dataForUpsert
+                    });
+                } else {
+                    await tx.milestone.create({
+                        data: {
+                            ...dataForUpsert,
+                             project: { connect: { id: projectId } },
+                        }
+                    });
+                }
+            }
+        });
+
+        revalidatePath('/projects');
+        revalidatePath(`/projects/${projectId}`);
+        revalidatePath(`/projects/${projectId}/edit`);
+        revalidatePath('/dashboard');
+        revalidatePath('/gantt');
+        revalidatePath('/milestones');
+        return { success: true };
+    } catch (e) {
+        console.error("Failed to update project", e);
+        return { success: false, error: 'Failed to update project. Please ensure all data is correct.' };
+    }
+}
+
 
 export async function addBlocker(projectId: string, description: string) {
     await prisma.blocker.create({

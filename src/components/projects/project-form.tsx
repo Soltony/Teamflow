@@ -38,15 +38,15 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Card, CardContent, CardHeader, CardTitle } from "../ui/card";
+import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
-import { useToast } from "@/hooks/use-toast";
 import type { User, Department, ProjectStatus } from "@prisma/client";
-import { createProject } from "@/app/projects/actions";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 
 const milestoneSchema = z.object({
+  id: z.string().optional(),
   title: z.string().min(3, "Title must be at least 3 characters."),
   description: z.string().min(10, "Description must be at least 10 characters."),
   startDate: z.date(),
@@ -83,28 +83,38 @@ const projectSchema = z.object({
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
 type ProjectFormProps = {
+  mode: 'create' | 'edit';
+  initialData?: ProjectFormValues;
   users: User[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
-  activeYear: string;
+  activeYear?: string;
+  onSubmit: (data: ProjectFormValues) => Promise<any>;
 }
 
-export function ProjectForm({ users, departments, projectStatuses, activeYear }: ProjectFormProps) {
-  const { toast } = useToast();
+export function ProjectForm({ mode, initialData, users, departments, projectStatuses, activeYear, onSubmit }: ProjectFormProps) {
   const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const isEditMode = mode === 'edit';
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
-    defaultValues: {
+    defaultValues: isEditMode && initialData ? initialData : {
       name: "",
       description: "",
-      workingYear: activeYear,
+      workingYear: activeYear || "",
       statusId: "",
       departmentId: "",
       projectManagerId: "",
       milestones: [],
     },
   });
+
+  useEffect(() => {
+    if (isEditMode && initialData) {
+      form.reset(initialData);
+    }
+  }, [initialData, isEditMode, form]);
 
   const { fields, append, remove } = useFieldArray({
     control: form.control,
@@ -113,56 +123,42 @@ export function ProjectForm({ users, departments, projectStatuses, activeYear }:
 
   const milestonesError = form.formState.errors.milestones?.root;
 
-  async function onSubmit(data: ProjectFormValues) {
-    try {
-      await createProject(data);
-      toast({
-          title: "Project Created!",
-          description: `Project "${data.name}" has been successfully created.`,
-        });
-      router.push('/dashboard');
-    } catch(error) {
-       toast({
-          title: "Error",
-          description: "Failed to create project. Please try again.",
-          variant: "destructive"
-       });
-    }
+  async function handleFormSubmit(data: ProjectFormValues) {
+    setIsSubmitting(true);
+    await onSubmit(data);
+    setIsSubmitting(false);
   }
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
         <Card>
-            <CardHeader>
-                <CardTitle>Project Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 pt-6">
                 <FormField
-                control={form.control}
-                name="name"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Project Name</FormLabel>
-                    <FormControl>
-                        <Input placeholder="e.g., E-commerce Platform Relaunch" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Project Name</FormLabel>
+                      <FormControl>
+                          <Input placeholder="e.g., E-commerce Platform Relaunch" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
                 />
                 <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Project Description</FormLabel>
-                    <FormControl>
-                        <Textarea placeholder="Describe the project goals and objectives." {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel>Project Description</FormLabel>
+                      <FormControl>
+                          <Textarea placeholder="Describe the project goals and objectives." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
                 />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
@@ -195,7 +191,6 @@ export function ProjectForm({ users, departments, projectStatuses, activeYear }:
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                disabled={(date) => date < new Date("1900-01-01")}
                                 initialFocus
                                 />
                             </PopoverContent>
@@ -253,7 +248,7 @@ export function ProjectForm({ users, departments, projectStatuses, activeYear }:
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Owning Department</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger><SelectValue placeholder="Select an Owning Department" /></SelectTrigger>
                                     </FormControl>
@@ -271,7 +266,7 @@ export function ProjectForm({ users, departments, projectStatuses, activeYear }:
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Project Manager</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger><SelectValue placeholder="Select a project manager" /></SelectTrigger>
                                     </FormControl>
@@ -289,7 +284,7 @@ export function ProjectForm({ users, departments, projectStatuses, activeYear }:
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Project Status</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <Select onValueChange={field.onChange} value={field.value}>
                                     <FormControl>
                                         <SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger>
                                     </FormControl>
@@ -311,7 +306,7 @@ export function ProjectForm({ users, departments, projectStatuses, activeYear }:
                                 <Input placeholder="Set active year in Settings" {...field} disabled />
                             </FormControl>
                             <FormDescription>
-                                The working year is automatically set based on the active year from Settings.
+                                {isEditMode ? "The working year cannot be changed." : "The working year is automatically set based on the active year from Settings."}
                             </FormDescription>
                             <FormMessage />
                             </FormItem>
@@ -328,7 +323,7 @@ export function ProjectForm({ users, departments, projectStatuses, activeYear }:
             </div>
             {fields.map((field, index) => (
               <Card key={field.id} className="relative">
-                <Button variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}>
+                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}>
                     <X className="h-4 w-4" />
                 </Button>
                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -496,8 +491,10 @@ export function ProjectForm({ users, departments, projectStatuses, activeYear }:
         </div>
         <Separator />
         <div className="flex justify-end gap-2">
-            <Button type="button" variant="outline" onClick={() => router.back()}>Cancel</Button>
-            <Button type="submit">Create Project</Button>
+            <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
+            <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (isEditMode ? 'Saving...' : 'Creating...') : (isEditMode ? 'Save Changes' : 'Create Project')}
+            </Button>
         </div>
       </form>
     </Form>
