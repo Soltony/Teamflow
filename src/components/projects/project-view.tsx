@@ -166,7 +166,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                         <div key={blocker.id}>
                         <div className="flex items-start gap-4">
                             <div>
-                            {blocker.status === 'open' ? (
+                            {blocker.status === 'OPEN' ? (
                                 <ShieldAlert className="h-5 w-5 text-destructive mt-1" />
                             ) : (
                                 <ShieldCheck className="h-5 w-5 text-green-600 mt-1" />
@@ -174,14 +174,14 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                             </div>
                             <div className="flex-1">
                             <div className="flex justify-between items-center">
-                                <p className="font-semibold">{blocker.status === 'open' ? 'Open Blocker' : 'Resolved Blocker'}</p>
+                                <p className="font-semibold">{blocker.status === 'OPEN' ? 'Open Blocker' : 'Resolved Blocker'}</p>
                                 <p className="text-xs text-muted-foreground">
-                                {blocker.status === 'open' ? 'Created: ' : 'Resolved: '} 
+                                {blocker.status === 'OPEN' ? 'Created: ' : 'Resolved: '} 
                                 {format(parseISO(blocker.resolvedAt || blocker.createdAt), 'MMM dd, yyyy')}
                                 </p>
                             </div>
                             <p className="text-sm text-muted-foreground mt-1">{blocker.description}</p>
-                            {blocker.status === 'resolved' && (
+                            {blocker.status === 'RESOLVED' && (
                                 <div className="mt-2 text-sm bg-muted/50 p-3 rounded-md border">
                                     <p className="font-semibold text-xs">Resolution:</p>
                                     <p className="text-muted-foreground">{blocker.resolution}</p>
@@ -189,7 +189,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                             )}
                             </div>
                             <div>
-                            {blocker.status === 'open' && canUpdateProject && (
+                            {blocker.status === 'OPEN' && canUpdateProject && (
                             <Button variant="outline" size="sm" onClick={() => setResolvingBlocker(blocker)}>
                                 Resolve
                             </Button>
