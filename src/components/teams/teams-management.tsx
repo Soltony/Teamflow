@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Trash2, Phone, PlusCircle, Check, ChevronsUpDown, X } from "lucide-react";
+import { Pencil, Trash2, Phone, PlusCircle, ChevronDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,9 +41,13 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "..
 import { createTeam, updateTeam, deleteTeam } from "@/app/teams/actions";
 import type { Project as PrismaProject, Team as PrismaTeam, User as PrismaUser } from '@prisma/client';
 import { useAuth } from "@/context/auth-context";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+
 
 const teamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters."),
@@ -163,8 +167,6 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
     }
     setTeamToDelete(null);
   }
-
-  const selectedMembers = allUsers.filter(user => form.watch('memberIds')?.includes(user.id));
 
   return (
     <>
@@ -307,80 +309,54 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                 <FormField
                   control={form.control}
                   name="memberIds"
-                  render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Team Members</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between h-auto",
-                                !field.value?.length && "text-muted-foreground"
-                              )}
-                            >
-                              <div className="flex gap-1 flex-wrap">
-                                {selectedMembers.length > 0 ? selectedMembers.map((member) => (
-                                  <Badge
-                                    variant="secondary"
-                                    key={member.id}
-                                    className="mr-1 mb-1"
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      field.onChange(field.value?.filter(id => id !== member.id))
-                                    }}
-                                  >
-                                    {member.name}
-                                    <X className="h-3 w-3 ml-1" />
-                                  </Badge>
-                                )) : (
-                                  <span>Select members...</span>
+                  render={({ field }) => {
+                    const selectedMemberCount = field.value?.length || 0;
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Team Members</FormLabel>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn(
+                                  "w-full justify-start",
+                                  !field.value?.length && "text-muted-foreground"
                                 )}
-                              </div>
-                              <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                            <CommandInput placeholder="Search members..." />
-                            <CommandList>
-                              <CommandEmpty>No user found.</CommandEmpty>
-                              <CommandGroup>
-                                {allUsers.map((user) => (
-                                  <CommandItem
-                                    value={user.name}
-                                    key={user.id}
-                                    onSelect={() => {
-                                      const selected = field.value || [];
-                                      if (selected.includes(user.id)) {
-                                        field.onChange(selected.filter((id) => id !== user.id));
-                                      } else {
-                                        field.onChange([...selected, user.id]);
-                                      }
-                                    }}
-                                  >
-                                    <Check
-                                      className={cn(
-                                        "mr-2 h-4 w-4",
-                                        field.value?.includes(user.id)
-                                          ? "opacity-100"
-                                          : "opacity-0"
-                                      )}
-                                    />
-                                    {user.name}
-                                  </CommandItem>
-                                ))}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                              >
+                                {selectedMemberCount > 0
+                                  ? `${selectedMemberCount} member(s) selected`
+                                  : "Select members..."}
+                                <ChevronDown className="ml-auto h-4 w-4" />
+                              </Button>
+                            </FormControl>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                            {allUsers.map((user) => (
+                              <DropdownMenuCheckboxItem
+                                key={user.id}
+                                checked={field.value?.includes(user.id)}
+                                onCheckedChange={(checked) => {
+                                  const selected = field.value || [];
+                                  if (checked) {
+                                    field.onChange([...selected, user.id]);
+                                  } else {
+                                    field.onChange(
+                                      selected.filter((id) => id !== user.id)
+                                    );
+                                  }
+                                }}
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {user.name}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
