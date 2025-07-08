@@ -78,6 +78,23 @@ const projectSchema = z.object({
 }, {
     message: "The sum of all milestone weights must be exactly 100.",
     path: ["milestones"],
+}).superRefine((data, ctx) => {
+    data.milestones.forEach((milestone, index) => {
+        if (milestone.startDate < data.startDate) {
+            ctx.addIssue({
+                path: [`milestones.${index}.startDate`],
+                message: "Start date cannot be before the project's start date.",
+                code: z.ZodIssueCode.custom
+            });
+        }
+        if (milestone.dueDate > data.endDate) {
+            ctx.addIssue({
+                path: [`milestones.${index}.dueDate`],
+                message: "Due date cannot be after the project's end date.",
+                code: z.ZodIssueCode.custom
+            });
+        }
+    });
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;

@@ -27,7 +27,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { format } from "date-fns";
+import { format, parseISO } from "date-fns";
 import type { Milestone, Task, User } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "../ui/slider";
@@ -69,7 +69,20 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
   }, {
       message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${remainingWeight}%.`,
       path: ["weight"],
-  }), [remainingWeight]);
+  }).superRefine((data, ctx) => {
+    if (data.startDate < parseISO(milestone.startDate)) {
+        ctx.addIssue({
+            path: ['startDate'],
+            message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
+        });
+    }
+    if (data.endDate > parseISO(milestone.dueDate)) {
+        ctx.addIssue({
+            path: ['endDate'],
+            message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
+        });
+    }
+  }), [remainingWeight, milestone.startDate, milestone.dueDate]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 

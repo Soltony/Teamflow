@@ -85,7 +85,20 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
   }, {
       message: `Total task weight for this milestone cannot exceed 100%. Max for this task: ${maxWeightForThisTask}%.`,
       path: ["weight"],
-  }), [maxWeightForThisTask]);
+  }).superRefine((data, ctx) => {
+    if (data.startDate < parseISO(milestone.startDate)) {
+        ctx.addIssue({
+            path: ['startDate'],
+            message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
+        });
+    }
+    if (data.endDate > parseISO(milestone.dueDate)) {
+        ctx.addIssue({
+            path: ['endDate'],
+            message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
+        });
+    }
+  }), [maxWeightForThisTask, milestone.startDate, milestone.dueDate]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
