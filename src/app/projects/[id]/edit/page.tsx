@@ -121,7 +121,7 @@ export default function EditProjectPage() {
             Update the project details and milestones below.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <ProjectForm
             mode="edit"
             initialData={initialDataForForm}

@@ -100,7 +100,7 @@ export default function NewProjectPage() {
             Fill in the project details, assign it to a department, and define the major milestones.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <ProjectForm
             mode="create"
             users={data.users}
