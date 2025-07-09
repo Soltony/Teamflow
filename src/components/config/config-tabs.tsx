@@ -5,7 +5,7 @@ import { useAuth } from "@/context/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserManagement } from "@/components/config/user-management";
 import { RoleManagement } from "@/components/config/role-management";
-import type { Role, User } from "@prisma/client";
+import type { Role, User, Department } from "@prisma/client";
 import { Card, CardContent } from "../ui/card";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
@@ -16,9 +16,10 @@ type UserWithRoles = User & { roles: Role[] };
 type ConfigTabsProps = {
     users: UserWithRoles[];
     roles: Role[];
+    departments: Department[];
 };
 
-export function ConfigTabs({ users, roles }: ConfigTabsProps) {
+export function ConfigTabs({ users, roles, departments }: ConfigTabsProps) {
     const { hasPermission, loading } = useAuth();
     const router = useRouter();
     
@@ -56,6 +57,7 @@ export function ConfigTabs({ users, roles }: ConfigTabsProps) {
                     <UserManagement 
                         initialUsers={users} 
                         initialRoles={roles}
+                        initialDepartments={departments}
                     />
                 </TabsContent>
             )}

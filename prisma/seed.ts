@@ -109,46 +109,6 @@ async function main() {
   });
   console.log('Seeded roles.');
 
-  // Seed Users and create a map
-  const userMap = new Map<string, string>();
-  for (const user of usersData) {
-      let roleId;
-      switch (user.email) {
-          case 'alice.johnson@teamflow.com':
-              roleId = adminRole.id;
-              break;
-          case 'bob.williams@teamflow.com':
-              roleId = projectManagerRole.id;
-              break;
-          default:
-              roleId = memberRole.id;
-      }
-
-      const createdUser = await prisma.user.upsert({
-          where: { email: user.email },
-          update: {
-            roles: {
-                set: [{ id: roleId }]
-            }
-          },
-          create: {
-            id: user.id,
-            name: user.name,
-            firstName: user.firstName,
-            lastName: user.lastName,
-            email: user.email,
-            avatar: user.avatar,
-            phoneNumber: user.phoneNumber,
-            roles: {
-              connect: { id: roleId }
-            }
-          }
-      });
-      userMap.set(createdUser.email, createdUser.id);
-  }
-  console.log(`Seeded ${usersData.length} users.`);
-
-
   // Seed Departments and create a map
   const departmentMap = new Map<string, string>();
   for (const department of departmentsData) {
@@ -165,6 +125,68 @@ async function main() {
       departmentMap.set(createdDept.name, createdDept.id);
   }
   console.log(`Seeded ${departmentsData.length} departments.`);
+
+  // Seed Users and create a map
+  const userMap = new Map<string, string>();
+  const techDeptId = departmentMap.get('Technology');
+  const marketingDeptId = departmentMap.get('Marketing');
+
+  for (const user of usersData) {
+      let roleId;
+      let departmentId;
+
+      switch (user.email) {
+          case 'alice.johnson@teamflow.com':
+              roleId = adminRole.id;
+              departmentId = techDeptId;
+              break;
+          case 'bob.williams@teamflow.com':
+              roleId = projectManagerRole.id;
+              departmentId = techDeptId;
+              break;
+          case 'charlie.brown@teamflow.com':
+              roleId = memberRole.id;
+              departmentId = techDeptId;
+              break;
+          case 'diana.miller@teamflow.com':
+              roleId = memberRole.id;
+              departmentId = techDeptId;
+              break;
+          case 'ethan.davis@teamflow.com':
+          case 'fiona.garcia@teamflow.com':
+              roleId = memberRole.id;
+              departmentId = marketingDeptId;
+              break;
+          default:
+              roleId = memberRole.id;
+              departmentId = techDeptId; // Default to tech
+      }
+      
+      const createdUser = await prisma.user.upsert({
+          where: { email: user.email },
+          update: {
+            roles: {
+                set: [{ id: roleId }]
+            },
+            departmentId: departmentId,
+          },
+          create: {
+            id: user.id,
+            name: user.name,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            email: user.email,
+            avatar: user.avatar,
+            phoneNumber: user.phoneNumber,
+            departmentId: departmentId,
+            roles: {
+              connect: { id: roleId }
+            }
+          }
+      });
+      userMap.set(createdUser.email, createdUser.id);
+  }
+  console.log(`Seeded ${usersData.length} users.`);
 
   // Seed Project Statuses and create a map
   const statusMap = new Map<string, string>();

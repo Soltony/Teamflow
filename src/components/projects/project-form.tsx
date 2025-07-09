@@ -42,7 +42,7 @@ import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
 import type { User, Department, ProjectStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo } from "react";
 
 
 const milestoneSchema = z.object({
@@ -102,7 +102,7 @@ type ProjectFormValues = z.infer<typeof projectSchema>;
 type ProjectFormProps = {
   mode: 'create' | 'edit';
   initialData?: ProjectFormValues;
-  users: User[];
+  users: (User & { departmentId?: string | null })[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
   activeYear?: string;
@@ -126,6 +126,15 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
       milestones: [],
     },
   });
+
+  const selectedDepartmentId = form.watch("departmentId");
+
+  const projectManagers = useMemo(() => {
+    if (!selectedDepartmentId) {
+      return users;
+    }
+    return users.filter(user => user.departmentId === selectedDepartmentId);
+  }, [selectedDepartmentId, users]);
 
   useEffect(() => {
     if (isEditMode && initialData) {
@@ -287,7 +296,7 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
                                     <SelectTrigger><SelectValue placeholder="Select a project manager" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {users.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
+                                    {projectManagers.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />

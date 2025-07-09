@@ -15,6 +15,7 @@ export type User = {
   avatar: string;
   phoneNumber?: string;
   roles?: Role[];
+  departmentId?: string | null;
 };
 
 export type Team = {

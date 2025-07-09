@@ -58,17 +58,19 @@ const teamSchema = z.object({
 
 type TeamFormValues = z.infer<typeof teamSchema>;
 
+type UserWithDepartment = PrismaUser & { departmentId?: string | null };
+
 type TeamWithRelations = PrismaTeam & {
     project: PrismaProject;
-    teamLead: PrismaUser;
-    members: PrismaUser[];
+    teamLead: UserWithDepartment;
+    members: UserWithDepartment[];
     memberIds: string[];
 };
 
 type TeamsManagementProps = {
   initialTeams: TeamWithRelations[];
   allProjects: PrismaProject[];
-  allUsers: PrismaUser[];
+  allUsers: UserWithDepartment[];
 }
 
 export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsManagementProps) {
@@ -93,6 +95,20 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
   });
 
   const isEditing = editingTeam !== null;
+
+  const selectedProjectId = form.watch("projectId");
+
+  const { availableLeads, availableMembers } = useMemo(() => {
+    if (!selectedProjectId) {
+        return { availableLeads: allUsers, availableMembers: allUsers };
+    }
+    const project = allProjects.find(p => p.id === selectedProjectId);
+    if (!project?.departmentId) {
+        return { availableLeads: allUsers, availableMembers: allUsers };
+    }
+    const filteredUsers = allUsers.filter(u => u.departmentId === project.departmentId);
+    return { availableLeads: filteredUsers, availableMembers: filteredUsers };
+  }, [selectedProjectId, allProjects, allUsers]);
 
   useEffect(() => {
     if (isDialogOpen) {
@@ -299,7 +315,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                               <SelectTrigger><SelectValue placeholder="Select a team lead" /></SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                              {allUsers.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
+                              {availableLeads.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
                           </SelectContent>
                       </Select>
                       <FormMessage />
@@ -332,7 +348,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                             </FormControl>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                            {allUsers.map((user) => (
+                            {availableMembers.map((user) => (
                               <DropdownMenuCheckboxItem
                                 key={user.id}
                                 checked={field.value?.includes(user.id)}

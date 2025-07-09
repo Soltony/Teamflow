@@ -44,8 +44,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
-import { Checkbox } from "../ui/checkbox";
-import type { Role, User } from "@prisma/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import type { Role, User, Department } from "@prisma/client";
 import { updateUser, createUser, deleteUser } from "@/app/config/actions";
 import { Badge } from "../ui/badge";
 import {
@@ -62,6 +62,7 @@ type UserWithRoles = User & { roles: Role[] };
 type UserManagementProps = {
   initialUsers: UserWithRoles[];
   initialRoles: Role[];
+  initialDepartments: Department[];
 };
 
 const editUserSchema = z.object({
@@ -69,6 +70,7 @@ const editUserSchema = z.object({
   lastName: z.string().min(1, "Last name is required."),
   email: z.string().email("A valid email is required."),
   phoneNumber: z.string().min(1, "Phone number is required."),
+  departmentId: z.string().optional(),
   roleIds: z.array(z.string()).refine((value) => value.some((item) => item), {
       message: "You have to select at least one role.",
   }),
@@ -81,11 +83,12 @@ const addUserSchema = z.object({
   email: z.string().email("A valid email is required."),
   phoneNumber: z.string().min(1, "Phone number is required."),
   password: z.string().min(6, 'Password must be at least 6 characters'),
+  departmentId: z.string().nonempty("Please select a division."),
   roleIds: z.array(z.string()).optional(),
 });
 type AddUserFormValues = z.infer<typeof addUserSchema>;
 
-export function UserManagement({ initialUsers, initialRoles }: UserManagementProps) {
+export function UserManagement({ initialUsers, initialRoles, initialDepartments }: UserManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const { accessToken, hasPermission } = useAuth();
@@ -107,6 +110,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
       lastName: "",
       email: "",
       phoneNumber: "",
+      departmentId: "",
       roleIds: [],
     },
   });
@@ -119,6 +123,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
       email: "",
       phoneNumber: "",
       password: "",
+      departmentId: "",
       roleIds: [],
     },
   });
@@ -130,6 +135,7 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
       lastName: user.lastName,
       email: user.email,
       phoneNumber: user.phoneNumber ?? '',
+      departmentId: user.departmentId ?? '',
       roleIds: user.roles.map(role => role.id),
     });
   };
@@ -322,6 +328,24 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                   )} />
                   <FormField
                       control={editUserForm.control}
+                      name="departmentId"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Division</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                      <SelectTrigger><SelectValue placeholder="Select a division" /></SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                      {initialDepartments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
+                                  </SelectContent>
+                              </Select>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+                  <FormField
+                      control={editUserForm.control}
                       name="roleIds"
                       render={({ field }) => (
                           <FormItem className="flex flex-col">
@@ -420,6 +444,24 @@ export function UserManagement({ initialUsers, initialRoles }: UserManagementPro
                           <FormMessage />
                       </FormItem>
                   )} />
+                  <FormField
+                      control={addUserForm.control}
+                      name="departmentId"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel>Division</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                      <SelectTrigger><SelectValue placeholder="Select a division" /></SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                      {initialDepartments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
+                                  </SelectContent>
+                              </Select>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
                   <FormField
                       control={addUserForm.control}
                       name="roleIds"
