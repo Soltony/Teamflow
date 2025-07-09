@@ -239,7 +239,11 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsibleDepartmentChart projects={filteredProjects} departments={departments} />
+            <ResponsibleDepartmentChart 
+              projects={filteredProjects} 
+              departments={departments}
+              selectedDivisionId={selectedDivision}
+            />
           </CardContent>
         </Card>
       </div>
