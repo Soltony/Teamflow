@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -49,7 +50,7 @@ const menuItems = [
   { href: "/projects", label: "Projects", icon: FolderKanban, permission: 'projects:read' },
   { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
-  { href: "/departments", label: "Departments", icon: Building2, permission: 'departments:read' },
+  { href: "/departments", label: "Divisions", icon: Building2, permission: 'departments:read' },
   { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
   { href: "/settings", label: "Settings", icon: Settings, permission: 'settings:manage' },
   { href: "/config", label: "Config", icon: Wrench, permission: ['config:manage-users', 'config:manage-roles'] },

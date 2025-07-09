@@ -52,7 +52,7 @@ const milestoneSchema = z.object({
   startDate: z.date(),
   dueDate: z.date(),
   weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
-  responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
+  responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one division must be responsible." }),
 }).refine(data => data.dueDate >= data.startDate, {
     message: "Due date must be on or after the start date.",
     path: ["dueDate"],
@@ -65,7 +65,7 @@ const projectSchema = z.object({
   endDate: z.date({ required_error: "An end date is required."}),
   workingYear: z.string().nonempty("An active working year must be set on the Settings page."),
   statusId: z.string().nonempty("Please select a project status."),
-  departmentId: z.string().nonempty("Please select a department."),
+  departmentId: z.string().nonempty("Please select a division."),
   projectManagerId: z.string().nonempty("Please select a project manager."),
   milestones: z.array(milestoneSchema),
 }).refine(data => data.endDate > data.startDate, {
@@ -263,10 +263,10 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
                     name="departmentId"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Owning Department</FormLabel>
+                            <FormLabel>Owning Division</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select an Owning Department" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue placeholder="Select an Owning Division" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
                                     {departments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
@@ -434,14 +434,14 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
                               const selectedDepts = departments.filter(dept => field.value?.includes(dept.id));
                               return (
                               <FormItem className="flex flex-col">
-                                <FormLabel>Responsible Departments</FormLabel>
+                                <FormLabel>Responsible Divisions</FormLabel>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <FormControl>
                                       <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
                                           {selectedDepts.length > 0
                                               ? selectedDepts.map(d => d.name).join(', ')
-                                              : "Select departments..."}
+                                              : "Select divisions..."}
                                         <ChevronDown className="ml-auto h-4 w-4" />
                                       </Button>
                                     </FormControl>

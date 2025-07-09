@@ -127,7 +127,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
           <CardHeader>
             <CardTitle>Welcome to NIB PMO!</CardTitle>
             <CardDescription>
-              Your central hub for managing projects, teams, and departments
+              Your central hub for managing projects, teams, and divisions
               efficiently.
             </CardDescription>
           </CardHeader>
@@ -196,9 +196,9 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>Projects by Owning Department</CardTitle>
+            <CardTitle>Projects by Owning Division</CardTitle>
             <CardDescription>
-              Distribution of projects across owning departments.
+              Distribution of projects across owning divisions.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -218,9 +218,9 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Milestone Responsibilities by Department</CardTitle>
+            <CardTitle>Milestone Responsibilities by Division</CardTitle>
             <CardDescription>
-              Total milestones each department is responsible for.
+              Total milestones each division is responsible for.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -232,14 +232,14 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Organization Departments</CardTitle>
+            <CardTitle>Organization Divisions</CardTitle>
             <CardDescription>
-              A list of all departments.
+              A list of all divisions.
               {hasPermission('departments:read') && (
                 <>
                   {' '}Manage them in the{' '}
                   <Link href="/departments" className="text-primary hover:underline">
-                    Departments page
+                    Divisions page
                   </Link>
                   .
                 </>
@@ -268,7 +268,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No departments found. Add one on the Departments page.
+                  No divisions found. Add one on the Divisions page.
                 </p>
               )}
             </div>

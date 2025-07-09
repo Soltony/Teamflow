@@ -1,3 +1,4 @@
+
 /**
  * @fileoverview This file centralizes the definition of all available permissions in the application.
  * It exports the permissions grouped by category and a flattened list of all permissions.
@@ -10,7 +11,7 @@ export const availablePermissions: Record<string, string[]> = {
     'Projects': ['projects:create', 'projects:read', 'projects:update', 'projects:delete'],
     'Milestones': ['milestones:view'],
     'Gantt': ['gantt:view'],
-    'Departments': ['departments:create', 'departments:read', 'departments:update', 'departments:delete'],
+    'Divisions': ['departments:create', 'departments:read', 'departments:update', 'departments:delete'],
     'Teams': ['teams:create', 'teams:read', 'teams:update', 'teams:delete'],
     'Settings': ['settings:manage'],
     'Configuration': ['config:manage-users', 'config:manage-roles'],

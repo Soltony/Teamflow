@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from "react";
@@ -60,8 +61,8 @@ export default function DepartmentsPage() {
         <div className="p-4 sm:p-6">
            <Card>
             <CardHeader>
-              <CardTitle>Department Management</CardTitle>
-              <CardDescription>Add, view, and manage departments within your organization.</CardDescription>
+              <CardTitle>Division Management</CardTitle>
+              <CardDescription>Add, view, and manage divisions within your organization.</CardDescription>
             </CardHeader>
             <CardContent>
               <DepartmentsManagement initialDepartments={departments} />

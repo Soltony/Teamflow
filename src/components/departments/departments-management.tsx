@@ -34,7 +34,7 @@ import { createDepartment, deleteDepartment, updateDepartment, getDepartments } 
 import { useAuth } from "@/context/auth-context";
 
 const departmentSchema = z.object({
-  name: z.string().min(3, "Department name must be at least 3 characters."),
+  name: z.string().min(3, "Division name must be at least 3 characters."),
   responsibleName: z.string().min(3, "Responsible person's name is required."),
   responsibleTitle: z.string().min(3, "Title is required."),
   responsiblePhone: z.string().min(10, "A valid phone number is required."),
@@ -79,8 +79,8 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
 
       if (result.success) {
         toast({
-          title: isEditing ? "Department Updated!" : "Department Added!",
-          description: `The "${data.name}" department has been successfully saved.`,
+          title: isEditing ? "Division Updated!" : "Division Added!",
+          description: `The "${data.name}" division has been successfully saved.`,
         });
         setEditingDepartment(null);
         form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
@@ -112,8 +112,8 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
       const result = await deleteDepartment(departmentToDelete.id);
       if (result.success) {
         toast({
-          title: "Department Deleted",
-          description: `The "${departmentToDelete.name}" department has been removed.`,
+          title: "Division Deleted",
+          description: `The "${departmentToDelete.name}" division has been removed.`,
         });
         await refreshDepartments();
       } else {
@@ -134,7 +134,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
           <div className="md:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle>{isEditing ? "Edit Department" : "Add New Department"}</CardTitle>
+                <CardTitle>{isEditing ? "Edit Division" : "Add New Division"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -144,7 +144,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Department Name</FormLabel>
+                          <FormLabel>Division Name</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g., Marketing" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
                           </FormControl>
@@ -193,7 +193,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                     />
                     <div className="space-y-2 pt-2">
                       <Button type="submit" className="w-full" disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)}>
-                         {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Department" : "Add Department")}
+                         {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Division" : "Add Division")}
                       </Button>
                       {isEditing && (
                         <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit} disabled={isPending}>
@@ -210,11 +210,11 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
         <div className={(canCreate || canUpdate) ? "md:col-span-2" : "md:col-span-3"}>
           <Card>
             <CardHeader>
-              <CardTitle>Existing Departments</CardTitle>
+              <CardTitle>Existing Divisions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {departments.length === 0 && (
-                <p className="text-muted-foreground">No departments have been added yet.</p>
+                <p className="text-muted-foreground">No divisions have been added yet.</p>
               )}
               {departments.map((dept, index) => (
                 <div key={dept.id}>
@@ -260,7 +260,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the{' '}
-              <span className="font-semibold">{departmentToDelete?.name}</span> department.
+              <span className="font-semibold">{departmentToDelete?.name}</span> division.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

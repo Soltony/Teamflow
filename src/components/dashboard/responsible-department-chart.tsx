@@ -28,7 +28,7 @@ export function ResponsibleDepartmentChart({ projects, departments }: { projects
       project.milestones.forEach((milestone: any) => {
           if (milestone.responsibleDepartments) {
             milestone.responsibleDepartments.forEach((dept: any) => {
-                const deptName = departmentMap.get(dept.id) || "Unknown Department";
+                const deptName = departmentMap.get(dept.id) || "Unknown Division";
                 acc[deptName] = (acc[deptName] || 0) + 1;
             })
           }
