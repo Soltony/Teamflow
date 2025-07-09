@@ -4,9 +4,8 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { PlusCircle, CheckCircle, Clock, AlertOctagon, ShieldAlert, Phone } from "lucide-react";
+import { CheckCircle, Clock, AlertOctagon, ShieldAlert, Phone } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { ProjectCard } from "@/components/projects/project-card";
 import { DepartmentProjectsChart } from "@/components/dashboard/department-projects-chart";
 import { ProjectStatusChart } from "@/components/dashboard/project-status-chart";
 import { ResponsibleDepartmentChart } from "@/components/dashboard/responsible-department-chart";
@@ -42,8 +41,6 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
   const searchParams = useSearchParams();
   const { hasPermission } = useAuth();
   
-  // Add a guard to ensure all required data is present before rendering.
-  // This prevents crashes on hot-reloads or if data fetching fails.
   if (!initialProjects || !projectStatuses || !departments || !teams) {
     return (
       <div className="p-4 sm:p-6 space-y-6">
@@ -53,17 +50,29 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
   }
 
   const selectedYear = searchParams.get('year') || "all";
+  const selectedDivision = searchParams.get('division') || "all";
 
-  const projects = React.useMemo(() => {
-      return selectedYear === "all"
-        ? initialProjects
-        : initialProjects.filter((p: any) => p.workingYear === selectedYear);
-  }, [selectedYear, initialProjects]);
+  const { filteredProjects, filteredTeams } = React.useMemo(() => {
+    let tempProjects = initialProjects;
+
+    if (selectedYear !== "all") {
+        tempProjects = tempProjects.filter((p: any) => p.workingYear === selectedYear);
+    }
+    
+    if (selectedDivision !== "all") {
+        tempProjects = tempProjects.filter((p: any) => p.departmentId === selectedDivision);
+    }
+    
+    const projectIds = new Set(tempProjects.map((p:any) => p.id));
+    const tempTeams = teams.filter((t: any) => projectIds.has(t.projectId));
+
+    return { filteredProjects: tempProjects, filteredTeams: tempTeams };
+  }, [selectedYear, selectedDivision, initialProjects, teams]);
 
   const stats = React.useMemo(() => {
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
-    const completedProjects = projects.filter((p: any) => p.statusId === completedStatusId);
-    const overdueProjects = projects.filter((p: any) => p.statusId !== completedStatusId && isPast(parseISO(p.endDate)));
+    const completedProjects = filteredProjects.filter((p: any) => p.statusId === completedStatusId);
+    const overdueProjects = filteredProjects.filter((p: any) => p.statusId !== completedStatusId && isPast(parseISO(p.endDate)));
 
     const onTimeProjectsCount = completedProjects.filter((project: any) => {
         const allTaskEndDates = project.milestones.flatMap((m: any) => m.tasks.map((t: any) => parseISO(t.endDate)));
@@ -73,7 +82,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     }).length;
     
     const lateProjectsCount = completedProjects.length - onTimeProjectsCount;
-    const totalBlockersCount = projects.reduce((acc: number, p: any) => acc + (p.blockers?.filter((b: any) => b.status === 'OPEN').length || 0), 0);
+    const totalBlockersCount = filteredProjects.reduce((acc: number, p: any) => acc + (p.blockers?.filter((b: any) => b.status === 'OPEN').length || 0), 0);
     
     return {
         onTimeProjectsCount,
@@ -81,45 +90,51 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
         overdueProjectsCount: overdueProjects.length,
         totalBlockersCount
     };
-  }, [projects, projectStatuses]);
+  }, [filteredProjects, projectStatuses]);
 
-
-  const handleYearChange = (year: string) => {
+  const handleQueryChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (year !== "all") {
-      params.set("year", year);
+    if (value !== "all") {
+      params.set(key, value);
     } else {
-      params.delete("year");
+      params.delete(key);
     }
     router.push(`${pathname}?${params.toString()}`);
-  };
+  }
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <h1 className="text-2xl font-bold">Projects Dashboard</h1>
-          <Select value={selectedYear} onValueChange={handleYearChange}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Select a year" />
-            </SelectTrigger>
-            <SelectContent>
-              {availableYears.map((year: string) => (
-                <SelectItem key={year} value={year}>
-                  {year === 'all' ? 'All Years' : year}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Select value={selectedYear} onValueChange={(value) => handleQueryChange('year', value)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Select a year" />
+              </SelectTrigger>
+              <SelectContent>
+                {availableYears.map((year: string) => (
+                  <SelectItem key={year} value={year}>
+                    {year === 'all' ? 'All Years' : year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={selectedDivision} onValueChange={(value) => handleQueryChange('division', value)}>
+              <SelectTrigger className="w-full sm:w-[180px]">
+                <SelectValue placeholder="Select a division" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Divisions</SelectItem>
+                {departments.map((dept: any) => (
+                    <SelectItem key={dept.id} value={dept.id}>
+                        {dept.name}
+                    </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
-        {hasPermission('projects:create') && (
-          <Button asChild className="w-full sm:w-auto">
-            <Link href="/projects/new">
-              <PlusCircle className="w-4 h-4 mr-2" />
-              Create Project
-            </Link>
-          </Button>
-        )}
       </div>
 
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
@@ -202,7 +217,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <DepartmentProjectsChart projects={projects} departments={departments} />
+            <DepartmentProjectsChart projects={filteredProjects} departments={departments} />
           </CardContent>
         </Card>
         <Card>
@@ -213,7 +228,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ProjectStatusChart projects={projects} projectStatuses={projectStatuses} />
+            <ProjectStatusChart projects={filteredProjects} projectStatuses={projectStatuses} />
           </CardContent>
         </Card>
         <Card>
@@ -224,7 +239,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ResponsibleDepartmentChart projects={projects} departments={departments} />
+            <ResponsibleDepartmentChart projects={filteredProjects} departments={departments} />
           </CardContent>
         </Card>
       </div>
@@ -292,8 +307,8 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             </CardHeader>
             <CardContent>
             <div className="space-y-2">
-                {teams.length > 0 ? (
-                teams.map((team: any, index: number) => (
+                {filteredTeams.length > 0 ? (
+                filteredTeams.map((team: any, index: number) => (
                     <React.Fragment key={team.id}>
                     <div className="flex items-start justify-between p-2 rounded-md hover:bg-muted/50">
                         <div>
@@ -304,12 +319,12 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
                         </div>
                         <Badge variant="secondary">{team.project.name}</Badge>
                     </div>
-                    {index < teams.length - 1 && <Separator />}
+                    {index < filteredTeams.length - 1 && <Separator />}
                     </React.Fragment>
                 ))
                 ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                    No teams found. Add one on the Teams page.
+                    No teams found for the current selection.
                 </p>
                 )}
             </div>
@@ -319,5 +334,3 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     </div>
   );
 }
-
-    
