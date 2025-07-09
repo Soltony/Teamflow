@@ -13,6 +13,7 @@ export const availablePermissions: Record<string, string[]> = {
     'Gantt': ['gantt:view'],
     'Divisions': ['departments:create', 'departments:read', 'departments:update', 'departments:delete'],
     'Teams': ['teams:create', 'teams:read', 'teams:update', 'teams:delete'],
+    'Reports': ['reports:view'],
     'Settings': ['settings:manage'],
     'Configuration': ['config:manage-users', 'config:manage-roles'],
 };
