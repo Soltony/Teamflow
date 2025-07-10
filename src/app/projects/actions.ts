@@ -8,7 +8,7 @@ import type { Prisma } from '@prisma/client';
 
 export async function getNewProjectData() {
     const [users, departments, projectStatuses, activeYearSetting] = await Promise.all([
-        prisma.user.findMany(),
+        prisma.user.findMany({ include: { roles: { select: { name: true } } } }),
         prisma.department.findMany(),
         prisma.projectStatus.findMany(),
         prisma.setting.findUnique({ where: { key: 'activeWorkingYear' } }),
@@ -67,7 +67,7 @@ export async function getProjectForEdit(projectId: string) {
                 }
             }
         }),
-        prisma.user.findMany({ orderBy: { name: 'asc' } }),
+        prisma.user.findMany({ include: { roles: { select: { name: true } } }, orderBy: { name: 'asc' } }),
         prisma.department.findMany({ orderBy: { name: 'asc' } }),
         prisma.projectStatus.findMany({ orderBy: { name: 'asc' } }),
     ]);
@@ -447,7 +447,7 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
     if (!project) return null;
 
     const [users, departments] = await Promise.all([
-        prisma.user.findMany(),
+        prisma.user.findMany({ include: { roles: { select: { name: true } } } }),
         prisma.department.findMany()
     ]);
 

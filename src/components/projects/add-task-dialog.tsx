@@ -39,15 +39,21 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useMemo, useEffect } from "react";
 
+type UserWithRoles = User & { roles: { name: string }[] };
+
 type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   milestone: Milestone;
-  users: User[];
+  users: UserWithRoles[];
   onTaskAdd: (milestoneId: string, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
 
 export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, users }: AddTaskDialogProps) {
+
+  const nonAdminUsers = useMemo(() => {
+    return users.filter(user => !user.roles.some(role => role.name === 'Admin'));
+  }, [users]);
 
   const existingTasksWeight = useMemo(() => {
     return milestone.tasks.reduce((sum, task) => sum + task.weight, 0);
@@ -236,7 +242,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
                       </FormControl>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                      {users.map((user) => (
+                      {nonAdminUsers.map((user) => (
                         <DropdownMenuCheckboxItem
                           key={user.id}
                           checked={field.value?.includes(user.id)}

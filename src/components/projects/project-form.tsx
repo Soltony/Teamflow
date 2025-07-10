@@ -99,10 +99,12 @@ const projectSchema = z.object({
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
 
+type UserWithRoles = User & { roles: { name: string }[] };
+
 type ProjectFormProps = {
   mode: 'create' | 'edit';
   initialData?: ProjectFormValues;
-  users: (User & { departmentId?: string | null })[];
+  users: UserWithRoles[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
   activeYear?: string;
@@ -113,6 +115,10 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditMode = mode === 'edit';
+
+  const nonAdminUsers = useMemo(() => {
+    return users.filter(user => !user.roles.some(role => role.name === 'Admin'));
+  }, [users]);
 
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
@@ -130,11 +136,12 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
   const selectedDepartmentId = form.watch("departmentId");
 
   const projectManagers = useMemo(() => {
+    const usersToFilter = nonAdminUsers;
     if (!selectedDepartmentId) {
-      return users;
+      return usersToFilter;
     }
-    return users.filter(user => user.departmentId === selectedDepartmentId);
-  }, [selectedDepartmentId, users]);
+    return usersToFilter.filter(user => user.departmentId === selectedDepartmentId);
+  }, [selectedDepartmentId, nonAdminUsers]);
 
   useEffect(() => {
     if (isEditMode && initialData) {

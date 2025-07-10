@@ -58,19 +58,19 @@ const teamSchema = z.object({
 
 type TeamFormValues = z.infer<typeof teamSchema>;
 
-type UserWithDepartment = PrismaUser & { departmentId?: string | null };
+type UserWithRoles = PrismaUser & { departmentId?: string | null, roles: { name: string }[] };
 
 type TeamWithRelations = PrismaTeam & {
     project: PrismaProject;
-    teamLead: UserWithDepartment;
-    members: UserWithDepartment[];
+    teamLead: UserWithRoles;
+    members: UserWithRoles[];
     memberIds: string[];
 };
 
 type TeamsManagementProps = {
   initialTeams: TeamWithRelations[];
   allProjects: PrismaProject[];
-  allUsers: UserWithDepartment[];
+  allUsers: UserWithRoles[];
 }
 
 export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsManagementProps) {
@@ -83,6 +83,10 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
   const canCreate = hasPermission('teams:create');
   const canUpdate = hasPermission('teams:update');
   const canDelete = hasPermission('teams:delete');
+  
+  const nonAdminUsers = useMemo(() => {
+    return allUsers.filter(user => !user.roles.some(role => role.name === 'Admin'));
+  }, [allUsers]);
 
   const form = useForm<TeamFormValues>({
     resolver: zodResolver(teamSchema),
@@ -99,16 +103,17 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
   const selectedProjectId = form.watch("projectId");
 
   const { availableLeads, availableMembers } = useMemo(() => {
+    const usersToFilter = nonAdminUsers;
     if (!selectedProjectId) {
-        return { availableLeads: allUsers, availableMembers: allUsers };
+        return { availableLeads: usersToFilter, availableMembers: usersToFilter };
     }
     const project = allProjects.find(p => p.id === selectedProjectId);
     if (!project?.departmentId) {
-        return { availableLeads: allUsers, availableMembers: allUsers };
+        return { availableLeads: usersToFilter, availableMembers: usersToFilter };
     }
-    const filteredUsers = allUsers.filter(u => u.departmentId === project.departmentId);
+    const filteredUsers = usersToFilter.filter(u => u.departmentId === project.departmentId);
     return { availableLeads: filteredUsers, availableMembers: filteredUsers };
-  }, [selectedProjectId, allProjects, allUsers]);
+  }, [selectedProjectId, allProjects, nonAdminUsers]);
 
   useEffect(() => {
     if (isDialogOpen) {

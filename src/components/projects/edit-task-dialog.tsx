@@ -50,17 +50,22 @@ const taskStatuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'PENDING_REVIEW', 'DO
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const formatStatus = (s: string) => capitalize(s.replace(/_/g, ' ').toLowerCase());
 
+type UserWithRoles = User & { roles: { name: string }[] };
 
 type EditTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   milestone: Milestone;
   task: Task;
-  users: User[];
+  users: UserWithRoles[];
   onTaskUpdate: (milestoneId: string, updatedTask: Task) => Promise<void>;
 };
 
 export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, onTaskUpdate }: EditTaskDialogProps) {
+
+  const nonAdminUsers = useMemo(() => {
+    return users.filter(user => !user.roles.some(role => role.name === 'Admin'));
+  }, [users]);
 
   const weightOfOtherTasks = useMemo(() => {
     return milestone.tasks
@@ -255,7 +260,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
                       </FormControl>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                      {users.map((user) => (
+                      {nonAdminUsers.map((user) => (
                         <DropdownMenuCheckboxItem
                           key={user.id}
                           checked={field.value?.includes(user.id)}

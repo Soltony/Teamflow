@@ -1,3 +1,4 @@
+
 'use server';
 
 import prisma from "@/lib/db";
@@ -86,8 +87,20 @@ export async function getTeamsPageData(userId: string) {
         prisma.team.findMany({
             where: whereClause,
             include: {
-                members: true,
-                teamLead: true,
+                members: {
+                    include: {
+                        roles: {
+                            select: { name: true }
+                        }
+                    }
+                },
+                teamLead: {
+                     include: {
+                        roles: {
+                            select: { name: true }
+                        }
+                    }
+                },
                 project: true,
             },
             orderBy: {
@@ -100,6 +113,11 @@ export async function getTeamsPageData(userId: string) {
             }
         }),
         prisma.user.findMany({
+            include: {
+                roles: {
+                    select: { name: true }
+                }
+            },
             orderBy: {
                 name: 'asc'
             }

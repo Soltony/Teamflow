@@ -19,9 +19,11 @@ import { Progress } from "../ui/progress";
 import { addTask, updateMilestone, updateTask } from "@/app/projects/actions";
 import { useAuth } from "@/context/auth-context";
 
+type UserWithRoles = User & { roles: { name: string }[] };
+
 type ProjectMilestonesProps = {
   initialProject: any;
-  users: User[];
+  users: UserWithRoles[];
   departments: Department[];
 }
 
