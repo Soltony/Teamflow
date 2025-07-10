@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from 'next/link';
 import { ArrowLeft, Pencil, PlusCircle } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -33,6 +33,13 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
   const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: Task; milestone: Milestone } | null>(null);
+
+  const projectUsers = useMemo(() => {
+    if (!initialProject?.departmentId) {
+        return users;
+    }
+    return users.filter(user => user.departmentId === initialProject.departmentId);
+  }, [initialProject, users]);
 
   const handleMilestoneUpdate = async (updatedMilestone: Milestone) => {
     setEditingMilestone(null);
@@ -133,7 +140,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
                                   </div>
                                   <TaskList 
                                       tasks={milestone.tasks} 
-                                      users={users}
+                                      users={projectUsers}
                                       onEditTask={(task) => setEditingTaskInfo({ task, milestone })}
                                       canUpdateProject={canUpdateProject}
                                   />
@@ -162,7 +169,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
             onOpenChange={(open) => !open && setAddingTaskToMilestone(null)}
             milestone={addingTaskToMilestone}
             onTaskAdd={handleTaskAdd}
-            users={users}
+            users={projectUsers}
         />
       )}
       
@@ -173,7 +180,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
             milestone={editingTaskInfo.milestone}
             task={editingTaskInfo.task}
             onTaskUpdate={handleTaskUpdate}
-            users={users}
+            users={projectUsers}
         />
       )}
     </div>
