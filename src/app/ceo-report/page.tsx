@@ -80,7 +80,7 @@ export default async function CEOReportPage() {
         <div className="p-4 sm:p-6 space-y-6">
             <Card>
                 <CardHeader>
-                    <CardTitle className="text-3xl">CEO Report: Portfolio Overview</CardTitle>
+                    <CardTitle className="text-3xl">Reports: Portfolio Overview</CardTitle>
                     <CardDescription>A high-level summary of the entire project portfolio's health and performance.</CardDescription>
                 </CardHeader>
             </Card>

@@ -53,7 +53,7 @@ const menuItems = [
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
   { href: "/departments", label: "Divisions", icon: Building2, permission: 'departments:read' },
   { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
-  { href: "/ceo-report", label: "CEO Report", icon: AreaChart, permission: 'reports:view' },
+  { href: "/ceo-report", label: "Reports", icon: AreaChart, permission: 'reports:view' },
   { href: "/settings", label: "Settings", icon: Settings, permission: 'settings:manage' },
   { href: "/config", label: "Config", icon: Wrench, permission: ['config:manage-users', 'config:manage-roles'] },
 ];
