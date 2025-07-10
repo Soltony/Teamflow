@@ -15,6 +15,7 @@ export type TeamViewTask = Task & {
   projectName: string;
   milestoneId: string;
   milestoneTitle: string;
+  updates: (TaskUpdate & { progressPercentage: number | null })[];
 };
 
 export type ProjectWithTasksAndStats = {

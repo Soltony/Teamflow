@@ -19,6 +19,7 @@ import { format, formatDistanceToNow } from "date-fns";
 import { CheckCircle, XCircle, User as UserIcon } from "lucide-react";
 import { type ProjectWithTasksAndStats, type TeamViewTask } from "@/app/team-view/page";
 import { approveTaskAction, declineTaskAction } from "@/app/team-view/actions";
+import { Progress } from "../ui/progress";
 
 type TeamTasksManagementProps = {
   allUsers: User[];
@@ -144,7 +145,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <div className="space-y-4">
                   {tasks.length > 0 ? tasks.sort((a, b) => a.title.localeCompare(b.title)).map(task => {
                       const assignees = task.assignedUserIds.map(id => userMap.get(id)).filter(Boolean) as User[];
-                      const latestUpdate = task.updates && task.updates.length > 0 ? task.updates[task.updates.length - 1] : null;
+                      const latestUpdate = task.updates && task.updates.length > 0 ? [...task.updates].reverse().find(u => u.type === 'COMMENT') : null;
                       const latestUpdateAuthor = latestUpdate ? userMap.get(latestUpdate.authorId) : null;
                       return (
                           <Card key={task.id} className={task.status === 'PENDING_REVIEW' ? 'border-primary' : ''}>
@@ -161,6 +162,13 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                               </CardHeader>
                               <CardContent className="space-y-4">
                                   <p className="text-sm text-muted-foreground">{task.description}</p>
+                                   <div className="space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span>Progress</span>
+                                            <span className="font-semibold">{task.progress || 0}%</span>
+                                        </div>
+                                        <Progress value={task.progress || 0} />
+                                   </div>
                                   <div className="flex flex-wrap items-center gap-4 text-sm">
                                       <div className="flex items-center gap-2">
                                           <UserIcon className="w-4 h-4 text-muted-foreground" />
@@ -185,6 +193,11 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                                           <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(latestUpdate.createdAt), { addSuffix: true })}</span>
                                                       </div>
                                                       <p>{latestUpdate.text}</p>
+                                                      {latestUpdate.progressPercentage !== null && (
+                                                          <div className="mt-2 text-xs text-muted-foreground">
+                                                            Progress reported: <span className="font-bold">{latestUpdate.progressPercentage}%</span>
+                                                          </div>
+                                                        )}
                                                   </div>
                                               </div>
                                           </div>

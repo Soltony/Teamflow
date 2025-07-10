@@ -74,7 +74,7 @@ export async function getTeamViewData(userId: string) {
             const userTask: TeamViewTask = {
                 ...task,
                 status: task.status as TaskStatusType,
-                updates: task.updates.map(u => ({ ...u, type: u.type as TaskUpdate['type'], createdAt: u.createdAt.toISOString(), author: u.author as User, authorId: u.authorId, id: u.id, text: u.text })),
+                updates: task.updates.map(u => ({ ...u, type: u.type as TaskUpdate['type'], createdAt: u.createdAt.toISOString(), author: u.author as User, authorId: u.authorId, id: u.id, text: u.text, progressPercentage: u.progressPercentage })),
                 projectId: task.milestone.project.id,
                 projectName: task.milestone.project.name,
                 milestoneId: task.milestone.id,
@@ -114,11 +114,13 @@ export async function approveTaskAction(taskId: string, teamLeadId: string, team
             data: {
                 status: 'DONE',
                 completedAt: new Date(),
+                progress: 100,
                 updates: {
                     create: {
                         text: updateText,
                         authorId: teamLeadId,
                         type: 'STATUS_CHANGE',
+                        progressPercentage: 100,
                     }
                 }
             }
