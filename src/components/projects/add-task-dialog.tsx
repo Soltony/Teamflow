@@ -252,6 +252,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
                             }
                             field.onChange(newValues);
                           }}
+                           onSelect={(e) => e.preventDefault()}
                         >
                           {user.name}
                         </DropdownMenuCheckboxItem>

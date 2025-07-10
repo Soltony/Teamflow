@@ -271,6 +271,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
                             }
                             field.onChange(newValues);
                           }}
+                           onSelect={(e) => e.preventDefault()}
                         >
                           {user.name}
                         </DropdownMenuCheckboxItem>
