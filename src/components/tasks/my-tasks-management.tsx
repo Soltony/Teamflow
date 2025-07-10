@@ -31,7 +31,7 @@ import type { Task, User, TaskUpdate, TaskStatus } from "@/lib/types";
 import { format, formatDistanceToNow, isPast, parseISO, differenceInDays } from "date-fns";
 import { CheckCircle, XCircle, AlertTriangle, Clock, Check, Target, Award } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import type { UserTask } from "@/app/my-tasks/page";
+import type { UserTask } from "@/app/my-tasks/actions";
 import { addTaskUpdateAction, updateTaskStatusAction } from "@/app/my-tasks/actions";
 
 type MyTasksManagementProps = {
@@ -220,10 +220,12 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
   const { toast } = useToast();
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
-  const { overdueTasks, activeTasks, accomplishedThisWeek, onTimePerformance } = useMemo(() => {
+  const { overdueTasks, activeTasks, accomplishedThisWeek, onTimePerformance, completedTasksCount } = useMemo(() => {
     const overdue: UserTask[] = [];
     const active: UserTask[] = [];
     const accomplished: UserTask[] = [];
+    
+    const allCompletedTasks = initialTasks.filter(t => t.status === 'DONE');
 
     initialTasks.forEach(task => {
         const isTaskOverdue = isPast(parseISO(task.endDate)) && task.status !== 'DONE';
@@ -242,20 +244,20 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
     active.sort((a,b) => parseISO(a.endDate).getTime() - parseISO(b.endDate).getTime());
     accomplished.sort((a,b) => parseISO(b.completedAt!).getTime() - parseISO(a.completedAt!).getTime());
 
-    const allCompletedTasks = initialTasks.filter(t => t.status === 'DONE' && t.completedAt);
     const onTimeCount = allCompletedTasks.filter(t => 
         t.completedAt && parseISO(t.completedAt) <= parseISO(t.endDate)
     ).length;
     
     const performance = allCompletedTasks.length > 0 
         ? (onTimeCount / allCompletedTasks.length) * 100 
-        : 100;
+        : 0;
 
     return { 
         overdueTasks: overdue, 
         activeTasks: active, 
         accomplishedThisWeek: accomplished,
         onTimePerformance: performance,
+        completedTasksCount: allCompletedTasks.length,
     };
   }, [initialTasks]);
 
@@ -349,8 +351,13 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
               <Target className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{Math.round(onTimePerformance)}%</div>
+              <div className="text-2xl font-bold">
+                 {completedTasksCount > 0 ? `${Math.round(onTimePerformance)}%` : 'N/A'}
+              </div>
               <Progress value={onTimePerformance} className="h-2 mt-2" />
+               <p className="text-xs text-muted-foreground">
+                  {completedTasksCount > 0 ? 'Based on all completed tasks' : 'No tasks completed yet'}
+               </p>
             </CardContent>
         </Card>
       </div>
