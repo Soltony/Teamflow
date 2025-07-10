@@ -248,7 +248,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
                       <FormControl>
                         <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
                             {selectedUsers.length > 0
-                                ? selectedUsers.map(u => u.name).join(', ')
+                                ? `${selectedUsers.length} user(s) selected`
                                 : "Select users..."}
                           <ChevronDown className="ml-auto h-4 w-4" />
                         </Button>
