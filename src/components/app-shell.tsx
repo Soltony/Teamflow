@@ -17,6 +17,7 @@ import {
   ClipboardList,
   Wrench,
   AreaChart,
+  User,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -62,6 +63,7 @@ function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { isOpen, isMobile } = useSidebar();
   const { localUser, logout, hasPermission } = useAuth();
+  const router = useRouter();
   
   const userInitials = localUser
     ? `${localUser.firstName?.[0] ?? ''}${localUser.lastName?.[0] ?? ''}`.toUpperCase()
@@ -119,6 +121,11 @@ function AppSidebar({ className }: { className?: string }) {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => router.push('/profile')}>
+              <User className="mr-2 h-4 w-4" />
+              <span>Profile</span>
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
             <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
@@ -139,7 +146,7 @@ function AuthLoadingScreen() {
 }
 
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isMobile, toggleSidebar, isOpen } = useSidebar();
+  const { isMobile, toggleSidebar, isOpen } = useSidebar()
   const { accessToken, loading, localUser } = useAuth();
   const router = useRouter();
   
