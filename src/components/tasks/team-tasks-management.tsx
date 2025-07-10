@@ -194,10 +194,10 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                                       </div>
                                                       <p>{latestUpdate.text}</p>
                                                       {latestUpdate.progressPercentage !== null && (
-                                                          <div className="mt-2 text-xs text-muted-foreground">
-                                                            Progress reported: <span className="font-bold">{latestUpdate.progressPercentage}%</span>
-                                                          </div>
-                                                        )}
+                                                        <div className="mt-2 text-xs font-semibold text-primary">
+                                                            {latestUpdate.progressPercentage}%
+                                                        </div>
+                                                      )}
                                                   </div>
                                               </div>
                                           </div>
