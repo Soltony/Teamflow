@@ -14,7 +14,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import type { ProjectStatus, User, Team } from "@/lib/types";
+import type { ProjectStatus, User, Team, TaskUpdate } from "@/lib/types";
 import { format, formatDistanceToNow } from "date-fns";
 import { CheckCircle, XCircle, User as UserIcon } from "lucide-react";
 import { type ProjectWithTasksAndStats, type TeamViewTask } from "@/app/team-view/page";
@@ -145,8 +145,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <div className="space-y-4">
                   {tasks.length > 0 ? tasks.sort((a, b) => a.title.localeCompare(b.title)).map(task => {
                       const assignees = task.assignedUserIds.map(id => userMap.get(id)).filter(Boolean) as User[];
-                      const latestUpdate = task.updates && task.updates.length > 0 ? [...task.updates].reverse().find(u => u.type === 'COMMENT') : null;
-                      const latestUpdateAuthor = latestUpdate ? userMap.get(latestUpdate.authorId) : null;
+                      
                       return (
                           <Card key={task.id} className={task.status === 'PENDING_REVIEW' ? 'border-primary' : ''}>
                               <CardHeader>
@@ -177,32 +176,64 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                       </div>
                                       <Badge variant="outline">Due: {format(new Date(task.endDate), 'MMM dd, yyyy')}</Badge>
                                   </div>
-                                  {latestUpdate && (
-                                       <>
-                                          <Separator />
-                                          <div>
-                                              <h4 className="font-semibold mb-2 text-sm">Latest Update</h4>
-                                              <div className="flex items-start gap-3">
-                                                  <Avatar className="w-8 h-8 border">
-                                                      <AvatarImage src={latestUpdateAuthor?.avatar} />
-                                                      <AvatarFallback>{latestUpdateAuthor?.name.charAt(0)}</AvatarFallback>
-                                                  </Avatar>
-                                                  <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
-                                                      <div className="flex justify-between items-center mb-1">
-                                                          <span className="font-semibold">{latestUpdateAuthor?.name}</span>
-                                                          <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(latestUpdate.createdAt), { addSuffix: true })}</span>
+                                  
+                                  {task.updates && task.updates.length > 0 && (
+                                    <>
+                                      <Separator />
+                                      <div>
+                                          <h4 className="font-semibold mb-2 text-sm">Updates</h4>
+                                          <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                                              {task.updates.slice().reverse().map(update => {
+                                                  const author = userMap.get(update.authorId);
+                                                  
+                                                  if (update.type === 'STATUS_CHANGE') {
+                                                      const isApproval = update.text.includes('approved');
+                                                      return (
+                                                          <div key={update.id} className="flex items-start gap-3">
+                                                              <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                                                                  {isApproval ? (
+                                                                      <CheckCircle className="w-6 h-6 text-green-500" />
+                                                                  ) : (
+                                                                      <XCircle className="w-6 h-6 text-destructive" />
+                                                                  )}
+                                                              </div>
+                                                              <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
+                                                                  <div className="flex justify-between items-center mb-1">
+                                                                      <span className="font-semibold">{isApproval ? 'Task Approved' : 'Task Declined'}</span>
+                                                                      <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</span>
+                                                                  </div>
+                                                                  <p className="text-muted-foreground italic">{update.text}</p>
+                                                              </div>
+                                                          </div>
+                                                      );
+                                                  }
+
+                                                  return (
+                                                      <div key={update.id} className="flex items-start gap-3">
+                                                          <Avatar className="w-8 h-8 border">
+                                                              <AvatarImage src={author?.avatar} alt={author?.name} />
+                                                              <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
+                                                          </Avatar>
+                                                          <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
+                                                              <div className="flex justify-between items-center mb-1">
+                                                                  <span className="font-semibold">{author?.name}</span>
+                                                                  <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</span>
+                                                              </div>
+                                                              <p>{update.text}</p>
+                                                              {update.progressPercentage !== null && (
+                                                              <div className="mt-2 text-xs text-muted-foreground">
+                                                                  Progress reported: <span className="font-bold">{update.progressPercentage}%</span>
+                                                              </div>
+                                                              )}
+                                                          </div>
                                                       </div>
-                                                      <p>{latestUpdate.text}</p>
-                                                      {latestUpdate.progressPercentage !== null && (
-                                                        <div className="mt-2 text-xs text-muted-foreground">
-                                                            Progress reported: <span className="font-bold">{latestUpdate.progressPercentage}%</span>
-                                                        </div>
-                                                      )}
-                                                  </div>
-                                              </div>
+                                                  )
+                                              })}
                                           </div>
-                                       </>
+                                      </div>
+                                    </>
                                   )}
+                                  
                                   {task.status === 'PENDING_REVIEW' && (
                                       <>
                                           <Separator />
