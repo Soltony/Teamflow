@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import prisma from "@/lib/db";
-import { isPast, max as dateMax } from 'date-fns';
+import { isPast, max as dateMax, parseISO } from 'date-fns';
 import { ProjectStatusChart } from "@/components/dashboard/project-status-chart";
 import Link from 'next/link';
 import { AlertTriangle, ShieldAlert } from "lucide-react";
@@ -36,30 +36,33 @@ export default async function CEOReportPage() {
     // KPI Calculations
     const totalActiveProjects = projects.filter(p => p.statusId !== completedStatusId).length;
     const totalOpenBlockers = projects.reduce((acc, p) => acc + p.blockers.length, 0);
-    const overdueProjects = projects.filter(p => p.statusId !== completedStatusId && isPast(p.endDate));
+    const overdueProjects = projects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate.toISOString())));
     const totalOverdueProjects = overdueProjects.length;
 
     const completedProjects = projects.filter(p => p.statusId === completedStatusId);
     const onTimeProjectsCount = completedProjects.filter(project => {
-        const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.endDate));
+        const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate.toISOString())));
         if (allTaskEndDates.length === 0) return true;
         const lastTaskDate = dateMax(allTaskEndDates);
-        return lastTaskDate <= project.endDate;
+        return lastTaskDate <= parseISO(project.endDate.toISOString());
     }).length;
-    const overallCompletionRate = completedProjects.length > 0 ? (onTimeProjectsCount / completedProjects.length) * 100 : 100;
+    
+    // Corrected logic: Default to 0 if no projects are completed, not 100.
+    const overallCompletionRate = completedProjects.length > 0 ? (onTimeProjectsCount / completedProjects.length) * 100 : 0;
 
     // Division Performance Calculation
     const divisionPerformance = departments.map(dept => {
         const divisionProjects = projects.filter(p => p.departmentId === dept.id);
         const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
         const divOnTimeCount = divCompletedProjects.filter(project => {
-            const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.endDate));
+            const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate.toISOString())));
             if (allTaskEndDates.length === 0) return true;
             const lastTaskDate = dateMax(allTaskEndDates);
-            return lastTaskDate <= project.endDate;
+            return lastTaskDate <= parseISO(project.endDate.toISOString());
         }).length;
-        const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 100;
-        const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(p.endDate)).length;
+        // Corrected logic for division as well
+        const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 0;
+        const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate.toISOString()))).length;
 
         return {
             id: dept.id,
@@ -72,7 +75,7 @@ export default async function CEOReportPage() {
 
     // At-Risk Projects
     const atRiskProjects = projects.filter(p => 
-        p.statusId !== completedStatusId && (isPast(p.endDate) || p.blockers.length > 0)
+        p.statusId !== completedStatusId && (isPast(parseISO(p.endDate.toISOString())) || p.blockers.length > 0)
     ).sort((a,b) => b.blockers.length - a.blockers.length || a.endDate.getTime() - b.endDate.getTime());
 
 
@@ -101,8 +104,12 @@ export default async function CEOReportPage() {
                         <CardTitle className="text-sm font-medium">On-Time Completion Rate</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="text-2xl font-bold">{Math.round(overallCompletionRate)}%</div>
-                        <p className="text-xs text-muted-foreground">Of all completed projects</p>
+                        <div className="text-2xl font-bold">
+                             {completedProjects.length > 0 ? `${Math.round(overallCompletionRate)}%` : 'N/A'}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                            {completedProjects.length > 0 ? 'Of all completed projects' : 'No projects completed yet'}
+                        </p>
                     </CardContent>
                 </Card>
                 <Card>
@@ -158,7 +165,9 @@ export default async function CEOReportPage() {
                                     <TableRow key={div.id}>
                                         <TableCell className="font-medium">{div.name}</TableCell>
                                         <TableCell className="text-center">{div.totalProjects}</TableCell>
-                                        <TableCell className="text-center">{div.completionRate}%</TableCell>
+                                        <TableCell className="text-center">
+                                            {div.totalProjects > 0 ? `${div.completionRate}%` : 'N/A'}
+                                        </TableCell>
                                         <TableCell className="text-center">{div.overdueCount}</TableCell>
                                     </TableRow>
                                 ))}
