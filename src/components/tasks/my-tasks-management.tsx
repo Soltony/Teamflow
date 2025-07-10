@@ -33,18 +33,15 @@ import { CheckCircle, XCircle, AlertTriangle, Clock, Check, Target, Award } from
 import { Progress } from "@/components/ui/progress";
 import type { UserTask } from "@/app/my-tasks/actions";
 import { addTaskUpdateAction, updateTaskStatusAction } from "@/app/my-tasks/actions";
+import { Slider } from "../ui/slider";
 
-type MyTasksManagementProps = {
-  allUsers: User[];
-  currentUser: User;
-  initialTasks: UserTask[];
-};
-
-const taskUpdateSchema = z.object({
+const taskUpdateSchema = (taskProgress: number) => z.object({
   text: z.string().min(10, "Update must be at least 10 characters.").max(500, "Update cannot exceed 500 characters."),
+  progressPercentage: z.number().min(taskProgress, `Progress cannot go backward. Current is ${taskProgress}%.`).max(100, "Progress cannot exceed 100%."),
 });
 
-type TaskUpdateFormValues = z.infer<typeof taskUpdateSchema>;
+type TaskUpdateFormValues = z.infer<ReturnType<typeof taskUpdateSchema>>;
+
 
 const taskStatuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'PENDING_REVIEW', 'DONE'];
 const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
@@ -60,9 +57,12 @@ const TaskItem = ({
     onStatusChange: (newStatus: TaskStatus) => void;
     onUpdateSubmit: (data: TaskUpdateFormValues) => void;
 }) => {
+    
+    const currentProgress = task.progress ?? 0;
+
     const form = useForm<TaskUpdateFormValues>({
-        resolver: zodResolver(taskUpdateSchema),
-        defaultValues: { text: "" },
+        resolver: zodResolver(taskUpdateSchema(currentProgress)),
+        defaultValues: { text: "", progressPercentage: currentProgress },
     });
 
     return (
@@ -98,9 +98,13 @@ const TaskItem = ({
                                 </div>
                             </div>
                             <p className="text-sm text-muted-foreground">{task.description}</p>
-                            <div className="flex flex-wrap gap-4 text-sm">
+                            <div className="flex flex-wrap items-center gap-4 text-sm">
                                 <Badge variant="outline">Due: {format(new Date(task.endDate), 'MMM dd, yyyy')}</Badge>
                                 <Badge variant="secondary">Weight: {task.weight}%</Badge>
+                                <div className="flex-grow">
+                                    <Progress value={currentProgress} className="h-2" />
+                                </div>
+                                <span className="text-xs font-semibold">{currentProgress}% Complete</span>
                             </div>
                             <Separator />
                             <div>
@@ -144,6 +148,11 @@ const TaskItem = ({
                                                             <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</span>
                                                         </div>
                                                         <p>{update.text}</p>
+                                                        {update.progressPercentage !== null && (
+                                                          <div className="mt-2 text-xs text-muted-foreground">
+                                                            Progress reported: <span className="font-bold">{update.progressPercentage}%</span>
+                                                          </div>
+                                                        )}
                                                     </div>
                                                 </div>
                                             )
@@ -158,19 +167,37 @@ const TaskItem = ({
                                     </div>
                                 ) : (
                                     <Form {...form}>
-                                        <form onSubmit={form.handleSubmit((data) => { onUpdateSubmit(data); form.reset(); })} className="space-y-2 mt-4">
+                                        <form onSubmit={form.handleSubmit((data) => { onUpdateSubmit(data); form.reset({ text: '', progressPercentage: data.progressPercentage }); })} className="space-y-4 mt-4">
                                             <FormField
-                                            control={form.control}
-                                            name="text"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="sr-only">Add Update</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea placeholder="Post a new update..." {...field} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
+                                                control={form.control}
+                                                name="text"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel className="sr-only">Add Update</FormLabel>
+                                                        <FormControl>
+                                                            <Textarea placeholder="Post a new update..." {...field} />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
+                                            />
+                                            <FormField
+                                                control={form.control}
+                                                name="progressPercentage"
+                                                render={({ field }) => (
+                                                    <FormItem>
+                                                        <FormLabel>Task Progress: {field.value}%</FormLabel>
+                                                        <FormControl>
+                                                            <Slider
+                                                                value={[field.value ?? 0]}
+                                                                onValueChange={(value) => field.onChange(value[0])}
+                                                                max={100}
+                                                                step={5}
+                                                            />
+                                                        </FormControl>
+                                                        <FormMessage />
+                                                    </FormItem>
+                                                )}
                                             />
                                             <Button type="submit" size="sm">Post Update</Button>
                                         </form>
@@ -279,12 +306,14 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
   };
 
   const handleUpdateSubmit = async (task: UserTask, data: TaskUpdateFormValues) => {
-    const result = await addTaskUpdateAction(task.id, data.text, currentUser.id);
+    const result = await addTaskUpdateAction(task.id, data.text, currentUser.id, data.progressPercentage);
     let toastDescription = "Your progress update has been recorded.";
 
     if (result.success) {
-        if (task.status === 'IN_PROGRESS') {
-            toastDescription = "Your update has been posted and the task is resubmitted for review.";
+        if (task.status === 'IN_PROGRESS' && data.progressPercentage === 100) {
+            toastDescription = "Your update has been posted and the task is now pending review.";
+        } else if (task.status === 'IN_PROGRESS') {
+            toastDescription = "Your update has been posted.";
         }
         toast({
             title: "Update Added",

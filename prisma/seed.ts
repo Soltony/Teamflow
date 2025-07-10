@@ -291,6 +291,7 @@ async function main() {
             startDate: new Date(task.startDate),
             endDate: new Date(task.endDate),
             weight: task.weight,
+            progress: task.status === 'DONE' ? 100 : 0,
             completedAt: task.status === 'DONE' && !task.completedAt ? new Date() : (task.completedAt ? new Date(task.completedAt) : undefined),
             milestoneId: createdMilestone.id,
             assignees: {
@@ -311,6 +312,7 @@ async function main() {
                     id: update.id,
                     text: update.text,
                     type: update.type,
+                    progressPercentage: 50, // Default progress for seed
                     createdAt: new Date(update.createdAt),
                     authorId: authorId,
                     taskId: createdTask.id

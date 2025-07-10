@@ -34,6 +34,7 @@ export type TaskUpdate = {
   authorId: string;
   createdAt: string;
   type: TaskUpdateType;
+  progressPercentage: number | null;
 };
 
 export type TaskStatus = 'TODO' | 'IN_PROGRESS' | 'PENDING_REVIEW' | 'DONE';
@@ -46,6 +47,7 @@ export type Task = {
   startDate: string;
   endDate: string;
   weight: number;
+  progress: number;
   assignedUserIds: string[];
   updates?: TaskUpdate[];
   completedAt?: string | null;

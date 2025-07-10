@@ -58,7 +58,7 @@ export async function getMyTasks(userId: string) {
     projectName: task.milestone.project.name,
     milestoneId: task.milestone.id,
     milestoneTitle: task.milestone.title,
-    updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'] })),
+    updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'], progressPercentage: u.progressPercentage})),
     assignedUserIds: task.assignees.map(a => a.id),
   }));
 
@@ -75,7 +75,8 @@ export async function updateTaskStatusAction(taskId: string, newStatus: TaskStat
       where: { id: taskId },
       data: {
         status: newStatus,
-        completedAt: newStatus === 'DONE' ? new Date() : null
+        completedAt: newStatus === 'DONE' ? new Date() : null,
+        progress: newStatus === 'DONE' ? 100 : (newStatus === 'TODO' ? 0 : undefined),
       },
     });
     revalidatePath('/my-tasks');
@@ -86,7 +87,7 @@ export async function updateTaskStatusAction(taskId: string, newStatus: TaskStat
   }
 }
 
-export async function addTaskUpdateAction(taskId: string, text: string, authorId: string) {
+export async function addTaskUpdateAction(taskId: string, text: string, authorId: string, progressPercentage: number) {
     try {
         await prisma.$transaction(async (tx) => {
             const task = await tx.task.findUnique({ where: { id: taskId } });
@@ -100,15 +101,22 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
                     authorId,
                     taskId: taskId,
                     type: 'COMMENT',
+                    progressPercentage,
                 }
             });
 
-            if (task.status === 'IN_PROGRESS') {
-                await tx.task.update({
-                    where: { id: taskId },
-                    data: { status: 'PENDING_REVIEW' }
-                });
+            const updates: any = {
+                progress: progressPercentage
+            };
+            
+            if (task.status === 'TODO' || task.status === 'IN_PROGRESS') {
+                updates.status = progressPercentage === 100 ? 'PENDING_REVIEW' : 'IN_PROGRESS';
             }
+
+            await tx.task.update({
+                where: { id: taskId },
+                data: updates
+            });
         });
         
         revalidatePath('/my-tasks');
