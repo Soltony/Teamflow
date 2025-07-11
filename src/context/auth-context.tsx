@@ -49,6 +49,21 @@ const axiosInstance = axios.create({
   baseURL: process.env.NEXT_PUBLIC_AUTH_API_BASE_URL,
 });
 
+let isRefreshing = false;
+let failedQueue: { resolve: (value: any) => void; reject: (reason?: any) => void; }[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+
+  failedQueue = [];
+};
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<(AuthenticatedUser & { nameid: string }) | null>(null);
   const [localUser, setLocalUser] = useState<(PrismaUser & { roles: Role[] }) | null>(null);
@@ -146,24 +161,62 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   
   useEffect(() => {
     const responseInterceptor = axiosInstance.interceptors.response.use(
-      (response) => response,
-      (error) => {
-        if (error.response?.status === 401 && accessToken) {
-          logout();
-          toast({
-            title: 'Session Expired',
-            description: 'You have been logged out. Please sign in again.',
-            variant: 'destructive',
-          });
+        (response) => response,
+        async (error) => {
+            const originalRequest = error.config;
+            if (error.response?.status === 401 && !originalRequest._retry) {
+                if (isRefreshing) {
+                    return new Promise(function(resolve, reject) {
+                        failedQueue.push({resolve, reject});
+                    }).then(token => {
+                        originalRequest.headers['Authorization'] = 'Bearer ' + token;
+                        return axiosInstance(originalRequest);
+                    }).catch(err => {
+                        return Promise.reject(err);
+                    });
+                }
+                
+                originalRequest._retry = true;
+                isRefreshing = true;
+
+                const localRefreshToken = localStorage.getItem('refreshToken');
+                if (!localRefreshToken) {
+                    logout();
+                    return Promise.reject(error);
+                }
+
+                try {
+                    const { data } = await axiosInstance.post<AuthResponse>('/api/Auth/refresh-token', { refreshToken: localRefreshToken });
+                    if (data.isSuccess && data.accessToken && data.refreshToken) {
+                        await setSession(data.accessToken, data.refreshToken);
+                        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+                        originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
+                        processQueue(null, data.accessToken);
+                        return axiosInstance(originalRequest);
+                    } else {
+                        throw new Error("Refresh token failed");
+                    }
+                } catch (refreshError) {
+                    processQueue(refreshError, null);
+                    logout();
+                    toast({
+                        title: 'Session Expired',
+                        description: 'You have been logged out. Please sign in again.',
+                        variant: 'destructive',
+                    });
+                    return Promise.reject(refreshError);
+                } finally {
+                    isRefreshing = false;
+                }
+            }
+            return Promise.reject(error);
         }
-        return Promise.reject(error);
-      }
     );
 
     return () => {
-      axiosInstance.interceptors.response.eject(responseInterceptor);
+        axiosInstance.interceptors.response.eject(responseInterceptor);
     };
-  }, [accessToken, logout, toast]);
+}, [accessToken, refreshToken, logout, setSession, toast]);
   
   useEffect(() => {
     try {
