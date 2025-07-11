@@ -92,6 +92,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           setUserPermissions(new Set());
           delete axiosInstance.defaults.headers.common['Authorization'];
           setLoading(false);
+          router.replace('/login');
           return;
         }
 
@@ -141,6 +142,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         setRefreshToken(null);
         setUserPermissions(new Set());
         delete axiosInstance.defaults.headers.common['Authorization'];
+        router.replace('/login');
       }
     } else {
       localStorage.clear();
@@ -152,11 +154,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       delete axiosInstance.defaults.headers.common['Authorization'];
     }
     setLoading(false);
-  }, []);
+  }, [router]);
 
   const logout = useCallback(() => {
     setSession(null, null);
-    router.push('/login');
+    router.replace('/login');
   }, [setSession, router]);
   
   useEffect(() => {
@@ -185,29 +187,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     return Promise.reject(error);
                 }
 
-                try {
-                    const { data } = await axiosInstance.post<AuthResponse>('/api/Auth/refresh-token', { refreshToken: localRefreshToken });
-                    if (data.isSuccess && data.accessToken && data.refreshToken) {
-                        await setSession(data.accessToken, data.refreshToken);
-                        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
-                        originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
-                        processQueue(null, data.accessToken);
-                        return axiosInstance(originalRequest);
-                    } else {
-                        throw new Error("Refresh token failed");
+                return new Promise(async (resolve, reject) => {
+                    try {
+                        const { data } = await axios.post<AuthResponse>(`${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/refresh-token`, { refreshToken: localRefreshToken });
+                        if (data.isSuccess && data.accessToken && data.refreshToken) {
+                            await setSession(data.accessToken, data.refreshToken);
+                            axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+                            originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
+                            processQueue(null, data.accessToken);
+                            resolve(axiosInstance(originalRequest));
+                        } else {
+                            throw new Error("Refresh token failed");
+                        }
+                    } catch (refreshError) {
+                        processQueue(refreshError, null);
+                        logout();
+                        toast({
+                            title: 'Session Expired',
+                            description: 'You have been logged out. Please sign in again.',
+                            variant: 'destructive',
+                        });
+                        reject(refreshError);
+                    } finally {
+                        isRefreshing = false;
                     }
-                } catch (refreshError) {
-                    processQueue(refreshError, null);
-                    logout();
-                    toast({
-                        title: 'Session Expired',
-                        description: 'You have been logged out. Please sign in again.',
-                        variant: 'destructive',
-                    });
-                    return Promise.reject(refreshError);
-                } finally {
-                    isRefreshing = false;
-                }
+                });
             }
             return Promise.reject(error);
         }
@@ -216,35 +220,25 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     return () => {
         axiosInstance.interceptors.response.eject(responseInterceptor);
     };
-}, [accessToken, refreshToken, logout, setSession, toast]);
+  }, [logout, setSession, toast]);
   
   useEffect(() => {
-    try {
-      const storedAccessToken = localStorage.getItem('accessToken');
-      const storedRefreshToken = localStorage.getItem('refreshToken');
-      const storedLocalUser = localStorage.getItem('localUser');
-      if (storedAccessToken && storedRefreshToken) {
-        setSession(storedAccessToken, storedRefreshToken);
-        if (storedLocalUser) {
-            const parsedLocalUser = JSON.parse(storedLocalUser);
-            setLocalUser(parsedLocalUser);
-            const permissions = new Set<string>();
-             parsedLocalUser.roles?.forEach((role: Role) => {
-                if (role.name === 'Admin') {
-                    ALL_PERMISSIONS.forEach(p => permissions.add(p));
-                } else {
-                    role.permissions?.forEach(p => permissions.add(p));
-                }
-            });
-            setUserPermissions(permissions);
+    const initAuth = async () => {
+        try {
+            const storedAccessToken = localStorage.getItem('accessToken');
+            const storedRefreshToken = localStorage.getItem('refreshToken');
+            
+            if (storedAccessToken && storedRefreshToken) {
+                await setSession(storedAccessToken, storedRefreshToken);
+            } else {
+                setLoading(false);
+            }
+        } catch (error) {
+            console.error("Failed to initialize auth session from storage", error);
+            await setSession(null, null);
         }
-      } else {
-        setLoading(false);
-      }
-    } catch (error) {
-      console.error("Failed to initialize auth session from storage", error);
-      setSession(null, null);
-    }
+    };
+    initAuth();
   }, [setSession]);
   
   const isUserAdmin = useCallback(() => {
@@ -303,6 +297,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       console.error("Client-side login request failed:", axiosError.message);
       return { isSuccess: false, errors: ['Could not connect to the authentication service.'] };
+    } finally {
+        setLoading(false);
     }
   };
 
@@ -323,6 +319,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
        }
        console.error("Client-side registration request failed:", axiosError.message);
        return { isSuccess: false, errors: ['Could not connect to the authentication service. Please check your network or contact support.'] };
+    } finally {
+        setLoading(false);
     }
   };
 
