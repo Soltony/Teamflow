@@ -148,7 +148,7 @@ export default function RegisterPage() {
                 <FormItem>
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
-                    <Input placeholder="912345678" {...field} disabled={isSubmitting} />
+                    <Input placeholder="0912345678" {...field} disabled={isSubmitting} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>

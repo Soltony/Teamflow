@@ -321,7 +321,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
                       )} />
                   </div>
                   <FormField control={editUserForm.control} name="phoneNumber" render={({ field }) => (
-                      <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="123-456-7890" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="0912345678" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={editUserForm.control} name="email" render={({ field }) => (
                       <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
@@ -411,7 +411,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
                       )} />
                   </div>
                   <FormField control={addUserForm.control} name="phoneNumber" render={({ field }) => (
-                      <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="123-456-7890" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input placeholder="0912345678" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={addUserForm.control} name="email" render={({ field }) => (
                       <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
