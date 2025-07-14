@@ -42,10 +42,11 @@ export async function syncUser(input: SyncUserInput) {
     phoneNumber: input.phoneNumber,
   };
 
-  // On update, we only want to sync the avatar. 
+  // On update, we only want to sync the avatar and phone number.
   // Name and other details are managed in-app to prevent being overwritten by token data.
   const updateData = {
     avatar: input.picture,
+    phoneNumber: input.phoneNumber,
   };
 
   try {
