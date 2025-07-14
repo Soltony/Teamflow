@@ -4,7 +4,7 @@
 import axios from 'axios';
 
 interface ChangePasswordPayload {
-    userId: string;
+    phoneNumber: string;
     currentPassword?: string;
     newPassword?: string;
 }
@@ -17,10 +17,12 @@ export async function changePassword(data: ChangePasswordPayload, accessToken: s
                 'Authorization': `Bearer ${accessToken}`,
             },
         });
-
-        if (response.data.isSuccess) {
+        
+        // Check for a success message as per the updated API contract
+        if (response.data?.message === "Password changed successfully.") {
             return { success: true };
         } else {
+            // Handle cases where the server responds but doesn't confirm success
             const errorMessage = Array.isArray(response.data.errors) ? response.data.errors.join(', ') : 'An unknown error occurred.';
             return { success: false, error: errorMessage };
         }

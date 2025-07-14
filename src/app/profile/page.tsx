@@ -58,17 +58,17 @@ export default function ProfilePage() {
 
   const onSubmit = (data: ChangePasswordFormValues) => {
     startTransition(async () => {
-      if (!localUser || !accessToken) {
+      if (!localUser || !localUser.phoneNumber || !accessToken) {
         toast({
           title: 'Authentication Error',
-          description: 'You are not logged in. Please log in again.',
+          description: 'Your user profile is incomplete or you are not logged in. Please log in again.',
           variant: 'destructive',
         });
         return;
       }
 
       const result = await changePassword({
-        userId: localUser.id,
+        phoneNumber: localUser.phoneNumber,
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
       }, accessToken);
