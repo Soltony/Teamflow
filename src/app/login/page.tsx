@@ -47,7 +47,12 @@ export default function LoginPage() {
   const { isSubmitting } = form.formState;
 
   async function onSubmit(data: LoginFormValues) {
-    const result = await login(data);
+    const normalizedData = {
+      ...data,
+      phoneNumber: data.phoneNumber.replace(/\D/g, ''),
+    };
+
+    const result = await login(normalizedData);
     if (result.isSuccess) {
       toast({
         title: 'Login Successful',

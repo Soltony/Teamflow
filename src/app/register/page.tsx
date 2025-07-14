@@ -59,7 +59,12 @@ export default function RegisterPage() {
   const { isSubmitting } = form.formState;
 
   async function onSubmit(data: RegisterFormValues) {
-    const result = await register(data);
+    const normalizedData = {
+      ...data,
+      phoneNumber: data.phoneNumber.replace(/\D/g, ''),
+    };
+
+    const result = await register(normalizedData);
     if (result.isSuccess) {
       toast({
         title: 'Registration Successful',
