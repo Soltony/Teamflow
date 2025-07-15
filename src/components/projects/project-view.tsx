@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import Link from 'next/link';
+import { useRouter } from "next/navigation";
 import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import type { Blocker } from "@/lib/types";
@@ -24,6 +25,7 @@ type ProjectViewProps = {
 }
 
 export function ProjectView({ initialProject }: ProjectViewProps) {
+  const router = useRouter();
   const { toast } = useToast();
   const { hasPermission } = useAuth();
   const canUpdateProject = hasPermission('projects:update');
@@ -48,6 +50,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
       title: "Blocker Added",
       description: "The project blocker has been recorded and is now visible to management.",
     });
+    router.refresh();
   };
 
   const handleBlockerResolve = async (blockerId: string, resolution: string) => {
@@ -57,6 +60,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
       title: "Blocker Resolved",
       description: "The blocker has been marked as resolved.",
     });
+    router.refresh();
   };
 
   return (
