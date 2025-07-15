@@ -91,11 +91,11 @@ export default function AllMilestonesPage() {
                       return (
                         <AccordionItem value={project.id} key={project.id}>
                             <AccordionTrigger>
-                                <div className="flex flex-col items-start text-left flex-1 pr-4">
-                                    <Link href={`/projects/${project.id}`} className="font-semibold text-base hover:underline">
+                                <div className="flex justify-between items-center w-full pr-4">
+                                    <Link href={`/projects/${project.id}`} className="font-semibold text-base hover:underline text-left flex-1">
                                         {project.name}
                                     </Link>
-                                    <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                                    <div className="flex items-center gap-2 text-xs text-muted-foreground ml-4">
                                       <span>{totalMilestones} Milestones</span>
                                       <span className="text-gray-400">&bull;</span>
                                       <span>{completedMilestones} Completed</span>
