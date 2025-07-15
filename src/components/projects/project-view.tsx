@@ -11,6 +11,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { AddBlockerDialog } from "./add-blocker-dialog";
 import { ResolveBlockerDialog } from "./resolve-blocker-dialog";
+import { EditBlockerDialog } from './edit-blocker-dialog';
 import { Separator } from "../ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GanttChart } from "./gantt-chart";
@@ -30,6 +31,7 @@ type ProjectViewProps = {
   canUpdateProject: boolean;
   onAddBlocker: () => void;
   onResolveBlocker: (blocker: Blocker) => void;
+  onEditBlocker: (blocker: Blocker) => void;
   onDeleteBlocker: (blocker: Blocker) => void;
   isAddingBlocker: boolean;
   onAddBlockerOpenChange: (open: boolean) => void;
@@ -37,6 +39,9 @@ type ProjectViewProps = {
   resolvingBlocker: Blocker | null;
   onResolveBlockerOpenChange: (blocker: Blocker | null) => void;
   onBlockerResolveSubmit: (blockerId: string, resolution: string) => void;
+  editingBlocker: Blocker | null;
+  onEditBlockerOpenChange: (blocker: Blocker | null) => void;
+  onBlockerUpdateSubmit: (blockerId: string, description: string) => void;
   blockerToDelete: Blocker | null;
   onDeleteBlockerOpenChange: (blocker: Blocker | null) => void;
   onBlockerDeleteSubmit: () => void;
@@ -47,6 +52,7 @@ export function ProjectView({
     canUpdateProject,
     onAddBlocker,
     onResolveBlocker,
+    onEditBlocker,
     onDeleteBlocker,
     isAddingBlocker,
     onAddBlockerOpenChange,
@@ -54,6 +60,9 @@ export function ProjectView({
     resolvingBlocker,
     onResolveBlockerOpenChange,
     onBlockerResolveSubmit,
+    editingBlocker,
+    onEditBlockerOpenChange,
+    onBlockerUpdateSubmit,
     blockerToDelete,
     onDeleteBlockerOpenChange,
     onBlockerDeleteSubmit,
@@ -200,9 +209,15 @@ export function ProjectView({
                             </div>
                             <div className="flex items-center gap-1">
                                 {blocker.status === 'OPEN' && canUpdateProject && (
+                                  <>
+                                    <Button variant="ghost" size="icon" onClick={() => onEditBlocker(blocker)}>
+                                        <Pencil className="w-4 h-4" />
+                                        <span className="sr-only">Edit Blocker</span>
+                                    </Button>
                                     <Button variant="outline" size="sm" onClick={() => onResolveBlocker(blocker)}>
                                         Resolve
                                     </Button>
+                                  </>
                                 )}
                                 {canUpdateProject && (
                                     <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => onDeleteBlocker(blocker)}>
@@ -237,6 +252,15 @@ export function ProjectView({
           onOpenChange={(open) => !open && onResolveBlockerOpenChange(null)}
           blocker={resolvingBlocker}
           onBlockerResolve={onBlockerResolveSubmit}
+        />
+      )}
+
+      {editingBlocker && (
+        <EditBlockerDialog
+          isOpen={!!editingBlocker}
+          onOpenChange={(open) => !open && onEditBlockerOpenChange(null)}
+          blocker={editingBlocker}
+          onBlockerUpdate={onBlockerUpdateSubmit}
         />
       )}
 

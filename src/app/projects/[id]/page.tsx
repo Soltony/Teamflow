@@ -4,7 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { notFound, useRouter, useParams } from "next/navigation";
 import { ProjectView } from "@/components/projects/project-view";
-import { getProjectDetailsForUser, addBlocker, resolveBlocker, deleteBlocker } from "../actions";
+import { getProjectDetailsForUser, addBlocker, resolveBlocker, deleteBlocker, updateBlocker } from "../actions";
 import { useAuth } from "@/context/auth-context";
 import { BlockerStatus, TaskStatus, type Blocker } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -38,12 +38,14 @@ export default function ProjectDetailsPage() {
   const [isAddingBlocker, setAddingBlocker] = useState(false);
   const [resolvingBlocker, setResolvingBlocker] = useState<Blocker | null>(null);
   const [blockerToDelete, setBlockerToDelete] = useState<Blocker | null>(null);
+  const [editingBlocker, setEditingBlocker] = useState<Blocker | null>(null);
 
   const canUpdateProject = hasPermission('projects:update');
 
   const fetchProjectData = useCallback(async () => {
       if (!localUser?.id || !id) return;
       
+      setIsLoading(true);
       const data = await getProjectDetailsForUser(id, localUser.id);
       if (data) {
           const normalizedProject = {
@@ -65,6 +67,7 @@ export default function ProjectDetailsPage() {
       } else {
           notFound();
       }
+      setIsLoading(false);
   }, [id, localUser?.id]);
 
 
@@ -74,9 +77,7 @@ export default function ProjectDetailsPage() {
         router.replace('/dashboard');
         return;
       }
-      
-      setIsLoading(true);
-      fetchProjectData().finally(() => setIsLoading(false));
+      fetchProjectData();
     }
   }, [id, localUser, authLoading, hasPermission, router, fetchProjectData]);
 
@@ -88,7 +89,7 @@ export default function ProjectDetailsPage() {
       title: "Blocker Added",
       description: "The project blocker has been recorded.",
     });
-    await fetchProjectData(); // Re-fetch data
+    await fetchProjectData();
   };
 
   const handleBlockerResolve = async (blockerId: string, resolution: string) => {
@@ -99,7 +100,18 @@ export default function ProjectDetailsPage() {
       title: "Blocker Resolved",
       description: "The blocker has been marked as resolved.",
     });
-    await fetchProjectData(); // Re-fetch data
+    await fetchProjectData();
+  };
+
+  const handleBlockerUpdate = async (blockerId: string, description: string) => {
+    if (!project) return;
+    setEditingBlocker(null);
+    await updateBlocker(blockerId, description, project.id);
+    toast({
+      title: "Blocker Updated",
+      description: "The blocker description has been updated.",
+    });
+    await fetchProjectData();
   };
 
   const handleBlockerDelete = async () => {
@@ -110,7 +122,7 @@ export default function ProjectDetailsPage() {
       title: "Blocker Deleted",
       description: "The blocker has been permanently removed.",
     });
-    await fetchProjectData(); // Re-fetch data
+    await fetchProjectData();
   };
   
   if (isLoading || authLoading) {
@@ -131,6 +143,7 @@ export default function ProjectDetailsPage() {
         canUpdateProject={canUpdateProject}
         onAddBlocker={() => setAddingBlocker(true)}
         onResolveBlocker={(blocker) => setResolvingBlocker(blocker)}
+        onEditBlocker={(blocker) => setEditingBlocker(blocker)}
         onDeleteBlocker={(blocker) => setBlockerToDelete(blocker)}
         isAddingBlocker={isAddingBlocker}
         onAddBlockerOpenChange={setAddingBlocker}
@@ -138,6 +151,9 @@ export default function ProjectDetailsPage() {
         resolvingBlocker={resolvingBlocker}
         onResolveBlockerOpenChange={setResolvingBlocker}
         onBlockerResolveSubmit={handleBlockerResolve}
+        editingBlocker={editingBlocker}
+        onEditBlockerOpenChange={setEditingBlocker}
+        onBlockerUpdateSubmit={handleBlockerUpdate}
         blockerToDelete={blockerToDelete}
         onDeleteBlockerOpenChange={setBlockerToDelete}
         onBlockerDeleteSubmit={handleBlockerDelete}
