@@ -15,7 +15,6 @@ type NewProjectData = {
   users: User[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
-  activeYear: string;
 };
 
 function LoadingSkeleton() {
@@ -106,7 +105,6 @@ export default function NewProjectPage() {
             users={data.users}
             departments={data.departments}
             projectStatuses={data.projectStatuses}
-            activeYear={data.activeYear}
             onSubmit={handleCreateProject}
           />
         </CardContent>

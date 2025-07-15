@@ -7,19 +7,16 @@ import type { TaskStatus } from "@/lib/types";
 import type { Prisma } from '@prisma/client';
 
 export async function getNewProjectData() {
-    const [users, departments, projectStatuses, activeYearSetting] = await Promise.all([
+    const [users, departments, projectStatuses] = await Promise.all([
         prisma.user.findMany({ include: { roles: { select: { name: true } } } }),
         prisma.department.findMany(),
         prisma.projectStatus.findMany(),
-        prisma.setting.findUnique({ where: { key: 'activeWorkingYear' } }),
       ]);
-      const activeYear = activeYearSetting?.value || "";
 
       return {
         users: JSON.parse(JSON.stringify(users)),
         departments: JSON.parse(JSON.stringify(departments)),
         projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
-        activeYear,
       }
 }
 

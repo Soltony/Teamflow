@@ -107,11 +107,10 @@ type ProjectFormProps = {
   users: UserWithRoles[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
-  activeYear?: string;
   onSubmit: (data: ProjectFormValues) => Promise<any>;
 }
 
-export function ProjectForm({ mode, initialData, users, departments, projectStatuses, activeYear, onSubmit }: ProjectFormProps) {
+export function ProjectForm({ mode, initialData, users, departments, projectStatuses, onSubmit }: ProjectFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditMode = mode === 'edit';
@@ -120,12 +119,24 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
     return users.filter(user => !user.roles.some(role => role.name === 'Admin'));
   }, [users]);
 
+  const getCurrentWorkingYear = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth(); // 0-indexed (January is 0)
+    // Assuming fiscal year starts in July (month index 6)
+    if (month >= 6) {
+      return `${year}/${year + 1}`;
+    } else {
+      return `${year - 1}/${year}`;
+    }
+  };
+
   const form = useForm<ProjectFormValues>({
     resolver: zodResolver(projectSchema),
     defaultValues: isEditMode && initialData ? initialData : {
       name: "",
       description: "",
-      workingYear: activeYear || "",
+      workingYear: getCurrentWorkingYear(),
       statusId: "",
       departmentId: "",
       projectManagerId: "",
