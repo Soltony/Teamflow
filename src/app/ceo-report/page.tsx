@@ -11,6 +11,13 @@ import { format } from "date-fns";
 
 export const dynamic = 'force-dynamic';
 
+const LinkWrapper = ({ href, count, children }: { href: string; count: number; children: React.ReactNode }) => {
+    if (count > 0) {
+        return <Link href={href} className="cursor-pointer">{children}</Link>;
+    }
+    return <>{children}</>;
+};
+
 export default async function CEOReportPage() {
     const [projects, projectStatuses, departments] = await Promise.all([
         prisma.project.findMany({
@@ -90,46 +97,54 @@ export default async function CEOReportPage() {
 
             {/* KPIs */}
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalActiveProjects}</div>
-                        <p className="text-xs text-muted-foreground">Projects currently in progress</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">On-Time Completion Rate</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">
-                             {completedProjects.length > 0 ? `${Math.round(overallCompletionRate)}%` : 'N/A'}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                            {completedProjects.length > 0 ? 'Of all completed projects' : 'No projects completed yet'}
-                        </p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Overdue Projects</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalOverdueProjects}</div>
-                        <p className="text-xs text-muted-foreground">Active projects past their deadline</p>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                        <CardTitle className="text-sm font-medium">Open Blockers</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                        <div className="text-2xl font-bold">{totalOpenBlockers}</div>
-                        <p className="text-xs text-muted-foreground">Issues impeding project progress</p>
-                    </CardContent>
-                </Card>
+                <LinkWrapper href="/projects" count={totalActiveProjects}>
+                    <Card className="hover:bg-muted/80 transition-colors">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalActiveProjects}</div>
+                            <p className="text-xs text-muted-foreground">Projects currently in progress</p>
+                        </CardContent>
+                    </Card>
+                </LinkWrapper>
+                <LinkWrapper href="/reports?type=on-time" count={onTimeProjectsCount}>
+                    <Card className="hover:bg-muted/80 transition-colors">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">On-Time Completion Rate</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">
+                                 {completedProjects.length > 0 ? `${Math.round(overallCompletionRate)}%` : 'N/A'}
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                                {completedProjects.length > 0 ? 'Of all completed projects' : 'No projects completed yet'}
+                            </p>
+                        </CardContent>
+                    </Card>
+                </LinkWrapper>
+                <LinkWrapper href="/reports?type=overdue" count={totalOverdueProjects}>
+                    <Card className="hover:bg-muted/80 transition-colors">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Overdue Projects</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalOverdueProjects}</div>
+                            <p className="text-xs text-muted-foreground">Active projects past their deadline</p>
+                        </CardContent>
+                    </Card>
+                </LinkWrapper>
+                <LinkWrapper href="/reports?type=active-blockers" count={totalOpenBlockers}>
+                    <Card className="hover:bg-muted/80 transition-colors">
+                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                            <CardTitle className="text-sm font-medium">Open Blockers</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <div className="text-2xl font-bold">{totalOpenBlockers}</div>
+                            <p className="text-xs text-muted-foreground">Issues impeding project progress</p>
+                        </CardContent>
+                    </Card>
+                </LinkWrapper>
             </div>
 
             <div className="grid gap-6 md:grid-cols-3">
