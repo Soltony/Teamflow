@@ -61,8 +61,8 @@ export default function DepartmentsPage() {
         <div className="p-4 sm:p-6">
            <Card>
             <CardHeader>
-              <CardTitle>Division Management</CardTitle>
-              <CardDescription>Add, view, and manage divisions within your organization.</CardDescription>
+              <CardTitle>PMO Division Management</CardTitle>
+              <CardDescription>Add, view, and manage PMO divisions within your organization.</CardDescription>
             </CardHeader>
             <CardContent>
               <DepartmentsManagement initialDepartments={departments} />

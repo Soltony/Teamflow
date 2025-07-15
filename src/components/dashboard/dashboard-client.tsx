@@ -35,7 +35,7 @@ const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode,
   return <>{children}</>;
 };
 
-export function DashboardClient({ initialProjects, projectStatuses, departments, teams, availableYears }: any) {
+export function DashboardClient({ initialProjects, projectStatuses, departments, teams, availableYears, currentWorkingYear }: any) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -49,7 +49,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     );
   }
 
-  const selectedYear = searchParams.get('year') || "all";
+  const selectedYear = searchParams.get('year') || currentWorkingYear;
   const selectedDivision = searchParams.get('division') || "all";
 
   const { filteredProjects, filteredTeams } = React.useMemo(() => {
@@ -122,10 +122,10 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             </Select>
             <Select value={selectedDivision} onValueChange={(value) => handleQueryChange('division', value)}>
               <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Select a division" />
+                <SelectValue placeholder="Select a PMO division" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All Divisions</SelectItem>
+                <SelectItem value="all">All PMO Divisions</SelectItem>
                 {departments.map((dept: any) => (
                     <SelectItem key={dept.id} value={dept.id}>
                         {dept.name}
@@ -142,7 +142,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
           <CardHeader>
             <CardTitle>Welcome to NIB PMO!</CardTitle>
             <CardDescription>
-              Your central hub for managing projects, teams, and divisions
+              Your central hub for managing projects, teams, and PMO divisions
               efficiently.
             </CardDescription>
           </CardHeader>
@@ -211,9 +211,9 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>Projects by Owning Division</CardTitle>
+            <CardTitle>Projects by Owning PMO Division</CardTitle>
             <CardDescription>
-              Distribution of projects across owning divisions.
+              Distribution of projects across owning PMO divisions.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -233,9 +233,9 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Milestone Responsibilities by Division</CardTitle>
+            <CardTitle>Milestone Responsibilities by PMO Division</CardTitle>
             <CardDescription>
-              Total milestones each division is responsible for.
+              Total milestones each PMO division is responsible for.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -251,14 +251,14 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Organization Divisions</CardTitle>
+            <CardTitle>Organization PMO Divisions</CardTitle>
             <CardDescription>
-              A list of all divisions.
+              A list of all PMO divisions.
               {hasPermission('departments:read') && (
                 <>
                   {' '}Manage them in the{' '}
                   <Link href="/departments" className="text-primary hover:underline">
-                    Divisions page
+                    PMO Divisions page
                   </Link>
                   .
                 </>
@@ -287,7 +287,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No divisions found. Add one on the Divisions page.
+                  No PMO divisions found. Add one on the PMO Divisions page.
                 </p>
               )}
             </div>

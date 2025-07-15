@@ -25,7 +25,7 @@ export function DepartmentProjectsChart({ projects, departments }: { projects: P
   const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 
   const projectsByDept = projects.reduce((acc, project) => {
-    const deptName = departmentMap.get(project.departmentId) || "Unknown Division";
+    const deptName = departmentMap.get(project.departmentId) || "Unknown PMO Division";
     acc[deptName] = (acc[deptName] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
