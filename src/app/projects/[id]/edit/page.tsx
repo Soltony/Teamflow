@@ -11,7 +11,6 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getProjectForEdit, updateProject } from "../../actions";
 import type { User, Department, ProjectStatus } from "@prisma/client";
 import { parseISO } from "date-fns";
-import { Decimal } from "@prisma/client/runtime/library";
 
 type EditProjectData = {
   project: any;
@@ -73,15 +72,9 @@ export default function EditProjectPage() {
   }, [authLoading, hasPermission, router, projectId]);
 
   const handleUpdateProject = async (formData: any) => {
-    const dataToSend = {
-      ...formData,
-      totalCost: formData.hasCost ? new Decimal(formData.totalCost || 0) : null,
-      milestones: formData.milestones.map((m: any) => ({
-        ...m,
-        cost: formData.hasCost && formData.costByMilestones ? new Decimal(m.cost || 0) : null,
-      })),
-    };
-    const result = await updateProject(projectId, dataToSend);
+    // The conversion to Decimal will happen on the server side in the action.
+    // The form data can send numbers.
+    const result = await updateProject(projectId, formData);
     if (result.success) {
       toast({
         title: "Project Updated!",
@@ -146,5 +139,3 @@ export default function EditProjectPage() {
     </div>
   );
 }
-
-    

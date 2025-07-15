@@ -10,7 +10,6 @@ import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { User, Department, ProjectStatus } from "@prisma/client";
-import { Decimal } from "@prisma/client/runtime/library";
 
 type NewProjectData = {
   users: User[];
@@ -64,16 +63,9 @@ export default function NewProjectPage() {
 
   const handleCreateProject = async (formData: any) => {
     try {
-      const dataToSend = {
-        ...formData,
-        totalCost: formData.hasCost ? new Decimal(formData.totalCost || 0) : null,
-        milestones: formData.milestones.map((m: any) => ({
-          ...m,
-          cost: formData.hasCost && formData.costByMilestones ? new Decimal(m.cost || 0) : null,
-        })),
-      };
-      
-      await createProject(dataToSend);
+      // The conversion to Decimal will happen on the server side in the action.
+      // The form data can send numbers.
+      await createProject(formData);
       toast({
         title: "Project Created!",
         description: `Project "${formData.name}" has been successfully created.`,
@@ -123,5 +115,3 @@ export default function NewProjectPage() {
     </div>
   );
 }
-
-    

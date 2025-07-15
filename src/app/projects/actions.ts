@@ -5,6 +5,7 @@ import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { TaskStatus } from "@/lib/types";
 import type { Prisma } from '@prisma/client';
+import { Decimal } from '@prisma/client/runtime/library';
 
 export async function getNewProjectData() {
     const [users, departments, projectStatuses] = await Promise.all([
@@ -27,8 +28,8 @@ export async function createProject(data: any) {
     await prisma.project.create({
         data: {
             ...projectData,
-            totalCost: hasCost ? projectData.totalCost : null,
-            costByMilestones: hasCost ? projectData.costByMilestones : null,
+            totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
+            costByMilestones: hasCost ? projectData.costByMilestones : false,
             milestones: {
                 create: milestones.map((m: any) => ({
                     title: m.title,
@@ -36,7 +37,7 @@ export async function createProject(data: any) {
                     startDate: m.startDate,
                     dueDate: m.dueDate,
                     weight: m.weight,
-                    cost: hasCost && projectData.costByMilestones ? m.cost : null,
+                    cost: hasCost && projectData.costByMilestones ? new Decimal(m.cost || 0) : null,
                     responsibleDepartments: {
                         connect: m.responsibleDepartmentIds.map((id: string) => ({ id }))
                     }
@@ -137,8 +138,8 @@ export async function updateProject(projectId: string, data: any) {
                   departmentId: projectData.departmentId,
                   projectManagerId: projectData.projectManagerId,
                   workingYear: projectData.workingYear,
-                  totalCost: hasCost ? projectData.totalCost : null,
-                  costByMilestones: hasCost ? projectData.costByMilestones : null,
+                  totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
+                  costByMilestones: hasCost ? projectData.costByMilestones : false,
                 }
             });
 
@@ -151,7 +152,7 @@ export async function updateProject(projectId: string, data: any) {
                     startDate: milestoneData.startDate,
                     dueDate: milestoneData.dueDate,
                     weight: milestoneData.weight,
-                    cost: hasCost && projectData.costByMilestones ? milestoneData.cost : null,
+                    cost: hasCost && projectData.costByMilestones ? new Decimal(milestoneData.cost || 0) : null,
                     responsibleDepartments: {
                         set: responsibleDepartmentIds.map((deptId: string) => ({ id: deptId }))
                     }
@@ -478,5 +479,3 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
         departments: JSON.parse(JSON.stringify(departments))
     };
 }
-
-    
