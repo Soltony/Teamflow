@@ -35,7 +35,7 @@ const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode,
   return <>{children}</>;
 };
 
-export function DashboardClient({ initialProjects, projectStatuses, departments, teams, availableYears }: any) {
+export function DashboardClient({ initialProjects, projectStatuses, departments, teams, availableYears, currentWorkingYear }: any) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -49,7 +49,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     );
   }
 
-  const selectedYear = searchParams.get('year') || "all";
+  const selectedYear = searchParams.get('year') || currentWorkingYear;
   const selectedDivision = searchParams.get('division') || "all";
 
   const { filteredProjects, filteredTeams } = React.useMemo(() => {
