@@ -1,3 +1,4 @@
+
 'use server';
 
 import prisma from "@/lib/db";
@@ -55,7 +56,8 @@ export async function getMilestonesPageData(userId: string) {
         include: {
             milestones: {
                 include: {
-                    responsibleDepartments: true
+                    responsibleDepartments: true,
+                    tasks: true, // Include tasks to check milestone completion status
                 },
                 orderBy: {
                     dueDate: 'asc'
