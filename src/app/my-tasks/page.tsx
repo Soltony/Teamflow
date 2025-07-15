@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useAuth } from '@/context/auth-context';
 import { MyTasksManagement } from "@/components/tasks/my-tasks-management";
 import { getMyTasks } from './actions';
@@ -30,18 +30,22 @@ export default function MyTasksPage() {
     const [tasksData, setTasksData] = useState<{ userTasks: UserTask[], allUsers: User[] } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    useEffect(() => {
+    const fetchTasks = useCallback(async () => {
         if (localUser?.id) {
             setIsLoading(true);
-            getMyTasks(localUser.id).then(data => {
-                setTasksData(data);
-                setIsLoading(false);
-            });
-        } else if (!authLoading) {
-            // If auth is done loading and there's no user, stop loading.
+            const data = await getMyTasks(localUser.id);
+            setTasksData(data);
             setIsLoading(false);
         }
-    }, [localUser, authLoading]);
+    }, [localUser?.id]);
+
+    useEffect(() => {
+        if (localUser?.id) {
+            fetchTasks();
+        } else if (!authLoading) {
+            setIsLoading(false);
+        }
+    }, [localUser, authLoading, fetchTasks]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -60,6 +64,7 @@ export default function MyTasksPage() {
             allUsers={tasksData.allUsers}
             currentUser={localUser}
             initialTasks={tasksData.userTasks}
+            onDataChange={fetchTasks}
         />
     );
 }

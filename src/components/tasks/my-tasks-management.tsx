@@ -42,6 +42,13 @@ const taskUpdateSchema = (taskProgress: number) => z.object({
 
 type TaskUpdateFormValues = z.infer<ReturnType<typeof taskUpdateSchema>>;
 
+type MyTasksManagementProps = {
+    allUsers: User[];
+    currentUser: User;
+    initialTasks: UserTask[];
+    onDataChange: () => void;
+};
+
 
 const taskStatuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'PENDING_REVIEW', 'DONE'];
 const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
@@ -243,7 +250,7 @@ const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubm
     </Card>
 )
 
-export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTasksManagementProps) {
+export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataChange }: MyTasksManagementProps) {
   const { toast } = useToast();
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
@@ -296,6 +303,7 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
             title: "Status Updated",
             description: `Task status has been changed to "${formatStatus(newStatus)}".`
         });
+        onDataChange();
     } else {
         toast({
             title: "Error",
@@ -319,6 +327,7 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks }: MyTas
             title: "Update Added",
             description: toastDescription
         });
+        onDataChange();
     } else {
         toast({
             title: "Error",
