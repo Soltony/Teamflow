@@ -51,7 +51,7 @@ export default async function CEOReportPage() {
     const overallCompletionRate = completedProjects.length > 0 ? (onTimeProjectsCount / completedProjects.length) * 100 : 0;
 
     // Division Performance Calculation
-    const divisionPerformance = departments.map(dept => {
+    const pmoDivisionPerformance = departments.map(dept => {
         const divisionProjects = projects.filter(p => p.departmentId === dept.id);
         const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
         const divOnTimeCount = divCompletedProjects.filter(project => {
@@ -144,24 +144,24 @@ export default async function CEOReportPage() {
                     </CardContent>
                 </Card>
 
-                {/* Division Performance */}
+                {/* PMO Division Performance */}
                 <Card className="md:col-span-2">
                     <CardHeader>
-                        <CardTitle>Division Performance</CardTitle>
-                        <CardDescription>A breakdown of key metrics for each division.</CardDescription>
+                        <CardTitle>PMO Division Performance</CardTitle>
+                        <CardDescription>A breakdown of key metrics for each PMO division.</CardDescription>
                     </CardHeader>
                     <CardContent>
                         <Table>
                             <TableHeader>
                                 <TableRow>
-                                    <TableHead>Division</TableHead>
+                                    <TableHead>PMO Division</TableHead>
                                     <TableHead className="text-center">Total Projects</TableHead>
                                     <TableHead className="text-center">Completion Rate</TableHead>
                                     <TableHead className="text-center">Overdue</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
-                                {divisionPerformance.map(div => (
+                                {pmoDivisionPerformance.map(div => (
                                     <TableRow key={div.id}>
                                         <TableCell className="font-medium">{div.name}</TableCell>
                                         <TableCell className="text-center">{div.totalProjects}</TableCell>

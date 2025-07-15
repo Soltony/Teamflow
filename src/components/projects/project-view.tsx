@@ -102,7 +102,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
             </div>
              <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
-                <span>Owning Division: {initialProject.owningDepartment?.name || 'N/A'}</span>
+                <span>Owning PMO Division: {initialProject.owningDepartment?.name || 'N/A'}</span>
             </div>
              <div className="flex items-center gap-2">
                 <UserCircle className="w-4 h-4" />

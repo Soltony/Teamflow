@@ -32,7 +32,7 @@ export function ResponsibleDepartmentChart({ projects, departments, selectedDivi
                 if (selectedDivisionId !== 'all' && dept.id !== selectedDivisionId) {
                     return;
                 }
-                const deptName = departmentMap.get(dept.id) || "Unknown Division";
+                const deptName = departmentMap.get(dept.id) || "Unknown PMO Division";
                 acc[deptName] = (acc[deptName] || 0) + 1;
             })
           }

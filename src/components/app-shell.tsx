@@ -52,7 +52,7 @@ const menuItems = [
   { href: "/projects", label: "Projects", icon: FolderKanban, permission: 'projects:read' },
   { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
-  { href: "/departments", label: "Divisions", icon: Building2, permission: 'departments:read' },
+  { href: "/departments", label: "PMO Divisions", icon: Building2, permission: 'departments:read' },
   { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
   { href: "/ceo-report", label: "Reports", icon: AreaChart, permission: 'reports:view' },
   { href: "/settings", label: "Settings", icon: Settings, permission: 'settings:manage' },

@@ -55,7 +55,7 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
       startDate: z.date(),
       dueDate: z.date(),
       weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
-      responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one division must be responsible." }),
+      responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one PMO division must be responsible." }),
     }).refine(data => data.dueDate >= data.startDate, {
         message: "Due date must be on or after start date.",
         path: ["dueDate"],
@@ -220,14 +220,14 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
                 name="responsibleDepartmentIds"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
-                      <FormLabel>Responsible Divisions</FormLabel>
+                      <FormLabel>Responsible PMO Divisions</FormLabel>
                       <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                           <FormControl>
                           <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
                               {selectedDepts.length > 0
                                   ? selectedDepts.map(d => d.name).join(', ')
-                                  : "Select divisions..."}
+                                  : "Select PMO divisions..."}
                               <ChevronDown className="ml-auto h-4 w-4" />
                           </Button>
                           </FormControl>
