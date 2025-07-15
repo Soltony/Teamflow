@@ -11,6 +11,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { getProjectForEdit, updateProject } from "../../actions";
 import type { User, Department, ProjectStatus } from "@prisma/client";
 import { parseISO } from "date-fns";
+import { Decimal } from "@prisma/client/runtime/library";
 
 type EditProjectData = {
   project: any;
@@ -72,7 +73,15 @@ export default function EditProjectPage() {
   }, [authLoading, hasPermission, router, projectId]);
 
   const handleUpdateProject = async (formData: any) => {
-    const result = await updateProject(projectId, formData);
+    const dataToSend = {
+      ...formData,
+      totalCost: formData.hasCost ? new Decimal(formData.totalCost || 0) : null,
+      milestones: formData.milestones.map((m: any) => ({
+        ...m,
+        cost: formData.hasCost && formData.costByMilestones ? new Decimal(m.cost || 0) : null,
+      })),
+    };
+    const result = await updateProject(projectId, dataToSend);
     if (result.success) {
       toast({
         title: "Project Updated!",
@@ -103,10 +112,12 @@ export default function EditProjectPage() {
   
   const initialDataForForm = {
       ...data.project,
+      totalCost: data.project.totalCost ? parseFloat(data.project.totalCost) : 0,
       startDate: parseISO(data.project.startDate),
       endDate: parseISO(data.project.endDate),
       milestones: data.project.milestones.map((m: any) => ({
           ...m,
+          cost: m.cost ? parseFloat(m.cost) : 0,
           startDate: parseISO(m.startDate),
           dueDate: parseISO(m.dueDate),
       }))
@@ -135,3 +146,5 @@ export default function EditProjectPage() {
     </div>
   );
 }
+
+    

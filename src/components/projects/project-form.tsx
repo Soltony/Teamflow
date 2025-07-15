@@ -43,6 +43,7 @@ import { Separator } from "../ui/separator";
 import type { User, Department, ProjectStatus } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
+import { Switch } from "../ui/switch";
 
 
 const milestoneSchema = z.object({
@@ -53,6 +54,7 @@ const milestoneSchema = z.object({
   dueDate: z.date(),
   weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
   responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one PMO division must be responsible." }),
+  cost: z.coerce.number().optional(),
 }).refine(data => data.dueDate >= data.startDate, {
     message: "Due date must be on or after the start date.",
     path: ["dueDate"],
@@ -67,6 +69,9 @@ const projectSchema = z.object({
   statusId: z.string().nonempty("Please select a project status."),
   departmentId: z.string().nonempty("Please select a PMO division."),
   projectManagerId: z.string().nonempty("Please select a project manager."),
+  hasCost: z.boolean().default(false),
+  totalCost: z.coerce.number().optional(),
+  costByMilestones: z.boolean().default(false),
   milestones: z.array(milestoneSchema),
 }).refine(data => data.endDate > data.startDate, {
     message: "End date must be after start date.",
@@ -95,6 +100,17 @@ const projectSchema = z.object({
             });
         }
     });
+
+    if (data.hasCost && data.costByMilestones) {
+        const milestoneCostSum = data.milestones.reduce((sum, m) => sum + (m.cost || 0), 0);
+        if (milestoneCostSum !== data.totalCost) {
+            ctx.addIssue({
+                path: ["totalCost"],
+                message: `The sum of milestone costs (${milestoneCostSum.toLocaleString()}) must equal the total project cost (${(data.totalCost || 0).toLocaleString()}).`,
+                code: z.ZodIssueCode.custom
+            });
+        }
+    }
 });
 
 type ProjectFormValues = z.infer<typeof projectSchema>;
@@ -123,7 +139,6 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth(); // 0-indexed (January is 0)
-    // Assuming fiscal year starts in July (month index 6)
     if (month >= 6) {
       return `${year}/${year + 1}`;
     } else {
@@ -140,11 +155,16 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
       statusId: "",
       departmentId: "",
       projectManagerId: "",
+      hasCost: false,
+      totalCost: 0,
+      costByMilestones: false,
       milestones: [],
     },
   });
 
   const selectedDepartmentId = form.watch("departmentId");
+  const hasCost = form.watch("hasCost");
+  const costByMilestones = form.watch("costByMilestones");
 
   const projectManagers = useMemo(() => {
     const usersToFilter = nonAdminUsers;
@@ -356,6 +376,70 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
                     )}
                 />
              </div>
+             <Separator />
+             <div className="space-y-4">
+                <div>
+                    <h3 className="text-lg font-medium">Cost Management</h3>
+                    <p className="text-sm text-muted-foreground">Manage the financial aspects of your project.</p>
+                </div>
+                 <FormField
+                    control={form.control}
+                    name="hasCost"
+                    render={({ field }) => (
+                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                        <div className="space-y-0.5">
+                        <FormLabel className="text-base">This project has a cost</FormLabel>
+                        <FormDescription>
+                            Enable to add financial tracking to this project.
+                        </FormDescription>
+                        </div>
+                        <FormControl>
+                        <Switch
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                        />
+                        </FormControl>
+                    </FormItem>
+                    )}
+                />
+                {hasCost && (
+                    <div className="space-y-4 p-4 border rounded-lg">
+                        <FormField
+                            control={form.control}
+                            name="totalCost"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Total Project Cost</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 50000" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={form.control}
+                            name="costByMilestones"
+                            render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                                <div className="space-y-0.5">
+                                <FormLabel>Divide cost by milestones</FormLabel>
+                                <FormDescription>
+                                    Allocate the total cost across individual milestones.
+                                </FormDescription>
+                                </div>
+                                <FormControl>
+                                <Switch
+                                    checked={field.value}
+                                    onCheckedChange={field.onChange}
+                                />
+                                </FormControl>
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                )}
+             </div>
         </div>
         
         <div className="space-y-4">
@@ -499,20 +583,38 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
                               )
                           }}
                       />
+                      
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                            control={form.control}
+                            name={`milestones.${index}.weight`}
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Milestone Weight (%)</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        {hasCost && costByMilestones && (
+                            <FormField
+                                control={form.control}
+                                name={`milestones.${index}.cost`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Milestone Cost</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="e.g., 10000" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        )}
+                      </div>
 
-                      <FormField
-                          control={form.control}
-                          name={`milestones.${index}.weight`}
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Milestone Weight (%)</FormLabel>
-                              <FormControl>
-                                  <Input type="number" placeholder="e.g., 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
-                              </FormControl>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                      />
                   </div>
                 </CardContent>
               </Card>
@@ -522,7 +624,7 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => append({ title: '', description: '', startDate: new Date(), dueDate: new Date(), weight: 20, responsibleDepartmentIds: [] })}
+                onClick={() => append({ title: '', description: '', startDate: new Date(), dueDate: new Date(), weight: 20, responsibleDepartmentIds: [], cost: 0 })}
             >
                 <PlusCircle className="w-4 h-4 mr-2" />
                 Add Milestone
@@ -542,3 +644,5 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
     </Form>
   );
 }
+
+    

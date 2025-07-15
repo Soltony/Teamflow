@@ -10,6 +10,7 @@ import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { User, Department, ProjectStatus } from "@prisma/client";
+import { Decimal } from "@prisma/client/runtime/library";
 
 type NewProjectData = {
   users: User[];
@@ -63,13 +64,23 @@ export default function NewProjectPage() {
 
   const handleCreateProject = async (formData: any) => {
     try {
-      await createProject(formData);
+      const dataToSend = {
+        ...formData,
+        totalCost: formData.hasCost ? new Decimal(formData.totalCost || 0) : null,
+        milestones: formData.milestones.map((m: any) => ({
+          ...m,
+          cost: formData.hasCost && formData.costByMilestones ? new Decimal(m.cost || 0) : null,
+        })),
+      };
+      
+      await createProject(dataToSend);
       toast({
         title: "Project Created!",
         description: `Project "${formData.name}" has been successfully created.`,
       });
       router.push('/dashboard');
     } catch (error) {
+      console.error(error);
       toast({
         title: "Error",
         description: "Failed to create project. Please try again.",
@@ -112,3 +123,5 @@ export default function NewProjectPage() {
     </div>
   );
 }
+
+    
