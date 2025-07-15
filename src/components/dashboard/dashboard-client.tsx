@@ -17,6 +17,14 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -25,7 +33,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
-import { isPast, max as dateMax, parseISO } from 'date-fns';
+import { isPast, max as dateMax, parseISO, format } from 'date-fns';
 import { useAuth } from "@/context/auth-context";
 
 const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode, count: number, href: string }) => {
@@ -52,7 +60,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
   const selectedYear = searchParams.get('year') || currentWorkingYear;
   const selectedDivision = searchParams.get('division') || "all";
 
-  const { filteredProjects, filteredTeams } = React.useMemo(() => {
+  const { filteredProjects, filteredTeams, activeProjects } = React.useMemo(() => {
     let tempProjects = initialProjects;
 
     if (selectedYear !== "all") {
@@ -66,8 +74,15 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     const projectIds = new Set(tempProjects.map((p:any) => p.id));
     const tempTeams = teams.filter((t: any) => projectIds.has(t.projectId));
 
-    return { filteredProjects: tempProjects, filteredTeams: tempTeams };
-  }, [selectedYear, selectedDivision, initialProjects, teams]);
+    const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
+    const activeProjs = tempProjects.filter((p: any) => p.statusId !== completedStatusId);
+
+    return { 
+      filteredProjects: tempProjects, 
+      filteredTeams: tempTeams,
+      activeProjects: activeProjs 
+    };
+  }, [selectedYear, selectedDivision, initialProjects, teams, projectStatuses]);
 
   const stats = React.useMemo(() => {
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
@@ -250,6 +265,62 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
           </CardContent>
         </Card>
       </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Active Projects Summary</CardTitle>
+          <CardDescription>A list of all projects that are currently active.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Project Name</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Dates</TableHead>
+                <TableHead className="text-center">Milestones</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {activeProjects.length > 0 ? (
+                activeProjects.map((project: any) => {
+                  const completedMilestones = project.milestones.filter(
+                    (m: any) => m.tasks.length > 0 && m.tasks.every((t: any) => t.status === 'DONE')
+                  ).length;
+                  const totalMilestones = project.milestones.length;
+
+                  return (
+                    <TableRow key={project.id}>
+                      <TableCell className="font-medium">{project.name}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{project.status.name}</Badge>
+                      </TableCell>
+                      <TableCell>
+                        {format(parseISO(project.startDate), 'MMM dd')} - {format(parseISO(project.endDate), 'MMM dd, yyyy')}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {completedMilestones} / {totalMilestones}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <Button asChild variant="ghost" size="sm">
+                          <Link href={`/projects/${project.id}`}>View</Link>
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={5} className="h-24 text-center">
+                    No active projects found for the current selection.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
