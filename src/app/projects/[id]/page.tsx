@@ -4,10 +4,11 @@
 import { useEffect, useState } from "react";
 import { notFound, useRouter, useParams } from "next/navigation";
 import { ProjectView } from "@/components/projects/project-view";
-import { getProjectDetailsForUser } from "../actions";
+import { getProjectDetailsForUser, addBlocker, resolveBlocker } from "../actions";
 import { useAuth } from "@/context/auth-context";
-import { BlockerStatus, TaskStatus } from "@/lib/types";
+import { BlockerStatus, TaskStatus, type Blocker } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 
 type ProjectWithRelations = any;
 
@@ -30,8 +31,34 @@ export default function ProjectDetailsPage() {
   
   const { localUser, loading: authLoading, hasPermission } = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+
   const [project, setProject] = useState<ProjectWithRelations | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [addingBlocker, setAddingBlocker] = useState(false);
+  const [resolvingBlocker, setResolvingBlocker] = useState<Blocker | null>(null);
+
+  const canUpdateProject = hasPermission('projects:update');
+
+  const handleBlockerAdd = async (data: { description: string }) => {
+    setAddingBlocker(false);
+    await addBlocker(project.id, data.description);
+    toast({
+      title: "Blocker Added",
+      description: "The project blocker has been recorded and is now visible to management.",
+    });
+    router.refresh();
+  };
+
+  const handleBlockerResolve = async (blockerId: string, resolution: string) => {
+    setResolvingBlocker(null);
+    await resolveBlocker(blockerId, resolution, project.id);
+    toast({
+      title: "Blocker Resolved",
+      description: "The blocker has been marked as resolved.",
+    });
+    router.refresh();
+  };
   
   useEffect(() => {
     if (!authLoading) {
@@ -80,5 +107,18 @@ export default function ProjectDetailsPage() {
       return null;
   }
 
-  return <ProjectView initialProject={project} />;
+  return (
+    <ProjectView 
+        project={project}
+        canUpdateProject={canUpdateProject}
+        onAddBlocker={() => setAddingBlocker(true)}
+        onResolveBlocker={(blocker) => setResolvingBlocker(blocker)}
+        isAddingBlocker={addingBlocker}
+        onAddBlockerOpenChange={setAddingBlocker}
+        onBlockerAddSubmit={handleBlockerAdd}
+        resolvingBlocker={resolvingBlocker}
+        onResolveBlockerOpenChange={setResolvingBlocker}
+        onBlockerResolveSubmit={handleBlockerResolve}
+    />
+  );
 }

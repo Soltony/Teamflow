@@ -1,9 +1,7 @@
 
 "use client";
 
-import { useState } from "react";
 import Link from 'next/link';
-import { useRouter } from "next/navigation";
 import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import type { Blocker } from "@/lib/types";
@@ -11,29 +9,39 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
 import { AddBlockerDialog } from "./add-blocker-dialog";
 import { ResolveBlockerDialog } from "./resolve-blocker-dialog";
 import { Separator } from "../ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GanttChart } from "./gantt-chart";
-import { addBlocker, resolveBlocker } from "@/app/projects/actions";
-import { useAuth } from "@/context/auth-context";
 
 type ProjectViewProps = {
-  initialProject: any; // Using any because of complex nested types from prisma and normalization
+  project: any;
+  canUpdateProject: boolean;
+  onAddBlocker: () => void;
+  onResolveBlocker: (blocker: Blocker) => void;
+  isAddingBlocker: boolean;
+  onAddBlockerOpenChange: (open: boolean) => void;
+  onBlockerAddSubmit: (data: { description: string }) => void;
+  resolvingBlocker: Blocker | null;
+  onResolveBlockerOpenChange: (blocker: Blocker | null) => void;
+  onBlockerResolveSubmit: (blockerId: string, resolution: string) => void;
 }
 
-export function ProjectView({ initialProject }: ProjectViewProps) {
-  const router = useRouter();
-  const { toast } = useToast();
-  const { hasPermission } = useAuth();
-  const canUpdateProject = hasPermission('projects:update');
-
-  const [addingBlocker, setAddingBlocker] = useState(false);
-  const [resolvingBlocker, setResolvingBlocker] = useState<Blocker | null>(null);
-
-  const weightedProgress = initialProject.milestones.reduce((progress: number, milestone: any) => {
+export function ProjectView({ 
+    project, 
+    canUpdateProject,
+    onAddBlocker,
+    onResolveBlocker,
+    isAddingBlocker,
+    onAddBlockerOpenChange,
+    onBlockerAddSubmit,
+    resolvingBlocker,
+    onResolveBlockerOpenChange,
+    onBlockerResolveSubmit,
+}: ProjectViewProps) {
+  
+  const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
     const completedTaskWeightInMilestone = milestone.tasks
       .filter((task: any) => task.status === 'DONE')
       .reduce((sum: number, task: any) => sum + task.weight, 0);
@@ -42,26 +50,6 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
 
     return progress + (milestoneProgress * milestone.weight);
   }, 0);
-
-  const handleBlockerAdd = async (data: { description: string }) => {
-    setAddingBlocker(false);
-    await addBlocker(initialProject.id, data.description);
-    toast({
-      title: "Blocker Added",
-      description: "The project blocker has been recorded and is now visible to management.",
-    });
-    router.refresh();
-  };
-
-  const handleBlockerResolve = async (blockerId: string, resolution: string) => {
-    setResolvingBlocker(null);
-    await resolveBlocker(blockerId, resolution, initialProject.id);
-    toast({
-      title: "Blocker Resolved",
-      description: "The blocker has been marked as resolved.",
-    });
-    router.refresh();
-  };
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -74,21 +62,21 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
         <CardHeader>
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-                <CardTitle className="text-3xl">{initialProject.name}</CardTitle>
-                <CardDescription>{initialProject.description}</CardDescription>
+                <CardTitle className="text-3xl">{project.name}</CardTitle>
+                <CardDescription>{project.description}</CardDescription>
             </div>
             <div className="flex items-center gap-2 flex-shrink-0">
-                {initialProject.status && <Badge className="text-base" variant="secondary">{initialProject.status.name}</Badge>}
+                {project.status && <Badge className="text-base" variant="secondary">{project.status.name}</Badge>}
                  {canUpdateProject && (
                   <>
                     <Button asChild variant="outline">
-                      <Link href={`/projects/${initialProject.id}/edit`}>
+                      <Link href={`/projects/${project.id}/edit`}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Edit Project
                       </Link>
                     </Button>
                     <Button asChild variant="outline">
-                        <Link href={`/projects/${initialProject.id}/milestones`}>
+                        <Link href={`/projects/${project.id}/milestones`}>
                             Manage Milestones
                             <ExternalLink className="ml-2 h-4 w-4" />
                         </Link>
@@ -102,22 +90,22 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-muted-foreground">
             <div className="flex items-center gap-2">
               <Calendar className="w-4 h-4" />
-              <span>{format(parseISO(initialProject.startDate), "MMM d, yyyy")} - {format(parseISO(initialProject.endDate), "MMM d, yyyy")}</span>
+              <span>{format(parseISO(project.startDate), "MMM d, yyyy")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
             </div>
              <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
-                <span>Owning PMO Division: {initialProject.owningDepartment?.name || 'N/A'}</span>
+                <span>Owning PMO Division: {project.owningDepartment?.name || 'N/A'}</span>
             </div>
              <div className="flex items-center gap-2">
                 <UserCircle className="w-4 h-4" />
-                <span>PM: {initialProject.projectManager?.name || 'N/A'}</span>
+                <span>PM: {project.projectManager?.name || 'N/A'}</span>
             </div>
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4" />
-              <span>{initialProject.milestones.length} Milestones</span>
+              <span>{project.milestones.length} Milestones</span>
             </div>
              <div className="flex items-center gap-2">
-              <span>{differenceInDays(parseISO(initialProject.endDate), new Date())} days left</span>
+              <span>{differenceInDays(parseISO(project.endDate), new Date())} days left</span>
             </div>
           </div>
           <div>
@@ -142,7 +130,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                 <CardDescription>A timeline view of all tasks for this project, relative to the project start date.</CardDescription>
             </CardHeader>
             <CardContent>
-                <GanttChart project={initialProject} />
+                <GanttChart project={project} />
             </CardContent>
           </Card>
         </TabsContent>
@@ -152,7 +140,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                 <div className="flex items-center justify-between">
                     <CardTitle>Project Blockers</CardTitle>
                     {canUpdateProject && (
-                      <Button onClick={() => setAddingBlocker(true)}>
+                      <Button onClick={onAddBlocker}>
                           <PlusCircle className="mr-2 h-4 w-4" /> Add Blocker
                       </Button>
                     )}
@@ -163,10 +151,10 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                 </CardHeader>
                 <CardContent>
                 <div className="space-y-4">
-                    {!initialProject.blockers || initialProject.blockers.length === 0 ? (
+                    {!project.blockers || project.blockers.length === 0 ? (
                     <p className="text-muted-foreground text-sm">No blockers have been reported for this project.</p>
                     ) : (
-                    initialProject.blockers.map((blocker: any, index: number) => (
+                    project.blockers.map((blocker: any, index: number) => (
                         <div key={blocker.id}>
                         <div className="flex items-start gap-4">
                             <div>
@@ -194,13 +182,13 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
                             </div>
                             <div>
                             {blocker.status === 'OPEN' && canUpdateProject && (
-                            <Button variant="outline" size="sm" onClick={() => setResolvingBlocker(blocker)}>
+                            <Button variant="outline" size="sm" onClick={() => onResolveBlocker(blocker)}>
                                 Resolve
                             </Button>
                             )}
                             </div>
                         </div>
-                        {index < initialProject.blockers.length - 1 && <Separator className="my-4" />}
+                        {index < project.blockers.length - 1 && <Separator className="my-4" />}
                         </div>
                     ))
                     )}
@@ -211,20 +199,20 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
       </Tabs>
 
 
-      {addingBlocker && (
+      {isAddingBlocker && (
         <AddBlockerDialog
-          isOpen={addingBlocker}
-          onOpenChange={setAddingBlocker}
-          onBlockerAdd={handleBlockerAdd}
+          isOpen={isAddingBlocker}
+          onOpenChange={onAddBlockerOpenChange}
+          onBlockerAdd={onBlockerAddSubmit}
         />
       )}
       
       {resolvingBlocker && (
         <ResolveBlockerDialog
           isOpen={!!resolvingBlocker}
-          onOpenChange={(open) => !open && setResolvingBlocker(null)}
+          onOpenChange={(open) => !open && onResolveBlockerOpenChange(null)}
           blocker={resolvingBlocker}
-          onBlockerResolve={handleBlockerResolve}
+          onBlockerResolve={onBlockerResolveSubmit}
         />
       )}
     </div>
