@@ -20,7 +20,6 @@ import { CheckCircle, XCircle, User as UserIcon } from "lucide-react";
 import { type ProjectWithTasksAndStats, type TeamViewTask } from "@/app/team-view/page";
 import { approveTaskAction, declineTaskAction } from "@/app/team-view/actions";
 import { Progress } from "../ui/progress";
-import { useRouter } from "next/navigation";
 
 type TeamTasksManagementProps = {
   allUsers: User[];
@@ -28,13 +27,13 @@ type TeamTasksManagementProps = {
   currentUser: User;
   initialTasksByProject: ProjectWithTasksAndStats[];
   projectStatuses: ProjectStatus[];
+  onDataChange: () => void;
 };
 
 const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
 
-export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTasksByProject, projectStatuses }: TeamTasksManagementProps) {
+export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTasksByProject, projectStatuses, onDataChange }: TeamTasksManagementProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
   const sortedProjects = useMemo(() => {
@@ -54,7 +53,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     const result = await approveTaskAction(task.id, currentUser.id, currentUser.name);
     if (result.success) {
       toast({ title: "Task Approved", description: `"${task.title}" has been marked as Done.` });
-      router.refresh();
+      onDataChange();
     } else {
       toast({ title: "Error", description: result.error, variant: "destructive" });
     }
@@ -64,7 +63,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     const result = await declineTaskAction(task.id, currentUser.id, currentUser.name);
      if (result.success) {
       toast({ title: "Task Declined", description: `"${task.title}" has been sent back to In Progress.`, variant: 'destructive' });
-      router.refresh();
+      onDataChange();
     } else {
        toast({ title: "Error", description: result.error, variant: "destructive" });
     }

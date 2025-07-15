@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { TeamTasksManagement } from "@/components/tasks/team-tasks-management";
 import { getTeamViewData } from "./actions";
@@ -57,6 +57,20 @@ export default function TeamViewPage() {
     const [viewData, setViewData] = useState<TeamViewData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchTeamData = useCallback(async () => {
+        if (!localUser?.id) return;
+        setIsLoading(true);
+        try {
+            const data = await getTeamViewData(localUser.id);
+            setViewData(data);
+        } catch (error) {
+            console.error("Failed to fetch team view data", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [localUser?.id]);
+
+
     useEffect(() => {
         if (!authLoading) {
             if (!hasPermission('team-view:view')) {
@@ -65,16 +79,12 @@ export default function TeamViewPage() {
             }
 
             if (localUser?.id) {
-                setIsLoading(true);
-                getTeamViewData(localUser.id).then(data => {
-                    setViewData(data);
-                    setIsLoading(false);
-                });
+                fetchTeamData();
             } else {
                 setIsLoading(false);
             }
         }
-    }, [localUser, authLoading, hasPermission, router]);
+    }, [localUser, authLoading, hasPermission, router, fetchTeamData]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -95,6 +105,7 @@ export default function TeamViewPage() {
         currentUser={localUser}
         initialTasksByProject={viewData.tasksByProject}
         projectStatuses={viewData.projectStatuses}
+        onDataChange={fetchTeamData}
     />
   );
 }
