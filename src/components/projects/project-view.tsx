@@ -35,7 +35,7 @@ export function ProjectView({ initialProject }: ProjectViewProps) {
 
   const weightedProgress = initialProject.milestones.reduce((progress: number, milestone: any) => {
     const completedTaskWeightInMilestone = milestone.tasks
-      .filter((task: any) => task.status === 'done')
+      .filter((task: any) => task.status === 'DONE')
       .reduce((sum: number, task: any) => sum + task.weight, 0);
     
     const milestoneProgress = completedTaskWeightInMilestone / 100;
