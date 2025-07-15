@@ -47,6 +47,7 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useRouter } from "next/navigation";
 
 
 const teamSchema = z.object({
@@ -76,6 +77,7 @@ type TeamsManagementProps = {
 export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsManagementProps) {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
+  const router = useRouter();
   const [editingTeam, setEditingTeam] = useState<TeamWithRelations | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [teamToDelete, setTeamToDelete] = useState<TeamWithRelations | null>(null);
@@ -152,6 +154,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
             description: `The "${data.name}" team has been successfully saved.`,
         });
         setIsDialogOpen(false);
+        router.refresh();
     } else {
         toast({
             title: "Error",
@@ -179,6 +182,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
         title: "Team Deleted",
         description: `The "${teamToDelete.name}" team has been removed.`,
       });
+      router.refresh();
     } else {
        toast({
         title: "Error",
@@ -414,3 +418,5 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
     </>
   );
 }
+
+    

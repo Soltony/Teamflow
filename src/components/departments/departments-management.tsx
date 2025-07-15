@@ -30,8 +30,9 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { createDepartment, deleteDepartment, updateDepartment, getDepartments } from "@/app/departments/actions";
+import { createDepartment, deleteDepartment, updateDepartment } from "@/app/departments/actions";
 import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
 
 const departmentSchema = z.object({
   name: z.string().min(3, "PMO Division name must be at least 3 characters."),
@@ -45,7 +46,7 @@ type DepartmentFormValues = z.infer<typeof departmentSchema>;
 export function DepartmentsManagement({ initialDepartments }: { initialDepartments: Department[] }) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [departments, setDepartments] = useState<Department[]>(initialDepartments);
+  const router = useRouter();
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
   const { hasPermission } = useAuth();
@@ -66,11 +67,6 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
 
   const isEditing = editingDepartment !== null;
 
-  async function refreshDepartments() {
-    const updatedDepartments = await getDepartments();
-    setDepartments(updatedDepartments);
-  }
-
   function onSubmit(data: DepartmentFormValues) {
     startTransition(async () => {
       const result = isEditing
@@ -84,7 +80,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
         });
         setEditingDepartment(null);
         form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
-        await refreshDepartments();
+        router.refresh();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -115,7 +111,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
           title: "PMO Division Deleted",
           description: `The "${departmentToDelete.name}" PMO division has been removed.`,
         });
-        await refreshDepartments();
+        router.refresh();
       } else {
         toast({
           title: "Error",
@@ -213,10 +209,10 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
               <CardTitle>Existing PMO Divisions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {departments.length === 0 && (
+              {initialDepartments.length === 0 && (
                 <p className="text-muted-foreground">No PMO divisions have been added yet.</p>
               )}
-              {departments.map((dept, index) => (
+              {initialDepartments.map((dept, index) => (
                 <div key={dept.id}>
                   <div className="flex justify-between items-start">
                     <div>
@@ -246,7 +242,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                       )}
                     </div>
                   </div>
-                  {index < departments.length - 1 && <Separator className="my-4" />}
+                  {index < initialDepartments.length - 1 && <Separator className="my-4" />}
                 </div>
               ))}
             </CardContent>
@@ -278,3 +274,5 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
     </>
   );
 }
+
+    

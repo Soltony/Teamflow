@@ -56,6 +56,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
 
 type UserWithRoles = User & { roles: Role[] };
 
@@ -83,7 +84,7 @@ const addUserSchema = z.object({
   email: z.string().email("A valid email is required."),
   phoneNumber: z.string().min(1, "Phone number is required."),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  departmentId: z.string().nonempty("Please select a division."),
+  departmentId: z.string().nonempty("Please select a PMO division."),
   roleIds: z.array(z.string()).optional(),
 });
 type AddUserFormValues = z.infer<typeof addUserSchema>;
@@ -92,6 +93,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const { accessToken, hasPermission } = useAuth();
+  const router = useRouter();
   
   const canManageUsers = hasPermission('config:manage-users');
 
@@ -164,6 +166,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
                 description: `Successfully updated details for ${editingUser.name}.`,
             });
             handleCloseEditDialog();
+            router.refresh();
         } else {
             toast({ title: "Error", description: result.error, variant: "destructive" });
         }
@@ -180,6 +183,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
         if (result.success) {
             toast({ title: "User Created", description: `User ${data.firstName} ${data.lastName} has been created.` });
             handleCloseAddUserDialog();
+            router.refresh();
         } else {
             toast({ title: "Error", description: result.error, variant: "destructive" });
         }
@@ -192,6 +196,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
       const result = await deleteUser(userToDelete.id);
       if (result.success) {
         toast({ title: "User Deleted", description: `The user "${userToDelete.name}" has been removed.` });
+        router.refresh();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -331,10 +336,10 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
                       name="departmentId"
                       render={({ field }) => (
                           <FormItem>
-                              <FormLabel>Division</FormLabel>
+                              <FormLabel>PMO Division</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                      <SelectTrigger><SelectValue placeholder="Select a division" /></SelectTrigger>
+                                      <SelectTrigger><SelectValue placeholder="Select a PMO division" /></SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
                                       {initialDepartments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
@@ -449,10 +454,10 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
                       name="departmentId"
                       render={({ field }) => (
                           <FormItem>
-                              <FormLabel>Division</FormLabel>
+                              <FormLabel>PMO Division</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                      <SelectTrigger><SelectValue placeholder="Select a division" /></SelectTrigger>
+                                      <SelectTrigger><SelectValue placeholder="Select a PMO division" /></SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
                                       {initialDepartments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
@@ -534,3 +539,5 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
     </>
   );
 }
+
+    

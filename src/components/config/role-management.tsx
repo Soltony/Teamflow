@@ -45,6 +45,7 @@ import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Badge } from "../ui/badge";
 import { useAuth } from "@/context/auth-context";
 import { availablePermissions } from "@/lib/permissions";
+import { useRouter } from "next/navigation";
 
 type RoleManagementProps = {
   initialRoles: Role[];
@@ -62,6 +63,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
@@ -107,6 +109,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
           title: "Role Deleted",
           description: `The "${roleToDelete.name}" role has been removed.`,
         });
+        router.refresh();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -128,6 +131,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
           description: `The "${data.name}" role has been successfully saved.`,
         });
         handleCloseDialog();
+        router.refresh();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -346,3 +350,5 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
     </>
   );
 }
+
+    
