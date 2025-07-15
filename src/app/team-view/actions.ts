@@ -136,9 +136,9 @@ export async function approveTaskAction(taskId: string, teamLeadId: string, team
 }
 
 
-export async function declineTaskAction(taskId: string, teamLeadId: string, teamLeadName: string) {
+export async function declineTaskAction(taskId: string, teamLeadId: string, teamLeadName: string, reason: string) {
     try {
-        const updateText = `Task declined by ${teamLeadName}. Status changed back to In Progress.`;
+        const updateText = `Task declined by ${teamLeadName}. Reason: ${reason}`;
         
         await prisma.task.update({
             where: { id: taskId },
