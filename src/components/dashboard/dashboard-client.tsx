@@ -94,10 +94,13 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
 
   const handleQueryChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
-    if (value !== "all") {
+    if (value !== "all" && value !== currentWorkingYear) {
       params.set(key, value);
     } else {
       params.delete(key);
+      if (value === "all") {
+        params.set(key, "all");
+      }
     }
     router.push(`${pathname}?${params.toString()}`);
   }
