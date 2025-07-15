@@ -203,6 +203,13 @@ export async function resolveBlocker(blockerId: string, resolution: string, proj
     revalidatePath(`/projects/${projectId}`);
 }
 
+export async function deleteBlocker(blockerId: string, projectId: string) {
+    await prisma.blocker.delete({
+        where: { id: blockerId },
+    });
+    revalidatePath(`/projects/${projectId}`);
+}
+
 
 export async function updateMilestone(milestoneId: string, projectId: string, data: any) {
     const { responsibleDepartmentIds, ...milestoneData } = data;

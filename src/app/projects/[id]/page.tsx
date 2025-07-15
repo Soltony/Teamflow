@@ -4,7 +4,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { notFound, useRouter, useParams } from "next/navigation";
 import { ProjectView } from "@/components/projects/project-view";
-import { getProjectDetailsForUser, addBlocker, resolveBlocker } from "../actions";
+import { getProjectDetailsForUser, addBlocker, resolveBlocker, deleteBlocker } from "../actions";
 import { useAuth } from "@/context/auth-context";
 import { BlockerStatus, TaskStatus, type Blocker } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -37,6 +37,7 @@ export default function ProjectDetailsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isAddingBlocker, setAddingBlocker] = useState(false);
   const [resolvingBlocker, setResolvingBlocker] = useState<Blocker | null>(null);
+  const [blockerToDelete, setBlockerToDelete] = useState<Blocker | null>(null);
 
   const canUpdateProject = hasPermission('projects:update');
 
@@ -100,6 +101,17 @@ export default function ProjectDetailsPage() {
     });
     await fetchProjectData(); // Re-fetch data
   };
+
+  const handleBlockerDelete = async () => {
+    if (!project || !blockerToDelete) return;
+    await deleteBlocker(blockerToDelete.id, project.id);
+    setBlockerToDelete(null);
+    toast({
+      title: "Blocker Deleted",
+      description: "The blocker has been permanently removed.",
+    });
+    await fetchProjectData(); // Re-fetch data
+  };
   
   if (isLoading || authLoading) {
       return <LoadingSkeleton />;
@@ -119,12 +131,16 @@ export default function ProjectDetailsPage() {
         canUpdateProject={canUpdateProject}
         onAddBlocker={() => setAddingBlocker(true)}
         onResolveBlocker={(blocker) => setResolvingBlocker(blocker)}
+        onDeleteBlocker={(blocker) => setBlockerToDelete(blocker)}
         isAddingBlocker={isAddingBlocker}
         onAddBlockerOpenChange={setAddingBlocker}
         onBlockerAddSubmit={handleBlockerAdd}
         resolvingBlocker={resolvingBlocker}
         onResolveBlockerOpenChange={setResolvingBlocker}
         onBlockerResolveSubmit={handleBlockerResolve}
+        blockerToDelete={blockerToDelete}
+        onDeleteBlockerOpenChange={setBlockerToDelete}
+        onBlockerDeleteSubmit={handleBlockerDelete}
     />
   );
 }

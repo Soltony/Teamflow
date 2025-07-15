@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil } from "lucide-react";
+import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2 } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import type { Blocker } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -14,18 +14,32 @@ import { ResolveBlockerDialog } from "./resolve-blocker-dialog";
 import { Separator } from "../ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { GanttChart } from "./gantt-chart";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type ProjectViewProps = {
   project: any;
   canUpdateProject: boolean;
   onAddBlocker: () => void;
   onResolveBlocker: (blocker: Blocker) => void;
+  onDeleteBlocker: (blocker: Blocker) => void;
   isAddingBlocker: boolean;
   onAddBlockerOpenChange: (open: boolean) => void;
   onBlockerAddSubmit: (data: { description: string }) => void;
   resolvingBlocker: Blocker | null;
   onResolveBlockerOpenChange: (blocker: Blocker | null) => void;
   onBlockerResolveSubmit: (blockerId: string, resolution: string) => void;
+  blockerToDelete: Blocker | null;
+  onDeleteBlockerOpenChange: (blocker: Blocker | null) => void;
+  onBlockerDeleteSubmit: () => void;
 }
 
 export function ProjectView({ 
@@ -33,12 +47,16 @@ export function ProjectView({
     canUpdateProject,
     onAddBlocker,
     onResolveBlocker,
+    onDeleteBlocker,
     isAddingBlocker,
     onAddBlockerOpenChange,
     onBlockerAddSubmit,
     resolvingBlocker,
     onResolveBlockerOpenChange,
     onBlockerResolveSubmit,
+    blockerToDelete,
+    onDeleteBlockerOpenChange,
+    onBlockerDeleteSubmit,
 }: ProjectViewProps) {
   
   const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
@@ -180,12 +198,18 @@ export function ProjectView({
                                 </div>
                             )}
                             </div>
-                            <div>
-                            {blocker.status === 'OPEN' && canUpdateProject && (
-                            <Button variant="outline" size="sm" onClick={() => onResolveBlocker(blocker)}>
-                                Resolve
-                            </Button>
-                            )}
+                            <div className="flex items-center gap-1">
+                                {blocker.status === 'OPEN' && canUpdateProject && (
+                                    <Button variant="outline" size="sm" onClick={() => onResolveBlocker(blocker)}>
+                                        Resolve
+                                    </Button>
+                                )}
+                                {canUpdateProject && (
+                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => onDeleteBlocker(blocker)}>
+                                        <Trash2 className="w-4 h-4" />
+                                        <span className="sr-only">Delete Blocker</span>
+                                    </Button>
+                                )}
                             </div>
                         </div>
                         {index < project.blockers.length - 1 && <Separator className="my-4" />}
@@ -214,6 +238,31 @@ export function ProjectView({
           blocker={resolvingBlocker}
           onBlockerResolve={onBlockerResolveSubmit}
         />
+      )}
+
+      {blockerToDelete && (
+        <AlertDialog
+            open={!!blockerToDelete}
+            onOpenChange={(open) => !open && onDeleteBlockerOpenChange(null)}
+        >
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the blocker.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => onDeleteBlockerOpenChange(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={onBlockerDeleteSubmit}
+                    >
+                        Delete
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
