@@ -6,15 +6,7 @@ import { DashboardClient } from "@/components/dashboard/dashboard-client";
 export const dynamic = 'force-dynamic';
 
 const getCurrentWorkingYear = () => {
-    const today = new Date();
-    const year = today.getFullYear();
-    const month = today.getMonth(); // 0-indexed (January is 0)
-    // Assuming fiscal year starts in July (month index 6)
-    if (month >= 6) {
-      return `${year}/${year + 1}`;
-    } else {
-      return `${year - 1}/${year}`;
-    }
+    return '2024/2025';
 };
 
 export default async function DashboardPage({ searchParams }: { searchParams: { year?: string } }) {
