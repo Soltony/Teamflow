@@ -7,7 +7,9 @@ import { revalidatePath } from "next/cache";
 export async function getPaymentsPageData() {
     const projectsWithCost = await prisma.project.findMany({
         where: {
-            hasCost: true,
+            totalCost: {
+                not: null,
+            },
         },
         include: {
             milestones: {
