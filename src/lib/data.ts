@@ -26,26 +26,26 @@ export const users = [
   { id: 'user-6', name: 'Fiona Garcia', firstName: 'Fiona', lastName: 'Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phoneNumber: '09123456785' },
 ];
 
-export const pmoDivisions = [
+export const pmoDivisionsData = [
     { name: 'Technology', responsibleName: 'Dr. Evelyn Reed', responsibleTitle: 'CTO', responsiblePhone: '09112223333' },
     { name: 'Marketing', responsibleName: 'Marcus Holloway', responsibleTitle: 'CMO', responsiblePhone: '09445556666' },
 ];
 
-export const departments = [
+export const departmentsData = [
     { name: 'Finance' },
     { name: 'Human Resources' },
     { name: 'Sales' },
     { name: 'Customer Support' },
 ];
 
-export const projectStatuses = [
+export const projectStatusesData = [
   { name: 'Active' },
   { name: 'Pending' },
   { name: 'Parked' },
   { name: 'Completed' },
 ];
 
-export const projects = [
+export const projectsData = [
   {
     id: 'proj-1',
     name: 'E-commerce Platform Relaunch',
@@ -156,7 +156,7 @@ export const projects = [
   },
 ];
 
-export const teams = [
+export const teamsData = [
   { 
     id: 'team-1', 
     name: 'Frontend Wizards', 
