@@ -18,6 +18,7 @@ import {
   Wrench,
   AreaChart,
   User,
+  Library,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -53,6 +54,7 @@ const menuItems = [
   { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
   { href: "/departments", label: "PMO Divisions", icon: Building2, permission: 'departments:read' },
+  { href: "/responsible-departments", label: "Responsible Depts", icon: Library, permission: 'responsible-depts:view' },
   { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
   { href: "/ceo-report", label: "Reports", icon: AreaChart, permission: 'reports:view' },
   { href: "/settings", label: "Settings", icon: Settings, permission: 'settings:manage' },
