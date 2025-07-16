@@ -1,3 +1,4 @@
+
 'use server';
 
 import prisma from "@/lib/db";
@@ -38,11 +39,18 @@ export async function addMilestonePayment(milestoneId: string, amount: number, p
             return { success: false, error: "Milestone not found or does not have a cost." };
         }
 
-        const totalPaid = milestone.payments.reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
-        const remaining = parseFloat(milestone.cost.toString()) - totalPaid;
+        const totalApprovedPaid = milestone.payments
+            .filter(p => p.status === 'APPROVED')
+            .reduce((sum, p) => sum + parseFloat(p.amount.toString()), 0);
+            
+        const remaining = parseFloat(milestone.cost.toString()) - totalApprovedPaid;
 
         if (amount > remaining) {
             return { success: false, error: `Payment amount cannot exceed the remaining balance of ${remaining.toFixed(2)}.` };
+        }
+
+        if (milestone.payments.some(p => p.status === 'PENDING')) {
+             return { success: false, error: `A payment is already pending approval for this milestone.` };
         }
 
         await prisma.milestonePayment.create({
@@ -50,10 +58,12 @@ export async function addMilestonePayment(milestoneId: string, amount: number, p
                 milestoneId,
                 amount,
                 paymentDate,
+                status: 'PENDING',
             }
         });
 
         revalidatePath('/payments');
+        revalidatePath('/payment-approvals');
         return { success: true };
 
     } catch (error) {

@@ -15,6 +15,7 @@ export const availablePermissions: Record<string, string[]> = {
     'Departments': ['departments:read', 'departments:create', 'departments:update', 'departments:delete'],
     'Teams': ['teams:create', 'teams:read', 'teams:update', 'teams:delete'],
     'Payments': ['payments:view'],
+    'Payment Approvals': ['payment-approvals:view', 'payment-approvals:manage'],
     'Reports': ['reports:view'],
     'Settings': ['settings:manage'],
     'Configuration': ['config:manage-users', 'config:manage-roles'],

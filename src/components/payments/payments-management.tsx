@@ -37,9 +37,10 @@ import { addMilestonePayment } from "@/app/payments/actions";
 import { useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Clock, CheckCircle, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { Badge } from "../ui/badge";
 
 type MilestoneWithPayments = any;
 type ProjectWithRelations = any;
@@ -55,8 +56,11 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
   const [isPending, startTransition] = useTransition();
   const [selectedMilestone, setSelectedMilestone] = useState<MilestoneWithPayments | null>(null);
 
+  const approvedPaymentsForMilestone = selectedMilestone?.payments.filter((p: any) => p.status === 'APPROVED') || [];
+  const totalPaid = approvedPaymentsForMilestone.reduce((sum: number, p: any) => sum + parseFloat(p.amount.toString()), 0);
+  
   const remainingBalance = selectedMilestone
-    ? parseFloat(selectedMilestone.cost.toString()) - selectedMilestone.payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount.toString()), 0)
+    ? parseFloat(selectedMilestone.cost.toString()) - totalPaid
     : 0;
 
   const form = useForm<z.infer<ReturnType<typeof paymentSchema>>>({
@@ -68,7 +72,9 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
   });
 
   function handleRecordPayment(milestone: MilestoneWithPayments) {
-    const balance = parseFloat(milestone.cost.toString()) - milestone.payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount.toString()), 0);
+    const approvedPayments = milestone.payments.filter((p: any) => p.status === 'APPROVED');
+    const currentlyPaid = approvedPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount.toString()), 0);
+    const balance = parseFloat(milestone.cost.toString()) - currentlyPaid;
     form.reset({ paymentDate: new Date(), amount: balance });
     setSelectedMilestone(milestone);
   }
@@ -80,8 +86,8 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
       const result = await addMilestonePayment(selectedMilestone.id, data.amount, data.paymentDate);
       if (result.success) {
         toast({
-          title: "Payment Recorded!",
-          description: `A payment of ${data.amount.toFixed(2)} has been recorded for milestone "${selectedMilestone.title}".`,
+          title: "Payment Submitted!",
+          description: `Your payment of ${data.amount.toFixed(2)} has been submitted for approval.`,
         });
         setSelectedMilestone(null);
         router.refresh();
@@ -90,6 +96,20 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
       }
     });
   }
+
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+        case 'PENDING':
+            return <Badge variant="secondary" className="bg-amber-500/80 text-white"><Clock className="mr-1 h-3 w-3"/>Pending</Badge>;
+        case 'APPROVED':
+            return <Badge variant="secondary" className="bg-green-600 text-white"><CheckCircle className="mr-1 h-3 w-3"/>Approved</Badge>;
+        case 'REJECTED':
+            return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3"/>Rejected</Badge>;
+        default:
+            return <Badge variant="outline">Unknown</Badge>;
+    }
+  }
+
 
   return (
     <>
@@ -107,25 +127,39 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
                     <TableHead className="text-right">Total Cost</TableHead>
                     <TableHead className="text-right">Amount Paid</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
+                    <TableHead className="text-center">Payment Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {project.milestones.filter((m: any) => m.cost > 0).map((milestone: MilestoneWithPayments) => {
-                    const totalPaid = milestone.payments.reduce((sum: number, p: any) => sum + parseFloat(p.amount.toString()), 0);
+                    const approvedPayments = milestone.payments.filter((p: any) => p.status === 'APPROVED');
+                    const totalPaid = approvedPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount.toString()), 0);
                     const milestoneCost = parseFloat(milestone.cost.toString());
                     const balance = milestoneCost - totalPaid;
+                    const hasPendingPayment = milestone.payments.some((p: any) => p.status === 'PENDING');
+
                     return (
                       <TableRow key={milestone.id}>
                         <TableCell className="font-medium">{milestone.title}</TableCell>
                         <TableCell className="text-right">${milestoneCost.toFixed(2)}</TableCell>
                         <TableCell className="text-right">${totalPaid.toFixed(2)}</TableCell>
                         <TableCell className="text-right font-semibold">${balance.toFixed(2)}</TableCell>
+                        <TableCell className="text-center">
+                            <div className="flex flex-col items-center gap-1">
+                                {milestone.payments.map((p: any) => (
+                                    <div key={p.id}>{getStatusBadge(p.status)}</div>
+                                ))}
+                            </div>
+                        </TableCell>
                         <TableCell className="text-right">
-                          {balance > 0 && (
+                          {balance > 0 && !hasPendingPayment && (
                             <Button size="sm" onClick={() => handleRecordPayment(milestone)}>
                               Record Payment
                             </Button>
+                          )}
+                          {hasPendingPayment && (
+                            <Badge variant="outline">Approval Pending</Badge>
                           )}
                         </TableCell>
                       </TableRow>
@@ -141,9 +175,9 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
       <Dialog open={!!selectedMilestone} onOpenChange={(open) => !open && setSelectedMilestone(null)}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
-            <DialogTitle>Record Payment for "{selectedMilestone?.title}"</DialogTitle>
+            <DialogTitle>Submit Payment for "{selectedMilestone?.title}"</DialogTitle>
             <DialogDescription>
-                Enter the payment details. The amount cannot exceed the remaining balance of ${remainingBalance.toFixed(2)}.
+                Enter the payment details. The amount cannot exceed the remaining balance of ${remainingBalance.toFixed(2)}. This will be sent for approval.
             </DialogDescription>
           </DialogHeader>
           <Form {...form}>
@@ -190,7 +224,7 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setSelectedMilestone(null)} disabled={isPending}>Cancel</Button>
                 <Button type="submit" disabled={isPending}>
-                  {isPending ? "Saving..." : "Save Payment"}
+                  {isPending ? "Submitting..." : "Submit for Approval"}
                 </Button>
               </DialogFooter>
             </form>

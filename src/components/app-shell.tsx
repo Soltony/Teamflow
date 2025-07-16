@@ -20,6 +20,7 @@ import {
   User,
   Library,
   DollarSign,
+  CheckSquare,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -58,6 +59,7 @@ const menuItems = [
   { href: "/departments", label: "Departments", icon: Building2, permission: 'departments:read' },
   { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
   { href: "/payments", label: "Payments", icon: DollarSign, permission: 'payments:view' },
+  { href: "/payment-approvals", label: "Payment Approvals", icon: CheckSquare, permission: 'payment-approvals:view' },
   { href: "/ceo-report", label: "Reports", icon: AreaChart, permission: 'reports:view' },
   { href: "/settings", label: "Settings", icon: Settings, permission: 'settings:manage' },
   { href: "/config", label: "Config", icon: Wrench, permission: ['config:manage-users', 'config:manage-roles'] },

@@ -15,6 +15,7 @@ const prisma = new PrismaClient();
 async function main() {
   console.log(`Clearing existing data to ensure a clean seed...`);
   // Delete records in an order that respects foreign key constraints.
+  await prisma.milestonePayment.deleteMany();
   await prisma.taskUpdate.deleteMany();
   await prisma.blocker.deleteMany();
   await prisma.team.deleteMany(); 
@@ -70,6 +71,9 @@ async function main() {
             'teams:create',
             'teams:read',
             'teams:update',
+            'payments:view',
+            'payment-approvals:view',
+            'payment-approvals:manage'
         ]
     },
     create: { 
@@ -97,6 +101,9 @@ async function main() {
             'teams:create',
             'teams:read',
             'teams:update',
+            'payments:view',
+            'payment-approvals:view',
+            'payment-approvals:manage'
         ] 
     },
   });
