@@ -133,24 +133,29 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
                     <TableHead className="text-right">Total Cost</TableHead>
                     <TableHead className="text-right">Amount Paid</TableHead>
                     <TableHead className="text-right">Balance</TableHead>
-                    <TableHead className="text-center">Payment Status</TableHead>
+                    <TableHead className="text-center">Latest Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {project.milestones.filter((m: any) => m.cost > 0).map((milestone: MilestoneWithPayments) => {
-                    const approvedPayments = milestone.payments.filter((p: any) => p.status === 'APPROVED');
+                    const allPayments = milestone.payments || [];
+                    const approvedPayments = allPayments.filter((p: any) => p.status === 'APPROVED');
                     const totalPaid = approvedPayments.reduce((sum: number, p: any) => sum + parseFloat(p.amount.toString()), 0);
                     const milestoneCost = parseFloat(milestone.cost.toString());
                     const balance = milestoneCost - totalPaid;
-                    const hasPendingPayment = milestone.payments.some((p: any) => p.status === 'PENDING');
+                    const hasPendingPayment = allPayments.some((p: any) => p.status === 'PENDING');
                     const isExpanded = expandedRows[milestone.id];
+
+                    const latestPayment = allPayments.length > 0 
+                      ? [...allPayments].sort((a,b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0]
+                      : null;
 
                     return (
                       <React.Fragment key={milestone.id}>
                         <TableRow>
                           <TableCell className="p-2">
-                            {approvedPayments.length > 0 && (
+                            {allPayments.length > 0 && (
                               <Button variant="ghost" size="icon" onClick={() => toggleRow(milestone.id)} className="h-8 w-8">
                                 {isExpanded ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
                               </Button>
@@ -161,11 +166,7 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
                           <TableCell className="text-right">${totalPaid.toFixed(2)}</TableCell>
                           <TableCell className="text-right font-semibold">${balance.toFixed(2)}</TableCell>
                           <TableCell className="text-center">
-                              <div className="flex flex-col items-center gap-1">
-                                  {milestone.payments.map((p: any) => (
-                                      <div key={p.id}>{getStatusBadge(p.status)}</div>
-                                  ))}
-                              </div>
+                              {latestPayment ? getStatusBadge(latestPayment.status) : <Badge variant="outline">Not Started</Badge>}
                           </TableCell>
                           <TableCell className="text-right">
                             {balance > 0 && !hasPendingPayment && (
@@ -178,23 +179,25 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
                             )}
                           </TableCell>
                         </TableRow>
-                        {isExpanded && approvedPayments.length > 0 && (
+                        {isExpanded && allPayments.length > 0 && (
                            <TableRow>
                                 <TableCell colSpan={7} className="p-0">
                                     <div className="p-4 bg-muted/50">
-                                        <h4 className="font-semibold mb-2 text-sm">Approved Payment History</h4>
+                                        <h4 className="font-semibold mb-2 text-sm">Payment History</h4>
                                         <Table>
                                             <TableHeader>
                                                 <TableRow>
                                                     <TableHead>Payment Date</TableHead>
+                                                    <TableHead>Status</TableHead>
                                                     <TableHead className="text-right">Amount</TableHead>
-                                                    <TableHead>Notes</TableHead>
+                                                    <TableHead>Notes / Reason</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {approvedPayments.sort((a:any,b:any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()).map((payment: any) => (
+                                                {allPayments.sort((a:any,b:any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((payment: any) => (
                                                     <TableRow key={payment.id} className="bg-background">
                                                         <TableCell>{format(new Date(payment.paymentDate), 'MMM dd, yyyy')}</TableCell>
+                                                        <TableCell>{getStatusBadge(payment.status)}</TableCell>
                                                         <TableCell className="text-right">${parseFloat(payment.amount.toString()).toFixed(2)}</TableCell>
                                                         <TableCell>{payment.notes}</TableCell>
                                                     </TableRow>
