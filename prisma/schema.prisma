@@ -1,36 +1,35 @@
-
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 model User {
-  id            String  @id @default(uuid())
+  id            String       @id @default(uuid())
   name          String
   firstName     String
   lastName      String
-  email         String  @unique
+  email         String       @unique
   avatar        String?
-  phoneNumber   String?
+  phoneNumber   String?      @unique
+  roles         Role[]       @relation("UserRoles")
   pmoDivision   PmoDivision? @relation(fields: [pmoDivisionId], references: [id])
   pmoDivisionId String?
 
-  roles         Role[]  @relation("UserRoles")
-  assignedTasks Task[]  @relation("TaskAssignees")
-  teams         Team[]  @relation("TeamMembers")
-  teamLeadOf    Team[]  @relation("TeamLead")
-  managedProjects Project[]
-  taskUpdates   TaskUpdate[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  managedProjects Project[]    @relation("ProjectManager")
+  teamsLed        Team[]       @relation("TeamLead")
+  teams           Team[]       @relation("TeamMembers")
+  tasks           Task[]       @relation("TaskAssignees")
+  updates         TaskUpdate[] @relation("TaskUpdates")
 }
 
 model Role {
@@ -39,50 +38,46 @@ model Role {
   description String?
   permissions String[]
   users       User[]   @relation("UserRoles")
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 }
 
 model PmoDivision {
-  id                String   @id @default(uuid())
-  name              String   @unique
-  responsibleName   String
-  responsibleTitle  String
-  responsiblePhone  String
-  users             User[]
-  projects          Project[]
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
+  id               String    @id @default(uuid())
+  name             String    @unique
+  responsibleName  String
+  responsibleTitle String
+  responsiblePhone String
+  projects         Project[]
+  users            User[]
 }
 
 model Department {
-  id                  String      @id @default(uuid())
-  name                String      @unique
-  responsibleMilestones Milestone[] @relation("ResponsibleDepartments")
-  createdAt           DateTime    @default(now())
-  updatedAt           DateTime    @updatedAt
+  id                     String    @id @default(uuid())
+  name                   String    @unique
+  responsibleForProjects Project[] @relation("ProjectToDepartment")
 }
 
 model Project {
-  id                String        @id @default(uuid())
-  name              String
-  description       String
-  startDate         DateTime
-  endDate           DateTime
-  workingYear       String
-  status            ProjectStatus @relation(fields: [statusId], references: [id])
-  statusId          String
-  pmoDivision       PmoDivision   @relation(fields: [pmoDivisionId], references: [id])
-  pmoDivisionId     String
-  projectManager    User          @relation(fields: [projectManagerId], references: [id])
-  projectManagerId  String
-  milestones        Milestone[]
-  teams             Team[]
-  blockers          Blocker[]
-  totalCost         Decimal?
-  costByMilestones  Boolean       @default(false)
-  createdAt         DateTime      @default(now())
-  updatedAt         DateTime      @updatedAt
+  id                     String       @id @default(uuid())
+  name                   String
+  description            String
+  startDate              DateTime
+  endDate                DateTime
+  workingYear            String
+  totalCost              Decimal?
+  costByMilestones       Boolean      @default(false)
+  status                 ProjectStatus @relation(fields: [statusId], references: [id])
+  statusId               String
+  pmoDivision            PmoDivision  @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivisionId          String
+  projectManager         User         @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  projectManagerId       String
+  milestones             Milestone[]
+  teams                  Team[]
+  blockers               Blocker[]
+  responsibleDepartments Department[] @relation("ProjectToDepartment")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model ProjectStatus {
@@ -92,67 +87,61 @@ model ProjectStatus {
 }
 
 model Milestone {
-  id          String       @id @default(uuid())
+  id          String     @id @default(uuid())
   title       String
   description String
   startDate   DateTime
   dueDate     DateTime
-  weight      Int
-  project     Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  weight      Float
+  cost        Decimal?
+  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId   String
   tasks       Task[]
-  responsibleDepartments Department[] @relation("ResponsibleDepartments")
-  cost        Decimal?
-  createdAt   DateTime     @default(now())
-  updatedAt   DateTime     @updatedAt
 }
 
 model Task {
-  id           String      @id @default(uuid())
+  id           String     @id @default(uuid())
   title        String
   description  String
-  status       String
+  status       String // TODO, IN_PROGRESS, PENDING_REVIEW, DONE
   startDate    DateTime
   endDate      DateTime
-  weight       Int
-  progress     Int         @default(0)
   completedAt  DateTime?
-  milestone    Milestone   @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  weight       Float
+  progress     Float      @default(0)
+  milestone    Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
   milestoneId  String
-  assignees    User[]      @relation("TaskAssignees")
+  assignees    User[]     @relation("TaskAssignees")
   updates      TaskUpdate[]
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
 }
 
 model TaskUpdate {
-  id                 String   @id @default(uuid())
+  id                 String    @id @default(uuid())
   text               String
-  type               String
-  progressPercentage Int?
-  author             User     @relation(fields: [authorId], references: [id])
+  type               String // 'COMMENT' or 'STATUS_CHANGE'
+  progressPercentage Float?
+  author             User      @relation("TaskUpdates", fields: [authorId], references: [id])
   authorId           String
-  task               Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task               Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
   taskId             String
-  createdAt          DateTime @default(now())
+  createdAt          DateTime  @default(now())
 }
 
+
 model Team {
-  id         String   @id @default(uuid())
+  id         String  @id @default(uuid())
   name       String
-  project    Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId  String
-  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  teamLead   User    @relation("TeamLead", fields: [teamLeadId], references: [id])
   teamLeadId String
-  members    User[]   @relation("TeamMembers")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  members    User[]  @relation("TeamMembers")
 }
 
 model Blocker {
   id          String    @id @default(uuid())
   description String
-  status      String
+  status      String // OPEN, RESOLVED
   createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
   resolution  String?
@@ -165,5 +154,3 @@ model Setting {
   key   String @unique
   value String
 }
-
-    
