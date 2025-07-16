@@ -181,7 +181,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                         <FormItem>
                           <FormLabel>Phone Number</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., (123) 456-7890" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                            <Input placeholder="0912345678" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
