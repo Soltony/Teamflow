@@ -1,6 +1,7 @@
 
 "use client";
 
+import * as React from "react";
 import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -191,7 +192,7 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody>
-                                                {approvedPayments.sort((a,b) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()).map((payment: any) => (
+                                                {approvedPayments.sort((a:any,b:any) => new Date(b.paymentDate).getTime() - new Date(a.paymentDate).getTime()).map((payment: any) => (
                                                     <TableRow key={payment.id} className="bg-background">
                                                         <TableCell>{format(new Date(payment.paymentDate), 'MMM dd, yyyy')}</TableCell>
                                                         <TableCell className="text-right">${parseFloat(payment.amount.toString()).toFixed(2)}</TableCell>
