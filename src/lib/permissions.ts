@@ -14,6 +14,7 @@ export const availablePermissions: Record<string, string[]> = {
     'PMO Divisions': ['pmo-divisions:view', 'pmo-divisions:create', 'pmo-divisions:update', 'pmo-divisions:delete'],
     'Departments': ['departments:read', 'departments:create', 'departments:update', 'departments:delete'],
     'Teams': ['teams:create', 'teams:read', 'teams:update', 'teams:delete'],
+    'Payments': ['payments:view'],
     'Reports': ['reports:view'],
     'Settings': ['settings:manage'],
     'Configuration': ['config:manage-users', 'config:manage-roles'],
