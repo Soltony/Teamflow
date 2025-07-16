@@ -35,10 +35,10 @@ import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 
 const departmentSchema = z.object({
-  name: z.string().min(3, "PMO Division name must be at least 3 characters."),
+  name: z.string().min(3, "Department name must be at least 3 characters."),
   responsibleName: z.string().min(3, "Responsible person's name is required."),
   responsibleTitle: z.string().min(3, "Title is required."),
-  responsiblePhone: z.string().min(10, "A valid phone number is required."),
+  responsiblePhone: z.string().regex(/^09\d{8}$/, "Phone number must be in 0912345678 format."),
 });
 
 type DepartmentFormValues = z.infer<typeof departmentSchema>;
@@ -51,9 +51,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
   const { hasPermission } = useAuth();
   
-  const canCreate = hasPermission('departments:create');
-  const canUpdate = hasPermission('departments:update');
-  const canDelete = hasPermission('departments:delete');
+  const canManage = hasPermission('departments:read'); // Using 'read' as a proxy for management for now
 
   const form = useForm<DepartmentFormValues>({
     resolver: zodResolver(departmentSchema),
@@ -75,8 +73,8 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
 
       if (result.success) {
         toast({
-          title: isEditing ? "PMO Division Updated!" : "PMO Division Added!",
-          description: `The "${data.name}" PMO division has been successfully saved.`,
+          title: isEditing ? "Department Updated!" : "Department Added!",
+          description: `The "${data.name}" department has been successfully saved.`,
         });
         setEditingDepartment(null);
         form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
@@ -108,8 +106,8 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
       const result = await deleteDepartment(departmentToDelete.id);
       if (result.success) {
         toast({
-          title: "PMO Division Deleted",
-          description: `The "${departmentToDelete.name}" PMO division has been removed.`,
+          title: "Department Deleted",
+          description: `The "${departmentToDelete.name}" department has been removed.`,
         });
         router.refresh();
       } else {
@@ -126,11 +124,11 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
   return (
     <>
       <div className="grid md:grid-cols-3 gap-6">
-        {(canCreate || canUpdate) && (
+        {canManage && (
           <div className="md:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle>{isEditing ? "Edit PMO Division" : "Add New PMO Division"}</CardTitle>
+                <CardTitle>{isEditing ? "Edit Department" : "Add New Department"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -140,9 +138,9 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>PMO Division Name</FormLabel>
+                          <FormLabel>Department Name</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., Marketing" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                            <Input placeholder="e.g., Human Resources" {...field} disabled={isPending} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -155,7 +153,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                         <FormItem>
                           <FormLabel>Responsible Person</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., John Doe" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                            <Input placeholder="e.g., Jane Smith" {...field} disabled={isPending} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -168,7 +166,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                         <FormItem>
                           <FormLabel>Title</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., Head of Marketing" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                            <Input placeholder="e.g., HR Director" {...field} disabled={isPending} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -181,15 +179,15 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                         <FormItem>
                           <FormLabel>Phone Number</FormLabel>
                           <FormControl>
-                            <Input placeholder="0912345678" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                            <Input placeholder="0912345678" {...field} disabled={isPending} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                     <div className="space-y-2 pt-2">
-                      <Button type="submit" className="w-full" disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)}>
-                         {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update PMO Division" : "Add PMO Division")}
+                      <Button type="submit" className="w-full" disabled={isPending}>
+                         {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Department" : "Add Department")}
                       </Button>
                       {isEditing && (
                         <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit} disabled={isPending}>
@@ -203,14 +201,14 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
             </Card>
           </div>
         )}
-        <div className={(canCreate || canUpdate) ? "md:col-span-2" : "md:col-span-3"}>
+        <div className={canManage ? "md:col-span-2" : "md:col-span-3"}>
           <Card>
             <CardHeader>
-              <CardTitle>Existing PMO Divisions</CardTitle>
+              <CardTitle>Existing Departments</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {initialDepartments.length === 0 && (
-                <p className="text-muted-foreground">No PMO divisions have been added yet.</p>
+                <p className="text-muted-foreground">No departments have been added yet.</p>
               )}
               {initialDepartments.map((dept, index) => (
                 <div key={dept.id}>
@@ -222,14 +220,12 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                       </p>
                       <p className="text-sm text-muted-foreground">{dept.responsiblePhone}</p>
                     </div>
-                    <div className="flex items-center gap-1">
-                      {canUpdate && (
+                    {canManage && (
+                      <div className="flex items-center gap-1">
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(dept)}>
                           <Pencil className="w-4 h-4" />
                           <span className="sr-only">Edit</span>
                         </Button>
-                      )}
-                      {canDelete && (
                         <Button
                           variant="ghost"
                           size="icon"
@@ -239,8 +235,8 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                           <Trash2 className="w-4 h-4" />
                           <span className="sr-only">Delete</span>
                         </Button>
-                      )}
-                    </div>
+                      </div>
+                    )}
                   </div>
                   {index < initialDepartments.length - 1 && <Separator className="my-4" />}
                 </div>
@@ -256,7 +252,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the{' '}
-              <span className="font-semibold">{departmentToDelete?.name}</span> PMO division.
+              <span className="font-semibold">{departmentToDelete?.name}</span> department.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -274,5 +270,3 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
     </>
   );
 }
-
-    

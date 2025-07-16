@@ -54,6 +54,7 @@ const menuItems = [
   { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
   { href: "/responsible-departments", label: "PMO Divisions", icon: Library, permission: 'responsible-depts:view' },
+  { href: "/departments", label: "Departments", icon: Building2, permission: 'departments:read' },
   { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
   { href: "/ceo-report", label: "Reports", icon: AreaChart, permission: 'reports:view' },
   { href: "/settings", label: "Settings", icon: Settings, permission: 'settings:manage' },

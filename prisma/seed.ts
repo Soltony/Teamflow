@@ -2,7 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 import { 
     users as usersData, 
-    departments as departmentsData, 
+    pmoDivisions as pmoDivisionsData, 
     projectStatuses as projectStatusesData, 
     projects as projectsData, 
     teams as teamsData
@@ -22,7 +22,8 @@ async function main() {
   await prisma.project.deleteMany(); 
   await prisma.user.deleteMany();
   await prisma.role.deleteMany();
-  await prisma.department.deleteMany();
+  await prisma.pmoDivision.deleteMany();
+  await prisma.department.deleteMany(); // Also clear new departments table
   await prisma.projectStatus.deleteMany();
   console.log('Existing data cleared.');
   
@@ -57,7 +58,6 @@ async function main() {
             'milestones:view',
             'gantt:view',
             'reports:view',
-            'departments:read',
             'responsible-depts:view',
             'teams:create',
             'teams:read',
@@ -78,7 +78,6 @@ async function main() {
             'milestones:view',
             'gantt:view',
             'reports:view',
-            'departments:read',
             'responsible-depts:view',
             'teams:create',
             'teams:read',
@@ -113,57 +112,57 @@ async function main() {
   });
   console.log('Seeded roles.');
 
-  // Seed Departments and create a map
-  const departmentMap = new Map<string, string>();
-  for (const department of departmentsData) {
-      const createdDept = await prisma.department.upsert({
-          where: { name: department.name },
+  // Seed PMO Divisions and create a map
+  const pmoDivisionMap = new Map<string, string>();
+  for (const pmo of pmoDivisionsData) {
+      const createdPmo = await prisma.pmoDivision.upsert({
+          where: { name: pmo.name },
           update: {},
           create: {
-            name: department.name,
-            responsibleName: department.responsible.name,
-            responsibleTitle: department.responsible.title,
-            responsiblePhone: department.responsible.phone,
+            name: pmo.name,
+            responsibleName: pmo.responsible.name,
+            responsibleTitle: pmo.responsible.title,
+            responsiblePhone: pmo.responsible.phone,
           }
       });
-      departmentMap.set(createdDept.name, createdDept.id);
+      pmoDivisionMap.set(createdPmo.name, createdPmo.id);
   }
-  console.log(`Seeded ${departmentsData.length} departments.`);
+  console.log(`Seeded ${pmoDivisionsData.length} PMO divisions.`);
 
   // Seed Users and create a map
   const userMap = new Map<string, string>();
-  const techDeptId = departmentMap.get('Technology');
-  const marketingDeptId = departmentMap.get('Marketing');
+  const techPmoId = pmoDivisionMap.get('Technology');
+  const marketingPmoId = pmoDivisionMap.get('Marketing');
 
   for (const user of usersData) {
       let roleId;
-      let departmentId;
+      let pmoDivisionId;
 
       switch (user.email) {
           case 'alice.johnson@teamflow.com':
               roleId = adminRole.id;
-              departmentId = techDeptId;
+              pmoDivisionId = techPmoId;
               break;
           case 'bob.williams@teamflow.com':
               roleId = projectManagerRole.id;
-              departmentId = techDeptId;
+              pmoDivisionId = techPmoId;
               break;
           case 'charlie.brown@teamflow.com':
               roleId = memberRole.id;
-              departmentId = techDeptId;
+              pmoDivisionId = techPmoId;
               break;
           case 'diana.miller@teamflow.com':
               roleId = memberRole.id;
-              departmentId = techDeptId;
+              pmoDivisionId = techPmoId;
               break;
           case 'ethan.davis@teamflow.com':
           case 'fiona.garcia@teamflow.com':
               roleId = memberRole.id;
-              departmentId = marketingDeptId;
+              pmoDivisionId = marketingPmoId;
               break;
           default:
               roleId = memberRole.id;
-              departmentId = techDeptId; // Default to tech
+              pmoDivisionId = techPmoId; // Default to tech
       }
       
       const createdUser = await prisma.user.upsert({
@@ -172,7 +171,7 @@ async function main() {
             roles: {
                 set: [{ id: roleId }]
             },
-            departmentId: departmentId,
+            pmoDivisionId: pmoDivisionId,
           },
           create: {
             id: user.id,
@@ -182,7 +181,7 @@ async function main() {
             email: user.email,
             avatar: user.avatar,
             phoneNumber: user.phoneNumber,
-            departmentId: departmentId,
+            pmoDivisionId: pmoDivisionId,
             roles: {
               connect: { id: roleId }
             }
@@ -208,9 +207,9 @@ async function main() {
   for (const project of projectsData) {
     const projectManagerId = userMap.get(project.projectManagerEmail);
     const statusId = statusMap.get(project.statusName);
-    const departmentId = departmentMap.get(project.departmentName);
+    const pmoDivisionId = pmoDivisionMap.get(project.pmoDivisionName);
 
-    if (!projectManagerId || !statusId || !departmentId) {
+    if (!projectManagerId || !statusId || !pmoDivisionId) {
         console.warn(`Skipping project "${project.name}" due to missing relations.`);
         continue;
     }
@@ -226,7 +225,7 @@ async function main() {
         endDate: new Date(project.endDate),
         workingYear: project.workingYear,
         statusId: statusId,
-        departmentId: departmentId,
+        pmoDivisionId: pmoDivisionId,
         projectManagerId: projectManagerId,
       },
     });
@@ -250,15 +249,15 @@ async function main() {
     }
 
     for (const milestone of project.milestones) {
-      const responsibleDepartmentIds = milestone.responsibleDepartmentNames
-        .map(name => departmentMap.get(name))
+      const responsiblePmoDivisionIds = milestone.responsiblePmoDivisionNames
+        .map(name => pmoDivisionMap.get(name))
         .filter((id): id is string => !!id);
 
       const createdMilestone = await prisma.milestone.upsert({
         where: { id: milestone.id },
         update: {
-          responsibleDepartments: {
-            set: responsibleDepartmentIds.map(id => ({ id }))
+          responsiblePmoDivisions: {
+            set: responsiblePmoDivisionIds.map(id => ({ id }))
           }
         },
         create: {
@@ -269,8 +268,8 @@ async function main() {
           dueDate: new Date(milestone.dueDate),
           weight: milestone.weight,
           projectId: createdProject.id,
-          responsibleDepartments: {
-            connect: responsibleDepartmentIds.map(id => ({ id })),
+          responsiblePmoDivisions: {
+            connect: responsiblePmoDivisionIds.map(id => ({ id })),
           },
         },
       });
