@@ -76,9 +76,9 @@ export function PmoDivisionManagement({ initialPmoDivisions }: { initialPmoDivis
           title: isEditing ? "PMO Division Updated!" : "PMO Division Added!",
           description: `The "${data.name}" division has been successfully saved.`,
         });
-        router.refresh();
         setEditingPmoDivision(null);
         form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
+        router.refresh();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -109,6 +109,7 @@ export function PmoDivisionManagement({ initialPmoDivisions }: { initialPmoDivis
           title: "PMO Division Deleted",
           description: `The "${pmoDivisionToDelete.name}" division has been removed.`,
         });
+        setPmoDivisionToDelete(null);
         router.refresh();
       } else {
         toast({
@@ -116,8 +117,8 @@ export function PmoDivisionManagement({ initialPmoDivisions }: { initialPmoDivis
           description: result.error,
           variant: "destructive"
         })
+        setPmoDivisionToDelete(null);
       }
-      setPmoDivisionToDelete(null);
     });
   }
 
