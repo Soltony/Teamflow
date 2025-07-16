@@ -38,7 +38,7 @@ const departmentSchema = z.object({
   name: z.string().min(3, "PMO Division name must be at least 3 characters."),
   responsibleName: z.string().min(3, "Responsible person's name is required."),
   responsibleTitle: z.string().min(3, "Title is required."),
-  responsiblePhone: z.string().min(10, "A valid phone number is required."),
+  responsiblePhone: z.string().regex(/^09\d{8}$/, "Phone number must be 10 digits and start with 09."),
 });
 
 type DepartmentFormValues = z.infer<typeof departmentSchema>;
@@ -181,7 +181,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                         <FormItem>
                           <FormLabel>Phone Number</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., (123) 456-7890" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
+                            <Input placeholder="0912345678" {...field} disabled={isPending || (isEditing && !canUpdate) || (!isEditing && !canCreate)} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -274,5 +274,3 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
     </>
   );
 }
-
-    

@@ -18,17 +18,17 @@ export const roles = [
 ];
 
 export const users = [
-  { id: 'b1e55c84-9055-4eb5-8bd4-a262538f7e66', name: 'Alice Johnson', firstName: 'Alice', lastName: 'Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phoneNumber: '123-456-7890' },
-  { id: 'user-2', name: 'Bob Williams', firstName: 'Bob', lastName: 'Williams', email: 'bob.williams@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-2', phoneNumber: '234-567-8901' },
-  { id: 'user-3', name: 'Charlie Brown', firstName: 'Charlie', lastName: 'Brown', email: 'charlie.brown@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-3', phoneNumber: '345-678-9012' },
-  { id: 'user-4', name: 'Diana Miller', firstName: 'Diana', lastName: 'Miller', email: 'diana.miller@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-4', phoneNumber: '456-789-0123' },
-  { id: 'user-5', name: 'Ethan Davis', firstName: 'Ethan', lastName: 'Davis', email: 'ethan.davis@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-5', phoneNumber: '567-890-1234' },
-  { id: 'user-6', name: 'Fiona Garcia', firstName: 'Fiona', lastName: 'Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phoneNumber: '678-901-2345' },
+  { id: 'b1e55c84-9055-4eb5-8bd4-a262538f7e66', name: 'Alice Johnson', firstName: 'Alice', lastName: 'Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phoneNumber: '0912345678' },
+  { id: 'user-2', name: 'Bob Williams', firstName: 'Bob', lastName: 'Williams', email: 'bob.williams@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-2', phoneNumber: '0923456789' },
+  { id: 'user-3', name: 'Charlie Brown', firstName: 'Charlie', lastName: 'Brown', email: 'charlie.brown@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-3', phoneNumber: '0934567890' },
+  { id: 'user-4', name: 'Diana Miller', firstName: 'Diana', lastName: 'Miller', email: 'diana.miller@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-4', phoneNumber: '0945678901' },
+  { id: 'user-5', name: 'Ethan Davis', firstName: 'Ethan', lastName: 'Davis', email: 'ethan.davis@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-5', phoneNumber: '0956789012' },
+  { id: 'user-6', name: 'Fiona Garcia', firstName: 'Fiona', lastName: 'Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phoneNumber: '0967890123' },
 ];
 
 export const departments = [
-    { name: 'Technology', responsible: { name: 'Dr. Evelyn Reed', title: 'CTO', phone: '111-222-3333' } },
-    { name: 'Marketing', responsible: { name: 'Marcus Holloway', title: 'CMO', phone: '444-555-6666' } },
+    { name: 'Technology', responsible: { name: 'Dr. Evelyn Reed', title: 'CTO', phone: '0911222333' } },
+    { name: 'Marketing', responsible: { name: 'Marcus Holloway', title: 'CMO', phone: '0944555666' } },
 ];
 
 export const projectStatuses = [
