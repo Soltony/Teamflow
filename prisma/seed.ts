@@ -2,7 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 import { 
     users as usersData, 
-    pmoDivisions as pmoDivisionsData, 
+    pmoDivisionsData, 
     departments as departmentsData,
     projectStatuses as projectStatusesData, 
     projects as projectsData, 
@@ -397,3 +397,5 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
+
+    
