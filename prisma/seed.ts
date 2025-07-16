@@ -61,7 +61,13 @@ async function main() {
             'gantt:view',
             'reports:view',
             'pmo-divisions:view',
+            'pmo-divisions:create',
+            'pmo-divisions:update',
+            'pmo-divisions:delete',
             'departments:read',
+            'departments:create',
+            'departments:update',
+            'departments:delete',
             'teams:create',
             'teams:read',
             'teams:update',
@@ -82,7 +88,13 @@ async function main() {
             'gantt:view',
             'reports:view',
             'pmo-divisions:view',
+            'pmo-divisions:create',
+            'pmo-divisions:update',
+            'pmo-divisions:delete',
             'departments:read',
+            'departments:create',
+            'departments:update',
+            'departments:delete',
             'teams:create',
             'teams:read',
             'teams:update',
@@ -124,9 +136,9 @@ async function main() {
           update: {},
           create: {
             name: pmo.name,
-            responsibleName: pmo.responsible.name,
-            responsibleTitle: pmo.responsible.title,
-            responsiblePhone: pmo.responsible.phone,
+            responsibleName: pmo.responsibleName,
+            responsibleTitle: pmo.responsibleTitle,
+            responsiblePhone: pmo.responsiblePhone,
           }
       });
       pmoDivisionMap.set(createdPmo.name, createdPmo.id);
@@ -383,3 +395,5 @@ main()
     await prisma.$disconnect();
     process.exit(1);
   });
+
+    

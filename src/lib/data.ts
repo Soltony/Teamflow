@@ -27,8 +27,8 @@ export const users = [
 ];
 
 export const pmoDivisions = [
-    { name: 'Technology', responsible: { name: 'Dr. Evelyn Reed', title: 'CTO', phone: '09112223333' } },
-    { name: 'Marketing', responsible: { name: 'Marcus Holloway', title: 'CMO', phone: '09445556666' } },
+    { name: 'Technology', responsibleName: 'Dr. Evelyn Reed', responsibleTitle: 'CTO', responsiblePhone: '09112223333' },
+    { name: 'Marketing', responsibleName: 'Marcus Holloway', responsibleTitle: 'CMO', responsiblePhone: '09445556666' },
 ];
 
 export const departments = [
@@ -182,3 +182,5 @@ export const teams = [
     memberEmails: ['diana.miller@teamflow.com', 'fiona.garcia@teamflow.com'] 
   },
 ];
+
+    
