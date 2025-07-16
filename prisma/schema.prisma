@@ -1,16 +1,13 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -21,15 +18,16 @@ model User {
   email         String       @unique
   avatar        String?
   phoneNumber   String?      @unique
-  roles         Role[]       @relation("UserRoles")
   pmoDivision   PmoDivision? @relation(fields: [pmoDivisionId], references: [id])
   pmoDivisionId String?
-
-  managedProjects Project[]    @relation("ProjectManager")
+  roles         Role[]       @relation("UserRoles")
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  managedProjects Project[]
   teamsLed        Team[]       @relation("TeamLead")
   teams           Team[]       @relation("TeamMembers")
-  tasks           Task[]       @relation("TaskAssignees")
-  updates         TaskUpdate[] @relation("TaskUpdates")
+  tasks           Task[]
+  updates         TaskUpdate[]
 }
 
 model Role {
@@ -41,43 +39,19 @@ model Role {
 }
 
 model PmoDivision {
-  id               String    @id @default(uuid())
-  name             String    @unique
-  responsibleName  String
-  responsibleTitle String
-  responsiblePhone String
-  projects         Project[]
-  users            User[]
+  id                 String   @id @default(uuid())
+  name               String   @unique
+  responsibleName    String
+  responsibleTitle   String
+  responsiblePhone   String
+  users              User[]
+  projects           Project[]
 }
 
 model Department {
-  id                     String    @id @default(uuid())
-  name                   String    @unique
-  responsibleForProjects Project[] @relation("ProjectToDepartment")
-}
-
-model Project {
-  id                     String       @id @default(uuid())
-  name                   String
-  description            String
-  startDate              DateTime
-  endDate                DateTime
-  workingYear            String
-  totalCost              Decimal?
-  costByMilestones       Boolean      @default(false)
-  status                 ProjectStatus @relation(fields: [statusId], references: [id])
-  statusId               String
-  pmoDivision            PmoDivision  @relation(fields: [pmoDivisionId], references: [id])
-  pmoDivisionId          String
-  projectManager         User         @relation("ProjectManager", fields: [projectManagerId], references: [id])
-  projectManagerId       String
-  milestones             Milestone[]
-  teams                  Team[]
-  blockers               Blocker[]
-  responsibleDepartments Department[] @relation("ProjectToDepartment")
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id                 String     @id @default(uuid())
+  name               String     @unique
+  projects           Project[]  @relation("ProjectResponsibleDepartments")
 }
 
 model ProjectStatus {
@@ -86,15 +60,48 @@ model ProjectStatus {
   projects Project[]
 }
 
+model Project {
+  id                 String       @id @default(uuid())
+  name               String
+  description        String
+  startDate          DateTime
+  endDate            DateTime
+  workingYear        String
+  status             ProjectStatus @relation(fields: [statusId], references: [id])
+  statusId           String
+  pmoDivision        PmoDivision  @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivisionId      String
+  projectManager     User         @relation(fields: [projectManagerId], references: [id])
+  projectManagerId   String
+  totalCost          Decimal?
+  costByMilestones   Boolean      @default(false)
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
+  milestones         Milestone[]
+  teams              Team[]
+  blockers           Blocker[]
+  responsibleDepartments Department[] @relation("ProjectResponsibleDepartments")
+}
+
+model Team {
+  id         String   @id @default(uuid())
+  name       String
+  project    Project  @relation(fields: [projectId], references: [id])
+  projectId  String
+  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  teamLeadId String
+  members    User[]   @relation("TeamMembers")
+}
+
 model Milestone {
   id          String     @id @default(uuid())
   title       String
   description String
   startDate   DateTime
   dueDate     DateTime
-  weight      Float
+  weight      Int
   cost        Decimal?
-  project     Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project    @relation(fields: [projectId], references: [id])
   projectId   String
   tasks       Task[]
 }
@@ -103,54 +110,52 @@ model Task {
   id           String     @id @default(uuid())
   title        String
   description  String
-  status       String // TODO, IN_PROGRESS, PENDING_REVIEW, DONE
+  status       String     @default("TODO") // e.g., 'TODO', 'IN_PROGRESS', 'PENDING_REVIEW', 'DONE'
   startDate    DateTime
   endDate      DateTime
   completedAt  DateTime?
-  weight       Float
-  progress     Float      @default(0)
-  milestone    Milestone  @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  weight       Int
+  progress     Int        @default(0)
+  milestone    Milestone  @relation(fields: [milestoneId], references: [id])
   milestoneId  String
-  assignees    User[]     @relation("TaskAssignees")
+  assignees    User[]
   updates      TaskUpdate[]
 }
 
 model TaskUpdate {
   id                 String    @id @default(uuid())
   text               String
-  type               String // 'COMMENT' or 'STATUS_CHANGE'
-  progressPercentage Float?
-  author             User      @relation("TaskUpdates", fields: [authorId], references: [id])
+  type               String    @default("COMMENT") // 'COMMENT', 'STATUS_CHANGE'
+  progressPercentage Int?
+  author             User      @relation(fields: [authorId], references: [id])
   authorId           String
-  task               Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  task               Task      @relation(fields: [taskId], references: [id])
   taskId             String
   createdAt          DateTime  @default(now())
-}
-
-
-model Team {
-  id         String  @id @default(uuid())
-  name       String
-  project    Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  projectId  String
-  teamLead   User    @relation("TeamLead", fields: [teamLeadId], references: [id])
-  teamLeadId String
-  members    User[]  @relation("TeamMembers")
 }
 
 model Blocker {
   id          String    @id @default(uuid())
   description String
-  status      String // OPEN, RESOLVED
+  status      String    @default("OPEN") // 'OPEN' or 'RESOLVED'
   createdAt   DateTime  @default(now())
   resolvedAt  DateTime?
   resolution  String?
-  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project   @relation(fields: [projectId], references: [id])
   projectId   String
 }
 
 model Setting {
-  id    String @id @default(uuid())
-  key   String @unique
+  key   String @id
   value String
+}
+
+// Explicit many-to-many join table for Project and Department
+model _ProjectToDepartment {
+  A String
+  B String
+
+  @@unique([A, B])
+  @@index([B])
+  @@map("ProjectResponsibleDepartments")
 }
