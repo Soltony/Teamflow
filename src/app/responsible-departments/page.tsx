@@ -3,15 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { DepartmentManagement } from "@/components/departments/department-management";
+import { ResponsibleDepartmentManagement } from "@/components/departments/responsible-department-management";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getResponsibleDepartmentsData } from "./actions";
-import type { Department, Project } from '@prisma/client';
-
-export type DepartmentWithProjects = Department & {
-    projects: Project[];
-}
+import type { Department } from '@prisma/client';
 
 function LoadingSkeleton() {
     return (
@@ -22,8 +18,14 @@ function LoadingSkeleton() {
                     <Skeleton className="h-4 w-96 mt-2" />
                 </CardHeader>
                 <CardContent className="space-y-4">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
+                     <div className="grid md:grid-cols-3 gap-6">
+                        <div className="md:col-span-1">
+                            <Skeleton className="h-64 w-full" />
+                        </div>
+                        <div className="md:col-span-2">
+                             <Skeleton className="h-64 w-full" />
+                        </div>
+                    </div>
                 </CardContent>
             </Card>
         </div>
@@ -33,7 +35,7 @@ function LoadingSkeleton() {
 export default function ResponsibleDepartmentsPage() {
     const { hasPermission, loading: authLoading } = useAuth();
     const router = useRouter();
-    const [departments, setDepartments] = useState<DepartmentWithProjects[]>([]);
+    const [departments, setDepartments] = useState<Department[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
@@ -57,13 +59,13 @@ export default function ResponsibleDepartmentsPage() {
         <div className="p-4 sm:p-6">
            <Card>
             <CardHeader>
-              <CardTitle>Responsible Departments</CardTitle>
+              <CardTitle>Responsible Department Management</CardTitle>
               <CardDescription>
-                Manage departments and see which projects they are responsible for.
+                Add, view, and manage the departments responsible for projects and milestones.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DepartmentManagement initialDepartments={departments} />
+              <ResponsibleDepartmentManagement initialDepartments={departments} />
             </CardContent>
           </Card>
         </div>

@@ -2,25 +2,10 @@
 
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+import type { Department } from '@prisma/client';
 
 export async function getResponsibleDepartmentsData() {
   const departments = await prisma.department.findMany({
-    include: {
-      projects: {
-        include: {
-          status: true,
-          owningDepartment: true,
-          milestones: {
-            include: {
-              tasks: true,
-            },
-          },
-        },
-        orderBy: {
-          name: 'asc',
-        },
-      },
-    },
     orderBy: {
       name: 'asc',
     },
@@ -28,19 +13,13 @@ export async function getResponsibleDepartmentsData() {
   return JSON.parse(JSON.stringify(departments));
 }
 
-export async function createDepartmentSimple(name: string) {
-    if (!name.trim()) {
+export async function createDepartment(data: Omit<Department, 'id'>) {
+    if (!data.name.trim()) {
         return { success: false, error: "Department name cannot be empty." };
     }
     try {
         await prisma.department.create({
-            data: { 
-                name,
-                // Providing default placeholder values for other required fields
-                responsibleName: 'N/A',
-                responsibleTitle: 'N/A',
-                responsiblePhone: 'N/A',
-            },
+            data,
         });
         revalidatePath('/responsible-departments');
         return { success: true };
@@ -49,12 +28,12 @@ export async function createDepartmentSimple(name: string) {
     }
 }
 
-export async function updateDepartmentName(id: string, name: string) {
-    if (!name.trim()) {
+export async function updateDepartment(id: string, data: Omit<Department, 'id'>) {
+    if (!data.name.trim()) {
         return { success: false, error: "Department name cannot be empty." };
     }
     try {
-        await prisma.department.update({ where: { id }, data: { name } });
+        await prisma.department.update({ where: { id }, data });
         revalidatePath('/responsible-departments');
         return { success: true };
     } catch (error) {
@@ -62,8 +41,13 @@ export async function updateDepartmentName(id: string, name: string) {
     }
 }
 
-export async function deleteDepartmentAndUnlinkProjects(id: string) {
+export async function deleteDepartment(id: string) {
     try {
+         const projectsWithDept = await prisma.project.count({ where: { departmentId: id }});
+        if (projectsWithDept > 0) {
+            return { success: false, error: "Cannot delete department as it is set as the owning department for one or more projects."};
+        }
+        
         await prisma.$transaction(async (tx) => {
             // Unlink from responsibleForMilestones (many-to-many)
             await tx.milestone.updateMany({
