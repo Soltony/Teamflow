@@ -328,10 +328,10 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             <CardTitle>Organization PMO Divisions</CardTitle>
             <CardDescription>
               A list of all PMO divisions.
-              {hasPermission('departments:read') && (
+              {hasPermission('responsible-depts:view') && (
                 <>
                   {' '}Manage them in the{' '}
-                  <Link href="/departments" className="text-primary hover:underline">
+                  <Link href="/responsible-departments" className="text-primary hover:underline">
                     PMO Divisions page
                   </Link>
                   .
@@ -412,3 +412,4 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     </div>
   );
 }
+

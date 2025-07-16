@@ -11,7 +11,7 @@ export const availablePermissions: Record<string, string[]> = {
     'Projects': ['projects:create', 'projects:read', 'projects:update', 'projects:delete'],
     'Milestones': ['milestones:view'],
     'Gantt': ['gantt:view'],
-    'Departments': ['responsible-depts:view'],
+    'PMO Divisions': ['responsible-depts:view'],
     'Teams': ['teams:create', 'teams:read', 'teams:update', 'teams:delete'],
     'Reports': ['reports:view'],
     'Settings': ['settings:manage'],

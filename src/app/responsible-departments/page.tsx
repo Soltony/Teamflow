@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -59,9 +60,9 @@ export default function ResponsibleDepartmentsPage() {
         <div className="p-4 sm:p-6">
            <Card>
             <CardHeader>
-              <CardTitle>Responsible Department Management</CardTitle>
+              <CardTitle>PMO Division Management</CardTitle>
               <CardDescription>
-                Add, view, and manage the departments responsible for projects and milestones.
+                Add, view, and manage the PMO divisions responsible for projects and milestones.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -71,3 +72,4 @@ export default function ResponsibleDepartmentsPage() {
         </div>
     );
 }
+

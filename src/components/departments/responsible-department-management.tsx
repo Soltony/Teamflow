@@ -35,7 +35,7 @@ import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
 
 const departmentSchema = z.object({
-  name: z.string().min(3, "Department name must be at least 3 characters."),
+  name: z.string().min(3, "Division name must be at least 3 characters."),
   responsibleName: z.string().min(3, "Responsible person's name is required."),
   responsibleTitle: z.string().min(3, "Title is required."),
   responsiblePhone: z.string().regex(/^09\d{8}$/, "Phone number must be in 0912345678 format."),
@@ -73,8 +73,8 @@ export function ResponsibleDepartmentManagement({ initialDepartments }: { initia
 
       if (result.success) {
         toast({
-          title: isEditing ? "Department Updated!" : "Department Added!",
-          description: `The "${data.name}" department has been successfully saved.`,
+          title: isEditing ? "PMO Division Updated!" : "PMO Division Added!",
+          description: `The "${data.name}" division has been successfully saved.`,
         });
         setEditingDepartment(null);
         form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
@@ -106,8 +106,8 @@ export function ResponsibleDepartmentManagement({ initialDepartments }: { initia
       const result = await deleteDepartment(departmentToDelete.id);
       if (result.success) {
         toast({
-          title: "Department Deleted",
-          description: `The "${departmentToDelete.name}" department has been removed.`,
+          title: "PMO Division Deleted",
+          description: `The "${departmentToDelete.name}" division has been removed.`,
         });
         router.refresh();
       } else {
@@ -128,7 +128,7 @@ export function ResponsibleDepartmentManagement({ initialDepartments }: { initia
           <div className="md:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle>{isEditing ? "Edit Department" : "Add New Department"}</CardTitle>
+                <CardTitle>{isEditing ? "Edit PMO Division" : "Add New PMO Division"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -138,7 +138,7 @@ export function ResponsibleDepartmentManagement({ initialDepartments }: { initia
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Department Name</FormLabel>
+                          <FormLabel>PMO Division Name</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g., Marketing" {...field} disabled={isPending} />
                           </FormControl>
@@ -187,7 +187,7 @@ export function ResponsibleDepartmentManagement({ initialDepartments }: { initia
                     />
                     <div className="space-y-2 pt-2">
                       <Button type="submit" className="w-full" disabled={isPending}>
-                         {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Department" : "Add Department")}
+                         {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update PMO Division" : "Add PMO Division")}
                       </Button>
                       {isEditing && (
                         <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit} disabled={isPending}>
@@ -204,11 +204,11 @@ export function ResponsibleDepartmentManagement({ initialDepartments }: { initia
         <div className={canManage ? "md:col-span-2" : "md:col-span-3"}>
           <Card>
             <CardHeader>
-              <CardTitle>Existing Departments</CardTitle>
+              <CardTitle>Existing PMO Divisions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {initialDepartments.length === 0 && (
-                <p className="text-muted-foreground">No departments have been added yet.</p>
+                <p className="text-muted-foreground">No PMO divisions have been added yet.</p>
               )}
               {initialDepartments.map((dept, index) => (
                 <div key={dept.id}>
@@ -252,7 +252,7 @@ export function ResponsibleDepartmentManagement({ initialDepartments }: { initia
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the{' '}
-              <span className="font-semibold">{departmentToDelete?.name}</span> department.
+              <span className="font-semibold">{departmentToDelete?.name}</span> PMO division.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
