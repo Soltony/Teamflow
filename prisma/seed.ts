@@ -19,7 +19,6 @@ async function main() {
   await prisma.blocker.deleteMany();
   await prisma.team.deleteMany(); 
   await prisma.task.deleteMany(); 
-  await prisma.milestone.deleteMany({ where: { responsibleDepartments: { some: {} } } });
   await prisma.milestone.deleteMany(); 
   await prisma.project.deleteMany(); 
   await prisma.user.deleteMany();
@@ -238,6 +237,9 @@ async function main() {
     const projectManagerId = userMap.get(project.projectManagerEmail);
     const statusId = statusMap.get(project.statusName);
     const pmoDivisionId = pmoDivisionMap.get(project.pmoDivisionName);
+    const responsibleDepartmentIds = project.responsibleDepartmentNames
+        .map(name => departmentMap.get(name))
+        .filter((id): id is string => !!id);
 
     if (!projectManagerId || !statusId || !pmoDivisionId) {
         console.warn(`Skipping project "${project.name}" due to missing relations.`);
@@ -257,6 +259,9 @@ async function main() {
         statusId: statusId,
         pmoDivisionId: pmoDivisionId,
         projectManagerId: projectManagerId,
+        responsibleDepartments: {
+          connect: responsibleDepartmentIds.map(id => ({ id })),
+        },
       },
     });
 
@@ -279,16 +284,9 @@ async function main() {
     }
 
     for (const milestone of project.milestones) {
-      const responsibleDepartmentIds = milestone.responsibleDepartmentNames
-        .map(name => departmentMap.get(name))
-        .filter((id): id is string => !!id);
-
       const createdMilestone = await prisma.milestone.upsert({
         where: { id: milestone.id },
         update: {
-          responsibleDepartments: {
-            set: responsibleDepartmentIds.map(id => ({ id }))
-          }
         },
         create: {
           id: milestone.id,
@@ -298,9 +296,6 @@ async function main() {
           dueDate: new Date(milestone.dueDate),
           weight: milestone.weight,
           projectId: createdProject.id,
-          responsibleDepartments: {
-            connect: responsibleDepartmentIds.map(id => ({ id })),
-          },
         },
       });
 

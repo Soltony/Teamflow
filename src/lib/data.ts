@@ -56,6 +56,7 @@ export const projects = [
     statusName: 'Active',
     pmoDivisionName: 'Technology',
     projectManagerEmail: 'alice.johnson@teamflow.com',
+    responsibleDepartmentNames: ['Sales', 'Customer Support'],
     milestones: [
         {
             id: 'mile-1-1',
@@ -64,7 +65,6 @@ export const projects = [
             startDate: '2024-08-01',
             dueDate: '2024-09-10',
             weight: 30,
-            responsibleDepartmentNames: ['Sales', 'Customer Support'],
             tasks: [
                 { id: 'task-1-1', title: 'User Research & Analysis', description: 'Conduct user surveys and interviews to gather requirements.', status: 'DONE', startDate: '2024-08-01', endDate: '2024-08-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com'], completedAt: '2024-08-14' },
                 { id: 'task-1-2', title: 'Design Wireframes & Mockups', description: 'Create high-fidelity mockups for the new platform.', status: 'IN_PROGRESS', startDate: '2024-08-16', endDate: '2024-09-10', weight: 60, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
@@ -77,7 +77,6 @@ export const projects = [
             startDate: '2024-09-11',
             dueDate: '2024-10-31',
             weight: 60,
-            responsibleDepartmentNames: ['Finance'],
             tasks: [
                 { id: 'task-1-3', title: 'Frontend Development', description: 'Develop the client-side of the application using Next.js.', status: 'PENDING_REVIEW', startDate: '2024-09-11', endDate: '2024-10-31', weight: 70, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'],
                   updates: [
@@ -95,7 +94,6 @@ export const projects = [
             startDate: '2024-11-01',
             dueDate: '2024-11-30',
             weight: 10,
-            responsibleDepartmentNames: ['Sales', 'Human Resources'],
             tasks: [
                 { id: 'task-1-5', title: 'Deployment & QA', description: 'Deploy the application and perform quality assurance testing.', status: 'TODO', startDate: '2024-11-01', endDate: '2024-11-30', weight: 100, assignedUserEmails: ['alice.johnson@teamflow.com', 'bob.williams@teamflow.com', 'charlie.brown@teamflow.com'] },
             ]
@@ -128,6 +126,7 @@ export const projects = [
     statusName: 'Pending',
     pmoDivisionName: 'Technology',
     projectManagerEmail: 'bob.williams@teamflow.com',
+    responsibleDepartmentNames: ['Finance', 'Human Resources'],
     milestones: [
         {
             id: 'mile-2-1',
@@ -136,7 +135,6 @@ export const projects = [
             startDate: '2024-09-01',
             dueDate: '2024-11-15',
             weight: 50,
-            responsibleDepartmentNames: ['Sales'],
             tasks: [
                 { id: 'task-2-1', title: 'Market Research', description: 'Analyze competitor apps and market trends.', status: 'DONE', startDate: '2024-09-01', endDate: '2024-09-15', weight: 30, assignedUserEmails: ['diana.miller@teamflow.com'] },
                 { id: 'task-2-2', title: 'API Development', description: 'Develop REST APIs for the mobile app.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-11-15', weight: 70, assignedUserEmails: ['bob.williams@teamflow.com'] },
@@ -149,7 +147,6 @@ export const projects = [
             startDate: '2024-11-16',
             dueDate: '2024-12-15',
             weight: 50,
-            responsibleDepartmentNames: ['Finance'],
             tasks: [
                 { id: 'task-2-3', title: 'Mobile UI/UX Design', description: 'Design the user interface and experience for iOS and Android.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-10-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
                 { id: 'task-2-4', title: 'Mobile App Development', description: 'Develop the native mobile application.', status: 'TODO', startDate: '2024-10-16', endDate: '2024-12-15', weight: 60, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'] },
