@@ -18,6 +18,7 @@ import { EditTaskDialog } from "./edit-task-dialog";
 import { Progress } from "../ui/progress";
 import { addTask, updateMilestone, updateTask } from "@/app/projects/actions";
 import { useAuth } from "@/context/auth-context";
+import { useRouter } from "next/navigation";
 
 type UserWithRoles = User & { roles: { name: string }[] };
 
@@ -29,6 +30,7 @@ type ProjectMilestonesProps = {
 
 export function ProjectMilestones({ initialProject, users, departments }: ProjectMilestonesProps) {
   const { toast } = useToast();
+  const router = useRouter();
   const { hasPermission } = useAuth();
   const canUpdateProject = hasPermission('projects:update');
 
@@ -44,32 +46,35 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
   }, [initialProject, users]);
 
   const handleMilestoneUpdate = async (updatedMilestone: Milestone) => {
-    setEditingMilestone(null);
     const { id, tasks, ...dataToUpdate } = updatedMilestone;
     await updateMilestone(id, initialProject.id, dataToUpdate);
     toast({
       title: "Milestone Updated!",
       description: `The milestone "${updatedMilestone.title}" has been successfully updated.`,
     });
+    setEditingMilestone(null);
+    router.refresh();
   };
 
   const handleTaskAdd = async (milestoneId: string, newTask: any) => {
-    setAddingTaskToMilestone(null);
     await addTask(milestoneId, initialProject.id, newTask);
     toast({
       title: "Task Added!",
       description: `The task "${newTask.title}" has been successfully added.`,
     });
+    setAddingTaskToMilestone(null);
+    router.refresh();
   };
 
   const handleTaskUpdate = async (milestoneId: string, updatedTask: Task) => {
-    setEditingTaskInfo(null);
     const { id, ...dataToUpdate } = updatedTask;
     await updateTask(id, initialProject.id, dataToUpdate);
     toast({
       title: "Task Updated!",
       description: `The task "${updatedTask.title}" has been successfully updated.`,
     });
+    setEditingTaskInfo(null);
+    router.refresh();
   };
 
   return (

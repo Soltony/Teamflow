@@ -18,6 +18,7 @@ export async function createTeam(data: { name: string; projectId: string; teamLe
             }
         });
         revalidatePath('/teams');
+        revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
         console.error("Failed to create team:", error);
@@ -39,6 +40,7 @@ export async function updateTeam(teamId: string, data: { name: string; projectId
             }
         });
         revalidatePath('/teams');
+        revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
         console.error("Failed to update team:", error);
@@ -52,6 +54,7 @@ export async function deleteTeam(teamId: string) {
             where: { id: teamId }
         });
         revalidatePath('/teams');
+        revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
         console.error("Failed to delete team:", error);

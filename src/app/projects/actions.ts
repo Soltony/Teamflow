@@ -252,6 +252,8 @@ export async function addTask(milestoneId: string, projectId: string, data: any)
         }
     });
     revalidatePath(`/projects/${projectId}/milestones`);
+    revalidatePath('/my-tasks');
+    revalidatePath('/team-view');
 }
 
 export async function updateTask(taskId: string, projectId: string, data: any) {
@@ -267,6 +269,8 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         }
     });
     revalidatePath(`/projects/${projectId}/milestones`);
+    revalidatePath('/my-tasks');
+    revalidatePath('/team-view');
 }
 
 export async function getProjectsForUser(userId: string) {
