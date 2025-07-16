@@ -54,6 +54,7 @@ const milestoneSchema = z.object({
   dueDate: z.date(),
   weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
   cost: z.coerce.number().optional(),
+  responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
 }).refine(data => data.dueDate >= data.startDate, {
     message: "Due date must be on or after the start date.",
     path: ["dueDate"],
@@ -68,7 +69,6 @@ const projectSchema = z.object({
   statusId: z.string().nonempty("Please select a project status."),
   pmoDivisionId: z.string().nonempty("Please select a PMO division."),
   projectManagerId: z.string().nonempty("Please select a project manager."),
-  responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
   hasCost: z.boolean().default(false),
   totalCost: z.coerce.number().optional(),
   costByMilestones: z.boolean().default(false),
@@ -156,7 +156,6 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       statusId: "",
       pmoDivisionId: "",
       projectManagerId: "",
-      responsibleDepartmentIds: [],
       hasCost: false,
       totalCost: 0,
       costByMilestones: false,
@@ -343,51 +342,6 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                         </FormItem>
                     )}
                 />
-                <FormField
-                      control={form.control}
-                      name="responsibleDepartmentIds"
-                      render={({ field }) => {
-                          const selectedDepts = departments.filter(dept => field.value?.includes(dept.id));
-                          return (
-                          <FormItem className="flex flex-col">
-                            <FormLabel>Responsible Departments</FormLabel>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <FormControl>
-                                  <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
-                                      {selectedDepts.length > 0
-                                          ? selectedDepts.map(d => d.name).join(', ')
-                                          : "Select departments..."}
-                                    <ChevronDown className="ml-auto h-4 w-4" />
-                                  </Button>
-                                </FormControl>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                                {departments.map((dept) => (
-                                  <DropdownMenuCheckboxItem
-                                    key={dept.id}
-                                    checked={field.value?.includes(dept.id)}
-                                    onCheckedChange={(checked) => {
-                                      const newValues = field.value ? [...field.value] : [];
-                                      if (checked) {
-                                        newValues.push(dept.id);
-                                      } else {
-                                        const idx = newValues.indexOf(dept.id);
-                                        if (idx > -1) newValues.splice(idx, 1);
-                                      }
-                                      field.onChange(newValues);
-                                    }}
-                                  >
-                                    {dept.name}
-                                  </DropdownMenuCheckboxItem>
-                                ))}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                            <FormMessage />
-                          </FormItem>
-                          )
-                      }}
-                  />
                 <FormField
                     control={form.control}
                     name="statusId"
@@ -616,6 +570,52 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                         )}
                       </div>
 
+                      <FormField
+                        control={form.control}
+                        name={`milestones.${index}.responsibleDepartmentIds`}
+                        render={({ field }) => {
+                            const selectedDepts = departments.filter(dept => field.value?.includes(dept.id));
+                            return (
+                            <FormItem className="flex flex-col">
+                                <FormLabel>Responsible Departments</FormLabel>
+                                <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <FormControl>
+                                    <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
+                                        {selectedDepts.length > 0
+                                            ? selectedDepts.map(d => d.name).join(', ')
+                                            : "Select departments..."}
+                                        <ChevronDown className="ml-auto h-4 w-4" />
+                                    </Button>
+                                    </FormControl>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                    {departments.map((dept) => (
+                                    <DropdownMenuCheckboxItem
+                                        key={dept.id}
+                                        checked={field.value?.includes(dept.id)}
+                                        onCheckedChange={(checked) => {
+                                        const newValues = field.value ? [...field.value] : [];
+                                        if (checked) {
+                                            newValues.push(dept.id);
+                                        } else {
+                                            const idx = newValues.indexOf(dept.id);
+                                            if (idx > -1) newValues.splice(idx, 1);
+                                        }
+                                        field.onChange(newValues);
+                                        }}
+                                    >
+                                        {dept.name}
+                                    </DropdownMenuCheckboxItem>
+                                    ))}
+                                </DropdownMenuContent>
+                                </DropdownMenu>
+                                <FormMessage />
+                            </FormItem>
+                            )
+                        }}
+                    />
+
                   </div>
                 </CardContent>
               </Card>
@@ -625,7 +625,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => append({ title: '', description: '', startDate: new Date(), dueDate: new Date(), weight: 20, cost: 0 })}
+                onClick={() => append({ title: '', description: '', startDate: new Date(), dueDate: new Date(), weight: 20, cost: 0, responsibleDepartmentIds: [] })}
             >
                 <PlusCircle className="w-4 h-4 mr-2" />
                 Add Milestone

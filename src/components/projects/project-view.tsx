@@ -78,6 +78,9 @@ export function ProjectView({
     return progress + (milestoneProgress * milestone.weight);
   }, 0);
 
+  const allResponsibleDepartments = [...new Set(project.milestones.flatMap((m: any) => m.responsibleDepartments.map((d: any) => d.name)))];
+
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
@@ -129,7 +132,7 @@ export function ProjectView({
             </div>
             <div className="flex items-center gap-2">
               <Building className="w-4 h-4" />
-              <span>For: {project.responsibleDepartments.map((d:any) => d.name).join(', ')}</span>
+              <span>For: {allResponsibleDepartments.join(', ')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4" />

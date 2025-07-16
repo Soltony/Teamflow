@@ -14,10 +14,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         prisma.project.findMany({
             include: {
                 status: true,
-                responsibleDepartments: true,
+                pmoDivision: true,
                 milestones: {
                     include: {
                         tasks: true,
+                        responsibleDepartments: true,
                     },
                 },
                 blockers: true,
