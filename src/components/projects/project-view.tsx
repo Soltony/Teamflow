@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2 } from "lucide-react";
+import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import type { Blocker } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -120,12 +120,16 @@ export function ProjectView({
               <span>{format(parseISO(project.startDate), "MMM d, yyyy")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
             </div>
              <div className="flex items-center gap-2">
-                <Building className="w-4 h-4" />
+                <Library className="w-4 h-4" />
                 <span>Owning PMO Division: {project.pmoDivision?.name || 'N/A'}</span>
             </div>
              <div className="flex items-center gap-2">
                 <UserCircle className="w-4 h-4" />
                 <span>PM: {project.projectManager?.name || 'N/A'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Building className="w-4 h-4" />
+              <span>For: {project.responsibleDepartments.map((d:any) => d.name).join(', ')}</span>
             </div>
             <div className="flex items-center gap-2">
               <Layers className="w-4 h-4" />

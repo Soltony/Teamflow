@@ -3,7 +3,7 @@
 
 import { useState, useMemo } from "react";
 import Link from 'next/link';
-import { ArrowLeft, Pencil, PlusCircle } from "lucide-react";
+import { ArrowLeft, Pencil, PlusCircle, Building } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type { Milestone, Task, User, Department } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -72,8 +72,6 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
     });
   };
 
-  const departmentMap = new Map(departments.map(d => [d.id, d]));
-
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <Link href={`/projects/${initialProject.id}`} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
@@ -92,7 +90,6 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
                           .filter((t: any) => t.status === 'done')
                           .reduce((sum: number, task: any) => sum + task.weight, 0);
 
-                      const responsibleDepts = milestone.responsibleDepartmentIds.map((id: string) => departmentMap.get(id)).filter(Boolean);
                       return (
                           <AccordionItem value={milestone.id} key={milestone.id}>
                               <AccordionTrigger>
@@ -116,9 +113,6 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
                                       <Badge variant="outline">
                                           Due: {format(parseISO(milestone.dueDate), 'MMM dd, yyyy')}
                                       </Badge>
-                                      {responsibleDepts.map(dept => (
-                                          <Badge key={dept!.id} variant="secondary">{dept!.name}</Badge>
-                                      ))}
                                   </div>
                                 </div>
                               </AccordionTrigger>
@@ -161,7 +155,6 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
             milestone={editingMilestone}
             projectMilestones={initialProject.milestones}
             onMilestoneUpdate={handleMilestoneUpdate}
-            departments={departments}
         />
       )}
 

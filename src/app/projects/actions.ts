@@ -25,13 +25,16 @@ export async function getNewProjectData() {
 
 
 export async function createProject(data: any) {
-    const { milestones, hasCost, ...projectData } = data;
+    const { milestones, hasCost, responsibleDepartmentIds, ...projectData } = data;
 
     await prisma.project.create({
         data: {
             ...projectData,
             totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
             costByMilestones: hasCost ? projectData.costByMilestones : false,
+            responsibleDepartments: {
+                connect: responsibleDepartmentIds.map((id: string) => ({ id }))
+            },
             milestones: {
                 create: milestones.map((m: any) => ({
                     title: m.title,
@@ -40,9 +43,6 @@ export async function createProject(data: any) {
                     dueDate: m.dueDate,
                     weight: m.weight,
                     cost: hasCost && projectData.costByMilestones ? new Decimal(m.cost || 0) : null,
-                    responsibleDepartments: {
-                        connect: m.responsibleDepartmentIds.map((id: string) => ({ id }))
-                    }
                 }))
             }
         },
@@ -61,12 +61,9 @@ export async function getProjectForEdit(projectId: string) {
         prisma.project.findUnique({
             where: { id: projectId },
             include: {
-                milestones: {
-                    include: {
-                        responsibleDepartments: {
-                            select: { id: true }
-                        }
-                    }
+                milestones: true,
+                responsibleDepartments: {
+                    select: { id: true }
                 }
             }
         }),
@@ -81,10 +78,7 @@ export async function getProjectForEdit(projectId: string) {
     const normalizedProject = {
         ...project,
         hasCost: project.totalCost !== null,
-        milestones: project.milestones.map(m => ({
-            ...m,
-            responsibleDepartmentIds: m.responsibleDepartments.map(d => d.id)
-        }))
+        responsibleDepartmentIds: project.responsibleDepartments.map(d => d.id)
     };
 
     return {
@@ -98,7 +92,7 @@ export async function getProjectForEdit(projectId: string) {
 
 
 export async function updateProject(projectId: string, data: any) {
-    const { milestones, hasCost, ...projectData } = data;
+    const { milestones, hasCost, responsibleDepartmentIds, ...projectData } = data;
 
     const existingMilestones = await prisma.milestone.findMany({
         where: { projectId: projectId },
@@ -144,11 +138,14 @@ export async function updateProject(projectId: string, data: any) {
                   workingYear: projectData.workingYear,
                   totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
                   costByMilestones: hasCost ? projectData.costByMilestones : false,
+                  responsibleDepartments: {
+                    set: responsibleDepartmentIds.map((deptId: string) => ({ id: deptId }))
+                  }
                 }
             });
 
             for (const milestone of milestones) {
-                const { id, responsibleDepartmentIds, ...milestoneData } = milestone;
+                const { id, ...milestoneData } = milestone;
                 
                 const dataForUpsert = {
                     title: milestoneData.title,
@@ -157,9 +154,6 @@ export async function updateProject(projectId: string, data: any) {
                     dueDate: milestoneData.dueDate,
                     weight: milestoneData.weight,
                     cost: hasCost && projectData.costByMilestones ? new Decimal(milestoneData.cost || 0) : null,
-                    responsibleDepartments: {
-                        set: responsibleDepartmentIds.map((deptId: string) => ({ id: deptId }))
-                    }
                 };
 
                 if (id) {
@@ -234,14 +228,11 @@ export async function updateBlocker(blockerId: string, description: string, proj
 
 
 export async function updateMilestone(milestoneId: string, projectId: string, data: any) {
-    const { responsibleDepartmentIds, ...milestoneData } = data;
+    const { ...milestoneData } = data;
     await prisma.milestone.update({
         where: { id: milestoneId },
         data: {
             ...milestoneData,
-            responsibleDepartments: responsibleDepartmentIds ? {
-                set: responsibleDepartmentIds.map((id:string) => ({ id }))
-            } : undefined
         }
     });
     revalidatePath(`/projects/${projectId}/milestones`);
@@ -361,6 +352,7 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
             pmoDivision: true,
             projectManager: true,
             blockers: true,
+            responsibleDepartments: true,
             milestones: {
                 include: {
                     tasks: {
@@ -464,7 +456,6 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
                             assignees: true,
                         }
                     },
-                    responsibleDepartments: true
                 }
             }
         }

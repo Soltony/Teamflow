@@ -54,9 +54,9 @@ export async function getMilestonesPageData(userId: string) {
     const projects = await prisma.project.findMany({
         where: whereClause,
         include: {
+            responsibleDepartments: true,
             milestones: {
                 include: {
-                    responsibleDepartments: true,
                     tasks: true, // Include tasks to check milestone completion status
                 },
                 orderBy: {

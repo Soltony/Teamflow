@@ -61,7 +61,6 @@ export type Milestone = {
     dueDate: string;
     weight: number;
     tasks: Task[];
-    responsibleDepartmentIds: string[];
 };
 
 export type Department = {
@@ -103,6 +102,7 @@ export type Project = {
   pmoDivisionId: string;
   projectManagerId: string;
   workingYear: string;
+  responsibleDepartmentIds: string[];
   milestones: Milestone[];
   blockers?: Blocker[];
 };

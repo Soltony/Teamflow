@@ -251,9 +251,9 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Milestone Responsibilities by Department</CardTitle>
+            <CardTitle>Projects by Responsible Department</CardTitle>
             <CardDescription>
-              Total milestones each department is responsible for.
+              Total projects each department is responsible for.
             </CardDescription>
           </CardHeader>
           <CardContent>

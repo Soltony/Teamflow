@@ -42,11 +42,10 @@ type EditMilestoneDialogProps = {
   onOpenChange: (open: boolean) => void;
   milestone: Milestone;
   projectMilestones: Milestone[];
-  departments: Department[];
   onMilestoneUpdate: (updatedMilestone: Milestone) => Promise<void>;
 };
 
-export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMilestones, departments, onMilestoneUpdate }: EditMilestoneDialogProps) {
+export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMilestones, onMilestoneUpdate }: EditMilestoneDialogProps) {
 
   const milestoneSchema = useMemo(() => {
     return z.object({
@@ -55,7 +54,6 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
       startDate: z.date(),
       dueDate: z.date(),
       weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
-      responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
     }).refine(data => data.dueDate >= data.startDate, {
         message: "Due date must be on or after start date.",
         path: ["dueDate"],
@@ -90,7 +88,6 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
         startDate: parseISO(milestone.startDate),
         dueDate: parseISO(milestone.dueDate),
         weight: milestone.weight,
-        responsibleDepartmentIds: milestone.responsibleDepartmentIds,
       });
     }
   }, [isOpen, milestone, form]);
@@ -104,8 +101,6 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
     };
     await onMilestoneUpdate(updatedMilestone as Milestone);
   }
-
-  const selectedDepts = departments.filter(dept => form.watch('responsibleDepartmentIds')?.includes(dept.id));
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -213,48 +208,6 @@ export function EditMilestoneDialog({ isOpen, onOpenChange, milestone, projectMi
                     </FormControl>
                     <FormMessage />
                     </FormItem>
-                )}
-            />
-            <FormField
-                control={form.control}
-                name="responsibleDepartmentIds"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col">
-                      <FormLabel>Responsible Departments</FormLabel>
-                      <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                          <FormControl>
-                          <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
-                              {selectedDepts.length > 0
-                                  ? selectedDepts.map(d => d.name).join(', ')
-                                  : "Select departments..."}
-                              <ChevronDown className="ml-auto h-4 w-4" />
-                          </Button>
-                          </FormControl>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
-                          {departments.map((dept) => (
-                          <DropdownMenuCheckboxItem
-                              key={dept.id}
-                              checked={field.value?.includes(dept.id)}
-                              onCheckedChange={(checked) => {
-                              const newValues = field.value ? [...field.value] : [];
-                              if (checked) {
-                                  newValues.push(dept.id);
-                              } else {
-                                  const idx = newValues.indexOf(dept.id);
-                                  if (idx > -1) newValues.splice(idx, 1);
-                              }
-                              field.onChange(newValues);
-                              }}
-                          >
-                              {dept.name}
-                          </DropdownMenuCheckboxItem>
-                          ))}
-                      </DropdownMenuContent>
-                      </DropdownMenu>
-                      <FormMessage />
-                  </FormItem>
                 )}
             />
             <DialogFooter>

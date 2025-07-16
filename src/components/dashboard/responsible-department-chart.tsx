@@ -24,22 +24,20 @@ export function ResponsibleDepartmentChart({ projects, departments }: { projects
   
   const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 
-  const milestonesByDept = projects.reduce((acc, project) => {
-      project.milestones.forEach((milestone: any) => {
-          if (milestone.responsibleDepartments) {
-            milestone.responsibleDepartments.forEach((dept: any) => {
-                const deptName = departmentMap.get(dept.id) || "Unknown Department";
-                acc[deptName] = (acc[deptName] || 0) + 1;
-            })
-          }
-      });
-      return acc;
+  const projectsByDept = projects.reduce((acc, project) => {
+    if (project.responsibleDepartments) {
+        project.responsibleDepartments.forEach((dept: any) => {
+            const deptName = departmentMap.get(dept.id) || "Unknown Department";
+            acc[deptName] = (acc[deptName] || 0) + 1;
+        });
+    }
+    return acc;
   }, {} as Record<string, number>);
 
 
-  const chartData = Object.entries(milestonesByDept).map(([name, value]) => ({
+  const chartData = Object.entries(projectsByDept).map(([name, value]) => ({
     name,
-    milestones: value,
+    projects: value,
   }));
 
   const chartConfig = {} as ChartConfig;
@@ -53,7 +51,7 @@ export function ResponsibleDepartmentChart({ projects, departments }: { projects
   if (chartData.length === 0) {
     return (
       <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
-        No milestone data available to display chart.
+        No project data available to display chart.
       </div>
     );
   }
@@ -70,7 +68,7 @@ export function ResponsibleDepartmentChart({ projects, departments }: { projects
         />
         <Pie
           data={chartData}
-          dataKey="milestones"
+          dataKey="projects"
           nameKey="name"
           innerRadius="60%"
           strokeWidth={2}

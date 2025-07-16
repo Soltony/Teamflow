@@ -13,7 +13,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { Project, Milestone, Department, Role, Task } from "@prisma/client";
 
 type ProjectWithMilestones = Project & {
-    milestones: (Milestone & { responsibleDepartments: Department[], tasks: Task[] })[]
+    milestones: (Milestone & { tasks: Task[] })[],
+    responsibleDepartments: Department[],
 }
 
 function LoadingSkeleton() {
@@ -117,7 +118,7 @@ export default function AllMilestonesPage() {
                                             <Badge variant="outline">
                                                 Due: {format(new Date(milestone.dueDate), 'MMM dd, yyyy')}
                                             </Badge>
-                                            {(milestone.responsibleDepartments || []).map(dept => (
+                                            {(project.responsibleDepartments || []).map(dept => (
                                                 <Badge key={dept.id} variant="secondary">{dept.name}</Badge>
                                             ))}
                                         </div>

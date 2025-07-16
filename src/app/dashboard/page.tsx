@@ -10,20 +10,21 @@ const getCurrentWorkingYear = () => {
 };
 
 export default async function DashboardPage({ searchParams }: { searchParams: { year?: string } }) {
-    const [allProjects, projectStatuses, departments, teams] = await Promise.all([
+    const [allProjects, projectStatuses, pmoDivisions, departments, teams] = await Promise.all([
         prisma.project.findMany({
             include: {
                 status: true,
+                responsibleDepartments: true,
                 milestones: {
                     include: {
                         tasks: true,
-                        responsibleDepartments: true,
                     },
                 },
                 blockers: true,
             },
         }),
         prisma.projectStatus.findMany(),
+        prisma.pmoDivision.findMany(),
         prisma.department.findMany(),
         prisma.team.findMany({
             include: {
@@ -44,6 +45,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         <DashboardClient
             initialProjects={JSON.parse(JSON.stringify(allProjects))}
             projectStatuses={JSON.parse(JSON.stringify(projectStatuses))}
+            pmoDivisions={JSON.parse(JSON.stringify(pmoDivisions))}
             departments={JSON.parse(JSON.stringify(departments))}
             teams={JSON.parse(JSON.stringify(teams))}
             availableYears={availableYears}
