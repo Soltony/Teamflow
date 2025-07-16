@@ -51,7 +51,6 @@ export default function ProjectMilestonesPage() {
                                 ...data.project,
                                 milestones: data.project.milestones.map((m: any) => ({
                                 ...m,
-                                responsibleDepartmentIds: m.responsibleDepartments.map((d: any) => d.id),
                                 tasks: m.tasks.map((t: any) => ({
                                     ...t,
                                     status: t.status as TaskStatus,
