@@ -82,7 +82,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
       filteredTeams: tempTeams,
       activeProjects: activeProjs 
     };
-  }, [selectedYear, selectedDivision, initialProjects, teams, projectStatuses]);
+  }, [selectedYear, selectedDivision, initialProjects, projectStatuses]);
 
   const stats = React.useMemo(() => {
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
