@@ -8,16 +8,18 @@ import type { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 export async function getNewProjectData() {
-    const [users, pmoDivisions, projectStatuses] = await Promise.all([
+    const [users, pmoDivisions, projectStatuses, departments] = await Promise.all([
         prisma.user.findMany({ include: { roles: { select: { name: true } } } }),
         prisma.pmoDivision.findMany(),
         prisma.projectStatus.findMany(),
+        prisma.department.findMany(),
       ]);
 
       return {
         users: JSON.parse(JSON.stringify(users)),
         pmoDivisions: JSON.parse(JSON.stringify(pmoDivisions)),
         projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
+        departments: JSON.parse(JSON.stringify(departments)),
       }
 }
 

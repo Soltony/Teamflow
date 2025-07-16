@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
-import type { User, Department, ProjectStatus } from "@prisma/client";
+import type { User, Department, ProjectStatus, PmoDivision } from "@prisma/client";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { Switch } from "../ui/switch";
@@ -53,7 +53,7 @@ const milestoneSchema = z.object({
   startDate: z.date(),
   dueDate: z.date(),
   weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
-  responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one PMO division must be responsible." }),
+  responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
   cost: z.coerce.number().optional(),
 }).refine(data => data.dueDate >= data.startDate, {
     message: "Due date must be on or after the start date.",
@@ -67,7 +67,7 @@ const projectSchema = z.object({
   endDate: z.date({ required_error: "An end date is required."}),
   workingYear: z.string().nonempty("An active working year must be set on the Settings page."),
   statusId: z.string().nonempty("Please select a project status."),
-  departmentId: z.string().nonempty("Please select a PMO division."),
+  pmoDivisionId: z.string().nonempty("Please select a PMO division."),
   projectManagerId: z.string().nonempty("Please select a project manager."),
   hasCost: z.boolean().default(false),
   totalCost: z.coerce.number().optional(),
@@ -121,12 +121,13 @@ type ProjectFormProps = {
   mode: 'create' | 'edit';
   initialData?: ProjectFormValues;
   users: UserWithRoles[];
+  pmoDivisions: PmoDivision[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
   onSubmit: (data: ProjectFormValues) => Promise<any>;
 }
 
-export function ProjectForm({ mode, initialData, users, departments, projectStatuses, onSubmit }: ProjectFormProps) {
+export function ProjectForm({ mode, initialData, users, pmoDivisions, departments, projectStatuses, onSubmit }: ProjectFormProps) {
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const isEditMode = mode === 'edit';
@@ -153,7 +154,7 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
       description: "",
       workingYear: getCurrentWorkingYear(),
       statusId: "",
-      departmentId: "",
+      pmoDivisionId: "",
       projectManagerId: "",
       hasCost: false,
       totalCost: 0,
@@ -162,17 +163,17 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
     },
   });
 
-  const selectedDepartmentId = form.watch("departmentId");
+  const selectedPmoDivisionId = form.watch("pmoDivisionId");
   const hasCost = form.watch("hasCost");
   const costByMilestones = form.watch("costByMilestones");
 
   const projectManagers = useMemo(() => {
     const usersToFilter = nonAdminUsers;
-    if (!selectedDepartmentId) {
+    if (!selectedPmoDivisionId) {
       return usersToFilter;
     }
-    return usersToFilter.filter(user => user.departmentId === selectedDepartmentId);
-  }, [selectedDepartmentId, nonAdminUsers]);
+    return usersToFilter.filter(user => user.pmoDivisionId === selectedPmoDivisionId);
+  }, [selectedPmoDivisionId, nonAdminUsers]);
 
   useEffect(() => {
     if (isEditMode && initialData) {
@@ -307,7 +308,7 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                     control={form.control}
-                    name="departmentId"
+                    name="pmoDivisionId"
                     render={({ field }) => (
                         <FormItem>
                             <FormLabel>Owning PMO Division</FormLabel>
@@ -316,7 +317,7 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
                                     <SelectTrigger><SelectValue placeholder="Select an Owning PMO Division" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                    {departments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
+                                    {pmoDivisions.map(div => <SelectItem key={div.id} value={div.id}>{div.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
                             <FormMessage />
@@ -545,14 +546,14 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
                               const selectedDepts = departments.filter(dept => field.value?.includes(dept.id));
                               return (
                               <FormItem className="flex flex-col">
-                                <FormLabel>Responsible PMO Divisions</FormLabel>
+                                <FormLabel>Responsible Departments</FormLabel>
                                 <DropdownMenu>
                                   <DropdownMenuTrigger asChild>
                                     <FormControl>
                                       <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
                                           {selectedDepts.length > 0
                                               ? selectedDepts.map(d => d.name).join(', ')
-                                              : "Select PMO divisions..."}
+                                              : "Select departments..."}
                                         <ChevronDown className="ml-auto h-4 w-4" />
                                       </Button>
                                     </FormControl>
@@ -644,5 +645,3 @@ export function ProjectForm({ mode, initialData, users, departments, projectStat
     </Form>
   );
 }
-
-    
