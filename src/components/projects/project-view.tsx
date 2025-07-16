@@ -78,7 +78,7 @@ export function ProjectView({
     return progress + (milestoneProgress * milestone.weight);
   }, 0);
 
-  const allResponsibleDepartments = [...new Set(project.milestones.flatMap((m: any) => m.responsibleDepartments.map((d: any) => d.name)))];
+  const allResponsibleDepartments = project.responsibleDepartments?.map((d: any) => d.name) || [];
 
 
   return (
