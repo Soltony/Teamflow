@@ -4,9 +4,9 @@ import {
     users as usersData, 
     pmoDivisionsData, 
     departmentsData,
-    projectStatuses as projectStatusesData, 
-    projects as projectsData, 
-    teams as teamsData
+    projectStatusesData, 
+    projectsData, 
+    teamsData
 } from '../src/lib/data';
 import { allPermissions } from '../src/lib/permissions';
 
@@ -399,5 +399,3 @@ main()
   });
 
     
-
-      
