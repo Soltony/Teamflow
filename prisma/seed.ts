@@ -3,7 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { 
     users as usersData, 
     pmoDivisionsData, 
-    departments as departmentsData,
+    departmentsData,
     projectStatuses as projectStatusesData, 
     projects as projectsData, 
     teams as teamsData
@@ -399,3 +399,5 @@ main()
   });
 
     
+
+      
