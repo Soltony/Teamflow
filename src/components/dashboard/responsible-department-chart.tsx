@@ -25,14 +25,12 @@ export function ResponsibleDepartmentChart({ projects, departments }: { projects
   const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
 
   const projectsByDept = projects.reduce((acc, project) => {
-    project.milestones.forEach((milestone: any) => {
-        if (milestone.responsibleDepartments) {
-            milestone.responsibleDepartments.forEach((dept: any) => {
-                const deptName = departmentMap.get(dept.id) || "Unknown Department";
-                acc[deptName] = (acc[deptName] || 0) + 1;
-            });
-        }
-    });
+    if (project.responsibleDepartments) {
+        project.responsibleDepartments.forEach((dept: any) => {
+            const deptName = departmentMap.get(dept.id) || "Unknown Department";
+            acc[deptName] = (acc[deptName] || 0) + 1;
+        });
+    }
     return acc;
   }, {} as Record<string, number>);
 

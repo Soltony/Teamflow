@@ -15,10 +15,10 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             include: {
                 status: true,
                 pmoDivision: true,
+                responsibleDepartments: true,
                 milestones: {
                     include: {
                         tasks: true,
-                        responsibleDepartments: true,
                     },
                 },
                 blockers: true,
