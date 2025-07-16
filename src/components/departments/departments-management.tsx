@@ -36,9 +36,6 @@ import { useRouter } from "next/navigation";
 
 const departmentSchema = z.object({
   name: z.string().min(3, "Department name must be at least 3 characters."),
-  responsibleName: z.string().min(3, "Responsible person's name is required."),
-  responsibleTitle: z.string().min(3, "Title is required."),
-  responsiblePhone: z.string().regex(/^09\d{8}$/, "Phone number must be in 0912345678 format."),
 });
 
 type DepartmentFormValues = z.infer<typeof departmentSchema>;
@@ -57,9 +54,6 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
     resolver: zodResolver(departmentSchema),
     defaultValues: {
       name: "",
-      responsibleName: "",
-      responsibleTitle: "",
-      responsiblePhone: "",
     },
   });
 
@@ -77,7 +71,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
           description: `The "${data.name}" department has been successfully saved.`,
         });
         setEditingDepartment(null);
-        form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
+        form.reset({ name: "" });
         router.refresh();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
@@ -89,15 +83,12 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
     setEditingDepartment(department);
     form.reset({
       name: department.name,
-      responsibleName: department.responsibleName,
-      responsibleTitle: department.responsibleTitle,
-      responsiblePhone: department.responsiblePhone,
     });
   }
 
   function handleCancelEdit() {
     setEditingDepartment(null);
-    form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
+    form.reset({ name: "" });
   }
 
   function handleDeleteConfirm() {
@@ -146,45 +137,6 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="responsibleName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Responsible Person</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., Jane Smith" {...field} disabled={isPending} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="responsibleTitle"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Title</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., HR Director" {...field} disabled={isPending} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="responsiblePhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number</FormLabel>
-                          <FormControl>
-                            <Input placeholder="0912345678" {...field} disabled={isPending} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                     <div className="space-y-2 pt-2">
                       <Button type="submit" className="w-full" disabled={isPending}>
                          {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update Department" : "Add Department")}
@@ -215,10 +167,6 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                   <div className="flex justify-between items-start">
                     <div>
                       <h3 className="font-semibold">{dept.name}</h3>
-                      <p className="text-sm text-muted-foreground">
-                        {dept.responsibleName}, {dept.responsibleTitle}
-                      </p>
-                      <p className="text-sm text-muted-foreground">{dept.responsiblePhone}</p>
                     </div>
                     {canManage && (
                       <div className="flex items-center gap-1">

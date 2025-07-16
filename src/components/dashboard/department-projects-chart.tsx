@@ -11,10 +11,10 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import type { Department, Project } from "@/lib/types";
+import type { PmoDivision, Project } from "@/lib/types";
 
-export function DepartmentProjectsChart({ projects, departments }: { projects: Project[], departments: Department[] }) {
-  if (!projects || !departments) {
+export function DepartmentProjectsChart({ projects, pmoDivisions }: { projects: Project[], pmoDivisions: PmoDivision[] }) {
+  if (!projects || !pmoDivisions) {
     return (
       <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
         Loading chart data...
@@ -22,15 +22,15 @@ export function DepartmentProjectsChart({ projects, departments }: { projects: P
     );
   }
 
-  const departmentMap = new Map(departments.map((d) => [d.id, d.name]));
+  const pmoDivisionMap = new Map(pmoDivisions.map((d) => [d.id, d.name]));
 
-  const projectsByDept = projects.reduce((acc, project) => {
-    const deptName = departmentMap.get(project.departmentId) || "Unknown PMO Division";
-    acc[deptName] = (acc[deptName] || 0) + 1;
+  const projectsByDivision = projects.reduce((acc, project) => {
+    const divName = pmoDivisionMap.get(project.pmoDivisionId) || "Unknown PMO Division";
+    acc[divName] = (acc[divName] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);
 
-  const chartData = Object.entries(projectsByDept).map(([name, value]) => ({
+  const chartData = Object.entries(projectsByDivision).map(([name, value]) => ({
     name,
     projects: value,
   }));

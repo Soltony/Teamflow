@@ -4,7 +4,7 @@ import prisma from "@/lib/db";
 import { ConfigTabs } from "@/components/config/config-tabs";
 
 export default async function ConfigPage() {
-  const [users, roles, departments] = await Promise.all([
+  const [users, roles, pmoDivisions] = await Promise.all([
     prisma.user.findMany({
       include: {
         roles: true,
@@ -14,7 +14,7 @@ export default async function ConfigPage() {
     prisma.role.findMany({
       orderBy: { name: 'asc' },
     }),
-    prisma.department.findMany({
+    prisma.pmoDivision.findMany({
       orderBy: { name: 'asc' },
     }),
   ]);
@@ -32,7 +32,7 @@ export default async function ConfigPage() {
       <ConfigTabs
         users={JSON.parse(JSON.stringify(users))}
         roles={JSON.parse(JSON.stringify(roles))}
-        departments={JSON.parse(JSON.stringify(departments))}
+        pmoDivisions={JSON.parse(JSON.stringify(pmoDivisions))}
       />
     </div>
   );

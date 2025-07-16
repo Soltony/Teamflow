@@ -13,7 +13,7 @@ import {
 } from "@/components/ui/chart";
 import type { Department } from "@/lib/types";
 
-export function ResponsibleDepartmentChart({ projects, departments, selectedDivisionId }: { projects: any[], departments: Department[], selectedDivisionId: string }) {
+export function ResponsibleDepartmentChart({ projects, departments }: { projects: any[], departments: Department[] }) {
   if (!projects || !departments) {
     return (
       <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">
@@ -28,11 +28,7 @@ export function ResponsibleDepartmentChart({ projects, departments, selectedDivi
       project.milestones.forEach((milestone: any) => {
           if (milestone.responsibleDepartments) {
             milestone.responsibleDepartments.forEach((dept: any) => {
-                // If a division filter is active, only count responsibilities for that division.
-                if (selectedDivisionId !== 'all' && dept.id !== selectedDivisionId) {
-                    return;
-                }
-                const deptName = departmentMap.get(dept.id) || "Unknown PMO Division";
+                const deptName = departmentMap.get(dept.id) || "Unknown Department";
                 acc[deptName] = (acc[deptName] || 0) + 1;
             })
           }

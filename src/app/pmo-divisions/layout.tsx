@@ -1,7 +1,7 @@
 
 import { AppShellProvider } from "@/components/app-shell";
 
-export default function DepartmentsLayout({
+export default function PmoDivisionsLayout({
   children,
 }: {
   children: React.ReactNode;

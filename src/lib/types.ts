@@ -15,7 +15,7 @@ export type User = {
   avatar: string;
   phoneNumber?: string;
   roles?: Role[];
-  departmentId?: string | null;
+  pmoDivisionId?: string | null;
 };
 
 export type Team = {
@@ -67,6 +67,11 @@ export type Milestone = {
 export type Department = {
     id:string;
     name: string;
+};
+
+export type PmoDivision = {
+    id:string;
+    name: string;
     responsibleName: string;
     responsibleTitle: string;
     responsiblePhone: string;
@@ -95,7 +100,7 @@ export type Project = {
   startDate: string;
   endDate: string;
   statusId: string;
-  departmentId: string;
+  pmoDivisionId: string;
   projectManagerId: string;
   workingYear: string;
   milestones: Milestone[];

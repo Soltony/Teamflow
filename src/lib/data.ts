@@ -18,17 +18,24 @@ export const roles = [
 ];
 
 export const users = [
-  { id: 'b1e55c84-9055-4eb5-8bd4-a262538f7e66', name: 'Alice Johnson', firstName: 'Alice', lastName: 'Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phoneNumber: '123-456-7890' },
-  { id: 'user-2', name: 'Bob Williams', firstName: 'Bob', lastName: 'Williams', email: 'bob.williams@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-2', phoneNumber: '234-567-8901' },
-  { id: 'user-3', name: 'Charlie Brown', firstName: 'Charlie', lastName: 'Brown', email: 'charlie.brown@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-3', phoneNumber: '345-678-9012' },
-  { id: 'user-4', name: 'Diana Miller', firstName: 'Diana', lastName: 'Miller', email: 'diana.miller@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-4', phoneNumber: '456-789-0123' },
-  { id: 'user-5', name: 'Ethan Davis', firstName: 'Ethan', lastName: 'Davis', email: 'ethan.davis@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-5', phoneNumber: '567-890-1234' },
-  { id: 'user-6', name: 'Fiona Garcia', firstName: 'Fiona', lastName: 'Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phoneNumber: '678-901-2345' },
+  { id: 'b1e55c84-9055-4eb5-8bd4-a262538f7e66', name: 'Alice Johnson', firstName: 'Alice', lastName: 'Johnson', email: 'alice.johnson@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-1', phoneNumber: '09123456780' },
+  { id: 'user-2', name: 'Bob Williams', firstName: 'Bob', lastName: 'Williams', email: 'bob.williams@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-2', phoneNumber: '09123456781' },
+  { id: 'user-3', name: 'Charlie Brown', firstName: 'Charlie', lastName: 'Brown', email: 'charlie.brown@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-3', phoneNumber: '09123456782' },
+  { id: 'user-4', name: 'Diana Miller', firstName: 'Diana', lastName: 'Miller', email: 'diana.miller@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-4', phoneNumber: '09123456783' },
+  { id: 'user-5', name: 'Ethan Davis', firstName: 'Ethan', lastName: 'Davis', email: 'ethan.davis@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-5', phoneNumber: '09123456784' },
+  { id: 'user-6', name: 'Fiona Garcia', firstName: 'Fiona', lastName: 'Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phoneNumber: '09123456785' },
 ];
 
 export const pmoDivisions = [
     { name: 'Technology', responsible: { name: 'Dr. Evelyn Reed', title: 'CTO', phone: '09112223333' } },
     { name: 'Marketing', responsible: { name: 'Marcus Holloway', title: 'CMO', phone: '09445556666' } },
+];
+
+export const departments = [
+    { name: 'Finance' },
+    { name: 'Human Resources' },
+    { name: 'Sales' },
+    { name: 'Customer Support' },
 ];
 
 export const projectStatuses = [
@@ -57,7 +64,7 @@ export const projects = [
             startDate: '2024-08-01',
             dueDate: '2024-09-10',
             weight: 30,
-            responsiblePmoDivisionNames: ['Marketing'],
+            responsibleDepartmentNames: ['Sales', 'Customer Support'],
             tasks: [
                 { id: 'task-1-1', title: 'User Research & Analysis', description: 'Conduct user surveys and interviews to gather requirements.', status: 'DONE', startDate: '2024-08-01', endDate: '2024-08-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com'], completedAt: '2024-08-14' },
                 { id: 'task-1-2', title: 'Design Wireframes & Mockups', description: 'Create high-fidelity mockups for the new platform.', status: 'IN_PROGRESS', startDate: '2024-08-16', endDate: '2024-09-10', weight: 60, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
@@ -70,7 +77,7 @@ export const projects = [
             startDate: '2024-09-11',
             dueDate: '2024-10-31',
             weight: 60,
-            responsiblePmoDivisionNames: ['Technology'],
+            responsibleDepartmentNames: ['Finance'],
             tasks: [
                 { id: 'task-1-3', title: 'Frontend Development', description: 'Develop the client-side of the application using Next.js.', status: 'PENDING_REVIEW', startDate: '2024-09-11', endDate: '2024-10-31', weight: 70, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'],
                   updates: [
@@ -88,7 +95,7 @@ export const projects = [
             startDate: '2024-11-01',
             dueDate: '2024-11-30',
             weight: 10,
-            responsiblePmoDivisionNames: ['Technology', 'Marketing'],
+            responsibleDepartmentNames: ['Sales', 'Human Resources'],
             tasks: [
                 { id: 'task-1-5', title: 'Deployment & QA', description: 'Deploy the application and perform quality assurance testing.', status: 'TODO', startDate: '2024-11-01', endDate: '2024-11-30', weight: 100, assignedUserEmails: ['alice.johnson@teamflow.com', 'bob.williams@teamflow.com', 'charlie.brown@teamflow.com'] },
             ]
@@ -129,7 +136,7 @@ export const projects = [
             startDate: '2024-09-01',
             dueDate: '2024-11-15',
             weight: 50,
-            responsiblePmoDivisionNames: ['Technology', 'Marketing'],
+            responsibleDepartmentNames: ['Sales'],
             tasks: [
                 { id: 'task-2-1', title: 'Market Research', description: 'Analyze competitor apps and market trends.', status: 'DONE', startDate: '2024-09-01', endDate: '2024-09-15', weight: 30, assignedUserEmails: ['diana.miller@teamflow.com'] },
                 { id: 'task-2-2', title: 'API Development', description: 'Develop REST APIs for the mobile app.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-11-15', weight: 70, assignedUserEmails: ['bob.williams@teamflow.com'] },
@@ -142,7 +149,7 @@ export const projects = [
             startDate: '2024-11-16',
             dueDate: '2024-12-15',
             weight: 50,
-            responsiblePmoDivisionNames: ['Technology'],
+            responsibleDepartmentNames: ['Finance'],
             tasks: [
                 { id: 'task-2-3', title: 'Mobile UI/UX Design', description: 'Design the user interface and experience for iOS and Android.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-10-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
                 { id: 'task-2-4', title: 'Mobile App Development', description: 'Develop the native mobile application.', status: 'TODO', startDate: '2024-10-16', endDate: '2024-12-15', weight: 60, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'] },

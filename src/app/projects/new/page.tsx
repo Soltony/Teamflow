@@ -9,10 +9,11 @@ import { getNewProjectData, createProject } from "../actions";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { User, Department, ProjectStatus } from "@prisma/client";
+import type { User, Department, ProjectStatus, PmoDivision } from "@prisma/client";
 
 type NewProjectData = {
   users: User[];
+  pmoDivisions: PmoDivision[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
 };
@@ -99,13 +100,14 @@ export default function NewProjectPage() {
         <CardHeader>
           <CardTitle className="text-2xl">Create a New Project</CardTitle>
           <CardDescription>
-            Fill in the project details, assign it to a department, and define the major milestones.
+            Fill in the project details, assign it to a PMO Division, and define the major milestones.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <ProjectForm
             mode="create"
             users={data.users}
+            pmoDivisions={data.pmoDivisions}
             departments={data.departments}
             projectStatuses={data.projectStatuses}
             onSubmit={handleCreateProject}

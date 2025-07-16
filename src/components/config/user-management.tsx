@@ -45,7 +45,7 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Role, User, Department } from "@prisma/client";
+import type { Role, User, PmoDivision } from "@prisma/client";
 import { updateUser, createUser, deleteUser } from "@/app/config/actions";
 import { Badge } from "../ui/badge";
 import {
@@ -63,7 +63,7 @@ type UserWithRoles = User & { roles: Role[] };
 type UserManagementProps = {
   initialUsers: UserWithRoles[];
   initialRoles: Role[];
-  initialDepartments: Department[];
+  initialPmoDivisions: PmoDivision[];
 };
 
 const editUserSchema = z.object({
@@ -71,7 +71,7 @@ const editUserSchema = z.object({
   lastName: z.string().min(1, "Last name is required."),
   email: z.string().email("A valid email is required."),
   phoneNumber: z.string().min(1, "Phone number is required."),
-  departmentId: z.string().optional(),
+  pmoDivisionId: z.string().optional(),
   roleIds: z.array(z.string()).refine((value) => value.some((item) => item), {
       message: "You have to select at least one role.",
   }),
@@ -84,12 +84,12 @@ const addUserSchema = z.object({
   email: z.string().email("A valid email is required."),
   phoneNumber: z.string().min(1, "Phone number is required."),
   password: z.string().min(6, 'Password must be at least 6 characters'),
-  departmentId: z.string().nonempty("Please select a PMO division."),
+  pmoDivisionId: z.string().nonempty("Please select a PMO division."),
   roleIds: z.array(z.string()).optional(),
 });
 type AddUserFormValues = z.infer<typeof addUserSchema>;
 
-export function UserManagement({ initialUsers, initialRoles, initialDepartments }: UserManagementProps) {
+export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions }: UserManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const { accessToken, hasPermission } = useAuth();
@@ -112,7 +112,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
       lastName: "",
       email: "",
       phoneNumber: "",
-      departmentId: "",
+      pmoDivisionId: "",
       roleIds: [],
     },
   });
@@ -125,7 +125,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
       email: "",
       phoneNumber: "",
       password: "",
-      departmentId: "",
+      pmoDivisionId: "",
       roleIds: [],
     },
   });
@@ -137,7 +137,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
       lastName: user.lastName,
       email: user.email,
       phoneNumber: user.phoneNumber ?? '',
-      departmentId: user.departmentId ?? '',
+      pmoDivisionId: user.pmoDivisionId ?? '',
       roleIds: user.roles.map(role => role.id),
     });
   };
@@ -333,7 +333,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
                   )} />
                   <FormField
                       control={editUserForm.control}
-                      name="departmentId"
+                      name="pmoDivisionId"
                       render={({ field }) => (
                           <FormItem>
                               <FormLabel>PMO Division</FormLabel>
@@ -342,7 +342,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
                                       <SelectTrigger><SelectValue placeholder="Select a PMO division" /></SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                      {initialDepartments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
+                                      {initialPmoDivisions.map(div => <SelectItem key={div.id} value={div.id}>{div.name}</SelectItem>)}
                                   </SelectContent>
                               </Select>
                               <FormMessage />
@@ -451,7 +451,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
                   )} />
                   <FormField
                       control={addUserForm.control}
-                      name="departmentId"
+                      name="pmoDivisionId"
                       render={({ field }) => (
                           <FormItem>
                               <FormLabel>PMO Division</FormLabel>
@@ -460,7 +460,7 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
                                       <SelectTrigger><SelectValue placeholder="Select a PMO division" /></SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
-                                      {initialDepartments.map(dept => <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>)}
+                                      {initialPmoDivisions.map(div => <SelectItem key={div.id} value={div.id}>{div.name}</SelectItem>)}
                                   </SelectContent>
                               </Select>
                               <FormMessage />
@@ -539,5 +539,3 @@ export function UserManagement({ initialUsers, initialRoles, initialDepartments 
     </>
   );
 }
-
-    

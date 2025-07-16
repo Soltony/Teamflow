@@ -8,15 +8,15 @@ import type { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
 
 export async function getNewProjectData() {
-    const [users, departments, projectStatuses] = await Promise.all([
+    const [users, pmoDivisions, projectStatuses] = await Promise.all([
         prisma.user.findMany({ include: { roles: { select: { name: true } } } }),
-        prisma.department.findMany(),
+        prisma.pmoDivision.findMany(),
         prisma.projectStatus.findMany(),
       ]);
 
       return {
         users: JSON.parse(JSON.stringify(users)),
-        departments: JSON.parse(JSON.stringify(departments)),
+        pmoDivisions: JSON.parse(JSON.stringify(pmoDivisions)),
         projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
       }
 }
@@ -55,7 +55,7 @@ export async function createProject(data: any) {
 }
 
 export async function getProjectForEdit(projectId: string) {
-    const [project, users, departments, projectStatuses] = await Promise.all([
+    const [project, users, pmoDivisions, projectStatuses, departments] = await Promise.all([
         prisma.project.findUnique({
             where: { id: projectId },
             include: {
@@ -69,8 +69,9 @@ export async function getProjectForEdit(projectId: string) {
             }
         }),
         prisma.user.findMany({ include: { roles: { select: { name: true } } }, orderBy: { name: 'asc' } }),
-        prisma.department.findMany({ orderBy: { name: 'asc' } }),
+        prisma.pmoDivision.findMany({ orderBy: { name: 'asc' } }),
         prisma.projectStatus.findMany({ orderBy: { name: 'asc' } }),
+        prisma.department.findMany({ orderBy: { name: 'asc' } }),
     ]);
 
     if (!project) return null;
@@ -87,8 +88,9 @@ export async function getProjectForEdit(projectId: string) {
     return {
         project: JSON.parse(JSON.stringify(normalizedProject)),
         users: JSON.parse(JSON.stringify(users)),
-        departments: JSON.parse(JSON.stringify(departments)),
+        pmoDivisions: JSON.parse(JSON.stringify(pmoDivisions)),
         projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
+        departments: JSON.parse(JSON.stringify(departments)),
     };
 }
 
@@ -135,7 +137,7 @@ export async function updateProject(projectId: string, data: any) {
                   startDate: projectData.startDate,
                   endDate: projectData.endDate,
                   statusId: projectData.statusId,
-                  departmentId: projectData.departmentId,
+                  pmoDivisionId: projectData.pmoDivisionId,
                   projectManagerId: projectData.projectManagerId,
                   workingYear: projectData.workingYear,
                   totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
@@ -354,7 +356,7 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
         where: { id: projectId },
         include: {
             status: true,
-            owningDepartment: true,
+            pmoDivision: true,
             projectManager: true,
             blockers: true,
             milestones: {

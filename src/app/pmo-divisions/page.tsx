@@ -4,11 +4,11 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
-import { DepartmentsManagement } from "@/components/departments/departments-management";
+import { PmoDivisionManagement } from "@/components/pmo-divisions/pmo-division-management";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getDepartmentsData } from "./actions";
-import type { Department } from '@prisma/client';
+import { getPmoDivisionsData } from "./actions";
+import type { PmoDivision } from '@prisma/client';
 
 function LoadingSkeleton() {
     return (
@@ -33,19 +33,19 @@ function LoadingSkeleton() {
     );
 }
 
-export default function DepartmentsPage() {
+export default function PmoDivisionsPage() {
     const { hasPermission, loading: authLoading } = useAuth();
     const router = useRouter();
-    const [departments, setDepartments] = useState<Department[]>([]);
+    const [pmoDivisions, setPmoDivisions] = useState<PmoDivision[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
         if (!authLoading) {
-            if (!hasPermission('departments:read')) {
+            if (!hasPermission('pmo-divisions:view')) {
                 router.replace('/dashboard');
             } else {
-                getDepartmentsData().then(data => {
-                    setDepartments(data);
+                getPmoDivisionsData().then(data => {
+                    setPmoDivisions(data);
                     setIsLoading(false);
                 });
             }
@@ -60,13 +60,13 @@ export default function DepartmentsPage() {
         <div className="p-4 sm:p-6">
            <Card>
             <CardHeader>
-              <CardTitle>Department Management</CardTitle>
+              <CardTitle>PMO Division Management</CardTitle>
               <CardDescription>
-                Add, view, and manage the departments that receive project outcomes.
+                Add, view, and manage the PMO divisions that are responsible for managing projects.
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DepartmentsManagement initialDepartments={departments} />
+              <PmoDivisionManagement initialPmoDivisions={pmoDivisions} />
             </CardContent>
           </Card>
         </div>

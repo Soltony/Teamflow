@@ -3,6 +3,7 @@ import { PrismaClient } from '@prisma/client';
 import { 
     users as usersData, 
     pmoDivisions as pmoDivisionsData, 
+    departments as departmentsData,
     projectStatuses as projectStatusesData, 
     projects as projectsData, 
     teams as teamsData
@@ -18,12 +19,13 @@ async function main() {
   await prisma.blocker.deleteMany();
   await prisma.team.deleteMany(); 
   await prisma.task.deleteMany(); 
+  await prisma.milestone.deleteMany({ where: { responsibleDepartments: { some: {} } } });
   await prisma.milestone.deleteMany(); 
   await prisma.project.deleteMany(); 
   await prisma.user.deleteMany();
   await prisma.role.deleteMany();
   await prisma.pmoDivision.deleteMany();
-  await prisma.department.deleteMany(); // Also clear new departments table
+  await prisma.department.deleteMany();
   await prisma.projectStatus.deleteMany();
   console.log('Existing data cleared.');
   
@@ -58,7 +60,8 @@ async function main() {
             'milestones:view',
             'gantt:view',
             'reports:view',
-            'responsible-depts:view',
+            'pmo-divisions:view',
+            'departments:read',
             'teams:create',
             'teams:read',
             'teams:update',
@@ -78,7 +81,8 @@ async function main() {
             'milestones:view',
             'gantt:view',
             'reports:view',
-            'responsible-depts:view',
+            'pmo-divisions:view',
+            'departments:read',
             'teams:create',
             'teams:read',
             'teams:update',
@@ -128,6 +132,20 @@ async function main() {
       pmoDivisionMap.set(createdPmo.name, createdPmo.id);
   }
   console.log(`Seeded ${pmoDivisionsData.length} PMO divisions.`);
+  
+  // Seed Departments and create a map
+  const departmentMap = new Map<string, string>();
+  for (const dept of departmentsData) {
+    const createdDept = await prisma.department.upsert({
+        where: { name: dept.name },
+        update: {},
+        create: {
+            name: dept.name,
+        }
+    });
+    departmentMap.set(createdDept.name, createdDept.id);
+  }
+  console.log(`Seeded ${departmentsData.length} departments.`);
 
   // Seed Users and create a map
   const userMap = new Map<string, string>();
@@ -249,15 +267,15 @@ async function main() {
     }
 
     for (const milestone of project.milestones) {
-      const responsiblePmoDivisionIds = milestone.responsiblePmoDivisionNames
-        .map(name => pmoDivisionMap.get(name))
+      const responsibleDepartmentIds = milestone.responsibleDepartmentNames
+        .map(name => departmentMap.get(name))
         .filter((id): id is string => !!id);
 
       const createdMilestone = await prisma.milestone.upsert({
         where: { id: milestone.id },
         update: {
-          responsiblePmoDivisions: {
-            set: responsiblePmoDivisionIds.map(id => ({ id }))
+          responsibleDepartments: {
+            set: responsibleDepartmentIds.map(id => ({ id }))
           }
         },
         create: {
@@ -268,8 +286,8 @@ async function main() {
           dueDate: new Date(milestone.dueDate),
           weight: milestone.weight,
           projectId: createdProject.id,
-          responsiblePmoDivisions: {
-            connect: responsiblePmoDivisionIds.map(id => ({ id })),
+          responsibleDepartments: {
+            connect: responsibleDepartmentIds.map(id => ({ id })),
           },
         },
       });

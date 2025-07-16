@@ -43,13 +43,13 @@ const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode,
   return <>{children}</>;
 };
 
-export function DashboardClient({ initialProjects, projectStatuses, departments, teams, availableYears, currentWorkingYear }: any) {
+export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions, departments, teams, availableYears, currentWorkingYear }: any) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { hasPermission } = useAuth();
   
-  if (!initialProjects || !projectStatuses || !departments || !teams) {
+  if (!initialProjects || !projectStatuses || !pmoDivisions || !departments || !teams) {
     return (
       <div className="p-4 sm:p-6 space-y-6">
         <h1 className="text-2xl font-bold">Loading Dashboard...</h1>
@@ -68,7 +68,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     }
     
     if (selectedDivision !== "all") {
-        tempProjects = tempProjects.filter((p: any) => p.departmentId === selectedDivision);
+        tempProjects = tempProjects.filter((p: any) => p.pmoDivisionId === selectedDivision);
     }
     
     const projectIds = new Set(tempProjects.map((p:any) => p.id));
@@ -144,9 +144,9 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All PMO Divisions</SelectItem>
-                {departments.map((dept: any) => (
-                    <SelectItem key={dept.id} value={dept.id}>
-                        {dept.name}
+                {pmoDivisions.map((div: any) => (
+                    <SelectItem key={div.id} value={div.id}>
+                        {div.name}
                     </SelectItem>
                 ))}
               </SelectContent>
@@ -235,7 +235,7 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <DepartmentProjectsChart projects={filteredProjects} departments={departments} />
+            <DepartmentProjectsChart projects={filteredProjects} pmoDivisions={pmoDivisions} />
           </CardContent>
         </Card>
         <Card>
@@ -251,16 +251,15 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle>Milestone Responsibilities by PMO Division</CardTitle>
+            <CardTitle>Milestone Responsibilities by Department</CardTitle>
             <CardDescription>
-              Total milestones each PMO division is responsible for.
+              Total milestones each department is responsible for.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsibleDepartmentChart 
               projects={filteredProjects} 
               departments={departments}
-              selectedDivisionId={selectedDivision}
             />
           </CardContent>
         </Card>
@@ -328,10 +327,10 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
             <CardTitle>Organization PMO Divisions</CardTitle>
             <CardDescription>
               A list of all PMO divisions.
-              {hasPermission('responsible-depts:view') && (
+              {hasPermission('pmo-divisions:view') && (
                 <>
                   {' '}Manage them in the{' '}
-                  <Link href="/responsible-departments" className="text-primary hover:underline">
+                  <Link href="/pmo-divisions" className="text-primary hover:underline">
                     PMO Divisions page
                   </Link>
                   .
@@ -341,22 +340,22 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {departments.length > 0 ? (
-                departments.map((dept: any, index: number) => (
-                  <React.Fragment key={dept.id}>
+              {pmoDivisions.length > 0 ? (
+                pmoDivisions.map((div: any, index: number) => (
+                  <React.Fragment key={div.id}>
                     <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
                       <div>
-                        <p className="font-semibold">{dept.name}</p>
+                        <p className="font-semibold">{div.name}</p>
                         <p className="text-sm text-muted-foreground">
-                          {dept.responsibleName}, {dept.responsibleTitle}
+                          {div.responsibleName}, {div.responsibleTitle}
                         </p>
                       </div>
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <Phone className="h-4 w-4" />
-                        <span>{dept.responsiblePhone}</span>
+                        <span>{div.responsiblePhone}</span>
                       </div>
                     </div>
-                    {index < departments.length - 1 && <Separator />}
+                    {index < pmoDivisions.length - 1 && <Separator />}
                   </React.Fragment>
                 ))
               ) : (
@@ -412,4 +411,3 @@ export function DashboardClient({ initialProjects, projectStatuses, departments,
     </div>
   );
 }
-

@@ -19,7 +19,7 @@ const LinkWrapper = ({ href, count, children }: { href: string; count: number; c
 };
 
 export default async function CEOReportPage() {
-    const [projects, projectStatuses, departments] = await Promise.all([
+    const [projects, projectStatuses, pmoDivisions] = await Promise.all([
         prisma.project.findMany({
             include: {
                 status: true,
@@ -35,7 +35,7 @@ export default async function CEOReportPage() {
             },
         }),
         prisma.projectStatus.findMany(),
-        prisma.department.findMany(),
+        prisma.pmoDivision.findMany(),
     ]);
 
     const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
@@ -58,8 +58,8 @@ export default async function CEOReportPage() {
     const overallCompletionRate = completedProjects.length > 0 ? (onTimeProjectsCount / completedProjects.length) * 100 : 0;
 
     // Division Performance Calculation
-    const pmoDivisionPerformance = departments.map(dept => {
-        const divisionProjects = projects.filter(p => p.departmentId === dept.id);
+    const pmoDivisionPerformance = pmoDivisions.map(div => {
+        const divisionProjects = projects.filter(p => p.pmoDivisionId === div.id);
         const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
         const divOnTimeCount = divCompletedProjects.filter(project => {
             const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate.toISOString())));
@@ -72,8 +72,8 @@ export default async function CEOReportPage() {
         const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate.toISOString()))).length;
 
         return {
-            id: dept.id,
-            name: dept.name,
+            id: div.id,
+            name: div.name,
             totalProjects: divisionProjects.length,
             completionRate: Math.round(divCompletionRate),
             overdueCount: divOverdueCount,

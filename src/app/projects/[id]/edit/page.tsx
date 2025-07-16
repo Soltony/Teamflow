@@ -9,12 +9,13 @@ import { ProjectForm } from "@/components/projects/project-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getProjectForEdit, updateProject } from "../../actions";
-import type { User, Department, ProjectStatus } from "@prisma/client";
+import type { User, Department, ProjectStatus, PmoDivision } from "@prisma/client";
 import { parseISO } from "date-fns";
 
 type EditProjectData = {
   project: any;
   users: User[];
+  pmoDivisions: PmoDivision[];
   departments: Department[];
   projectStatuses: ProjectStatus[];
 };
@@ -130,6 +131,7 @@ export default function EditProjectPage() {
             mode="edit"
             initialData={initialDataForForm}
             users={data.users}
+            pmoDivisions={data.pmoDivisions}
             departments={data.departments}
             projectStatuses={data.projectStatuses}
             onSubmit={handleUpdateProject}

@@ -121,7 +121,7 @@ export function ProjectView({
             </div>
              <div className="flex items-center gap-2">
                 <Building className="w-4 h-4" />
-                <span>Owning PMO Division: {project.owningDepartment?.name || 'N/A'}</span>
+                <span>Owning PMO Division: {project.pmoDivision?.name || 'N/A'}</span>
             </div>
              <div className="flex items-center gap-2">
                 <UserCircle className="w-4 h-4" />

@@ -59,7 +59,7 @@ const teamSchema = z.object({
 
 type TeamFormValues = z.infer<typeof teamSchema>;
 
-type UserWithRoles = PrismaUser & { departmentId?: string | null, roles: { name: string }[] };
+type UserWithRoles = PrismaUser & { pmoDivisionId?: string | null, roles: { name: string }[] };
 
 type TeamWithRelations = PrismaTeam & {
     project: PrismaProject;
@@ -110,10 +110,10 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
         return { availableLeads: usersToFilter, availableMembers: usersToFilter };
     }
     const project = allProjects.find(p => p.id === selectedProjectId);
-    if (!project?.departmentId) {
+    if (!project?.pmoDivisionId) {
         return { availableLeads: usersToFilter, availableMembers: usersToFilter };
     }
-    const filteredUsers = usersToFilter.filter(u => u.departmentId === project.departmentId);
+    const filteredUsers = usersToFilter.filter(u => u.pmoDivisionId === project.pmoDivisionId);
     return { availableLeads: filteredUsers, availableMembers: filteredUsers };
   }, [selectedProjectId, allProjects, nonAdminUsers]);
 
@@ -418,5 +418,3 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
     </>
   );
 }
-
-    

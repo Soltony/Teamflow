@@ -24,7 +24,7 @@ interface AuthenticatedUser {
 }
 
 
-export async function updateUser(userId: string, data: { firstName: string, lastName: string, email: string, phoneNumber: string, roleIds: string[], departmentId?: string }) {
+export async function updateUser(userId: string, data: { firstName: string, lastName: string, email: string, phoneNumber: string, roleIds: string[], pmoDivisionId?: string }) {
     try {
         await prisma.user.update({
             where: { id: userId },
@@ -34,7 +34,7 @@ export async function updateUser(userId: string, data: { firstName: string, last
                 name: `${data.firstName} ${data.lastName}`,
                 email: data.email,
                 phoneNumber: data.phoneNumber,
-                departmentId: data.departmentId,
+                pmoDivisionId: data.pmoDivisionId,
                 roles: {
                     set: data.roleIds.map(id => ({ id })),
                 }
@@ -49,7 +49,7 @@ export async function updateUser(userId: string, data: { firstName: string, last
 }
 
 
-export async function createUser(data: { firstName: string, lastName: string, email: string, phoneNumber: string, password?: string, roleIds: string[], departmentId: string }, accessToken: string) {
+export async function createUser(data: { firstName: string, lastName: string, email: string, phoneNumber: string, password?: string, roleIds: string[], pmoDivisionId: string }, accessToken: string) {
     if (!data.password) {
         return { success: false, error: "Password is required." };
     }
@@ -98,7 +98,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
              await prisma.user.update({
                 where: { id: userIdFromIdp },
                 data: {
-                    departmentId: data.departmentId,
+                    pmoDivisionId: data.pmoDivisionId,
                     roles: {
                         set: data.roleIds.map(id => ({ id }))
                     }
@@ -113,7 +113,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
                     name: `${data.firstName} ${data.lastName}`,
                     email: data.email,
                     phoneNumber: data.phoneNumber,
-                    departmentId: data.departmentId,
+                    pmoDivisionId: data.pmoDivisionId,
                     roles: {
                         connect: data.roleIds.map(id => ({ id }))
                     }
