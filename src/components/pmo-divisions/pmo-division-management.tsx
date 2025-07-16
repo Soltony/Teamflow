@@ -76,9 +76,9 @@ export function PmoDivisionManagement({ initialPmoDivisions }: { initialPmoDivis
           title: isEditing ? "PMO Division Updated!" : "PMO Division Added!",
           description: `The "${data.name}" division has been successfully saved.`,
         });
+        router.refresh();
         setEditingPmoDivision(null);
         form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
-        router.refresh();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -101,8 +101,8 @@ export function PmoDivisionManagement({ initialPmoDivisions }: { initialPmoDivis
   }
 
   function handleDeleteConfirm() {
-    if (!pmoDivisionToDelete) return;
     startTransition(async () => {
+      if (!pmoDivisionToDelete) return;
       const result = await deletePmoDivision(pmoDivisionToDelete.id);
       if (result.success) {
         toast({
@@ -256,7 +256,7 @@ export function PmoDivisionManagement({ initialPmoDivisions }: { initialPmoDivis
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPmoDivisionToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setPmoDivisionToDelete(null)} disabled={isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteConfirm}
