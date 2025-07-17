@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { TeamsManagement } from "@/components/teams/teams-management";
 import { getTeamsPageData } from "./actions";
@@ -9,17 +10,19 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import type { Project as PrismaProject, Team as PrismaTeam, User as PrismaUser } from '@prisma/client';
 import { useRouter } from "next/navigation";
 
+type UserWithRoles = PrismaUser & { pmoDivisionId?: string | null, roles: { name: string }[] };
+
 type TeamWithRelations = PrismaTeam & {
     project: PrismaProject;
-    teamLead: PrismaUser;
-    members: PrismaUser[];
+    teamLead: UserWithRoles;
+    members: UserWithRoles[];
     memberIds: string[];
 };
 
 type TeamsPageData = {
     teams: TeamWithRelations[];
     projects: PrismaProject[];
-    users: PrismaUser[];
+    users: UserWithRoles[];
 }
 
 function LoadingSkeleton() {
@@ -50,6 +53,20 @@ export default function TeamsPage() {
     const [data, setData] = useState<TeamsPageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchData = useCallback(async () => {
+        if (!localUser?.id) return;
+        setIsLoading(true);
+        try {
+            const fetchedData = await getTeamsPageData(localUser.id);
+            setData(fetchedData as any);
+        } catch (error) {
+            console.error("Failed to fetch teams data", error);
+            setData({ teams: [], projects: [], users: [] });
+        } finally {
+            setIsLoading(false);
+        }
+    }, [localUser?.id]);
+
     useEffect(() => {
         if (!authLoading) {
             if (!hasPermission('teams:read')) {
@@ -58,16 +75,12 @@ export default function TeamsPage() {
             }
 
             if (localUser?.id) {
-                setIsLoading(true);
-                getTeamsPageData(localUser.id).then(fetchedData => {
-                    setData(fetchedData);
-                    setIsLoading(false);
-                });
+                fetchData();
             } else {
                 setIsLoading(false);
             }
         }
-    }, [localUser, authLoading, hasPermission, router]);
+    }, [localUser, authLoading, hasPermission, router, fetchData]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -87,6 +100,7 @@ export default function TeamsPage() {
                 initialTeams={data.teams}
                 allProjects={data.projects}
                 allUsers={data.users}
+                onDataChange={fetchData}
             />
         </div>
     );

@@ -6,9 +6,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserManagement } from "@/components/config/user-management";
 import { RoleManagement } from "@/components/config/role-management";
 import type { Role, User, PmoDivision } from "@prisma/client";
-import { Card, CardContent } from "../ui/card";
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { Skeleton } from "../ui/skeleton";
 
 type UserWithRoles = User & { roles: Role[] };
@@ -17,31 +14,29 @@ type ConfigTabsProps = {
     users: UserWithRoles[];
     roles: Role[];
     pmoDivisions: PmoDivision[];
+    onDataChange: () => void;
 };
 
-export function ConfigTabs({ users, roles, pmoDivisions }: ConfigTabsProps) {
+export function ConfigTabs({ users, roles, pmoDivisions, onDataChange }: ConfigTabsProps) {
     const { hasPermission, loading } = useAuth();
-    const router = useRouter();
     
     const canManageUsers = hasPermission('config:manage-users');
     const canManageRoles = hasPermission('config:manage-roles');
 
-    useEffect(() => {
-        if (!loading && !canManageUsers && !canManageRoles) {
-            router.replace('/dashboard');
-        }
-    }, [loading, canManageUsers, canManageRoles, router]);
-    
     // Determine default tab
     const defaultTab = canManageUsers ? "users" : canManageRoles ? "roles" : "";
 
-    if (loading || (!canManageUsers && !canManageRoles)) {
+    if (loading) {
         return (
             <div className="space-y-4">
                 <Skeleton className="h-10 w-1/2" />
                 <Skeleton className="h-96 w-full" />
             </div>
         );
+    }
+    
+    if (!canManageUsers && !canManageRoles) {
+        return null; // Or a message indicating no permissions
     }
     
     const gridCols = [canManageUsers, canManageRoles].filter(Boolean).length;
@@ -58,6 +53,7 @@ export function ConfigTabs({ users, roles, pmoDivisions }: ConfigTabsProps) {
                         initialUsers={users} 
                         initialRoles={roles}
                         initialPmoDivisions={pmoDivisions}
+                        onDataChange={onDataChange}
                     />
                 </TabsContent>
             )}
@@ -65,6 +61,7 @@ export function ConfigTabs({ users, roles, pmoDivisions }: ConfigTabsProps) {
                 <TabsContent value="roles" className="mt-6">
                     <RoleManagement 
                         initialRoles={roles}
+                        onDataChange={onDataChange}
                     />
                 </TabsContent>
             )}

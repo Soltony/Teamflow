@@ -45,10 +45,10 @@ import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Badge } from "../ui/badge";
 import { useAuth } from "@/context/auth-context";
 import { availablePermissions } from "@/lib/permissions";
-import { useRouter } from "next/navigation";
 
 type RoleManagementProps = {
   initialRoles: Role[];
+  onDataChange: () => void;
 };
 
 const roleSchema = z.object({
@@ -59,11 +59,10 @@ const roleSchema = z.object({
 
 type RoleFormValues = z.infer<typeof roleSchema>;
 
-export function RoleManagement({ initialRoles }: RoleManagementProps) {
+export function RoleManagement({ initialRoles, onDataChange }: RoleManagementProps) {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
   const [editingRole, setEditingRole] = useState<Role | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState<Role | null>(null);
@@ -109,7 +108,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
           title: "Role Deleted",
           description: `The "${roleToDelete.name}" role has been removed.`,
         });
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -131,7 +130,7 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
           description: `The "${data.name}" role has been successfully saved.`,
         });
         handleCloseDialog();
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -350,5 +349,3 @@ export function RoleManagement({ initialRoles }: RoleManagementProps) {
     </>
   );
 }
-
-    

@@ -47,8 +47,6 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { useRouter } from "next/navigation";
-
 
 const teamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters."),
@@ -72,15 +70,14 @@ type TeamsManagementProps = {
   initialTeams: TeamWithRelations[];
   allProjects: PrismaProject[];
   allUsers: UserWithRoles[];
+  onDataChange: () => void;
 }
 
-export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsManagementProps) {
+export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataChange }: TeamsManagementProps) {
   const { toast } = useToast();
   const { hasPermission } = useAuth();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
 
-  const [teams, setTeams] = useState<TeamWithRelations[]>(initialTeams);
   const [editingTeam, setEditingTeam] = useState<TeamWithRelations | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [teamToDelete, setTeamToDelete] = useState<TeamWithRelations | null>(null);
@@ -134,13 +131,9 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
       }
     }
   }, [isDialogOpen, editingTeam, form]);
-  
-  useEffect(() => {
-    setTeams(initialTeams);
-  }, [initialTeams]);
 
   const teamsByProject = useMemo(() => {
-    return teams.reduce((acc, team) => {
+    return initialTeams.reduce((acc, team) => {
       const projectName = team.project.name || 'Unknown Project';
       if (!acc[projectName]) {
         acc[projectName] = [];
@@ -148,7 +141,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
       acc[projectName].push(team);
       return acc;
     }, {} as Record<string, TeamWithRelations[]>);
-  }, [teams]);
+  }, [initialTeams]);
 
   function onSubmit(data: TeamFormValues) {
     startTransition(async () => {
@@ -162,7 +155,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                 description: `The "${data.name}" team has been successfully saved.`,
             });
             setIsDialogOpen(false);
-            router.refresh();
+            onDataChange();
         } else {
             toast({
                 title: "Error",
@@ -192,9 +185,8 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                 title: "Team Deleted",
                 description: `The "${teamToDelete.name}" team has been removed.`,
             });
-            setTeams(currentTeams => currentTeams.filter(t => t.id !== teamToDelete.id));
+            onDataChange();
             setTeamToDelete(null);
-            router.refresh();
         } else {
             toast({
                 title: "Error",

@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition, useMemo } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -46,7 +46,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Role, User, PmoDivision } from "@prisma/client";
-import { updateUser, createUser, deleteUser } from "@/app/config/actions";
+import { updateUser, createUser, deleteUser, getUsersData } from "@/app/config/actions";
 import { Badge } from "../ui/badge";
 import {
     DropdownMenu,
@@ -56,7 +56,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
-import { useRouter } from "next/navigation";
 
 type UserWithRoles = User & { roles: Role[] };
 
@@ -64,6 +63,7 @@ type UserManagementProps = {
   initialUsers: UserWithRoles[];
   initialRoles: Role[];
   initialPmoDivisions: PmoDivision[];
+  onDataChange: () => void;
 };
 
 const editUserSchema = z.object({
@@ -89,22 +89,17 @@ const addUserSchema = z.object({
 });
 type AddUserFormValues = z.infer<typeof addUserSchema>;
 
-export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions }: UserManagementProps) {
+export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions, onDataChange }: UserManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
   const { accessToken, hasPermission } = useAuth();
-  const router = useRouter();
   
   const canManageUsers = hasPermission('config:manage-users');
 
-  const [users, setUsers] = useState(initialUsers);
   const [editingUser, setEditingUser] = useState<UserWithRoles | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
 
   const editUserForm = useForm<EditUserFormValues>({
     resolver: zodResolver(editUserSchema),
@@ -167,7 +162,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
                 description: `Successfully updated details for ${editingUser.name}.`,
             });
             handleCloseEditDialog();
-            router.refresh();
+            onDataChange();
         } else {
             toast({ title: "Error", description: result.error, variant: "destructive" });
         }
@@ -184,7 +179,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
         if (result.success) {
             toast({ title: "User Created", description: `User ${data.firstName} ${data.lastName} has been created.` });
             handleCloseAddUserDialog();
-            router.refresh();
+            onDataChange();
         } else {
             toast({ title: "Error", description: result.error, variant: "destructive" });
         }
@@ -198,7 +193,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
       if (result.success) {
         toast({ title: "User Deleted", description: `The user "${userToDelete.name}" has been removed.` });
         setUserToDelete(null);
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
         setUserToDelete(null);
@@ -208,26 +203,6 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
 
   const selectedRolesForEditUser = initialRoles.filter(role => editUserForm.watch('roleIds')?.includes(role.id));
   const selectedRolesForNewUser = initialRoles.filter(role => addUserForm.watch('roleIds')?.includes(role.id));
-  
-  const currentUsers = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return users.slice(startIndex, endIndex);
-  }, [users, currentPage, itemsPerPage]);
-
-  const totalPages = Math.ceil(users.length / itemsPerPage);
-
-  const handleNextPage = () => {
-    if (currentPage < totalPages) {
-      setCurrentPage(currentPage + 1);
-    }
-  };
-
-  const handlePrevPage = () => {
-    if (currentPage > 1) {
-      setCurrentPage(currentPage - 1);
-    }
-  };
 
   return (
     <>
@@ -258,7 +233,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
               </TableRow>
             </TableHeader>
             <TableBody>
-              {currentUsers.map((user) => (
+              {initialUsers.map((user) => (
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email ?? 'N/A'}</TableCell>
@@ -288,29 +263,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
             </TableBody>
           </Table>
         </CardContent>
-        <CardFooter>
-          <div className="flex items-center justify-center w-full space-x-2">
-            <span className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-            </span>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevPage}
-                disabled={currentPage === 1}
-            >
-                Previous
-            </Button>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-            >
-                Next
-            </Button>
-          </div>
-        </CardFooter>
+        {/* We can re-add pagination later if needed, but removing it simplifies the refresh logic for now */}
       </Card>
 
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && handleCloseEditDialog()}>
