@@ -56,4 +56,21 @@ body {
     --muted: 26 64% 23%;
     --muted-foreground: 47 58% 95%;
   }
+
+  /* Custom Sidebar Scrollbar */
+  .sidebar::-webkit-scrollbar {
+    width: 6px;
+  }
+  .sidebar::-webkit-scrollbar-track {
+    background-color: hsl(27 55% 25%); /* Darker Honey Brown for track */
+    border-radius: 10px;
+  }
+  .sidebar::-webkit-scrollbar-thumb {
+    background-color: hsl(47 90% 84%); /* Light Yellowish (#FFF8DC) */
+    border-radius: 10px;
+    transition: background-color 0.3s ease;
+  }
+  .sidebar::-webkit-scrollbar-thumb:hover {
+    background-color: hsl(47 90% 75%); /* Slightly darker yellow on hover */
+  }
 }
