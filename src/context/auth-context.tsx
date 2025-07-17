@@ -100,7 +100,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('refreshToken', newRefreshToken);
         setUser({ ...decodedUser, nameid: userId });
         setAccessToken(newAccessToken);
-        setRefreshToken(newRefreshToken);
+        setRefreshToken(newAccessToken);
         axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
 
         const syncInput = {
