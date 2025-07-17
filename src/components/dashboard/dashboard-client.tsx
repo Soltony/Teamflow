@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { CheckCircle, Clock, AlertOctagon, ShieldAlert, Phone } from "lucide-react";
+import { CheckCircle, Clock, AlertOctagon, ShieldAlert, Phone, Target, Award, CircleDot } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DepartmentProjectsChart } from "@/components/dashboard/department-projects-chart";
 import { ProjectStatusChart } from "@/components/dashboard/project-status-chart";
@@ -24,6 +24,13 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+    Accordion,
+    AccordionContent,
+    AccordionItem,
+    AccordionTrigger,
+} from "@/components/ui/accordion";
+import { Progress } from "@/components/ui/progress";
 import {
   Select,
   SelectContent,
@@ -82,7 +89,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
       filteredTeams: tempTeams,
       activeProjects: activeProjs 
     };
-  }, [selectedYear, selectedDivision, initialProjects, projectStatuses]);
+  }, [selectedYear, selectedDivision, initialProjects, projectStatuses, teams]);
 
   const stats = React.useMemo(() => {
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
@@ -119,6 +126,22 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     }
     router.push(`${pathname}?${params.toString()}`);
   }
+  
+  const calculateProjectProgress = (project: any) => {
+    return project.milestones.reduce((progress: number, milestone: any) => {
+        const completedTaskWeightInMilestone = milestone.tasks
+            .filter((task: any) => task.status === 'DONE')
+            .reduce((sum: number, task: any) => sum + task.weight, 0);
+        const milestoneProgress = completedTaskWeightInMilestone / 100;
+        return progress + (milestoneProgress * milestone.weight);
+    }, 0);
+  };
+  
+  const calculateMilestoneProgress = (milestone: any) => {
+    return milestone.tasks
+      .filter((t: any) => t.status === 'DONE')
+      .reduce((sum: number, task: any) => sum + task.weight, 0);
+  };
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -158,7 +181,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Welcome to NIB PMO!</CardTitle>
+            <CardTitle>Welcome to TeamFlow!</CardTitle>
             <CardDescription>
               Your central hub for managing projects, teams, and PMO divisions
               efficiently.
@@ -268,56 +291,89 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
       <Card>
         <CardHeader>
           <CardTitle>Active Projects Summary</CardTitle>
-          <CardDescription>A list of all projects that are currently active.</CardDescription>
+          <CardDescription>A list of all projects that are currently active. Expand each project to see its milestones and tasks.</CardDescription>
         </CardHeader>
         <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Project Name</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Dates</TableHead>
-                <TableHead className="text-center">Milestones</TableHead>
-                <TableHead className="text-right">Action</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activeProjects.length > 0 ? (
-                activeProjects.map((project: any) => {
-                  const completedMilestones = project.milestones.filter(
-                    (m: any) => m.tasks.length > 0 && m.tasks.every((t: any) => t.status === 'DONE')
-                  ).length;
-                  const totalMilestones = project.milestones.length;
-
-                  return (
-                    <TableRow key={project.id}>
-                      <TableCell className="font-medium">{project.name}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{project.status.name}</Badge>
-                      </TableCell>
-                      <TableCell>
-                        {format(parseISO(project.startDate), 'MMM dd')} - {format(parseISO(project.endDate), 'MMM dd, yyyy')}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        {completedMilestones} / {totalMilestones}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button asChild variant="ghost" size="sm">
-                          <Link href={`/projects/${project.id}`}>View</Link>
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })
-              ) : (
-                <TableRow>
-                  <TableCell colSpan={5} className="h-24 text-center">
+            {activeProjects.length > 0 ? (
+                <Accordion type="multiple" className="w-full space-y-2">
+                    {activeProjects.map((project: any) => {
+                        const projectProgress = calculateProjectProgress(project);
+                        return (
+                            <AccordionItem value={project.id} key={project.id} className="border rounded-md px-4">
+                                <AccordionTrigger className="hover:no-underline">
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-2">
+                                        <div className="flex-1 text-left">
+                                            <p className="font-semibold text-base">{project.name}</p>
+                                            <p className="text-sm text-muted-foreground">{project.status.name}</p>
+                                        </div>
+                                        <div className="flex items-center gap-4 w-full md:w-auto">
+                                            <Progress value={projectProgress} className="w-full md:w-48 h-2.5" />
+                                            <span className="text-sm font-semibold">{Math.round(projectProgress)}%</span>
+                                        </div>
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent className="pt-2 pb-4">
+                                    <Accordion type="multiple" className="w-full space-y-2">
+                                        {project.milestones.map((milestone: any) => {
+                                            const milestoneProgress = calculateMilestoneProgress(milestone);
+                                            return (
+                                                <AccordionItem value={milestone.id} key={milestone.id} className="border rounded-md px-4 bg-muted/50">
+                                                    <AccordionTrigger className="hover:no-underline text-sm py-3">
+                                                         <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-2">
+                                                            <div className="flex-1 text-left">
+                                                                <p className="font-medium">{milestone.title}</p>
+                                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                                    <span>Due: {format(parseISO(milestone.dueDate), 'MMM dd, yyyy')}</span>
+                                                                    <span>&bull;</span>
+                                                                    <span>Weight: {milestone.weight}%</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className="flex items-center gap-4 w-full md:w-auto">
+                                                                <Progress value={milestoneProgress} className="w-full md:w-32 h-2" />
+                                                                <span className="text-xs font-semibold">{Math.round(milestoneProgress)}%</span>
+                                                            </div>
+                                                        </div>
+                                                    </AccordionTrigger>
+                                                    <AccordionContent className="pt-2 pb-4">
+                                                        {milestone.tasks.length > 0 ? (
+                                                            <Table>
+                                                                <TableHeader>
+                                                                    <TableRow>
+                                                                        <TableHead>Task</TableHead>
+                                                                        <TableHead>Status</TableHead>
+                                                                        <TableHead>Due Date</TableHead>
+                                                                        <TableHead className="text-right">Weight</TableHead>
+                                                                    </TableRow>
+                                                                </TableHeader>
+                                                                <TableBody>
+                                                                    {milestone.tasks.map((task: any) => (
+                                                                        <TableRow key={task.id}>
+                                                                            <TableCell>{task.title}</TableCell>
+                                                                            <TableCell><Badge variant="outline">{task.status.replace(/_/g, ' ')}</Badge></TableCell>
+                                                                            <TableCell>{format(parseISO(task.endDate), 'MMM dd')}</TableCell>
+                                                                            <TableCell className="text-right">{task.weight}%</TableCell>
+                                                                        </TableRow>
+                                                                    ))}
+                                                                </TableBody>
+                                                            </Table>
+                                                        ) : (
+                                                            <p className="text-center text-sm text-muted-foreground py-4">No tasks in this milestone.</p>
+                                                        )}
+                                                    </AccordionContent>
+                                                </AccordionItem>
+                                            )
+                                        })}
+                                    </Accordion>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )
+                    })}
+                </Accordion>
+            ) : (
+                <div className="h-24 flex items-center justify-center text-center text-muted-foreground border-2 border-dashed rounded-md">
                     No active projects found for the current selection.
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+                </div>
+            )}
         </CardContent>
       </Card>
 
