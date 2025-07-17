@@ -5,6 +5,7 @@ import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/context/auth-context";
+import { AuthShell } from "@/components/auth-shell";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
@@ -38,10 +39,10 @@ export default function RootLayout({
           inter.variable
         )}
       >
-          <AuthProvider>
-            {children}
-            <Toaster />
-          </AuthProvider>
+        <AuthProvider>
+          <AuthShell>{children}</AuthShell>
+          <Toaster />
+        </AuthProvider>
       </body>
     </html>
   );

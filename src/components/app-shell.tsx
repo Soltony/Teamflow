@@ -140,31 +140,8 @@ function AppSidebar({ className }: { className?: string }) {
   );
 }
 
-function AuthLoadingScreen() {
-    return (
-        <div className="h-screen w-full flex items-center justify-center bg-background">
-            <div className="flex flex-col items-center gap-4">
-                <NibLogo className="w-12 h-12 animate-pulse" />
-                <p className="text-muted-foreground">Loading your workspace...</p>
-            </div>
-        </div>
-    );
-}
-
 export function AppShell({ children }: { children: React.ReactNode }) {
-  const { isMobile, toggleSidebar, isOpen } = useSidebar()
-  const { accessToken, loading, localUser } = useAuth();
-  const router = useRouter();
-  
-  React.useEffect(() => {
-    if (!loading && !accessToken) {
-        router.replace('/login');
-    }
-  }, [loading, accessToken, router]);
-
-  if (loading || !accessToken || !localUser) {
-    return <AuthLoadingScreen />;
-  }
+  const { isMobile, toggleSidebar, isOpen } = useSidebar();
 
   return (
     <div
