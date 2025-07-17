@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -97,6 +97,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
   
   const canManageUsers = hasPermission('config:manage-users');
 
+  const [users, setUsers] = useState(initialUsers);
   const [editingUser, setEditingUser] = useState<UserWithRoles | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
@@ -196,21 +197,25 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
       const result = await deleteUser(userToDelete.id);
       if (result.success) {
         toast({ title: "User Deleted", description: `The user "${userToDelete.name}" has been removed.` });
+        setUserToDelete(null);
         router.refresh();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
+        setUserToDelete(null);
       }
-      setUserToDelete(null);
     });
   };
 
   const selectedRolesForEditUser = initialRoles.filter(role => editUserForm.watch('roleIds')?.includes(role.id));
   const selectedRolesForNewUser = initialRoles.filter(role => addUserForm.watch('roleIds')?.includes(role.id));
   
-  const totalPages = Math.ceil(initialUsers.length / itemsPerPage);
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const endIndex = startIndex + itemsPerPage;
-  const currentUsers = initialUsers.slice(startIndex, endIndex);
+  const currentUsers = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const endIndex = startIndex + itemsPerPage;
+    return users.slice(startIndex, endIndex);
+  }, [users, currentPage, itemsPerPage]);
+
+  const totalPages = Math.ceil(users.length / itemsPerPage);
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {

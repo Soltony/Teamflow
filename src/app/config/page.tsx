@@ -2,8 +2,12 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import prisma from "@/lib/db";
 import { ConfigTabs } from "@/components/config/config-tabs";
+import { unstable_noStore as noStore } from 'next/cache';
 
-export default async function ConfigPage() {
+export const dynamic = 'force-dynamic';
+
+async function getConfigData() {
+  noStore();
   const [users, roles, pmoDivisions] = await Promise.all([
     prisma.user.findMany({
       include: {
@@ -18,6 +22,13 @@ export default async function ConfigPage() {
       orderBy: { name: 'asc' },
     }),
   ]);
+
+  return { users, roles, pmoDivisions };
+}
+
+
+export default async function ConfigPage() {
+  const { users, roles, pmoDivisions } = await getConfigData();
 
   return (
     <div className="p-4 sm:p-6 space-y-6">

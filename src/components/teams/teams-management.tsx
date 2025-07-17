@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -78,6 +78,9 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
   const { toast } = useToast();
   const { hasPermission } = useAuth();
   const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+
+  const [teams, setTeams] = useState<TeamWithRelations[]>(initialTeams);
   const [editingTeam, setEditingTeam] = useState<TeamWithRelations | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [teamToDelete, setTeamToDelete] = useState<TeamWithRelations | null>(null);
@@ -131,9 +134,13 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
       }
     }
   }, [isDialogOpen, editingTeam, form]);
+  
+  useEffect(() => {
+    setTeams(initialTeams);
+  }, [initialTeams]);
 
   const teamsByProject = useMemo(() => {
-    return initialTeams.reduce((acc, team) => {
+    return teams.reduce((acc, team) => {
       const projectName = team.project.name || 'Unknown Project';
       if (!acc[projectName]) {
         acc[projectName] = [];
@@ -141,27 +148,29 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
       acc[projectName].push(team);
       return acc;
     }, {} as Record<string, TeamWithRelations[]>);
-  }, [initialTeams]);
+  }, [teams]);
 
-  async function onSubmit(data: TeamFormValues) {
-    const result = isEditing && editingTeam
-      ? await updateTeam(editingTeam.id, data)
-      : await createTeam(data);
+  function onSubmit(data: TeamFormValues) {
+    startTransition(async () => {
+        const result = isEditing && editingTeam
+        ? await updateTeam(editingTeam.id, data)
+        : await createTeam(data);
     
-    if (result.success) {
-        toast({
-            title: isEditing ? "Team Updated!" : "Team Created!",
-            description: `The "${data.name}" team has been successfully saved.`,
-        });
-        setIsDialogOpen(false);
-        router.refresh();
-    } else {
-        toast({
-            title: "Error",
-            description: result.error,
-            variant: "destructive",
-        });
-    }
+        if (result.success) {
+            toast({
+                title: isEditing ? "Team Updated!" : "Team Created!",
+                description: `The "${data.name}" team has been successfully saved.`,
+            });
+            setIsDialogOpen(false);
+            router.refresh();
+        } else {
+            toast({
+                title: "Error",
+                description: result.error,
+                variant: "destructive",
+            });
+        }
+    });
   }
 
   function handleEdit(team: TeamWithRelations) {
@@ -174,23 +183,27 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
     setIsDialogOpen(true);
   }
 
-  async function handleDeleteConfirm() {
+  function handleDeleteConfirm() {
     if (!teamToDelete) return;
-    const result = await deleteTeam(teamToDelete.id);
-    if (result.success) {
-      toast({
-        title: "Team Deleted",
-        description: `The "${teamToDelete.name}" team has been removed.`,
-      });
-      router.refresh();
-    } else {
-       toast({
-        title: "Error",
-        description: result.error,
-        variant: "destructive",
-      });
-    }
-    setTeamToDelete(null);
+    startTransition(async () => {
+        const result = await deleteTeam(teamToDelete.id);
+        if (result.success) {
+            toast({
+                title: "Team Deleted",
+                description: `The "${teamToDelete.name}" team has been removed.`,
+            });
+            setTeams(currentTeams => currentTeams.filter(t => t.id !== teamToDelete.id));
+            setTeamToDelete(null);
+            router.refresh();
+        } else {
+            toast({
+                title: "Error",
+                description: result.error,
+                variant: "destructive",
+            });
+             setTeamToDelete(null);
+        }
+    });
   }
 
   return (
@@ -385,8 +398,8 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
                 />
                 <DialogFooter>
                     <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>Cancel</Button>
-                    <Button type="submit" disabled={form.formState.isSubmitting}>
-                      {form.formState.isSubmitting ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Team" : "Create Team")}
+                    <Button type="submit" disabled={isPending}>
+                      {isPending ? (isEditing ? "Updating..." : "Creating...") : (isEditing ? "Update Team" : "Create Team")}
                     </Button>
                 </DialogFooter>
               </form>
@@ -409,8 +422,9 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers }: TeamsMa
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteConfirm}
+              disabled={isPending}
             >
-              Delete
+              {isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
