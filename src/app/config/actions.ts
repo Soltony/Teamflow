@@ -23,23 +23,14 @@ interface AuthenticatedUser {
   [key: string]: any;
 }
 
-export async function getUsersData(page = 1, limit = 10) {
-    const skip = (page - 1) * limit;
-    const [users, totalUsers] = await Promise.all([
-        prisma.user.findMany({
-            skip,
-            take: limit,
-            include: { roles: true },
-            orderBy: { name: 'asc' },
-        }),
-        prisma.user.count(),
-    ]);
-
-    return {
-        users: JSON.parse(JSON.stringify(users)),
-        totalUsers,
-    };
+export async function getUsersData() {
+    const users = await prisma.user.findMany({
+        include: { roles: true },
+        orderBy: { name: 'asc' },
+    });
+    return JSON.parse(JSON.stringify(users));
 }
+
 
 export async function getRolesData() {
     return JSON.parse(JSON.stringify(await prisma.role.findMany({ orderBy: { name: 'asc' } })));
