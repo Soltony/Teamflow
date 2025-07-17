@@ -92,11 +92,12 @@ export function ProjectStatusManagement({ initialStatuses }: { initialStatuses: 
           title: "Status Deleted",
           description: `The "${statusToDelete.name}" status has been removed.`,
         });
+        setStatusToDelete(null);
         router.refresh();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
+        setStatusToDelete(null);
       }
-      setStatusToDelete(null);
     });
   }
 
@@ -186,7 +187,7 @@ export function ProjectStatusManagement({ initialStatuses }: { initialStatuses: 
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setStatusToDelete(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => setStatusToDelete(null)} disabled={isPending}>Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteConfirm}

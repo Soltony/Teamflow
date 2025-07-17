@@ -1,9 +1,22 @@
 
+'use client';
+
+import { useEffect, useState, useCallback } from 'react';
+import { useAuth } from "@/context/auth-context";
+import { useRouter } from 'next/navigation';
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import prisma from "@/lib/db";
+import { Skeleton } from '@/components/ui/skeleton';
+import prisma from "@/lib/db"; // prisma import is ok for client components if used in server actions
 
-export default async function SettingsPage() {
+type SettingsData = {
+  projectStatuses: any[];
+  projects: any[];
+  activeYearSetting: any;
+}
+
+// We need a server action to fetch data on demand
+async function getSettingsPageData() {
   const [projectStatuses, projects, activeYearSetting] = await Promise.all([
     prisma.projectStatus.findMany({
       orderBy: { name: 'asc' }
@@ -15,9 +28,61 @@ export default async function SettingsPage() {
     }),
     prisma.setting.findUnique({ where: { key: 'activeWorkingYear' } }),
   ]);
+  return { projectStatuses, projects, activeYearSetting };
+}
 
-  const availableYears = projects.map(p => p.workingYear);
-  const currentActiveYear = activeYearSetting?.value || "";
+function LoadingSkeleton() {
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            <Card>
+                <CardHeader>
+                  <Skeleton className="h-8 w-64" />
+                  <Skeleton className="h-4 w-96 mt-2" />
+                </CardHeader>
+            </Card>
+            <div className="space-y-4">
+                <Skeleton className="h-10 w-1/2" />
+                <Skeleton className="h-64 w-full" />
+            </div>
+        </div>
+    );
+}
+
+export default function SettingsPage() {
+  const { hasPermission, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const [data, setData] = useState<SettingsData | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchSettingsData = useCallback(async () => {
+    setIsLoading(true);
+    try {
+        const fetchedData = await getSettingsPageData();
+        setData(fetchedData);
+    } catch (error) {
+        console.error("Failed to fetch settings", error);
+        setData(null);
+    } finally {
+        setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!authLoading) {
+      if (!hasPermission('settings:manage')) {
+        router.replace('/dashboard');
+      } else {
+        fetchSettingsData();
+      }
+    }
+  }, [authLoading, hasPermission, router, fetchSettingsData]);
+
+  if (isLoading || authLoading || !data) {
+    return <LoadingSkeleton />;
+  }
+
+  const availableYears = data.projects.map(p => p.workingYear);
+  const currentActiveYear = data.activeYearSetting?.value || "";
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -30,7 +95,7 @@ export default async function SettingsPage() {
         </CardHeader>
       </Card>
       <SettingsTabs 
-        projectStatuses={JSON.parse(JSON.stringify(projectStatuses))}
+        projectStatuses={JSON.parse(JSON.stringify(data.projectStatuses))}
         availableYears={availableYears}
         currentActiveYear={currentActiveYear}
       />
