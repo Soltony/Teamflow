@@ -44,12 +44,12 @@ export default function ConfigPage() {
     const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
-            const [users, roles, pmoDivisions] = await Promise.all([
+            const [usersData, rolesData, pmoDivisionsData] = await Promise.all([
                 getUsersData(),
                 getRolesData(),
                 getPmoDivisionsData(),
             ]);
-            setData({ users, roles, pmoDivisions });
+            setData({ users: usersData, roles: rolesData, pmoDivisions: pmoDivisionsData });
         } catch (error) {
             console.error("Failed to fetch config data", error);
             setData({ users: [], roles: [], pmoDivisions: [] });
