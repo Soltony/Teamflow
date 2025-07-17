@@ -2,9 +2,9 @@
 "use client";
 
 import Link from 'next/link';
-import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library } from "lucide-react";
+import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
-import type { Blocker } from "@/lib/types";
+import type { Blocker, TaskStatus } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -14,7 +14,20 @@ import { ResolveBlockerDialog } from "./resolve-blocker-dialog";
 import { EditBlockerDialog } from './edit-blocker-dialog';
 import { Separator } from "../ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { GanttChart } from "./gantt-chart";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +38,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { GanttChart } from './gantt-chart';
 
 type ProjectViewProps = {
   project: any;
@@ -45,6 +59,21 @@ type ProjectViewProps = {
   blockerToDelete: Blocker | null;
   onDeleteBlockerOpenChange: (blocker: Blocker | null) => void;
   onBlockerDeleteSubmit: () => void;
+}
+
+const getStatusBadge = (status: TaskStatus) => {
+    switch (status) {
+        case 'TODO':
+            return <Badge variant="outline">To Do</Badge>;
+        case 'IN_PROGRESS':
+            return <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">In Progress</Badge>;
+        case 'PENDING_REVIEW':
+            return <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending Review</Badge>;
+        case 'DONE':
+            return <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Done</Badge>;
+        default:
+            return <Badge variant="secondary">Unknown</Badge>;
+    }
 }
 
 export function ProjectView({ 
@@ -79,6 +108,12 @@ export function ProjectView({
   }, 0);
 
   const allResponsibleDepartments = project.responsibleDepartments?.map((d: any) => d.name) || [];
+
+  const calculateMilestoneProgress = (milestone: any) => {
+    return milestone.tasks
+      .filter((t: any) => t.status === 'DONE')
+      .reduce((sum: number, task: any) => sum + task.weight, 0);
+  };
 
 
   return (
@@ -139,6 +174,7 @@ export function ProjectView({
               <span>{project.milestones.length} Milestones</span>
             </div>
              <div className="flex items-center gap-2">
+              <CircleDot className="w-4 h-4" />
               <span>{differenceInDays(parseISO(project.endDate), new Date())} days left</span>
             </div>
           </div>
@@ -152,21 +188,71 @@ export function ProjectView({
         </CardContent>
       </Card>
       
-      <Tabs defaultValue="gantt" className="w-full">
+      <Tabs defaultValue="milestones" className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
-            <TabsTrigger value="gantt">Gantt Chart</TabsTrigger>
+            <TabsTrigger value="milestones">Milestones & Tasks</TabsTrigger>
             <TabsTrigger value="blockers">Blockers</TabsTrigger>
         </TabsList>
-        <TabsContent value="gantt">
-          <Card>
-            <CardHeader>
-                <CardTitle>Task Gantt Chart</CardTitle>
-                <CardDescription>A timeline view of all tasks for this project, relative to the project start date.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                <GanttChart project={project} />
-            </CardContent>
-          </Card>
+        <TabsContent value="milestones">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Milestones & Tasks</CardTitle>
+                    <CardDescription>A breakdown of all milestones and their associated tasks for this project.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                    <Accordion type="multiple" className="w-full space-y-2">
+                        {project.milestones.map((milestone: any) => {
+                            const milestoneProgress = calculateMilestoneProgress(milestone);
+                            return (
+                                <AccordionItem value={milestone.id} key={milestone.id} className="border rounded-md px-4">
+                                    <AccordionTrigger className="hover:no-underline">
+                                        <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-2">
+                                            <div className="flex-1 text-left">
+                                                <p className="font-semibold text-base">{milestone.title}</p>
+                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                                                    <span>Due: {format(parseISO(milestone.dueDate), 'MMM dd, yyyy')}</span>
+                                                    <span>&bull;</span>
+                                                    <span>Weight: {milestone.weight}%</span>
+                                                </div>
+                                            </div>
+                                            <div className="flex items-center gap-4 w-full md:w-auto">
+                                                <Progress value={milestoneProgress} className="w-full md:w-32 h-2" />
+                                                <span className="text-xs font-semibold">{Math.round(milestoneProgress)}%</span>
+                                            </div>
+                                        </div>
+                                    </AccordionTrigger>
+                                    <AccordionContent className="pt-2 pb-4">
+                                        {milestone.tasks.length > 0 ? (
+                                            <Table>
+                                                <TableHeader>
+                                                    <TableRow>
+                                                        <TableHead>Task</TableHead>
+                                                        <TableHead>Status</TableHead>
+                                                        <TableHead>Due Date</TableHead>
+                                                        <TableHead className="text-right">Weight</TableHead>
+                                                    </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                    {milestone.tasks.map((task: any) => (
+                                                        <TableRow key={task.id}>
+                                                            <TableCell className="font-medium">{task.title}</TableCell>
+                                                            <TableCell>{getStatusBadge(task.status)}</TableCell>
+                                                            <TableCell>{format(parseISO(task.endDate), 'MMM dd, yyyy')}</TableCell>
+                                                            <TableCell className="text-right">{task.weight}%</TableCell>
+                                                        </TableRow>
+                                                    ))}
+                                                </TableBody>
+                                            </Table>
+                                        ) : (
+                                            <p className="text-center text-sm text-muted-foreground py-4">No tasks in this milestone.</p>
+                                        )}
+                                    </AccordionContent>
+                                </AccordionItem>
+                            )
+                        })}
+                    </Accordion>
+                </CardContent>
+            </Card>
         </TabsContent>
         <TabsContent value="blockers">
             <Card>
