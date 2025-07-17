@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { approvePayment, rejectPayment } from "@/app/payment-approvals/actions";
-import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { format } from "date-fns";
 import type { MilestonePayment } from "@prisma/client";
@@ -50,6 +49,7 @@ type PendingPaymentWithRelations = MilestonePayment & {
 
 type PaymentApprovalManagementProps = {
   initialPayments: PendingPaymentWithRelations[];
+  onDataChange: () => void;
 };
 
 const rejectionSchema = z.object({
@@ -58,9 +58,8 @@ const rejectionSchema = z.object({
 
 type RejectionFormValues = z.infer<typeof rejectionSchema>;
 
-export function PaymentApprovalManagement({ initialPayments }: PaymentApprovalManagementProps) {
+export function PaymentApprovalManagement({ initialPayments, onDataChange }: PaymentApprovalManagementProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [paymentToReject, setPaymentToReject] = useState<PendingPaymentWithRelations | null>(null);
   const { hasPermission } = useAuth();
@@ -77,7 +76,7 @@ export function PaymentApprovalManagement({ initialPayments }: PaymentApprovalMa
       const result = await approvePayment(paymentId, "Approved");
       if (result.success) {
         toast({ title: "Payment Approved!", description: "The payment has been successfully approved." });
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -96,7 +95,7 @@ export function PaymentApprovalManagement({ initialPayments }: PaymentApprovalMa
       if (result.success) {
         toast({ title: "Payment Rejected!", description: "The payment has been rejected and the submitter notified.", variant: "destructive" });
         setPaymentToReject(null);
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }

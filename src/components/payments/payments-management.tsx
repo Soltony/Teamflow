@@ -35,7 +35,6 @@ import {
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { addMilestonePayment } from "@/app/payments/actions";
-import { useRouter } from "next/navigation";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, Clock, CheckCircle, XCircle, ChevronDown, ChevronRight } from "lucide-react";
@@ -46,14 +45,18 @@ import { Badge } from "../ui/badge";
 type MilestoneWithPayments = any;
 type ProjectWithRelations = any;
 
+type PaymentsManagementProps = {
+  initialProjects: ProjectWithRelations[];
+  onDataChange: () => void;
+};
+
 const paymentSchema = (maxAmount: number) => z.object({
   amount: z.coerce.number().positive("Amount must be positive.").max(maxAmount, `Amount cannot exceed the remaining balance of ${maxAmount.toFixed(2)}.`),
   paymentDate: z.date({ required_error: "A payment date is required." }),
 });
 
-export function PaymentsManagement({ initialProjects }: { initialProjects: ProjectWithRelations[] }) {
+export function PaymentsManagement({ initialProjects, onDataChange }: PaymentsManagementProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [selectedMilestone, setSelectedMilestone] = useState<MilestoneWithPayments | null>(null);
   const [expandedRows, setExpandedRows] = useState<Record<string, boolean>>({});
@@ -92,7 +95,7 @@ export function PaymentsManagement({ initialProjects }: { initialProjects: Proje
           description: `Your payment of ${data.amount.toFixed(2)} has been submitted for approval.`,
         });
         setSelectedMilestone(null);
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }

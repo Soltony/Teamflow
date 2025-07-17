@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { PaymentsManagement } from "@/components/payments/payments-management";
@@ -34,18 +34,27 @@ export default function PaymentsPage() {
     const [projects, setProjects] = useState<Project[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await getPaymentsPageData();
+            setProjects(data);
+        } catch (error) {
+            console.error("Failed to fetch payments data", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (!authLoading) {
             if (!hasPermission('payments:view')) {
                 router.replace('/dashboard');
             } else {
-                getPaymentsPageData().then(data => {
-                    setProjects(data);
-                    setIsLoading(false);
-                });
+                fetchData();
             }
         }
-    }, [authLoading, hasPermission, router]);
+    }, [authLoading, hasPermission, router, fetchData]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -61,7 +70,10 @@ export default function PaymentsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PaymentsManagement initialProjects={projects} />
+              <PaymentsManagement 
+                initialProjects={projects} 
+                onDataChange={fetchData}
+              />
             </CardContent>
           </Card>
         </div>

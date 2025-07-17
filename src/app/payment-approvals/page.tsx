@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { PaymentApprovalManagement } from "@/components/payment-approvals/payment-approvals-management";
@@ -44,18 +44,27 @@ export default function PaymentApprovalsPage() {
     const [pendingPayments, setPendingPayments] = useState<PendingPaymentWithRelations[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await getPendingPayments();
+            setPendingPayments(data as PendingPaymentWithRelations[]);
+        } catch (error) {
+            console.error("Failed to fetch pending payments", error);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (!authLoading) {
             if (!hasPermission('payment-approvals:view')) {
                 router.replace('/dashboard');
             } else {
-                getPendingPayments().then(data => {
-                    setPendingPayments(data as PendingPaymentWithRelations[]);
-                    setIsLoading(false);
-                });
+                fetchData();
             }
         }
-    }, [authLoading, hasPermission, router]);
+    }, [authLoading, hasPermission, router, fetchData]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -71,7 +80,10 @@ export default function PaymentApprovalsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PaymentApprovalManagement initialPayments={pendingPayments} />
+              <PaymentApprovalManagement 
+                initialPayments={pendingPayments} 
+                onDataChange={fetchData}
+              />
             </CardContent>
           </Card>
         </div>
