@@ -1,4 +1,3 @@
-
 import { AppShellProvider } from "@/components/app-shell";
 
 export default function CEOReportLayout({

@@ -1,23 +1,21 @@
+"use client";
 
-'use client';
+import { useAuth } from "@/context/auth-context";
+import { usePathname, useRouter } from "next/navigation";
+import React, { useEffect } from "react";
+import { NibLogo } from "./logo";
 
-import { useAuth } from '@/context/auth-context';
-import { usePathname, useRouter } from 'next/navigation';
-import React, { useEffect } from 'react';
-import { AppShellProvider } from './app-shell';
-import { NibLogo } from './logo';
-
-const publicPaths = ['/login', '/register'];
+const publicPaths = ["/login", "/register"];
 
 function AuthLoadingScreen() {
-    return (
-        <div className="h-screen w-full flex items-center justify-center bg-background">
-            <div className="flex flex-col items-center gap-4">
-                <NibLogo className="w-12 h-12 animate-pulse" />
-                <p className="text-muted-foreground">Loading your workspace...</p>
-            </div>
-        </div>
-    );
+  return (
+    <div className="h-screen w-full flex items-center justify-center bg-background">
+      <div className="flex flex-col items-center gap-4">
+        <NibLogo className="w-12 h-12 animate-pulse" />
+        <p className="text-muted-foreground">Loading your workspace...</p>
+      </div>
+    </div>
+  );
 }
 
 export function AuthShell({ children }: { children: React.ReactNode }) {
@@ -28,9 +26,9 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!loading) {
       if (!accessToken && !publicPaths.includes(pathname)) {
-        router.replace('/login');
+        router.replace("/login");
       } else if (accessToken && publicPaths.includes(pathname)) {
-        router.replace('/dashboard');
+        router.replace("/dashboard");
       }
     }
   }, [loading, accessToken, router, pathname]);
@@ -39,16 +37,21 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
     return <AuthLoadingScreen />;
   }
 
-  if (!accessToken || !localUser) {
-    if (publicPaths.includes(pathname)) {
-      return <>{children}</>;
-    }
+  // If user is not authenticated and is on a public path, show the page.
+  if (!accessToken && publicPaths.includes(pathname)) {
+    return <>{children}</>;
+  }
+  
+  // If user is not authenticated and tries to access a protected route, show loading while redirecting.
+  if (!accessToken) {
     return <AuthLoadingScreen />;
   }
-
+  
+  // If user is authenticated and on a public path, show loading while redirecting.
   if (publicPaths.includes(pathname)) {
-    return <AuthLoadingScreen />;
+      return <AuthLoadingScreen />;
   }
-
-  return <AppShellProvider>{children}</AppShellProvider>;
+  
+  // If authenticated and on a protected route, render the children (which will be wrapped in AppShell via layouts)
+  return <>{children}</>;
 }
