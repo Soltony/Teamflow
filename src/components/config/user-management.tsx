@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -9,7 +9,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -46,7 +45,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Role, User, PmoDivision } from "@prisma/client";
-import { updateUser, createUser, deleteUser, getUsersData } from "@/app/config/actions";
+import { updateUser, createUser, deleteUser } from "@/app/config/actions";
 import { Badge } from "../ui/badge";
 import {
     DropdownMenu,
@@ -192,12 +191,11 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
       const result = await deleteUser(userToDelete.id);
       if (result.success) {
         toast({ title: "User Deleted", description: `The user "${userToDelete.name}" has been removed.` });
-        setUserToDelete(null);
         onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
-        setUserToDelete(null);
       }
+      setUserToDelete(null);
     });
   };
 
@@ -263,7 +261,6 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
             </TableBody>
           </Table>
         </CardContent>
-        {/* We can re-add pagination later if needed, but removing it simplifies the refresh logic for now */}
       </Card>
 
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && handleCloseEditDialog()}>

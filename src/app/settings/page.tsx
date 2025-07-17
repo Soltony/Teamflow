@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -7,11 +8,12 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
 import { getSettingsPageData } from './actions';
+import type { ProjectStatus, Project, Setting } from '@prisma/client';
 
 type SettingsData = {
-  projectStatuses: any[];
-  projects: any[];
-  activeYearSetting: any;
+  projectStatuses: ProjectStatus[];
+  projects: { workingYear: string }[];
+  activeYearSetting: Setting | null;
 }
 
 function LoadingSkeleton() {
@@ -64,7 +66,7 @@ export default function SettingsPage() {
     return <LoadingSkeleton />;
   }
 
-  const availableYears = data.projects.map(p => p.workingYear);
+  const availableYears = Array.from(new Set(data.projects.map(p => p.workingYear)));
   const currentActiveYear = data.activeYearSetting?.value || "";
 
   return (
@@ -81,6 +83,7 @@ export default function SettingsPage() {
         projectStatuses={data.projectStatuses}
         availableYears={availableYears}
         currentActiveYear={currentActiveYear}
+        onDataChange={fetchSettingsData}
       />
     </div>
   );

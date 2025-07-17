@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { createPmoDivision, deletePmoDivision, updatePmoDivision } from "@/app/pmo-divisions/actions";
 import { useAuth } from "@/context/auth-context";
-import { useRouter } from "next/navigation";
 
 const pmoDivisionSchema = z.object({
   name: z.string().min(3, "Division name must be at least 3 characters."),
@@ -43,10 +42,14 @@ const pmoDivisionSchema = z.object({
 
 type PmoDivisionFormValues = z.infer<typeof pmoDivisionSchema>;
 
-export function PmoDivisionManagement({ initialPmoDivisions }: { initialPmoDivisions: PmoDivision[] }) {
+type PmoDivisionManagementProps = {
+    initialPmoDivisions: PmoDivision[];
+    onDataChange: () => void;
+};
+
+export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: PmoDivisionManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
   const [editingPmoDivision, setEditingPmoDivision] = useState<PmoDivision | null>(null);
   const [pmoDivisionToDelete, setPmoDivisionToDelete] = useState<PmoDivision | null>(null);
   const { hasPermission } = useAuth();
@@ -78,7 +81,7 @@ export function PmoDivisionManagement({ initialPmoDivisions }: { initialPmoDivis
         });
         setEditingPmoDivision(null);
         form.reset({ name: "", responsibleName: "", responsibleTitle: "", responsiblePhone: "" });
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -109,16 +112,15 @@ export function PmoDivisionManagement({ initialPmoDivisions }: { initialPmoDivis
           title: "PMO Division Deleted",
           description: `The "${pmoDivisionToDelete.name}" division has been removed.`,
         });
-        setPmoDivisionToDelete(null);
-        router.refresh();
+        onDataChange();
       } else {
         toast({
           title: "Error",
           description: result.error,
           variant: "destructive"
         })
-        setPmoDivisionToDelete(null);
       }
+      setPmoDivisionToDelete(null);
     });
   }
 

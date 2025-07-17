@@ -14,9 +14,10 @@ type SettingsTabsProps = {
     projectStatuses: ProjectStatus[];
     availableYears: string[];
     currentActiveYear: string;
+    onDataChange: () => void;
 }
 
-export function SettingsTabs({ projectStatuses, availableYears, currentActiveYear }: SettingsTabsProps) {
+export function SettingsTabs({ projectStatuses, availableYears, currentActiveYear, onDataChange }: SettingsTabsProps) {
     const { hasPermission, loading } = useAuth();
     const router = useRouter();
     const canManageSettings = hasPermission('settings:manage');
@@ -45,12 +46,14 @@ export function SettingsTabs({ projectStatuses, availableYears, currentActiveYea
             <TabsContent value="statuses" className="mt-6">
             <ProjectStatusManagement 
                 initialStatuses={projectStatuses}
+                onDataChange={onDataChange}
             />
             </TabsContent>
             <TabsContent value="general" className="mt-6">
             <ActiveYearManagement
                 availableYears={availableYears}
                 currentActiveYear={currentActiveYear}
+                onDataChange={onDataChange}
             />
             </TabsContent>
       </Tabs>

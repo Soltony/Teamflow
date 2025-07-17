@@ -31,7 +31,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { createProjectStatus, updateProjectStatus, deleteProjectStatus } from "@/app/settings/actions";
-import { useRouter } from "next/navigation";
 
 const statusSchema = z.object({
   name: z.string().min(3, "Status name must be at least 3 characters."),
@@ -39,10 +38,14 @@ const statusSchema = z.object({
 
 type StatusFormValues = z.infer<typeof statusSchema>;
 
-export function ProjectStatusManagement({ initialStatuses }: { initialStatuses: ProjectStatus[] }) {
+type ProjectStatusManagementProps = {
+  initialStatuses: ProjectStatus[];
+  onDataChange: () => void;
+};
+
+export function ProjectStatusManagement({ initialStatuses, onDataChange }: ProjectStatusManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
   const [editingStatus, setEditingStatus] = useState<ProjectStatus | null>(null);
   const [statusToDelete, setStatusToDelete] = useState<ProjectStatus | null>(null);
 
@@ -66,7 +69,7 @@ export function ProjectStatusManagement({ initialStatuses }: { initialStatuses: 
         });
         setEditingStatus(null);
         form.reset({ name: "" });
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -92,12 +95,11 @@ export function ProjectStatusManagement({ initialStatuses }: { initialStatuses: 
           title: "Status Deleted",
           description: `The "${statusToDelete.name}" status has been removed.`,
         });
-        setStatusToDelete(null);
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
-        setStatusToDelete(null);
       }
+      setStatusToDelete(null);
     });
   }
 

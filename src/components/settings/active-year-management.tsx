@@ -1,3 +1,4 @@
+
 "use client";
 
 import { useEffect, useTransition } from "react";
@@ -33,9 +34,10 @@ type ActiveYearFormValues = z.infer<typeof activeYearSchema>;
 type ActiveYearManagementProps = {
   availableYears: string[];
   currentActiveYear: string;
+  onDataChange: () => void;
 };
 
-export function ActiveYearManagement({ availableYears, currentActiveYear }: ActiveYearManagementProps) {
+export function ActiveYearManagement({ availableYears, currentActiveYear, onDataChange }: ActiveYearManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
 
@@ -58,8 +60,8 @@ export function ActiveYearManagement({ availableYears, currentActiveYear }: Acti
           title: "Active Year Updated!",
           description: `The default active working year has been set to ${data.activeYear}.`,
         });
-        // This is kept for client-side components that might need immediate feedback without a full page reload.
         localStorage.setItem("activeWorkingYear", data.activeYear);
+        onDataChange();
       } else {
         toast({
           title: "Error",

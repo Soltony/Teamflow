@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { ProjectCard } from "@/components/projects/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -39,18 +39,29 @@ export default function ProjectsPage() {
 
     const isMemberOnly = localUser && !localUser.roles.some(r => r.name === 'Admin' || r.name === 'Project Manager');
 
-    useEffect(() => {
+    const fetchProjects = useCallback(async () => {
         if (localUser?.id) {
             setIsLoading(true);
-            getProjectsForUser(localUser.id).then(data => {
+            try {
+                const data = await getProjectsForUser(localUser.id);
                 setProjects(data);
+            } catch (error) {
+                console.error("Failed to fetch projects", error);
+                setProjects([]);
+            } finally {
                 setIsLoading(false);
-            });
+            }
+        }
+    }, [localUser?.id]);
+
+    useEffect(() => {
+        if (localUser?.id) {
+            fetchProjects();
         } else if (!authLoading) {
             // Auth is done loading and there's no user, stop loading.
             setIsLoading(false);
         }
-    }, [localUser, authLoading]);
+    }, [localUser, authLoading, fetchProjects]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;

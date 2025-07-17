@@ -39,7 +39,7 @@ export default function DepartmentsPage() {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
-    const fetchDepartments = useCallback(async () => {
+    const fetchData = useCallback(async () => {
         setIsLoading(true);
         try {
             const data = await getDepartmentsData();
@@ -57,10 +57,10 @@ export default function DepartmentsPage() {
             if (!hasPermission('departments:read')) {
                 router.replace('/dashboard');
             } else {
-                fetchDepartments();
+                fetchData();
             }
         }
-    }, [authLoading, hasPermission, router, fetchDepartments]);
+    }, [authLoading, hasPermission, router, fetchData]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -76,7 +76,10 @@ export default function DepartmentsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <DepartmentsManagement initialDepartments={departments} />
+              <DepartmentsManagement 
+                initialDepartments={departments} 
+                onDataChange={fetchData} 
+              />
             </CardContent>
           </Card>
         </div>

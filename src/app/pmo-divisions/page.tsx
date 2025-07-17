@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { PmoDivisionManagement } from "@/components/pmo-divisions/pmo-division-management";
@@ -39,18 +39,28 @@ export default function PmoDivisionsPage() {
     const [pmoDivisions, setPmoDivisions] = useState<PmoDivision[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchData = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await getPmoDivisionsData();
+            setPmoDivisions(data);
+        } catch (error) {
+            console.error("Failed to fetch PMO divisions", error);
+            setPmoDivisions([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (!authLoading) {
             if (!hasPermission('pmo-divisions:view')) {
                 router.replace('/dashboard');
             } else {
-                getPmoDivisionsData().then(data => {
-                    setPmoDivisions(data);
-                    setIsLoading(false);
-                });
+                fetchData();
             }
         }
-    }, [authLoading, hasPermission, router]);
+    }, [authLoading, hasPermission, router, fetchData]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -66,7 +76,10 @@ export default function PmoDivisionsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PmoDivisionManagement initialPmoDivisions={pmoDivisions} />
+              <PmoDivisionManagement 
+                initialPmoDivisions={pmoDivisions} 
+                onDataChange={fetchData} 
+              />
             </CardContent>
           </Card>
         </div>

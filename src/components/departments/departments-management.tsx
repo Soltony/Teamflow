@@ -32,7 +32,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { createDepartment, deleteDepartment, updateDepartment } from "@/app/departments/actions";
 import { useAuth } from "@/context/auth-context";
-import { useRouter } from "next/navigation";
 
 const departmentSchema = z.object({
   name: z.string().min(3, "Department name must be at least 3 characters."),
@@ -40,10 +39,14 @@ const departmentSchema = z.object({
 
 type DepartmentFormValues = z.infer<typeof departmentSchema>;
 
-export function DepartmentsManagement({ initialDepartments }: { initialDepartments: Department[] }) {
+type DepartmentsManagementProps = {
+    initialDepartments: Department[];
+    onDataChange: () => void;
+};
+
+export function DepartmentsManagement({ initialDepartments, onDataChange }: DepartmentsManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const router = useRouter();
   const [editingDepartment, setEditingDepartment] = useState<Department | null>(null);
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
   const { hasPermission } = useAuth();
@@ -74,7 +77,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
         });
         setEditingDepartment(null);
         form.reset({ name: "" });
-        router.refresh();
+        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
@@ -102,7 +105,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
           title: "Department Deleted",
           description: `The "${departmentToDelete.name}" department has been removed.`,
         });
-        router.refresh();
+        onDataChange();
       } else {
         toast({
           title: "Error",
