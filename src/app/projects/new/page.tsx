@@ -70,7 +70,7 @@ export default function NewProjectPage() {
         title: "Project Created!",
         description: `Project "${formData.name}" has been successfully created.`,
       });
-      router.push('/dashboard');
+      router.push('/projects');
     } else {
       toast({
         title: "Error",
