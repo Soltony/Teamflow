@@ -147,12 +147,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div
       className={cn(
         "min-h-screen w-full",
-        !isMobile && (isOpen ? "pl-[280px]" : "pl-[56px]"),
-        "transition-all duration-300 ease-in-out"
       )}
     >
       <AppSidebar />
-      <div className="flex flex-col">
+      <div className={cn(
+        "flex flex-col",
+        !isMobile && (isOpen ? "pl-[280px]" : "pl-[56px]"),
+        "transition-all duration-300 ease-in-out"
+      )}>
         <header
           className={cn(
             "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b sm:px-6",
