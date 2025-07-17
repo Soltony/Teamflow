@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -7,28 +6,12 @@ import { useRouter } from 'next/navigation';
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
-import prisma from "@/lib/db"; // prisma import is ok for client components if used in server actions
+import { getSettingsPageData } from './actions';
 
 type SettingsData = {
   projectStatuses: any[];
   projects: any[];
   activeYearSetting: any;
-}
-
-// We need a server action to fetch data on demand
-async function getSettingsPageData() {
-  const [projectStatuses, projects, activeYearSetting] = await Promise.all([
-    prisma.projectStatus.findMany({
-      orderBy: { name: 'asc' }
-    }),
-    prisma.project.findMany({
-      select: { workingYear: true },
-      distinct: ['workingYear'],
-      orderBy: { workingYear: 'desc' }
-    }),
-    prisma.setting.findUnique({ where: { key: 'activeWorkingYear' } }),
-  ]);
-  return { projectStatuses, projects, activeYearSetting };
 }
 
 function LoadingSkeleton() {
@@ -95,7 +78,7 @@ export default function SettingsPage() {
         </CardHeader>
       </Card>
       <SettingsTabs 
-        projectStatuses={JSON.parse(JSON.stringify(data.projectStatuses))}
+        projectStatuses={data.projectStatuses}
         availableYears={availableYears}
         currentActiveYear={currentActiveYear}
       />

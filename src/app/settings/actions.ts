@@ -1,8 +1,26 @@
-
 'use server';
 
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
+
+export async function getSettingsPageData() {
+  const [projectStatuses, projects, activeYearSetting] = await Promise.all([
+    prisma.projectStatus.findMany({
+      orderBy: { name: 'asc' },
+    }),
+    prisma.project.findMany({
+      select: { workingYear: true },
+      distinct: ['workingYear'],
+      orderBy: { workingYear: 'desc' },
+    }),
+    prisma.setting.findUnique({ where: { key: 'activeWorkingYear' } }),
+  ]);
+  return {
+    projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
+    projects: JSON.parse(JSON.stringify(projects)),
+    activeYearSetting: JSON.parse(JSON.stringify(activeYearSetting)),
+  };
+}
 
 export async function createProjectStatus(name: string) {
     if (!name || name.trim().length < 3) {
