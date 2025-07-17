@@ -62,15 +62,15 @@ body {
     width: 6px;
   }
   .sidebar::-webkit-scrollbar-track {
-    background-color: hsl(27 55% 25%); /* Darker Honey Brown for track */
+    background-color: #B87333; /* Honey Brown */
     border-radius: 10px;
   }
   .sidebar::-webkit-scrollbar-thumb {
-    background-color: hsl(47 90% 84%); /* Light Yellowish (#FFF8DC) */
+    background-color: #FFF8DC; /* Light Yellowish (Cornsilk) */
     border-radius: 10px;
     transition: background-color 0.3s ease;
   }
   .sidebar::-webkit-scrollbar-thumb:hover {
-    background-color: hsl(47 90% 75%); /* Slightly darker yellow on hover */
+    background-color: #f8eeb8; /* Slightly darker yellow on hover */
   }
 }
