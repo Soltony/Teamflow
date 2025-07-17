@@ -38,7 +38,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { GanttChart } from './gantt-chart';
 
 type ProjectViewProps = {
   project: any;
