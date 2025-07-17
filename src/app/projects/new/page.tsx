@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState } from "react";
@@ -63,17 +64,14 @@ export default function NewProjectPage() {
   }, [authLoading, hasPermission, router]);
 
   const handleCreateProject = async (formData: any) => {
-    try {
-      // The conversion to Decimal will happen on the server side in the action.
-      // The form data can send numbers.
-      await createProject(formData);
+    const result = await createProject(formData);
+    if (result.success) {
       toast({
         title: "Project Created!",
         description: `Project "${formData.name}" has been successfully created.`,
       });
       router.push('/dashboard');
-    } catch (error) {
-      console.error(error);
+    } else {
       toast({
         title: "Error",
         description: "Failed to create project. Please try again.",

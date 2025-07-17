@@ -1,10 +1,11 @@
 
+
 "use client";
 
 import Link from 'next/link';
 import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
-import type { Blocker, TaskStatus } from "@/lib/types";
+import type { Blocker, TaskStatus, Project } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -42,10 +43,12 @@ import {
 type ProjectViewProps = {
   project: any;
   canUpdateProject: boolean;
+  canDeleteProject: boolean;
   onAddBlocker: () => void;
   onResolveBlocker: (blocker: Blocker) => void;
   onEditBlocker: (blocker: Blocker) => void;
   onDeleteBlocker: (blocker: Blocker) => void;
+  onDeleteProject: (project: Project) => void;
   isAddingBlocker: boolean;
   onAddBlockerOpenChange: (open: boolean) => void;
   onBlockerAddSubmit: (data: { description: string }) => void;
@@ -58,6 +61,9 @@ type ProjectViewProps = {
   blockerToDelete: Blocker | null;
   onDeleteBlockerOpenChange: (blocker: Blocker | null) => void;
   onBlockerDeleteSubmit: () => void;
+  projectToDelete: Project | null;
+  onDeleteProjectOpenChange: (project: Project | null) => void;
+  onProjectDeleteSubmit: () => void;
 }
 
 const getStatusBadge = (status: TaskStatus) => {
@@ -78,10 +84,12 @@ const getStatusBadge = (status: TaskStatus) => {
 export function ProjectView({ 
     project, 
     canUpdateProject,
+    canDeleteProject,
     onAddBlocker,
     onResolveBlocker,
     onEditBlocker,
     onDeleteBlocker,
+    onDeleteProject,
     isAddingBlocker,
     onAddBlockerOpenChange,
     onBlockerAddSubmit,
@@ -94,6 +102,9 @@ export function ProjectView({
     blockerToDelete,
     onDeleteBlockerOpenChange,
     onBlockerDeleteSubmit,
+    projectToDelete,
+    onDeleteProjectOpenChange,
+    onProjectDeleteSubmit,
 }: ProjectViewProps) {
   
   const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
@@ -146,6 +157,12 @@ export function ProjectView({
                         </Link>
                     </Button>
                   </>
+                )}
+                {canDeleteProject && (
+                  <Button variant="destructive" onClick={() => onDeleteProject(project)}>
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Delete
+                  </Button>
                 )}
             </div>
           </div>
@@ -375,6 +392,31 @@ export function ProjectView({
                         onClick={onBlockerDeleteSubmit}
                     >
                         Delete
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+      )}
+
+      {projectToDelete && (
+        <AlertDialog
+            open={!!projectToDelete}
+            onOpenChange={(open) => !open && onDeleteProjectOpenChange(null)}
+        >
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you sure you want to delete this project?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action cannot be undone. This will permanently delete the project <span className="font-semibold">"{projectToDelete.name}"</span> and all of its associated milestones, tasks, and blockers.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel onClick={() => onDeleteProjectOpenChange(null)}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={onProjectDeleteSubmit}
+                    >
+                        Delete Project
                     </AlertDialogAction>
                 </AlertDialogFooter>
             </AlertDialogContent>

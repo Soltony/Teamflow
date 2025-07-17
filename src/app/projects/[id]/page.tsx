@@ -1,12 +1,13 @@
 
+
 'use client';
 
 import { useEffect, useState, useCallback } from "react";
 import { notFound, useRouter, useParams } from "next/navigation";
 import { ProjectView } from "@/components/projects/project-view";
-import { getProjectDetailsForUser, addBlocker, resolveBlocker, deleteBlocker, updateBlocker } from "../actions";
+import { getProjectDetailsForUser, addBlocker, resolveBlocker, deleteBlocker, updateBlocker, deleteProject } from "../actions";
 import { useAuth } from "@/context/auth-context";
-import { BlockerStatus, TaskStatus, type Blocker } from "@/lib/types";
+import { BlockerStatus, TaskStatus, type Blocker, type Project } from "@/lib/types";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 
@@ -39,8 +40,10 @@ export default function ProjectDetailsPage() {
   const [resolvingBlocker, setResolvingBlocker] = useState<Blocker | null>(null);
   const [blockerToDelete, setBlockerToDelete] = useState<Blocker | null>(null);
   const [editingBlocker, setEditingBlocker] = useState<Blocker | null>(null);
+  const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const canUpdateProject = hasPermission('projects:update');
+  const canDeleteProject = hasPermission('projects:delete');
 
   const fetchProjectData = useCallback(async () => {
       if (!localUser?.id || !id) return;
@@ -124,6 +127,25 @@ export default function ProjectDetailsPage() {
     });
     await fetchProjectData();
   };
+
+  const handleProjectDelete = async () => {
+    if (!projectToDelete) return;
+    const result = await deleteProject(projectToDelete.id);
+    if (result.success) {
+      toast({
+        title: "Project Deleted",
+        description: `The project "${projectToDelete.name}" has been permanently removed.`,
+      });
+      router.push('/projects');
+    } else {
+      toast({
+        title: "Error Deleting Project",
+        description: result.error,
+        variant: "destructive",
+      });
+    }
+    setProjectToDelete(null);
+  };
   
   if (isLoading || authLoading) {
       return <LoadingSkeleton />;
@@ -141,10 +163,12 @@ export default function ProjectDetailsPage() {
     <ProjectView 
         project={project}
         canUpdateProject={canUpdateProject}
+        canDeleteProject={canDeleteProject}
         onAddBlocker={() => setAddingBlocker(true)}
         onResolveBlocker={(blocker) => setResolvingBlocker(blocker)}
         onEditBlocker={(blocker) => setEditingBlocker(blocker)}
         onDeleteBlocker={(blocker) => setBlockerToDelete(blocker)}
+        onDeleteProject={(project) => setProjectToDelete(project)}
         isAddingBlocker={isAddingBlocker}
         onAddBlockerOpenChange={setAddingBlocker}
         onBlockerAddSubmit={handleBlockerAdd}
@@ -157,6 +181,9 @@ export default function ProjectDetailsPage() {
         blockerToDelete={blockerToDelete}
         onDeleteBlockerOpenChange={setBlockerToDelete}
         onBlockerDeleteSubmit={handleBlockerDelete}
+        projectToDelete={projectToDelete}
+        onDeleteProjectOpenChange={setProjectToDelete}
+        onProjectDeleteSubmit={handleProjectDelete}
     />
   );
 }

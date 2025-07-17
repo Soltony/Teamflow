@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import prisma from "@/lib/db";
@@ -27,7 +28,7 @@ export async function getNewProjectData() {
 export async function createProject(data: any) {
     const { milestones, responsibleDepartmentIds, hasCost, ...projectData } = data;
 
-    await prisma.project.create({
+    const newProject = await prisma.project.create({
         data: {
             ...projectData,
             totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
@@ -54,6 +55,7 @@ export async function createProject(data: any) {
     revalidatePath('/dashboard');
     revalidatePath('/projects');
     revalidatePath('/gantt');
+    return { success: true, project: newProject };
 }
 
 export async function getProjectForEdit(projectId: string) {
@@ -477,4 +479,72 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
         users: JSON.parse(JSON.stringify(users)),
         departments: JSON.parse(JSON.stringify(departments))
     };
+}
+
+
+export async function deleteProject(projectId: string) {
+    try {
+        await prisma.$transaction(async (tx) => {
+            // Find all milestones associated with the project
+            const milestones = await tx.milestone.findMany({
+                where: { projectId: projectId },
+                select: { id: true }
+            });
+            const milestoneIds = milestones.map(m => m.id);
+
+            if (milestoneIds.length > 0) {
+                 // Delete milestone payments
+                await tx.milestonePayment.deleteMany({
+                    where: { milestoneId: { in: milestoneIds } }
+                });
+
+                // Find all tasks associated with these milestones
+                const tasks = await tx.task.findMany({
+                    where: { milestoneId: { in: milestoneIds } },
+                    select: { id: true }
+                });
+                const taskIds = tasks.map(t => t.id);
+                
+                if (taskIds.length > 0) {
+                    // Delete task updates
+                    await tx.taskUpdate.deleteMany({
+                        where: { taskId: { in: taskIds } }
+                    });
+                     // Delete tasks
+                    await tx.task.deleteMany({
+                        where: { id: { in: taskIds } }
+                    });
+                }
+            }
+
+            // Delete milestones
+            await tx.milestone.deleteMany({
+                where: { projectId: projectId }
+            });
+
+            // Delete blockers
+            await tx.blocker.deleteMany({
+                where: { projectId: projectId }
+            });
+
+            // Delete teams
+            await tx.team.deleteMany({
+                where: { projectId: projectId }
+            });
+            
+            // Finally, delete the project itself
+            await tx.project.delete({
+                where: { id: projectId }
+            });
+        });
+
+        revalidatePath('/projects');
+        revalidatePath('/dashboard');
+        revalidatePath('/gantt');
+        revalidatePath('/milestones');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete project:", error);
+        return { success: false, error: "Failed to delete project. Please ensure all related items are handled." };
+    }
 }
