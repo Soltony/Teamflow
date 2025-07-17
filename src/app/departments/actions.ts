@@ -23,6 +23,7 @@ export async function createDepartment(data: Omit<Department, 'id'>) {
             data,
         });
         revalidatePath('/departments');
+        revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
         return { success: false, error: "Failed to create department. A department with this name may already exist." };
@@ -36,6 +37,7 @@ export async function updateDepartment(id: string, data: Omit<Department, 'id'>)
     try {
         await prisma.department.update({ where: { id }, data });
         revalidatePath('/departments');
+        revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
         return { success: false, error: "Failed to update department." };
@@ -44,15 +46,17 @@ export async function updateDepartment(id: string, data: Omit<Department, 'id'>)
 
 export async function deleteDepartment(id: string) {
     try {
-        // Add checks here if departments get linked to other models
-        // const projectsWithDept = await prisma.project.count({ where: { departmentId: id }});
-        // if (projectsWithDept > 0) {
-        //     return { success: false, error: "Cannot delete department as it is set as the owning department for one or more projects."};
-        // }
+        const projectsWithDept = await prisma.project.count({ 
+            where: { responsibleDepartments: { some: { id } } } 
+        });
+        if (projectsWithDept > 0) {
+            return { success: false, error: "Cannot delete department as it is set as a responsible department for one or more projects."};
+        }
         
         await prisma.department.delete({ where: { id } });
 
         revalidatePath('/departments');
+        revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
         console.error('Failed to delete department:', error);

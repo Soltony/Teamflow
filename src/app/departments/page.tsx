@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { DepartmentsManagement } from "@/components/departments/departments-management";
@@ -39,18 +39,28 @@ export default function DepartmentsPage() {
     const [departments, setDepartments] = useState<Department[]>([]);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchDepartments = useCallback(async () => {
+        setIsLoading(true);
+        try {
+            const data = await getDepartmentsData();
+            setDepartments(data);
+        } catch (error) {
+            console.error("Failed to fetch departments", error);
+            setDepartments([]);
+        } finally {
+            setIsLoading(false);
+        }
+    }, []);
+
     useEffect(() => {
         if (!authLoading) {
             if (!hasPermission('departments:read')) {
                 router.replace('/dashboard');
             } else {
-                getDepartmentsData().then(data => {
-                    setDepartments(data);
-                    setIsLoading(false);
-                });
+                fetchDepartments();
             }
         }
-    }, [authLoading, hasPermission, router]);
+    }, [authLoading, hasPermission, router, fetchDepartments]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;

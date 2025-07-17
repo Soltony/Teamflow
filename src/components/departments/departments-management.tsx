@@ -48,7 +48,9 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
   const [departmentToDelete, setDepartmentToDelete] = useState<Department | null>(null);
   const { hasPermission } = useAuth();
   
-  const canManage = hasPermission('departments:read'); // Using 'read' as a proxy for management for now
+  const canCreate = hasPermission('departments:create');
+  const canUpdate = hasPermission('departments:update');
+  const canDelete = hasPermission('departments:delete');
 
   const form = useForm<DepartmentFormValues>({
     resolver: zodResolver(departmentSchema),
@@ -115,7 +117,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
   return (
     <>
       <div className="grid md:grid-cols-3 gap-6">
-        {canManage && (
+        {canCreate && (
           <div className="md:col-span-1">
             <Card>
               <CardHeader>
@@ -153,7 +155,7 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
             </Card>
           </div>
         )}
-        <div className={canManage ? "md:col-span-2" : "md:col-span-3"}>
+        <div className={canCreate ? "md:col-span-2" : "md:col-span-3"}>
           <Card>
             <CardHeader>
               <CardTitle>Existing Departments</CardTitle>
@@ -168,23 +170,25 @@ export function DepartmentsManagement({ initialDepartments }: { initialDepartmen
                     <div>
                       <h3 className="font-semibold">{dept.name}</h3>
                     </div>
-                    {canManage && (
-                      <div className="flex items-center gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(dept)}>
-                          <Pencil className="w-4 h-4" />
-                          <span className="sr-only">Edit</span>
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDepartmentToDelete(dept)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          <span className="sr-only">Delete</span>
-                        </Button>
-                      </div>
-                    )}
+                    <div className="flex items-center gap-1">
+                        {canUpdate && (
+                          <Button variant="ghost" size="icon" onClick={() => handleEdit(dept)}>
+                            <Pencil className="w-4 h-4" />
+                            <span className="sr-only">Edit</span>
+                          </Button>
+                        )}
+                        {canDelete && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="text-destructive hover:text-destructive"
+                            onClick={() => setDepartmentToDelete(dept)}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        )}
+                    </div>
                   </div>
                   {index < initialDepartments.length - 1 && <Separator className="my-4" />}
                 </div>
