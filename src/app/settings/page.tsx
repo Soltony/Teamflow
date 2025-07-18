@@ -8,12 +8,17 @@ import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from '@/components/ui/skeleton';
 import { getSettingsPageData } from './actions';
-import type { ProjectStatus, Project, Setting } from '@prisma/client';
+import type { ProjectStatus, Project, Setting, User, Role, PmoDivision } from '@prisma/client';
+
+type UserWithRoles = User & { roles: Role[] };
 
 type SettingsData = {
   projectStatuses: ProjectStatus[];
   projects: { workingYear: string }[];
   activeYearSetting: Setting | null;
+  users: UserWithRoles[];
+  roles: Role[];
+  pmoDivisions: PmoDivision[];
 }
 
 function LoadingSkeleton() {
@@ -39,6 +44,8 @@ export default function SettingsPage() {
   const [data, setData] = useState<SettingsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  const canViewPage = hasPermission(['settings:manage', 'config:manage-users', 'config:manage-roles']);
+
   const fetchSettingsData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -54,13 +61,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!authLoading) {
-      if (!hasPermission('settings:manage')) {
+      if (!canViewPage) {
         router.replace('/dashboard');
       } else {
         fetchSettingsData();
       }
     }
-  }, [authLoading, hasPermission, router, fetchSettingsData]);
+  }, [authLoading, canViewPage, router, fetchSettingsData]);
 
   if (isLoading || authLoading || !data) {
     return <LoadingSkeleton />;
@@ -73,9 +80,9 @@ export default function SettingsPage() {
     <div className="p-4 sm:p-6 space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Application Settings</CardTitle>
+          <CardTitle>Settings & Configuration</CardTitle>
           <CardDescription>
-            Manage application-wide settings from this central hub.
+            Manage application-wide settings, users, and roles from this central hub.
           </CardDescription>
         </CardHeader>
       </Card>
@@ -83,6 +90,9 @@ export default function SettingsPage() {
         projectStatuses={data.projectStatuses}
         availableYears={availableYears}
         currentActiveYear={currentActiveYear}
+        users={data.users}
+        roles={data.roles}
+        pmoDivisions={data.pmoDivisions}
         onDataChange={fetchSettingsData}
       />
     </div>

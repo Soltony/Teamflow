@@ -15,7 +15,6 @@ import {
   Milestone,
   ClipboardCheck,
   ClipboardList,
-  Wrench,
   AreaChart,
   User,
   Library,
@@ -61,8 +60,7 @@ const menuItems = [
   { href: "/payments", label: "Payments", icon: DollarSign, permission: 'payments:view' },
   { href: "/payment-approvals", label: "Payment Approvals", icon: CheckSquare, permission: 'payment-approvals:view' },
   { href: "/ceo-report", label: "Reports", icon: AreaChart, permission: 'reports:view' },
-  { href: "/settings", label: "Settings", icon: Settings, permission: 'settings:manage' },
-  { href: "/config", label: "Config", icon: Wrench, permission: ['config:manage-users', 'config:manage-roles'] },
+  { href: "/settings", label: "Settings", icon: Settings, permission: ['settings:manage', 'config:manage-users', 'config:manage-roles'] },
 ];
 
 function AppSidebar({ className }: { className?: string }) {
@@ -150,14 +148,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
     >
       <AppSidebar />
-      <div className={cn(
-        "flex flex-col",
+      <main className={cn(
+        "flex flex-col flex-1",
         !isMobile && (isOpen ? "pl-[280px]" : "pl-[56px]"),
         "transition-all duration-300 ease-in-out"
       )}>
         <header
           className={cn(
-            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b sm:px-6",
+            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b shrink-0 sm:px-6",
              'bg-background'
           )}
         >
@@ -170,8 +168,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="sr-only">Toggle Menu</span>
           </Button>
         </header>
-        <main className="flex-1 overflow-auto">{children}</main>
-      </div>
+        <div className="flex-1 overflow-auto">{children}</div>
+      </main>
     </div>
   );
 }
