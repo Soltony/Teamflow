@@ -353,7 +353,12 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
                                                                         <TableRow key={task.id}>
                                                                             <TableCell>{task.title}</TableCell>
                                                                             <TableCell><Badge variant="outline">{task.status.replace(/_/g, ' ')}</Badge></TableCell>
-                                                                            <TableCell>{task.progress}%</TableCell>
+                                                                            <TableCell>
+                                                                                <div className="flex items-center gap-2">
+                                                                                    <Progress value={task.progress} className="h-2 w-20" />
+                                                                                    <span>{task.progress}%</span>
+                                                                                </div>
+                                                                            </TableCell>
                                                                             <TableCell>{format(parseISO(task.endDate), 'MMM dd')}</TableCell>
                                                                             <TableCell className="text-right">{task.weight}%</TableCell>
                                                                         </TableRow>
