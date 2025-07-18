@@ -50,7 +50,7 @@ export function SettingsTabs({
 
     const defaultTab = visibleTabs[0] || "";
 
-    const gridColsClass = `grid-cols-${visibleTabs.length}`;
+    const gridCols = visibleTabs.length;
 
     useEffect(() => {
         if (!loading && !canManageSettings && !canManageUsers && !canManageRoles) {
@@ -69,7 +69,10 @@ export function SettingsTabs({
 
     return (
          <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className={cn("grid w-full", `grid-cols-${visibleTabs.length}`)}>
+            <TabsList 
+                className="grid w-full"
+                style={{ gridTemplateColumns: `repeat(${gridCols}, 1fr)` }}
+            >
                 {canManageUsers && <TabsTrigger value="users">Users</TabsTrigger>}
                 {canManageRoles && <TabsTrigger value="roles">Roles</TabsTrigger>}
                 {canManageSettings && <TabsTrigger value="statuses">Project Statuses</TabsTrigger>}
