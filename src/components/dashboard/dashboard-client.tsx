@@ -91,10 +91,11 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     };
   }, [selectedYear, selectedDivision, initialProjects, projectStatuses, teams]);
 
-  const stats = React.useMemo(() => {
+  const { stats, projectsWithBlockers } = React.useMemo(() => {
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
     const completedProjects = filteredProjects.filter((p: any) => p.statusId === completedStatusId);
     const overdueProjects = filteredProjects.filter((p: any) => p.statusId !== completedStatusId && isPast(parseISO(p.endDate)));
+    const projectsWithOpenBlockers = filteredProjects.filter((p: any) => p.blockers?.some((b: any) => b.status === 'OPEN'));
 
     const onTimeProjectsCount = completedProjects.filter((project: any) => {
         const allTaskEndDates = project.milestones.flatMap((m: any) => m.tasks.map((t: any) => parseISO(t.endDate)));
@@ -104,15 +105,25 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     }).length;
     
     const lateProjectsCount = completedProjects.length - onTimeProjectsCount;
-    const totalBlockersCount = filteredProjects.reduce((acc: number, p: any) => acc + (p.blockers?.filter((b: any) => b.status === 'OPEN').length || 0), 0);
+    const totalBlockersCount = projectsWithOpenBlockers.reduce((acc: number, p: any) => acc + p.blockers.filter((b: any) => b.status === 'OPEN').length, 0);
     
     return {
-        onTimeProjectsCount,
-        lateProjectsCount,
-        overdueProjectsCount: overdueProjects.length,
-        totalBlockersCount
+        stats: {
+          onTimeProjectsCount,
+          lateProjectsCount,
+          overdueProjectsCount: overdueProjects.length,
+          totalBlockersCount
+        },
+        projectsWithBlockers: projectsWithOpenBlockers,
     };
   }, [filteredProjects, projectStatuses]);
+
+  const activeBlockersHref = React.useMemo(() => {
+    if (projectsWithBlockers.length === 1) {
+        return `/projects/${projectsWithBlockers[0].id}?tab=blockers`;
+    }
+    return `/reports?type=active-blockers&year=${selectedYear}`;
+  }, [projectsWithBlockers, selectedYear]);
 
   const handleQueryChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -237,7 +248,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
           </Card>
         </StatCardWrapper>
 
-        <StatCardWrapper count={stats.totalBlockersCount} href={`/reports?type=active-blockers&year=${selectedYear}`}>
+        <StatCardWrapper count={stats.totalBlockersCount} href={activeBlockersHref}>
           <Card className={stats.totalBlockersCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Blockers</CardTitle>

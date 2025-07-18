@@ -3,6 +3,7 @@
 "use client";
 
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot } from "lucide-react";
 import { format, differenceInDays, parseISO } from "date-fns";
 import type { Blocker, TaskStatus, Project } from "@/lib/types";
@@ -107,6 +108,9 @@ export function ProjectView({
     onProjectDeleteSubmit,
 }: ProjectViewProps) {
   
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'milestones';
+  
   const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
     const completedTaskWeightInMilestone = milestone.tasks
       .filter((task: any) => task.status === 'DONE')
@@ -204,7 +208,7 @@ export function ProjectView({
         </CardContent>
       </Card>
       
-      <Tabs defaultValue="milestones" className="w-full">
+      <Tabs defaultValue={defaultTab} className="w-full">
         <TabsList className="grid w-full grid-cols-2 mb-4">
             <TabsTrigger value="milestones">Milestones & Tasks</TabsTrigger>
             <TabsTrigger value="blockers">Blockers</TabsTrigger>
