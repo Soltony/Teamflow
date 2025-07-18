@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "../ui/tabs";
 import { Skeleton } from "../ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
+import { cn } from "@/lib/utils";
 
 type UserWithRoles = User & { roles: Role[] };
 
@@ -49,6 +50,8 @@ export function SettingsTabs({
 
     const defaultTab = visibleTabs[0] || "";
 
+    const gridColsClass = `grid-cols-${visibleTabs.length}`;
+
     useEffect(() => {
         if (!loading && !canManageSettings && !canManageUsers && !canManageRoles) {
             router.replace('/dashboard');
@@ -66,7 +69,7 @@ export function SettingsTabs({
 
     return (
          <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className={cn("grid w-full", gridColsClass)}>
                 {canManageUsers && <TabsTrigger value="users">Users</TabsTrigger>}
                 {canManageRoles && <TabsTrigger value="roles">Roles</TabsTrigger>}
                 {canManageSettings && <TabsTrigger value="statuses">Project Statuses</TabsTrigger>}
