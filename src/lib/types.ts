@@ -16,6 +16,7 @@ export type User = {
   phoneNumber?: string;
   roles?: Role[];
   pmoDivisionId?: string | null;
+  departmentId?: string | null;
 };
 
 export type Team = {

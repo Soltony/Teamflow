@@ -138,9 +138,11 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
   };
   
   const calculateMilestoneProgress = (milestone: any) => {
-    return milestone.tasks
-      .filter((t: any) => t.status === 'DONE')
-      .reduce((sum: number, task: any) => sum + task.weight, 0);
+    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
+      return acc + (task.progress * (task.weight / 100));
+    }, 0);
+    return totalProgress;
   };
 
   return (
@@ -341,6 +343,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
                                                                     <TableRow>
                                                                         <TableHead>Task</TableHead>
                                                                         <TableHead>Status</TableHead>
+                                                                        <TableHead>Progress</TableHead>
                                                                         <TableHead>Due Date</TableHead>
                                                                         <TableHead className="text-right">Weight</TableHead>
                                                                     </TableRow>
@@ -350,6 +353,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
                                                                         <TableRow key={task.id}>
                                                                             <TableCell>{task.title}</TableCell>
                                                                             <TableCell><Badge variant="outline">{task.status.replace(/_/g, ' ')}</Badge></TableCell>
+                                                                            <TableCell>{task.progress}%</TableCell>
                                                                             <TableCell>{format(parseISO(task.endDate), 'MMM dd')}</TableCell>
                                                                             <TableCell className="text-right">{task.weight}%</TableCell>
                                                                         </TableRow>
