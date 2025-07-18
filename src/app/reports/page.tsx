@@ -94,7 +94,11 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
                     {filteredProjects.length > 0 ? (
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                             {filteredProjects.map((project) => (
-                                <ProjectCard key={project.id} project={project} />
+                                <ProjectCard 
+                                    key={project.id} 
+                                    project={project}
+                                    href={type === 'active-blockers' ? `/projects/${project.id}?tab=blockers` : undefined}
+                                />
                             ))}
                         </div>
                     ) : (

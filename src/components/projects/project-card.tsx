@@ -5,7 +5,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 
-export function ProjectCard({ project }: { project: any }) {
+export function ProjectCard({ project, href }: { project: any, href?: string }) {
   const allTasks = project.milestones.flatMap((m: any) => m.tasks);
   const completedTasks = allTasks.filter((task: any) => task.status === 'DONE').length;
 
@@ -22,12 +22,13 @@ export function ProjectCard({ project }: { project: any }) {
   }, 0);
   
   const status = project.status;
+  const projectLink = href || `/projects/${project.id}`;
   
   return (
     <Card className="flex flex-col">
       <CardHeader>
         <CardTitle className="hover:text-primary transition-colors">
-          <Link href={`/projects/${project.id}`}>{project.name}</Link>
+          <Link href={projectLink}>{project.name}</Link>
         </CardTitle>
         <CardDescription className="line-clamp-2">{project.description}</CardDescription>
       </CardHeader>
@@ -49,7 +50,7 @@ export function ProjectCard({ project }: { project: any }) {
           <Badge variant='outline'>{status.name}</Badge>
         ) : <div />}
         <Button asChild variant="ghost" size="sm">
-          <Link href={`/projects/${project.id}`}>View Project</Link>
+          <Link href={projectLink}>View Project</Link>
         </Button>
       </CardFooter>
     </Card>
