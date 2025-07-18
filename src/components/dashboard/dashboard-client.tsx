@@ -96,7 +96,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     const completedProjects = filteredProjects.filter((p: any) => p.statusId === completedStatusId);
     const overdueProjects = filteredProjects.filter((p: any) => p.statusId !== completedStatusId && isPast(parseISO(p.endDate)));
     const projectsWithOpenBlockers = filteredProjects.filter((p: any) => p.blockers?.some((b: any) => b.status === 'OPEN'));
-
+    
     const onTimeProjectsCount = completedProjects.filter((project: any) => {
         const allTaskEndDates = project.milestones.flatMap((m: any) => m.tasks.map((t: any) => parseISO(t.endDate)));
         if (allTaskEndDates.length === 0) return true;
@@ -105,7 +105,11 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     }).length;
     
     const lateProjectsCount = completedProjects.length - onTimeProjectsCount;
-    const totalBlockersCount = projectsWithOpenBlockers.reduce((acc: number, p: any) => acc + p.blockers.filter((b: any) => b.status === 'OPEN').length, 0);
+
+    const totalBlockersCount = filteredProjects.reduce((acc: number, p: any) => {
+        const openBlockers = p.blockers?.filter((b: any) => b.status === 'OPEN') || [];
+        return acc + openBlockers.length;
+    }, 0);
     
     return {
         stats: {
