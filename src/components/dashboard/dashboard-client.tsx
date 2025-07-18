@@ -266,45 +266,6 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
         </StatCardWrapper>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-3">
-        <Card>
-          <CardHeader>
-            <CardTitle>Projects by Owning PMO Division</CardTitle>
-            <CardDescription>
-              Distribution of projects across owning PMO divisions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <DepartmentProjectsChart projects={filteredProjects} pmoDivisions={pmoDivisions} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Projects by Status</CardTitle>
-            <CardDescription>
-              Distribution of projects across different statuses.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ProjectStatusChart projects={filteredProjects} projectStatuses={projectStatuses} />
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardTitle>Projects by Responsible Department</CardTitle>
-            <CardDescription>
-              Total projects each department is responsible for.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsibleDepartmentChart 
-              projects={filteredProjects} 
-              departments={departments}
-            />
-          </CardContent>
-        </Card>
-      </div>
-
       <Card>
         <CardHeader>
           <CardTitle>Active Projects Summary</CardTitle>
@@ -400,6 +361,45 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
             )}
         </CardContent>
       </Card>
+
+      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-3">
+        <Card>
+          <CardHeader>
+            <CardTitle>Projects by Owning PMO Division</CardTitle>
+            <CardDescription>
+              Distribution of projects across owning PMO divisions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <DepartmentProjectsChart projects={filteredProjects} pmoDivisions={pmoDivisions} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Projects by Status</CardTitle>
+            <CardDescription>
+              Distribution of projects across different statuses.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ProjectStatusChart projects={filteredProjects} projectStatuses={projectStatuses} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Projects by Responsible Department</CardTitle>
+            <CardDescription>
+              Total projects each department is responsible for.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsibleDepartmentChart 
+              projects={filteredProjects} 
+              departments={departments}
+            />
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
