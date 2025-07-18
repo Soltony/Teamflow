@@ -244,6 +244,7 @@ export function ProjectView({
                                                     <TableRow>
                                                         <TableHead>Task</TableHead>
                                                         <TableHead>Status</TableHead>
+                                                        <TableHead>Progress</TableHead>
                                                         <TableHead>Due Date</TableHead>
                                                         <TableHead className="text-right">Weight</TableHead>
                                                     </TableRow>
@@ -253,6 +254,12 @@ export function ProjectView({
                                                         <TableRow key={task.id}>
                                                             <TableCell className="font-medium">{task.title}</TableCell>
                                                             <TableCell>{getStatusBadge(task.status)}</TableCell>
+                                                            <TableCell>
+                                                                <div className="flex items-center gap-2">
+                                                                    <Progress value={task.progress || 0} className="h-2 w-20" />
+                                                                    <span>{task.progress || 0}%</span>
+                                                                </div>
+                                                            </TableCell>
                                                             <TableCell>{format(parseISO(task.endDate), 'MMM dd, yyyy')}</TableCell>
                                                             <TableCell className="text-right">{task.weight}%</TableCell>
                                                         </TableRow>
