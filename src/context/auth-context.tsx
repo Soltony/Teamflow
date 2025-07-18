@@ -187,31 +187,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
                     return Promise.reject(error);
                 }
 
-                return new Promise(async (resolve, reject) => {
-                    try {
-                        const { data } = await axios.post<AuthResponse>(`${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/refresh-token`, { refreshToken: localRefreshToken });
-                        if (data.isSuccess && data.accessToken && data.refreshToken) {
-                            await setSession(data.accessToken, data.refreshToken);
-                            axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
-                            originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
-                            processQueue(null, data.accessToken);
-                            resolve(axiosInstance(originalRequest));
-                        } else {
-                            throw new Error("Refresh token failed");
-                        }
-                    } catch (refreshError) {
-                        processQueue(refreshError, null);
-                        logout();
-                        toast({
-                            title: 'Session Expired',
-                            description: 'You have been logged out. Please sign in again.',
-                            variant: 'destructive',
-                        });
-                        reject(refreshError);
-                    } finally {
-                        isRefreshing = false;
-                    }
-                });
+                try {
+                  const { data } = await axios.post<AuthResponse>(`${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/refresh-token`, { refreshToken: localRefreshToken });
+                  if (data.isSuccess && data.accessToken && data.refreshToken) {
+                      await setSession(data.accessToken, data.refreshToken);
+                      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
+                      originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
+                      processQueue(null, data.accessToken);
+                      return axiosInstance(originalRequest);
+                  } else {
+                      // This path is hit if the refresh token is invalid or expired
+                      throw new Error("Refresh token failed or expired");
+                  }
+                } catch (refreshError) {
+                    processQueue(refreshError, null);
+                    logout();
+                    toast({
+                        title: 'Session Expired',
+                        description: 'You have been logged out. Please sign in again.',
+                        variant: 'destructive',
+                    });
+                    return Promise.reject(refreshError);
+                } finally {
+                    isRefreshing = false;
+                }
             }
             return Promise.reject(error);
         }
