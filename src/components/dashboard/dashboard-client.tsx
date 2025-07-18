@@ -194,7 +194,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Welcome to TeamFlow!</CardTitle>
+            <CardTitle>Welcome to NIB PMO</CardTitle>
             <CardDescription>
               Your central hub for managing projects, teams, and PMO divisions
               efficiently.
