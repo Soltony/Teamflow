@@ -85,6 +85,7 @@ export default async function CEOReportPage() {
         p.statusId !== completedStatusId && (isPast(parseISO(p.endDate.toISOString())) || p.blockers.length > 0)
     ).sort((a,b) => b.blockers.length - a.blockers.length || a.endDate.getTime() - b.endDate.getTime());
 
+    const serializableProjects = JSON.parse(JSON.stringify(projects));
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -155,7 +156,7 @@ export default async function CEOReportPage() {
                         <CardDescription>Distribution of projects by status.</CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <ProjectStatusChart projects={projects} projectStatuses={projectStatuses} />
+                        <ProjectStatusChart projects={serializableProjects} projectStatuses={projectStatuses} />
                     </CardContent>
                 </Card>
 
