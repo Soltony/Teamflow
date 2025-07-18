@@ -5,12 +5,22 @@ import { DashboardClient } from "@/components/dashboard/dashboard-client";
 
 export const dynamic = 'force-dynamic';
 
-const getCurrentWorkingYear = () => {
-    return '2024/2025';
+const getCurrentWorkingYear = async () => {
+    const setting = await prisma.setting.findUnique({
+      where: { key: 'activeWorkingYear' },
+    });
+    // Fallback to a calculated year if setting is not present
+    if (setting?.value) {
+      return setting.value;
+    }
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = today.getMonth();
+    return month >= 6 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
 };
 
 export default async function DashboardPage({ searchParams }: { searchParams: { year?: string } }) {
-    const [allProjects, projectStatuses, pmoDivisions, departments, teams] = await Promise.all([
+    const [allProjects, projectStatuses, pmoDivisions, departments, teams, distinctYears, activeYearSetting] = await Promise.all([
         prisma.project.findMany({
             include: {
                 status: true,
@@ -35,12 +45,20 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             orderBy: {
                 name: 'asc'
             }
+        }),
+        prisma.project.findMany({
+            select: { workingYear: true },
+            distinct: ['workingYear'],
+            orderBy: { workingYear: 'desc' },
+        }),
+        prisma.setting.findUnique({
+            where: { key: 'activeWorkingYear' }
         })
     ]);
     
-    const years = new Set(allProjects.map(p => p.workingYear));
+    const years = new Set(distinctYears.map(p => p.workingYear));
     const availableYears = ["all", ...Array.from(years).sort((a, b) => b.localeCompare(a))];
-    const currentWorkingYear = getCurrentWorkingYear();
+    const currentWorkingYear = activeYearSetting?.value || (await getCurrentWorkingYear());
 
     return (
         <DashboardClient
