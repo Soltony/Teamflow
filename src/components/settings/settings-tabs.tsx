@@ -66,7 +66,7 @@ export function SettingsTabs({
 
     return (
          <Tabs defaultValue={defaultTab} className="w-full">
-            <TabsList>
+            <TabsList className="grid w-full grid-cols-4">
                 {canManageUsers && <TabsTrigger value="users">Users</TabsTrigger>}
                 {canManageRoles && <TabsTrigger value="roles">Roles</TabsTrigger>}
                 {canManageSettings && <TabsTrigger value="statuses">Project Statuses</TabsTrigger>}
