@@ -7,6 +7,7 @@ import { isPast, parseISO, max as dateMax } from 'date-fns';
 import type { Project } from '@prisma/client';
 import { Suspense } from 'react';
 import prisma from '@/lib/db';
+import { redirect } from 'next/navigation';
 
 async function ReportsContent({ searchParams }: { searchParams: { type?: string, year?: string } }) {
     const { type, year } = searchParams;
@@ -77,6 +78,11 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
         title = "All Projects";
         description = "A list of all projects.";
         filteredProjects = allProjects;
+    }
+    
+    // Redirect logic for single project with active blockers
+    if (type === 'active-blockers' && filteredProjects.length === 1) {
+        redirect(`/projects/${filteredProjects[0].id}?tab=blockers`);
     }
 
     return (
