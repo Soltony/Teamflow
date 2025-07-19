@@ -258,6 +258,7 @@ export async function createRole(data: { name: string, description?: string, per
             }
         });
         revalidatePath('/settings');
+        onDataChange();
         return { success: true };
     } catch (error) {
         console.error("Failed to create role:", error);
