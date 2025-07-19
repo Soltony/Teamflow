@@ -11,8 +11,8 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: {
-    default: "NIB PMO",
-    template: "%s | NIB PMO",
+    default: "NIB EPMO",
+    template: "%s | NIB EPMO",
   },
   description: "A project management solution to assign tasks and manage activity online.",
   manifest: "/manifest.json",

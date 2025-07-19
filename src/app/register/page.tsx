@@ -95,7 +95,7 @@ export default function RegisterPage() {
           <NibLogo className="w-12 h-12" />
         </div>
         <CardTitle>Create an Account</CardTitle>
-        <CardDescription>Join NIB PMO to start managing your projects.</CardDescription>
+        <CardDescription>Join NIB EPMO to start managing your projects.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>

@@ -198,17 +198,14 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2">
         <Card className="md:col-span-2">
           <CardHeader>
-            <CardTitle>Welcome to NIB PMO</CardTitle>
-            <CardDescription>
-              Your central hub for managing projects, teams, and PMO divisions
-              efficiently.
+            <CardTitle>Welcome to NIB EPMO</CardTitle>
+            <CardDescription className="whitespace-pre-line">
+              This is your centralized platform for managing all EPMO projects.
+Track progress, manage resources, and stay aligned with strategic goals.
+Built for collaboration, visibility, and streamlined delivery.
+Let’s keep projects on track—together.
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground">
-              Get an overview of your ongoing work and create new projects to get started. Use the charts to see how projects are distributed.
-            </p>
-          </CardContent>
         </Card>
       </div>
 

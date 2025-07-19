@@ -3,8 +3,8 @@ import { MetadataRoute } from 'next'
  
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: 'NIB PMO',
-    short_name: 'NIB PMO',
+    name: 'NIB EPMO',
+    short_name: 'NIB EPMO',
     description: 'A project management solution to assign tasks and manage activity online.',
     start_url: '/',
     display: 'standalone',
