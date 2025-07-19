@@ -130,7 +130,6 @@ export function RoleManagement({ initialRoles, onDataChange }: RoleManagementPro
           description: `The "${data.name}" role has been successfully saved.`,
         });
         handleCloseDialog();
-        onDataChange();
       } else {
         toast({ title: "Error", description: result.error, variant: "destructive" });
       }
