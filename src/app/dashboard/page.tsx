@@ -20,6 +20,17 @@ const getCurrentWorkingYear = async () => {
     return month >= 6 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
 };
 
+function generateWorkingYears() {
+    const currentYear = new Date().getFullYear();
+    const years = new Set<string>();
+    // Add past, current, and future years
+    for (let i = -2; i <= 2; i++) {
+        const year = currentYear + i;
+        years.add(`${year}/${year + 1}`);
+    }
+    return Array.from(years);
+}
+
 export default async function DashboardPage({ searchParams }: { searchParams: { year?: string } }) {
     const activeYear = await getCurrentWorkingYear();
 
@@ -60,8 +71,12 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
         }),
     ]);
     
-    const years = new Set(distinctYears.map(p => p.workingYear));
-    const availableYears = ["all", ...Array.from(years).sort((a, b) => b.localeCompare(a))];
+    const existingYears = new Set(distinctYears.map(p => p.workingYear));
+    const generatedYears = generateWorkingYears();
+    const combinedYears = new Set([...generatedYears, ...existingYears]);
+    
+    const years = Array.from(combinedYears);
+    const availableYears = ["all", ...years.sort((a, b) => b.localeCompare(a))];
     
     return (
         <DashboardClient
