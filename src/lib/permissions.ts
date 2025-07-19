@@ -17,8 +17,7 @@ export const availablePermissions: Record<string, string[]> = {
     'Payments': ['payments:view'],
     'Payment Approvals': ['payment-approvals:view', 'payment-approvals:manage'],
     'Reports': ['reports:view'],
-    'Settings': ['settings:manage'],
-    'Configuration': ['config:manage-users', 'config:manage-roles'],
+    'Settings': ['settings:manage', 'config:manage-users', 'config:manage-roles'],
 };
 
 export const allPermissions = Object.values(availablePermissions).flat();
