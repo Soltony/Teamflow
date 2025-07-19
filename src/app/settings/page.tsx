@@ -21,6 +21,17 @@ type SettingsData = {
   pmoDivisions: PmoDivision[];
 }
 
+function generateWorkingYears() {
+    const currentYear = new Date().getFullYear();
+    const years = new Set<string>();
+    // Add past, current, and future years
+    for (let i = -2; i <= 2; i++) {
+        const year = currentYear + i;
+        years.add(`${year}/${year + 1}`);
+    }
+    return Array.from(years).sort((a,b) => a.localeCompare(b));
+}
+
 function LoadingSkeleton() {
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -72,8 +83,11 @@ export default function SettingsPage() {
   if (isLoading || authLoading || !data) {
     return <LoadingSkeleton />;
   }
+  
+  const existingYears = new Set(data.projects.map(p => p.workingYear));
+  const generatedYears = generateWorkingYears();
+  const availableYears = Array.from(new Set([...generatedYears, ...existingYears])).sort((a,b) => a.localeCompare(b));
 
-  const availableYears = Array.from(new Set(data.projects.map(p => p.workingYear)));
   const currentActiveYear = data.activeYearSetting?.value || "";
 
   return (

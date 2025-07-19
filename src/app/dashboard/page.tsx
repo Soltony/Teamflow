@@ -16,6 +16,7 @@ const getCurrentWorkingYear = async () => {
     const today = new Date();
     const year = today.getFullYear();
     const month = today.getMonth();
+    // If month is June (5) or later, it's the start of a new financial year
     return month >= 6 ? `${year}/${year + 1}` : `${year - 1}/${year}`;
 };
 
@@ -31,7 +32,11 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
                         tasks: true,
                     },
                 },
-                blockers: true,
+                blockers: {
+                    where: {
+                        status: 'OPEN'
+                    }
+                },
             },
         }),
         prisma.projectStatus.findMany(),
