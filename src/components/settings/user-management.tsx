@@ -247,6 +247,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
               <TableRow>
                 <TableHead>Name</TableHead>
                 <TableHead>Email</TableHead>
+                <TableHead>Phone Number</TableHead>
                 <TableHead>Roles</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
@@ -256,6 +257,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
                 <TableRow key={user.id}>
                   <TableCell className="font-medium">{user.name}</TableCell>
                   <TableCell>{user.email ?? 'N/A'}</TableCell>
+                  <TableCell>{user.phoneNumber ?? 'N/A'}</TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
                         {user.roles.map(role => (
