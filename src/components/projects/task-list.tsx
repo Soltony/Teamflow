@@ -11,7 +11,7 @@ type TaskListProps = {
   tasks: Task[];
   users: any[];
   onEditTask: (task: Task) => void;
-  canUpdateProject: boolean;
+  canManageTasks: boolean;
 };
 
 const statusIcons: Record<TaskStatus, React.ReactNode> = {
@@ -23,7 +23,7 @@ const statusIcons: Record<TaskStatus, React.ReactNode> = {
 
 const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
 
-export function TaskList({ tasks, onEditTask, users, canUpdateProject }: TaskListProps) {
+export function TaskList({ tasks, onEditTask, users, canManageTasks }: TaskListProps) {
   if (tasks.length === 0) {
     return (
       <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg">
@@ -85,7 +85,7 @@ export function TaskList({ tasks, onEditTask, users, canUpdateProject }: TaskLis
                 </TableCell>
                 <TableCell className="text-right">{task.weight}%</TableCell>
                 <TableCell className="text-right">
-                  {canUpdateProject && (
+                  {canManageTasks && (
                     <Button variant="ghost" size="icon" onClick={() => onEditTask(task)}>
                       <Pencil className="w-4 h-4" />
                       <span className="sr-only">Edit Task</span>
