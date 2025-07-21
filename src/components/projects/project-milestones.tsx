@@ -35,7 +35,13 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
   
   const isCurrentUserProjectManager = localUser?.id === initialProject.projectManagerId;
   const canGloballyUpdateProject = hasPermission('projects:update');
+  
+  // This permission is for task-level management within the project.
   const canManageProjectTasks = canGloballyUpdateProject || isCurrentUserProjectManager;
+
+  // This more restrictive permission is only for editing the milestone structure itself.
+  const canEditMilestones = canGloballyUpdateProject;
+
 
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
@@ -130,7 +136,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
                                   <div className="flex justify-between items-center pt-2">
                                       <h4 className="font-semibold">Tasks</h4>
                                       <div className="flex items-center gap-2">
-                                        {canManageProjectTasks && (
+                                        {canEditMilestones && (
                                             <Button variant="outline" size="sm" onClick={() => setEditingMilestone(milestone)}>
                                                 <Pencil className="mr-2 h-4 w-4" /> Edit Milestone
                                             </Button>
@@ -156,7 +162,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
           </CardContent>
       </Card>
 
-      {editingMilestone && canManageProjectTasks && (
+      {editingMilestone && canEditMilestones && (
         <EditMilestoneDialog 
             isOpen={!!editingMilestone}
             onOpenChange={(open) => !open && setEditingMilestone(null)}
