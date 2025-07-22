@@ -49,14 +49,14 @@ export function CelebrationSlider({ completedProjects, teams }: { completedProje
         onMouseEnter={plugin.current.stop}
         onMouseLeave={plugin.current.reset}
       >
-        <CarouselContent className="-ml-1">
+        <CarouselContent>
           {completedProjects.map((project, index) => {
             const team = getTeamForProject(project.id);
             const teamMembers = team ? team.members.map((m: any) => m.name).join(', ') : 'N/A';
             const icon = celebrationIcons[index % celebrationIcons.length];
 
             return (
-              <CarouselItem key={project.id} className="pl-1">
+              <CarouselItem key={project.id}>
                 <div className="p-1">
                   <Card className="bg-gradient-to-r from-yellow-100 via-amber-50 to-yellow-100 border-yellow-300">
                     <CardContent className="flex flex-col items-center justify-center p-6 text-center space-y-4">
