@@ -59,6 +59,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             include: {
                 teamLead: true,
                 project: true,
+                members: true, // Include team members
             },
             orderBy: {
                 name: 'asc'
