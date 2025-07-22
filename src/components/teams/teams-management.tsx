@@ -17,7 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Pencil, Trash2, Phone, PlusCircle, ChevronDown, Check, ChevronsUpDown } from "lucide-react";
+import { Pencil, Trash2, Phone, PlusCircle, ChevronDown, Check } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,8 +36,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import {
+  DropdownMenu,
+  DropdownMenuCheckboxItem,
+  DropdownMenuContent,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
@@ -78,8 +82,6 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
   const [editingTeam, setEditingTeam] = useState<TeamWithRelations | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [teamToDelete, setTeamToDelete] = useState<TeamWithRelations | null>(null);
-  const [leadPopoverOpen, setLeadPopoverOpen] = useState(false);
-  const [membersPopoverOpen, setMembersPopoverOpen] = useState(false);
 
   const canCreate = hasPermission('teams:create');
   const canUpdate = hasPermission('teams:update');
@@ -321,60 +323,17 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                   control={form.control}
                   name="teamLeadId"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                      <FormLabel>Team Lead</FormLabel>
-                      <Popover open={leadPopoverOpen} onOpenChange={setLeadPopoverOpen}>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button
-                              variant="outline"
-                              role="combobox"
-                              className={cn(
-                                "w-full justify-between",
-                                !field.value && "text-muted-foreground"
-                              )}
-                            >
-                              {field.value
-                                ? availableLeads.find(
-                                    (user) => user.id === field.value
-                                  )?.name
-                                : "Select a team lead"}
-                              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                          <Command>
-                            <CommandInput placeholder="Search users..." />
-                            <CommandEmpty>No user found.</CommandEmpty>
-                            <CommandList>
-                                <CommandGroup>
-                                {availableLeads.map((user) => (
-                                    <CommandItem
-                                    value={user.name}
-                                    key={user.id}
-                                    onSelect={() => {
-                                        form.setValue("teamLeadId", user.id)
-                                        setLeadPopoverOpen(false)
-                                    }}
-                                    >
-                                    <Check
-                                        className={cn(
-                                        "mr-2 h-4 w-4",
-                                        user.id === field.value
-                                            ? "opacity-100"
-                                            : "opacity-0"
-                                        )}
-                                    />
-                                    {user.name}
-                                    </CommandItem>
-                                ))}
-                                </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <FormMessage />
+                    <FormItem>
+                        <FormLabel>Team Lead</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                                <SelectTrigger><SelectValue placeholder="Select a team lead" /></SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {availableLeads.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
                     </FormItem>
                   )}
                 />
@@ -386,57 +345,45 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                         return (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Team Members</FormLabel>
-                                <Popover open={membersPopoverOpen} onOpenChange={setMembersPopoverOpen}>
-                                    <PopoverTrigger asChild>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
                                         <FormControl>
-                                            <Button
-                                                variant="outline"
-                                                role="combobox"
-                                                className={cn("w-full justify-between", !field.value?.length && "text-muted-foreground")}
-                                            >
+                                            <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
                                                 <span className="truncate">
                                                     {selectedMembers.length > 0
                                                         ? selectedMembers.map(m => m.name).join(', ')
                                                         : "Select members..."}
                                                 </span>
-                                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                                <ChevronDown className="ml-auto h-4 w-4 shrink-0 opacity-50" />
                                             </Button>
                                         </FormControl>
-                                    </PopoverTrigger>
-                                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
-                                        <Command>
-                                            <CommandInput placeholder="Search members..." />
-                                            <CommandList>
-                                                <CommandEmpty>No members found.</CommandEmpty>
-                                                <CommandGroup>
-                                                    {availableMembers.map((user) => {
-                                                        const isSelected = field.value?.includes(user.id);
-                                                        return (
-                                                        <CommandItem
-                                                            key={user.id}
-                                                            onSelect={() => {
-                                                                if (isSelected) {
-                                                                    field.onChange(field.value?.filter(id => id !== user.id));
-                                                                } else {
-                                                                    field.onChange([...(field.value || []), user.id]);
-                                                                }
-                                                            }}
-                                                        >
-                                                             <Check
-                                                                className={cn(
-                                                                "mr-2 h-4 w-4",
-                                                                isSelected ? "opacity-100" : "opacity-0"
-                                                                )}
-                                                            />
-                                                            {user.name}
-                                                        </CommandItem>
-                                                        )
-                                                    })}
-                                                </CommandGroup>
-                                            </CommandList>
-                                        </Command>
-                                    </PopoverContent>
-                                </Popover>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                                        {availableMembers.map((user) => {
+                                            const isSelected = field.value?.includes(user.id);
+                                            return (
+                                            <DropdownMenuCheckboxItem
+                                                key={user.id}
+                                                checked={isSelected}
+                                                onCheckedChange={(checked) => {
+                                                    const newValues = field.value ? [...field.value] : [];
+                                                    if (checked) {
+                                                        newValues.push(user.id);
+                                                    } else {
+                                                        const index = newValues.indexOf(user.id);
+                                                        if (index > -1) {
+                                                            newValues.splice(index, 1);
+                                                        }
+                                                    }
+                                                    field.onChange(newValues);
+                                                }}
+                                            >
+                                                {user.name}
+                                            </DropdownMenuCheckboxItem>
+                                            )
+                                        })}
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                                 <FormMessage />
                             </FormItem>
                         );
