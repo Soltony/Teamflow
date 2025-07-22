@@ -24,9 +24,8 @@ const celebrationIcons = [
 
 export function CelebrationSlider({ completedProjects, teams }: { completedProjects: any[], teams: any[] }) {
   const { width, height } = useWindowSize();
-  const autoplayPlugin = React.useMemo(
-    () => Autoplay({ delay: 5000, stopOnInteraction: true }),
-    []
+  const autoplayPlugin = React.useRef(
+    Autoplay({ delay: 5000, stopOnInteraction: true })
   );
 
   if (!completedProjects || completedProjects.length === 0) {
@@ -41,23 +40,23 @@ export function CelebrationSlider({ completedProjects, teams }: { completedProje
     <div className="relative">
       <Confetti width={width} height={height} recycle={false} numberOfPieces={400} />
       <Carousel
-        plugins={[autoplayPlugin]}
+        plugins={[autoplayPlugin.current]}
         opts={{
           align: 'start',
           loop: true,
         }}
         className="w-full"
-        onMouseEnter={autoplayPlugin.stop}
-        onMouseLeave={autoplayPlugin.play}
+        onMouseEnter={() => autoplayPlugin.current.stop()}
+        onMouseLeave={() => autoplayPlugin.current.play()}
       >
-        <CarouselContent className="-ml-1">
+        <CarouselContent>
           {completedProjects.map((project, index) => {
             const team = getTeamForProject(project.id);
             const teamMembers = team ? team.members.map((m: any) => m.name).join(', ') : 'N/A';
             const icon = celebrationIcons[index % celebrationIcons.length];
 
             return (
-              <CarouselItem key={project.id} className="pl-1">
+              <CarouselItem key={project.id}>
                 <div className="p-1">
                   <Card className="bg-gradient-to-r from-yellow-100 via-amber-50 to-yellow-100 border-yellow-300">
                     <CardContent className="flex flex-col items-center justify-center p-6 text-center space-y-4">
