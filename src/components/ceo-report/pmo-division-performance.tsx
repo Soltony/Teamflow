@@ -3,12 +3,15 @@
 
 import { useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Project, PmoDivision, ProjectStatus } from '@prisma/client';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
+import { isPast, max as dateMax, parseISO } from 'date-fns';
 
 type ProjectWithRelations = Project & {
     status: ProjectStatus;
+    milestones: { tasks: { endDate: string }[] }[];
 };
 
 type PmoDivisionPerformanceProps = {
@@ -20,77 +23,100 @@ type PmoDivisionPerformanceProps = {
 export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses }: PmoDivisionPerformanceProps) {
 
     const statusMap = useMemo(() => new Map(projectStatuses.map(s => [s.id, s.name])), [projectStatuses]);
+    const completedStatusId = useMemo(() => projectStatuses.find(s => s.name === 'Completed')?.id, [projectStatuses]);
 
     const pmoDivisionPerformance = useMemo(() => {
         return pmoDivisions.map(div => {
             const divisionProjects = projects.filter(p => p.pmoDivisionId === div.id);
+            const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
             
-            const statusCounts = divisionProjects.reduce((acc, project) => {
+            const divOnTimeCount = divCompletedProjects.filter(project => {
+                const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate)));
+                if (allTaskEndDates.length === 0) return true;
+                const lastTaskDate = dateMax(allTaskEndDates);
+                return lastTaskDate <= parseISO(project.endDate as unknown as string);
+            }).length;
+
+            const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 0;
+            const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate as unknown as string))).length;
+            
+            const projectsByStatus = divisionProjects.reduce((acc, project) => {
                 const statusName = statusMap.get(project.statusId) || 'Unknown';
-                acc[statusName] = (acc[statusName] || 0) + 1;
+                if (!acc[statusName]) {
+                    acc[statusName] = [];
+                }
+                acc[statusName].push(project);
                 return acc;
-            }, {} as Record<string, number>);
+            }, {} as Record<string, ProjectWithRelations[]>);
 
             return {
                 id: div.id,
                 name: div.name,
                 totalProjects: divisionProjects.length,
-                statusCounts: statusCounts,
+                completionRate: divCompletionRate,
+                overdueCount: divOverdueCount,
+                projectsByStatus
             };
         });
-    }, [projects, pmoDivisions, statusMap]);
-    
-    const allStatusesInUse = useMemo(() => {
-        const statusNames = new Set<string>();
-        pmoDivisionPerformance.forEach(div => {
-            Object.keys(div.statusCounts).forEach(statusName => {
-                statusNames.add(statusName);
-            });
-        });
-        return Array.from(statusNames).sort();
+    }, [projects, pmoDivisions, statusMap, completedStatusId]);
+
+    const defaultOpenAccordionItems = useMemo(() => {
+        return pmoDivisionPerformance.filter(div => div.totalProjects > 0).map(div => div.id);
     }, [pmoDivisionPerformance]);
 
     return (
         <Card className="md:col-span-2">
             <CardHeader>
                 <CardTitle>PMO Division Performance</CardTitle>
-                <CardDescription>A breakdown of project counts by status for each PMO division.</CardDescription>
+                <CardDescription>A breakdown of key metrics for each PMO division.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>PMO Division</TableHead>
-                            {allStatusesInUse.map(statusName => (
-                                <TableHead key={statusName} className="text-center">{statusName}</TableHead>
+                <div className="border rounded-md">
+                    {/* Header Row */}
+                    <div className="flex p-4 bg-muted/50 border-b font-semibold text-sm text-muted-foreground">
+                        <div className="flex-1">PMO Division</div>
+                        <div className="w-32 text-center">Total Projects</div>
+                        <div className="w-32 text-center">Completion Rate</div>
+                        <div className="w-32 text-center">Overdue</div>
+                    </div>
+                    
+                    {pmoDivisionPerformance.length > 0 ? (
+                        <Accordion type="multiple" defaultValue={defaultOpenAccordionItems} className="w-full">
+                            {pmoDivisionPerformance.map(div => (
+                                <AccordionItem value={div.id} key={div.id} className="border-b">
+                                    <AccordionTrigger className="flex p-4 hover:bg-muted/30 hover:no-underline">
+                                        <div className="flex-1 text-left font-semibold text-base">{div.name}</div>
+                                        <div className="w-32 text-center text-lg font-bold">{div.totalProjects}</div>
+                                        <div className="w-32 text-center text-lg font-bold">{div.completionRate.toFixed(0)}%</div>
+                                        <div className="w-32 text-center text-lg font-bold">{div.overdueCount}</div>
+                                    </AccordionTrigger>
+                                    <AccordionContent>
+                                        <div className="p-4 bg-muted/20 space-y-4">
+                                            {Object.keys(div.projectsByStatus).length > 0 ? Object.entries(div.projectsByStatus).map(([status, projectList]) => (
+                                                <div key={status}>
+                                                    <h4 className="font-semibold text-muted-foreground mb-2">{status} ({projectList.length})</h4>
+                                                    <div className="pl-4 border-l-2 space-y-2">
+                                                        {projectList.map(p => (
+                                                            <Link href={`/projects/${p.id}`} key={p.id} className="block text-sm text-primary hover:underline">
+                                                                {p.name}
+                                                            </Link>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )) : (
+                                                 <p className="text-sm text-center text-muted-foreground py-4">No projects to display for this division.</p>
+                                            )}
+                                        </div>
+                                    </AccordionContent>
+                                </AccordionItem>
                             ))}
-                            <TableHead className="text-center font-bold">Total</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {pmoDivisionPerformance.length > 0 ? pmoDivisionPerformance.map(div => (
-                            <TableRow key={div.id}>
-                                <TableCell className="font-medium">{div.name}</TableCell>
-                                {allStatusesInUse.map(statusName => (
-                                    <TableCell key={statusName} className="text-center">
-                                        {div.statusCounts[statusName] || 0}
-                                    </TableCell>
-                                ))}
-                                <TableCell className="text-center font-bold">
-                                    <Badge variant="secondary" className="text-base">
-                                        {div.totalProjects}
-                                    </Badge>
-                                </TableCell>
-                            </TableRow>
-                        )) : (
-                           <TableRow>
-                                <TableCell colSpan={allStatusesInUse.length + 2} className="h-24 text-center">
-                                    No projects found to display performance data.
-                                </TableCell>
-                            </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
+                        </Accordion>
+                    ) : (
+                        <div className="text-center p-8 text-muted-foreground">
+                            No PMO divisions found.
+                        </div>
+                    )}
+                </div>
             </CardContent>
         </Card>
     );
