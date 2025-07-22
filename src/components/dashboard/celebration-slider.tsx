@@ -2,6 +2,7 @@
 'use client';
 
 import * as React from 'react';
+import Autoplay from 'embla-carousel-autoplay';
 import { Card, CardContent } from '@/components/ui/card';
 import {
   Carousel,
@@ -23,6 +24,9 @@ const celebrationIcons = [
 
 export function CelebrationSlider({ completedProjects, teams }: { completedProjects: any[], teams: any[] }) {
   const { width, height } = useWindowSize();
+  const plugin = React.useRef(
+    Autoplay({ delay: 5000, stopOnInteraction: true })
+  );
 
   if (!completedProjects || completedProjects.length === 0) {
     return null;
@@ -36,11 +40,14 @@ export function CelebrationSlider({ completedProjects, teams }: { completedProje
     <div className="relative">
       <Confetti width={width} height={height} recycle={false} numberOfPieces={400} />
       <Carousel
+        plugins={[plugin.current]}
         opts={{
           align: 'start',
           loop: true,
         }}
         className="w-full"
+        onMouseEnter={plugin.current.stop}
+        onMouseLeave={plugin.current.reset}
       >
         <CarouselContent>
           {completedProjects.map((project, index) => {
