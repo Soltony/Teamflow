@@ -78,6 +78,8 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
   const [editingTeam, setEditingTeam] = useState<TeamWithRelations | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [teamToDelete, setTeamToDelete] = useState<TeamWithRelations | null>(null);
+  const [leadPopoverOpen, setLeadPopoverOpen] = useState(false);
+  const [membersPopoverOpen, setMembersPopoverOpen] = useState(false);
 
   const canCreate = hasPermission('teams:create');
   const canUpdate = hasPermission('teams:update');
@@ -321,7 +323,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Team Lead</FormLabel>
-                      <Popover>
+                      <Popover open={leadPopoverOpen} onOpenChange={setLeadPopoverOpen}>
                         <PopoverTrigger asChild>
                           <FormControl>
                             <Button
@@ -353,6 +355,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                                     key={user.id}
                                     onSelect={() => {
                                         form.setValue("teamLeadId", user.id)
+                                        setLeadPopoverOpen(false)
                                     }}
                                     >
                                     <Check
@@ -383,7 +386,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                         return (
                             <FormItem className="flex flex-col">
                                 <FormLabel>Team Members</FormLabel>
-                                <Popover>
+                                <Popover open={membersPopoverOpen} onOpenChange={setMembersPopoverOpen}>
                                     <PopoverTrigger asChild>
                                         <FormControl>
                                             <Button
@@ -410,12 +413,12 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                                                         <CommandItem
                                                             key={user.id}
                                                             value={user.name}
-                                                            onSelect={() => {
+                                                            onSelect={(currentValue) => {
                                                                 const newSelection = field.value ? [...field.value] : [];
                                                                 if (newSelection.includes(user.id)) {
-                                                                    field.onChange(newSelection.filter(id => id !== user.id));
+                                                                    form.setValue("memberIds", newSelection.filter(id => id !== user.id));
                                                                 } else {
-                                                                    field.onChange([...newSelection, user.id]);
+                                                                    form.setValue("memberIds", [...newSelection, user.id]);
                                                                 }
                                                             }}
                                                         >
