@@ -328,7 +328,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                                 <FormControl>
                                     <SelectTrigger><SelectValue placeholder="Select a team lead" /></SelectTrigger>
                                 </FormControl>
-                                <SelectContent>
+                                <SelectContent className="max-h-60 overflow-y-auto">
                                     {availableLeads.map(user => <SelectItem key={user.id} value={user.id}>{user.name}</SelectItem>)}
                                 </SelectContent>
                             </Select>
@@ -355,7 +355,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                                 </Button>
                                 </FormControl>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                            <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-60 overflow-y-auto">
                                 {availableMembers.map((user) => (
                                 <DropdownMenuCheckboxItem
                                     key={user.id}
