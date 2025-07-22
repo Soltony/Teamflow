@@ -361,17 +361,18 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                                     key={user.id}
                                     checked={field.value?.includes(user.id)}
                                     onCheckedChange={(checked) => {
-                                    const newValues = field.value ? [...field.value] : [];
-                                    if (checked) {
-                                        newValues.push(user.id);
-                                    } else {
-                                        const index = newValues.indexOf(user.id);
-                                        if (index > -1) {
-                                            newValues.splice(index, 1);
-                                        }
-                                    }
-                                    field.onChange(newValues);
+                                      const newValues = field.value ? [...field.value] : [];
+                                      if (checked) {
+                                          newValues.push(user.id);
+                                      } else {
+                                          const index = newValues.indexOf(user.id);
+                                          if (index > -1) {
+                                              newValues.splice(index, 1);
+                                          }
+                                      }
+                                      field.onChange(newValues);
                                     }}
+                                    onSelect={(e) => e.preventDefault()}
                                 >
                                     {user.name}
                                 </DropdownMenuCheckboxItem>
