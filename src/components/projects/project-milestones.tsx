@@ -122,7 +122,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
               <Accordion type="single" collapsible className="w-full" defaultValue={initialProject.milestones[0]?.id}>
                   {initialProject.milestones.map((milestone: any) => {
                       const completedTaskWeight = milestone.tasks
-                          .filter((t: any) => t.status === 'done')
+                          .filter((t: any) => t.status === 'DONE')
                           .reduce((sum: number, task: any) => sum + task.weight, 0);
 
                       return (
