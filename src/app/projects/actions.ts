@@ -228,6 +228,17 @@ export async function updateBlocker(blockerId: string, description: string, proj
     revalidatePath(`/projects/${projectId}`);
 }
 
+export async function addMilestone(projectId: string, data: any) {
+  const { ...milestoneData } = data;
+  await prisma.milestone.create({
+    data: {
+      ...milestoneData,
+      project: { connect: { id: projectId } },
+    }
+  });
+  revalidatePath(`/projects/${projectId}/milestones`);
+  revalidatePath('/gantt');
+}
 
 export async function updateMilestone(milestoneId: string, projectId: string, data: any) {
     const { ...milestoneData } = data;

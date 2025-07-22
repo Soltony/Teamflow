@@ -16,9 +16,10 @@ import { AddTaskDialog } from "./add-task-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { EditTaskDialog } from "./edit-task-dialog";
 import { Progress } from "../ui/progress";
-import { addTask, updateMilestone, updateTask } from "@/app/projects/actions";
+import { addTask, addMilestone, updateMilestone, updateTask } from "@/app/projects/actions";
 import { useAuth } from "@/context/auth-context";
 import { useRouter } from "next/navigation";
+import { AddMilestoneDialog } from "./add-milestone-dialog";
 
 type UserWithRoles = User & { roles: { name: string }[] };
 
@@ -46,6 +47,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
   const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: Task; milestone: Milestone } | null>(null);
+  const [isAddingMilestone, setIsAddingMilestone] = useState(false);
 
   const projectUsers = useMemo(() => {
     if (!initialProject?.departmentId) {
@@ -53,6 +55,16 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
     }
     return users.filter(user => user.departmentId === initialProject.departmentId);
   }, [initialProject, users]);
+  
+  const handleMilestoneAdd = async (newMilestone: Omit<Milestone, 'id' | 'tasks'>) => {
+    await addMilestone(initialProject.id, newMilestone);
+    toast({
+      title: "Milestone Added!",
+      description: `The milestone "${newMilestone.title}" has been successfully added.`,
+    });
+    setIsAddingMilestone(false);
+    router.refresh();
+  };
 
   const handleMilestoneUpdate = async (updatedMilestone: Milestone) => {
     const { id, tasks, ...dataToUpdate } = updatedMilestone;
@@ -94,8 +106,17 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
       </Link>
       <Card>
           <CardHeader>
-              <CardTitle>Milestones for: {initialProject.name}</CardTitle>
-              <CardDescription>Here are the major milestones for this project. The Project Manager can add tasks to each milestone.</CardDescription>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                  <CardTitle>Milestones for: {initialProject.name}</CardTitle>
+                  <CardDescription>Here are the major milestones for this project. The Project Manager can add tasks to each milestone.</CardDescription>
+                </div>
+                {canEditMilestones && (
+                  <Button onClick={() => setIsAddingMilestone(true)}>
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Milestone
+                  </Button>
+                )}
+              </div>
           </CardHeader>
           <CardContent>
               <Accordion type="single" collapsible className="w-full" defaultValue={initialProject.milestones[0]?.id}>
@@ -161,6 +182,17 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
               </Accordion>
           </CardContent>
       </Card>
+      
+      {isAddingMilestone && canEditMilestones && (
+        <AddMilestoneDialog
+          isOpen={isAddingMilestone}
+          onOpenChange={setIsAddingMilestone}
+          projectStartDate={initialProject.startDate}
+          projectEndDate={initialProject.endDate}
+          projectMilestones={initialProject.milestones}
+          onMilestoneAdd={handleMilestoneAdd}
+        />
+      )}
 
       {editingMilestone && canEditMilestones && (
         <EditMilestoneDialog 
