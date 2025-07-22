@@ -237,7 +237,6 @@ export async function addMilestone(projectId: string, data: any) {
     }
   });
   revalidatePath(`/projects/${projectId}/milestones`);
-  revalidatePath('/gantt');
 }
 
 export async function updateMilestone(milestoneId: string, projectId: string, data: any) {
@@ -249,7 +248,6 @@ export async function updateMilestone(milestoneId: string, projectId: string, da
         }
     });
     revalidatePath(`/projects/${projectId}/milestones`);
-    revalidatePath('/gantt');
 }
 
 export async function addTask(milestoneId: string, projectId: string, data: any) {
@@ -265,8 +263,6 @@ export async function addTask(milestoneId: string, projectId: string, data: any)
         }
     });
     revalidatePath(`/projects/${projectId}/milestones`);
-    revalidatePath('/my-tasks');
-    revalidatePath('/team-view');
 }
 
 export async function updateTask(taskId: string, projectId: string, data: any) {
@@ -282,8 +278,6 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         }
     });
     revalidatePath(`/projects/${projectId}/milestones`);
-    revalidatePath('/my-tasks');
-    revalidatePath('/team-view');
 }
 
 export async function getProjectsPageData(userId: string) {

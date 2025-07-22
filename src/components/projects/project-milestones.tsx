@@ -55,6 +55,10 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
     }
     return users.filter(user => user.departmentId === initialProject.departmentId);
   }, [initialProject, users]);
+
+  const refreshData = () => {
+    router.refresh();
+  };
   
   const handleMilestoneAdd = async (newMilestone: Omit<Milestone, 'id' | 'tasks'>) => {
     await addMilestone(initialProject.id, newMilestone);
@@ -63,7 +67,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
       description: `The milestone "${newMilestone.title}" has been successfully added.`,
     });
     setIsAddingMilestone(false);
-    router.refresh();
+    refreshData();
   };
 
   const handleMilestoneUpdate = async (updatedMilestone: Milestone) => {
@@ -74,7 +78,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
       description: `The milestone "${updatedMilestone.title}" has been successfully updated.`,
     });
     setEditingMilestone(null);
-    router.refresh();
+    refreshData();
   };
 
   const handleTaskAdd = async (milestoneId: string, newTask: any) => {
@@ -84,7 +88,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
       description: `The task "${newTask.title}" has been successfully added.`,
     });
     setAddingTaskToMilestone(null);
-    router.refresh();
+    refreshData();
   };
 
   const handleTaskUpdate = async (milestoneId: string, updatedTask: Task) => {
@@ -95,7 +99,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
       description: `The task "${updatedTask.title}" has been successfully updated.`,
     });
     setEditingTaskInfo(null);
-    router.refresh();
+    refreshData();
   };
 
   return (
