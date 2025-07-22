@@ -44,15 +44,15 @@ export default async function CEOReportPage() {
     // KPI Calculations
     const totalActiveProjects = projects.filter(p => p.statusId !== completedStatusId).length;
     const totalOpenBlockers = projects.reduce((acc, p) => acc + p.blockers.length, 0);
-    const overdueProjects = projects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate.toISOString())));
+    const overdueProjects = projects.filter(p => p.statusId !== completedStatusId && isPast(p.endDate));
     const totalOverdueProjects = overdueProjects.length;
 
     const completedProjects = projects.filter(p => p.statusId === completedStatusId);
     const onTimeProjectsCount = completedProjects.filter(project => {
-        const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate.toISOString())));
+        const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.endDate));
         if (allTaskEndDates.length === 0) return true;
         const lastTaskDate = dateMax(allTaskEndDates);
-        return lastTaskDate <= parseISO(project.endDate.toISOString());
+        return lastTaskDate <= project.endDate;
     }).length;
     
     // Corrected logic: Default to 0 if no projects are completed, not 100.
@@ -60,7 +60,7 @@ export default async function CEOReportPage() {
 
     // At-Risk Projects
     const atRiskProjects = projects.filter(p => 
-        p.statusId !== completedStatusId && (isPast(parseISO(p.endDate.toISOString())) || p.blockers.length > 0)
+        p.statusId !== completedStatusId && (isPast(p.endDate) || p.blockers.length > 0)
     ).sort((a,b) => b.blockers.length - a.blockers.length || a.endDate.getTime() - b.endDate.getTime());
 
     const serializableProjects = JSON.parse(JSON.stringify(projects));

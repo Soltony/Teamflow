@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -35,11 +36,11 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                 const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate)));
                 if (allTaskEndDates.length === 0) return true;
                 const lastTaskDate = dateMax(allTaskEndDates);
-                return lastTaskDate <= parseISO(project.endDate.toISOString());
+                return lastTaskDate <= parseISO(project.endDate as unknown as string);
             }).length;
 
             const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 0;
-            const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate.toISOString()))).length;
+            const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate as unknown as string))).length;
 
             return {
                 id: div.id,
