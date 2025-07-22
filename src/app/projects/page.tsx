@@ -1,13 +1,17 @@
 
 'use client';
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
 import { ProjectCard } from "@/components/projects/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CreateProjectButton } from "@/components/projects/create-project-button";
-import { getProjectsForUser } from "./actions";
+import { getProjectsPageData } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { ProjectStatus } from "@prisma/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { X } from "lucide-react";
 
 function LoadingSkeleton() {
     return (
@@ -35,7 +39,9 @@ function LoadingSkeleton() {
 export default function ProjectsPage() {
     const { localUser, hasPermission, loading: authLoading } = useAuth();
     const [projects, setProjects] = useState<any[]>([]);
+    const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
 
     const isMemberOnly = localUser && !localUser.roles.some(r => r.name === 'Admin' || r.name === 'Project Manager');
 
@@ -43,11 +49,13 @@ export default function ProjectsPage() {
         if (localUser?.id) {
             setIsLoading(true);
             try {
-                const data = await getProjectsForUser(localUser.id);
-                setProjects(data);
+                const data = await getProjectsPageData(localUser.id);
+                setProjects(data.projects);
+                setStatuses(data.statuses);
             } catch (error) {
                 console.error("Failed to fetch projects", error);
                 setProjects([]);
+                setStatuses([]);
             } finally {
                 setIsLoading(false);
             }
@@ -62,6 +70,13 @@ export default function ProjectsPage() {
             setIsLoading(false);
         }
     }, [localUser, authLoading, fetchProjects]);
+
+    const filteredProjects = useMemo(() => {
+        if (!selectedStatus) {
+            return projects;
+        }
+        return projects.filter(p => p.statusId === selectedStatus);
+    }, [projects, selectedStatus]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -78,7 +93,7 @@ export default function ProjectsPage() {
     return (
         <div className="p-4 sm:p-6 space-y-6">
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
+                <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                     <div>
                         <CardTitle>Projects</CardTitle>
                         <CardDescription>
@@ -87,12 +102,34 @@ export default function ProjectsPage() {
                                 : "A list of all projects in the system. Select a project to view its details."}
                         </CardDescription>
                     </div>
-                    <CreateProjectButton />
+                    <div className="flex flex-col-reverse sm:flex-row items-center gap-2">
+                        <div className="flex items-center gap-2">
+                             <Select onValueChange={(value) => setSelectedStatus(value === 'all' ? null : value)} value={selectedStatus || 'all'}>
+                                <SelectTrigger className="w-[180px]">
+                                    <SelectValue placeholder="Filter by status..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    {statuses.map(status => (
+                                        <SelectItem key={status.id} value={status.id}>
+                                            {status.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {selectedStatus && (
+                                <Button variant="ghost" size="icon" onClick={() => setSelectedStatus(null)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                        <CreateProjectButton />
+                    </div>
                 </CardHeader>
                 <CardContent>
-                    {projects.length > 0 ? (
+                    {filteredProjects.length > 0 ? (
                         <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {projects.map((project: any) => (
+                            {filteredProjects.map((project: any) => (
                                 <ProjectCard key={project.id} project={project} />
                             ))}
                         </div>

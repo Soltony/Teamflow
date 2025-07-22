@@ -275,14 +275,17 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
     revalidatePath('/team-view');
 }
 
-export async function getProjectsForUser(userId: string) {
+export async function getProjectsPageData(userId: string) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: { roles: true },
     });
 
     if (!user) {
-        return [];
+        return {
+            projects: [],
+            statuses: []
+        };
     }
 
     const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager');
@@ -322,22 +325,32 @@ export async function getProjectsForUser(userId: string) {
         };
     }
 
-    const projects = await prisma.project.findMany({
-        where: whereClause,
-        include: {
-            status: true,
-            milestones: {
-                include: {
-                    tasks: true,
+    const [projects, statuses] = await Promise.all([
+        prisma.project.findMany({
+            where: whereClause,
+            include: {
+                status: true,
+                milestones: {
+                    include: {
+                        tasks: true,
+                    },
                 },
             },
-        },
-        orderBy: {
-            name: 'asc'
-        }
-    });
+            orderBy: {
+                name: 'asc'
+            }
+        }),
+        prisma.projectStatus.findMany({
+            orderBy: {
+                name: 'asc'
+            }
+        })
+    ]);
 
-    return JSON.parse(JSON.stringify(projects));
+    return {
+        projects: JSON.parse(JSON.stringify(projects)),
+        statuses: JSON.parse(JSON.stringify(statuses))
+    };
 }
 
 
