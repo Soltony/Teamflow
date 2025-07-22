@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Link from 'next/link';
 import { ArrowLeft, Pencil, PlusCircle, Building } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -18,7 +18,6 @@ import { EditTaskDialog } from "./edit-task-dialog";
 import { Progress } from "../ui/progress";
 import { addTask, addMilestone, updateMilestone, updateTask } from "@/app/projects/actions";
 import { useAuth } from "@/context/auth-context";
-import { useRouter } from "next/navigation";
 import { AddMilestoneDialog } from "./add-milestone-dialog";
 
 type UserWithRoles = User & { roles: { name: string }[] };
@@ -27,22 +26,24 @@ type ProjectMilestonesProps = {
   initialProject: any;
   users: UserWithRoles[];
   departments: Department[];
+  fetchData: () => Promise<void>;
 }
 
-export function ProjectMilestones({ initialProject, users, departments }: ProjectMilestonesProps) {
+export function ProjectMilestones({ initialProject, users, departments, fetchData }: ProjectMilestonesProps) {
   const { toast } = useToast();
-  const router = useRouter();
   const { localUser, hasPermission } = useAuth();
   
-  const isCurrentUserProjectManager = localUser?.id === initialProject.projectManagerId;
+  const [project, setProject] = useState(initialProject);
+
+  useEffect(() => {
+    setProject(initialProject);
+  }, [initialProject]);
+
+  const isCurrentUserProjectManager = localUser?.id === project.projectManagerId;
   const canGloballyUpdateProject = hasPermission('projects:update');
   
-  // This permission is for task-level management within the project.
   const canManageProjectTasks = canGloballyUpdateProject || isCurrentUserProjectManager;
-
-  // This more restrictive permission is only for editing the milestone structure itself.
   const canEditMilestones = canGloballyUpdateProject;
-
 
   const [editingMilestone, setEditingMilestone] = useState<Milestone | null>(null);
   const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
@@ -50,61 +51,57 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
   const [isAddingMilestone, setIsAddingMilestone] = useState(false);
 
   const projectUsers = useMemo(() => {
-    if (!initialProject?.departmentId) {
+    if (!project?.departmentId) {
         return users;
     }
-    return users.filter(user => user.departmentId === initialProject.departmentId);
-  }, [initialProject, users]);
+    return users.filter(user => user.departmentId === project.departmentId);
+  }, [project, users]);
 
-  const refreshData = () => {
-    router.refresh();
-  };
-  
   const handleMilestoneAdd = async (newMilestone: Omit<Milestone, 'id' | 'tasks'>) => {
-    await addMilestone(initialProject.id, newMilestone);
+    await addMilestone(project.id, newMilestone);
     toast({
       title: "Milestone Added!",
       description: `The milestone "${newMilestone.title}" has been successfully added.`,
     });
     setIsAddingMilestone(false);
-    refreshData();
+    await fetchData();
   };
 
   const handleMilestoneUpdate = async (updatedMilestone: Milestone) => {
     const { id, tasks, ...dataToUpdate } = updatedMilestone;
-    await updateMilestone(id, initialProject.id, dataToUpdate);
+    await updateMilestone(id, project.id, dataToUpdate);
     toast({
       title: "Milestone Updated!",
       description: `The milestone "${updatedMilestone.title}" has been successfully updated.`,
     });
     setEditingMilestone(null);
-    refreshData();
+    await fetchData();
   };
 
   const handleTaskAdd = async (milestoneId: string, newTask: any) => {
-    await addTask(milestoneId, initialProject.id, newTask);
+    await addTask(milestoneId, project.id, newTask);
     toast({
       title: "Task Added!",
       description: `The task "${newTask.title}" has been successfully added.`,
     });
     setAddingTaskToMilestone(null);
-    refreshData();
+    await fetchData();
   };
 
   const handleTaskUpdate = async (milestoneId: string, updatedTask: Task) => {
     const { id, ...dataToUpdate } = updatedTask;
-    await updateTask(id, initialProject.id, dataToUpdate);
+    await updateTask(id, project.id, dataToUpdate);
     toast({
       title: "Task Updated!",
       description: `The task "${updatedTask.title}" has been successfully updated.`,
     });
     setEditingTaskInfo(null);
-    refreshData();
+    await fetchData();
   };
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <Link href={`/projects/${initialProject.id}`} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
+      <Link href={`/projects/${project.id}`} className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
         <ArrowLeft className="w-4 h-4" />
         Back to Project Overview
       </Link>
@@ -112,7 +109,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
           <CardHeader>
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                  <CardTitle>Milestones for: {initialProject.name}</CardTitle>
+                  <CardTitle>Milestones for: {project.name}</CardTitle>
                   <CardDescription>Here are the major milestones for this project. The Project Manager can add tasks to each milestone.</CardDescription>
                 </div>
                 {canEditMilestones && (
@@ -123,8 +120,8 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
               </div>
           </CardHeader>
           <CardContent>
-              <Accordion type="single" collapsible className="w-full" defaultValue={initialProject.milestones[0]?.id}>
-                  {initialProject.milestones.map((milestone: any) => {
+              <Accordion type="single" collapsible className="w-full" defaultValue={project.milestones[0]?.id}>
+                  {project.milestones.map((milestone: any) => {
                       const completedTaskWeight = milestone.tasks
                           .filter((t: any) => t.status === 'DONE')
                           .reduce((sum: number, task: any) => sum + task.weight, 0);
@@ -191,9 +188,9 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
         <AddMilestoneDialog
           isOpen={isAddingMilestone}
           onOpenChange={setIsAddingMilestone}
-          projectStartDate={initialProject.startDate}
-          projectEndDate={initialProject.endDate}
-          projectMilestones={initialProject.milestones}
+          projectStartDate={project.startDate}
+          projectEndDate={project.endDate}
+          projectMilestones={project.milestones}
           onMilestoneAdd={handleMilestoneAdd}
         />
       )}
@@ -203,7 +200,7 @@ export function ProjectMilestones({ initialProject, users, departments }: Projec
             isOpen={!!editingMilestone}
             onOpenChange={(open) => !open && setEditingMilestone(null)}
             milestone={editingMilestone}
-            projectMilestones={initialProject.milestones}
+            projectMilestones={project.milestones}
             onMilestoneUpdate={handleMilestoneUpdate}
         />
       )}

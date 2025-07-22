@@ -1,7 +1,8 @@
 
+
 'use client';
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { notFound, useRouter, useParams } from "next/navigation";
 import { ProjectMilestones } from "@/components/projects/project-milestones";
 import { getProjectMilestonesForUser } from "../../actions";
@@ -35,44 +36,50 @@ export default function ProjectMilestonesPage() {
     const [pageData, setPageData] = useState<PageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
+    const fetchData = useCallback(async () => {
+        if (!localUser?.id || !id) return;
+
+        setIsLoading(true);
+        try {
+            const data = await getProjectMilestonesForUser(id, localUser.id);
+            if (data) {
+                const normalizedProject = {
+                    ...data.project,
+                    milestones: data.project.milestones.map((m: any) => ({
+                        ...m,
+                        tasks: m.tasks.map((t: any) => ({
+                            ...t,
+                            status: t.status as TaskStatus,
+                            assignedUserIds: t.assignees.map((a: any) => a.id),
+                        }))
+                    }))
+                };
+                setPageData({
+                    project: normalizedProject,
+                    users: data.users,
+                    departments: data.departments
+                });
+            } else {
+                notFound();
+            }
+        } catch (error) {
+            console.error("Failed to fetch project milestones data:", error);
+            setPageData(null);
+        } finally {
+            setIsLoading(false);
+        }
+    }, [id, localUser?.id]);
+
+
     useEffect(() => {
         if (!authLoading) {
             if (!hasPermission('milestones:view')) {
                 router.replace('/dashboard');
                 return;
             }
-
-            if (localUser?.id && id) {
-                setIsLoading(true);
-                getProjectMilestonesForUser(id, localUser.id)
-                    .then(data => {
-                        if (data) {
-                             const normalizedProject = {
-                                ...data.project,
-                                milestones: data.project.milestones.map((m: any) => ({
-                                ...m,
-                                tasks: m.tasks.map((t: any) => ({
-                                    ...t,
-                                    status: t.status as TaskStatus,
-                                    assignedUserIds: t.assignees.map((a: any) => a.id),
-                                }))
-                                }))
-                            };
-                            setPageData({
-                                project: normalizedProject,
-                                users: data.users,
-                                departments: data.departments
-                            });
-                        } else {
-                            notFound();
-                        }
-                    })
-                    .finally(() => setIsLoading(false));
-            } else {
-                setIsLoading(false);
-            }
+            fetchData();
         }
-    }, [id, localUser, authLoading, hasPermission, router]);
+    }, [authLoading, hasPermission, router, fetchData]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -87,6 +94,7 @@ export default function ProjectMilestonesPage() {
             initialProject={pageData.project}
             users={pageData.users}
             departments={pageData.departments}
+            fetchData={fetchData}
         />
     );
 }
