@@ -8,6 +8,7 @@ import { ProjectStatusChart } from "@/components/dashboard/project-status-chart"
 import Link from 'next/link';
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
+import { PmoDivisionPerformance } from "@/components/ceo-report/pmo-division-performance";
 
 export const dynamic = 'force-dynamic';
 
@@ -56,29 +57,6 @@ export default async function CEOReportPage() {
     
     // Corrected logic: Default to 0 if no projects are completed, not 100.
     const overallCompletionRate = completedProjects.length > 0 ? (onTimeProjectsCount / completedProjects.length) * 100 : 0;
-
-    // Division Performance Calculation
-    const pmoDivisionPerformance = pmoDivisions.map(div => {
-        const divisionProjects = projects.filter(p => p.pmoDivisionId === div.id);
-        const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
-        const divOnTimeCount = divCompletedProjects.filter(project => {
-            const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate.toISOString())));
-            if (allTaskEndDates.length === 0) return true;
-            const lastTaskDate = dateMax(allTaskEndDates);
-            return lastTaskDate <= parseISO(project.endDate.toISOString());
-        }).length;
-        // Corrected logic for division as well
-        const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 0;
-        const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate.toISOString()))).length;
-
-        return {
-            id: div.id,
-            name: div.name,
-            totalProjects: divisionProjects.length,
-            completionRate: Math.round(divCompletionRate),
-            overdueCount: divOverdueCount,
-        };
-    });
 
     // At-Risk Projects
     const atRiskProjects = projects.filter(p => 
@@ -161,36 +139,11 @@ export default async function CEOReportPage() {
                 </Card>
 
                 {/* PMO Division Performance */}
-                <Card className="md:col-span-2">
-                    <CardHeader>
-                        <CardTitle>PMO Division Performance</CardTitle>
-                        <CardDescription>A breakdown of key metrics for each PMO division.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>PMO Division</TableHead>
-                                    <TableHead className="text-center">Total Projects</TableHead>
-                                    <TableHead className="text-center">Completion Rate</TableHead>
-                                    <TableHead className="text-center">Overdue</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {pmoDivisionPerformance.map(div => (
-                                    <TableRow key={div.id}>
-                                        <TableCell className="font-medium">{div.name}</TableCell>
-                                        <TableCell className="text-center">{div.totalProjects}</TableCell>
-                                        <TableCell className="text-center">
-                                            {div.totalProjects > 0 ? `${div.completionRate}%` : 'N/A'}
-                                        </TableCell>
-                                        <TableCell className="text-center">{div.overdueCount}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                <PmoDivisionPerformance 
+                    projects={serializableProjects}
+                    pmoDivisions={pmoDivisions}
+                    projectStatuses={projectStatuses}
+                />
             </div>
 
             {/* At-Risk Projects */}
