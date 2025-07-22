@@ -25,7 +25,7 @@ const celebrationIcons = [
 export function CelebrationSlider({ completedProjects, teams }: { completedProjects: any[], teams: any[] }) {
   const { width, height } = useWindowSize();
   const autoplayPlugin = React.useRef(
-    Autoplay({ delay: 5000, stopOnInteraction: true })
+    Autoplay({ delay: 5000, stopOnInteraction: true, playOnInit: true })
   );
 
   if (!completedProjects || completedProjects.length === 0) {
