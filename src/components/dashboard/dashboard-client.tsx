@@ -42,6 +42,7 @@ import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
 import { isPast, max as dateMax, parseISO, format } from 'date-fns';
 import { useAuth } from "@/context/auth-context";
+import { CelebrationSlider } from "./celebration-slider";
 
 const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode, count: number, href: string }) => {
   if (count > 0) {
@@ -67,7 +68,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
   const selectedYear = searchParams.get('year') || currentWorkingYear;
   const selectedDivision = searchParams.get('division') || "all";
 
-  const { filteredProjects, filteredTeams, activeProjects } = React.useMemo(() => {
+  const { filteredProjects, filteredTeams, activeProjects, completedProjects } = React.useMemo(() => {
     let tempProjects = initialProjects;
 
     if (selectedYear !== "all") {
@@ -83,11 +84,13 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
 
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
     const activeProjs = tempProjects.filter((p: any) => p.statusId !== completedStatusId);
+    const completedProjs = tempProjects.filter((p: any) => p.statusId === completedStatusId);
 
     return { 
       filteredProjects: tempProjects, 
       filteredTeams: tempTeams,
-      activeProjects: activeProjs 
+      activeProjects: activeProjs,
+      completedProjects: completedProjs
     };
   }, [selectedYear, selectedDivision, initialProjects, projectStatuses, teams]);
 
@@ -162,6 +165,9 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
+       {completedProjects.length > 0 && (
+        <CelebrationSlider completedProjects={completedProjects} teams={teams} />
+      )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
           <h1 className="text-2xl font-bold">Projects Dashboard</h1>
