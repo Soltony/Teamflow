@@ -4,7 +4,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
 import { ProjectCard } from "@/components/projects/project-card";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { CreateProjectButton } from "@/components/projects/create-project-button";
 import { getProjectsPageData } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -42,6 +42,8 @@ export default function ProjectsPage() {
     const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+    const [currentPage, setCurrentPage] = useState(1);
+    const projectsPerPage = 12;
 
     const isMemberOnly = localUser && !localUser.roles.some(r => r.name === 'Admin' || r.name === 'Project Manager');
 
@@ -77,6 +79,17 @@ export default function ProjectsPage() {
         }
         return projects.filter(p => p.statusId === selectedStatus);
     }, [projects, selectedStatus]);
+    
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedStatus]);
+
+    const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
+    const paginatedProjects = useMemo(() => {
+        const startIndex = (currentPage - 1) * projectsPerPage;
+        const endIndex = startIndex + projectsPerPage;
+        return filteredProjects.slice(startIndex, endIndex);
+    }, [filteredProjects, currentPage, projectsPerPage]);
 
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
@@ -127,9 +140,9 @@ export default function ProjectsPage() {
                     </div>
                 </CardHeader>
                 <CardContent>
-                    {filteredProjects.length > 0 ? (
+                    {paginatedProjects.length > 0 ? (
                         <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {filteredProjects.map((project: any) => (
+                            {paginatedProjects.map((project: any) => (
                                 <ProjectCard key={project.id} project={project} />
                             ))}
                         </div>
@@ -143,6 +156,27 @@ export default function ProjectsPage() {
                         </div>
                     )}
                 </CardContent>
+                {totalPages > 1 && (
+                    <CardFooter className="flex justify-center items-center gap-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                        >
+                            Next
+                        </Button>
+                    </CardFooter>
+                )}
             </Card>
         </div>
     );
