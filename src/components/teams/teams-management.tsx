@@ -409,28 +409,29 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                                             <CommandList>
                                                 <CommandEmpty>No members found.</CommandEmpty>
                                                 <CommandGroup>
-                                                    {availableMembers.map((user) => (
+                                                    {availableMembers.map((user) => {
+                                                        const isSelected = field.value?.includes(user.id);
+                                                        return (
                                                         <CommandItem
                                                             key={user.id}
-                                                            value={user.name}
-                                                            onSelect={(currentValue) => {
-                                                                const newSelection = field.value ? [...field.value] : [];
-                                                                if (newSelection.includes(user.id)) {
-                                                                    form.setValue("memberIds", newSelection.filter(id => id !== user.id));
+                                                            onSelect={() => {
+                                                                if (isSelected) {
+                                                                    field.onChange(field.value?.filter(id => id !== user.id));
                                                                 } else {
-                                                                    form.setValue("memberIds", [...newSelection, user.id]);
+                                                                    field.onChange([...(field.value || []), user.id]);
                                                                 }
                                                             }}
                                                         >
                                                              <Check
                                                                 className={cn(
                                                                 "mr-2 h-4 w-4",
-                                                                field.value?.includes(user.id) ? "opacity-100" : "opacity-0"
+                                                                isSelected ? "opacity-100" : "opacity-0"
                                                                 )}
                                                             />
                                                             {user.name}
                                                         </CommandItem>
-                                                    ))}
+                                                        )
+                                                    })}
                                                 </CommandGroup>
                                             </CommandList>
                                         </Command>
