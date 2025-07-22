@@ -349,7 +349,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                                 <FormControl>
                                 <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
                                     <span className="truncate">
-                                        {selectedMembers.length > 0 ? selectedMembers.map(m => m.name).join(', ') : "Select members..."}
+                                        {selectedMembers.length > 0 ? `${selectedMembers.length} member${selectedMembers.length > 1 ? 's' : ''} selected` : "Select members..."}
                                     </span>
                                     <ChevronDown className="ml-auto h-4 w-4" />
                                 </Button>
