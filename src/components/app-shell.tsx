@@ -168,7 +168,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <span className="sr-only">Toggle Menu</span>
           </Button>
         </header>
-        <div className="flex-1 overflow-auto">{children}</div>
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">{children}</div>
       </main>
     </div>
   );
