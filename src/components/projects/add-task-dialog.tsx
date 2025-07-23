@@ -235,8 +235,8 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
                       <FormControl>
                         <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
                             {selectedUsers.length > 0
-                                ? `${selectedUsers.length} user(s) selected`
-                                : "Select users..."}
+                                ? `${selectedUsers.length} member(s) selected`
+                                : "Select members..."}
                           <ChevronDown className="ml-auto h-4 w-4" />
                         </Button>
                       </FormControl>
