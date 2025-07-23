@@ -241,7 +241,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
                         </Button>
                       </FormControl>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-60 overflow-y-auto">
                       {nonAdminUsers.map((user) => (
                         <DropdownMenuCheckboxItem
                           key={user.id}
