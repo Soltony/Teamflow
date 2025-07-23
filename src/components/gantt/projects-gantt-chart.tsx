@@ -1,26 +1,33 @@
 
 "use client";
 
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, Text } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { differenceInDays, parseISO, min as dateMin, format } from 'date-fns';
 import Link from 'next/link';
 
 const CustomYAxisTick = (props: any) => {
-    const { x, y, payload, width } = props;
-    const item = payload.payload; // The full data object for this tick
+    const { x, y, payload, width, data } = props;
+    // Find the full data item that corresponds to the current tick's value
+    const item = data.find((d: any) => d.name === payload.value);
 
-    if (!item) return null;
-
-    // Use foreignObject to allow standard HTML/Next.js components inside SVG
+    if (!item) {
+        // Fallback for safety, though it shouldn't be hit with correct data
+        return (
+            <g transform={`translate(${x},${y})`}>
+                <text x={0} y={0} dy={4} textAnchor="end" fill="#666" fontSize={12}>
+                    {payload.value}
+                </text>
+            </g>
+        );
+    }
+    
     return (
-      <g transform={`translate(${x - width}, ${y - 10})`}>
-        <foreignObject x={0} y={0} width={width} height={40}>
-          <div style={{ width: `${width}px`, textAlign: 'right', paddingRight: '10px' }}>
-              <Link href={`/projects/${item.projectId}`} className="text-sm fill-muted-foreground hover:underline hover:fill-primary transition-colors cursor-pointer text-right block truncate" title={`${item.projectName}: ${item.milestoneTitle}`}>
+      <g transform={`translate(${x - 10}, ${y})`}>
+          <Link href={`/projects/${item.projectId}`} className="text-sm fill-muted-foreground hover:underline hover:fill-primary transition-colors cursor-pointer" style={{ textDecoration: 'none' }}>
+            <text x={0} y={0} dy={4} textAnchor="end" fill="currentColor" fontSize={12} title={`${item.projectName}: ${item.milestoneTitle}`}>
                 {item.name}
-              </Link>
-          </div>
-        </foreignObject>
+            </text>
+          </Link>
       </g>
     );
 };
@@ -65,8 +72,8 @@ export function ProjectsGanttChart({ projects }: { projects: any[] }) {
     return {
       projectId: milestone.projectId,
       projectName: milestone.projectName,
-      milestoneTitle: milestone.milestoneTitle,
-      name: `${milestone.projectName}: ${milestone.milestoneTitle}`,
+      milestoneTitle: milestone.title, // Corrected from milestone.milestoneTitle
+      name: `${milestone.projectName}: ${milestone.title}`,
       startOffset: startDay,
       duration: duration,
       startDate: milestone.startDate,
@@ -114,7 +121,7 @@ export function ProjectsGanttChart({ projects }: { projects: any[] }) {
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
             <XAxis type="number" domain={['dataMin', 'dataMax']} label={{ value: `Days from ${format(chartStartDate, 'MMM dd, yyyy')}`, position: 'insideBottom', offset: 0 }} height={50} />
-            <YAxis dataKey="name" type="category" width={250} tick={<CustomYAxisTick />} interval={0} />
+            <YAxis dataKey="name" type="category" width={250} tick={<CustomYAxisTick data={data} />} interval={0} />
             <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsl(var(--card))'}}/>
             <Bar dataKey="startOffset" stackId="a" fill="transparent" />
             <Bar dataKey="duration" stackId="a" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]} />
