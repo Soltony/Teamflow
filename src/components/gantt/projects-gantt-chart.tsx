@@ -23,9 +23,13 @@ const CustomYAxisTick = (props: any) => {
                 textAnchor="end"
                 verticalAnchor="middle"
                 className="text-sm fill-muted-foreground hover:underline hover:fill-primary transition-colors cursor-pointer"
+                // The payload value can be an object, so we access its `name` property
+                // to avoid rendering '[object Object]'.
+                value={item.name}
             >
                 <title>{item.projectName}: {item.milestoneTitle}</title>
-                {payload.value}
+                {/* Explicitly render the name property */}
+                {item.name}
             </Text>
         </Link>
       </g>
@@ -130,5 +134,3 @@ export function ProjectsGanttChart({ projects }: { projects: any[] }) {
     </div>
   );
 }
-
-    
