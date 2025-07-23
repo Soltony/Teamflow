@@ -6,12 +6,10 @@ import { differenceInDays, parseISO, min as dateMin, format } from 'date-fns';
 import Link from 'next/link';
 
 const CustomYAxisTick = (props: any) => {
-    const { x, y, payload, width, data } = props;
-    // Find the full data item that corresponds to the current tick's value
+    const { x, y, payload, data } = props;
     const item = data.find((d: any) => d.name === payload.value);
 
     if (!item) {
-        // Fallback for safety, though it shouldn't be hit with correct data
         return (
             <g transform={`translate(${x},${y})`}>
                 <text x={0} y={0} dy={4} textAnchor="end" fill="#666" fontSize={12}>
@@ -114,14 +112,14 @@ export function ProjectsGanttChart({ projects }: { projects: any[] }) {
             margin={{
               top: 20,
               right: 30,
-              left: 20,
+              left: 100,
               bottom: 20,
             }}
             barCategoryGap="40%"
           >
             <CartesianGrid strokeDasharray="3 3" horizontal={false} />
             <XAxis type="number" domain={['dataMin', 'dataMax']} label={{ value: `Days from ${format(chartStartDate, 'MMM dd, yyyy')}`, position: 'insideBottom', offset: 0 }} height={50} />
-            <YAxis dataKey="name" type="category" width={250} tick={<CustomYAxisTick data={data} />} interval={0} />
+            <YAxis dataKey="name" type="category" width={350} tick={<CustomYAxisTick data={data} />} interval={0} />
             <Tooltip content={<CustomTooltip />} cursor={{fill: 'hsl(var(--card))'}}/>
             <Bar dataKey="startOffset" stackId="a" fill="transparent" />
             <Bar dataKey="duration" stackId="a" fill="hsl(var(--primary))" radius={[4, 4, 4, 4]} />
