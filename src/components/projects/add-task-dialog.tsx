@@ -229,7 +229,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
               name="assignedUserIds"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Assign to Users</FormLabel>
+                  <FormLabel>Select members</FormLabel>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <FormControl>

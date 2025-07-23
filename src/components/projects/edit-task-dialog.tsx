@@ -247,7 +247,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
               name="assignedUserIds"
               render={({ field }) => (
                 <FormItem className="flex flex-col">
-                  <FormLabel>Assign to Users</FormLabel>
+                  <FormLabel>Select members</FormLabel>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                       <FormControl>
