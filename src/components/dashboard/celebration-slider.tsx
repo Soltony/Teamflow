@@ -52,6 +52,7 @@ export function CelebrationSlider({ completedProjects, teams }: { completedProje
         <CarouselContent>
           {completedProjects.map((project, index) => {
             const team = getTeamForProject(project.id);
+            const teamLeadName = team?.teamLead?.name ?? 'N/A';
             const teamMembers = team ? team.members.map((m: any) => m.name).join(', ') : 'N/A';
             const icon = celebrationIcons[index % celebrationIcons.length];
 
@@ -71,6 +72,7 @@ export function CelebrationSlider({ completedProjects, teams }: { completedProje
                         A huge congratulations to the team for their hard work and dedication.
                       </p>
                       <div className="text-sm text-yellow-700/90 space-y-1">
+                        <p><span className="font-semibold">Team Leader:</span> {teamLeadName}</p>
                         <p><span className="font-semibold">Team:</span> {teamMembers}</p>
                         <p><span className="font-semibold">Completed on:</span> {format(new Date(project.endDate), 'MMMM dd, yyyy')}</p>
                       </div>
