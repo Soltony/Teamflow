@@ -22,8 +22,9 @@ const CustomYAxisTick = (props: any) => {
     return (
       <g transform={`translate(${x - 10}, ${y})`}>
           <Link href={`/projects/${item.projectId}`} className="text-sm fill-muted-foreground hover:underline hover:fill-primary transition-colors cursor-pointer" style={{ textDecoration: 'none' }}>
-            <text x={0} y={0} dy={4} textAnchor="end" fill="currentColor" fontSize={12} title={`${item.projectName}: ${item.milestoneTitle}`}>
-                {item.name}
+            <text x={0} y={0} textAnchor="end" fill="currentColor" fontSize={12} title={`${item.projectName}: ${item.milestoneTitle}`}>
+                <tspan x={0} dy="-0.6em">{item.projectName}</tspan>
+                <tspan x={0} dy="1.2em">{item.milestoneTitle}</tspan>
             </text>
           </Link>
       </g>
