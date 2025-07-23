@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from 'next/link';
 import { ArrowLeft, Pencil, PlusCircle, Building } from "lucide-react";
 import { format, parseISO } from "date-fns";
@@ -19,6 +19,7 @@ import { Progress } from "../ui/progress";
 import { addTask, addMilestone, updateMilestone, updateTask } from "@/app/projects/actions";
 import { useAuth } from "@/context/auth-context";
 import { AddMilestoneDialog } from "./add-milestone-dialog";
+import { useRouter } from "next/navigation";
 
 type UserWithRoles = User & { roles: { name: string }[] };
 
@@ -29,11 +30,17 @@ type ProjectMilestonesProps = {
   fetchData: () => Promise<void>;
 }
 
-export function ProjectMilestones({ initialProject, users, departments, fetchData }: ProjectMilestonesProps) {
+export function ProjectMilestones({ initialProject, users, departments, fetchData: propFetchData }: ProjectMilestonesProps) {
   const { toast } = useToast();
   const { localUser, hasPermission } = useAuth();
-  
+  const router = useRouter();
+
   const [project, setProject] = useState(initialProject);
+
+  const fetchData = useCallback(async () => {
+    await propFetchData();
+    router.refresh();
+  }, [propFetchData, router]);
 
   useEffect(() => {
     setProject(initialProject);

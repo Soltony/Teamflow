@@ -474,8 +474,10 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
         where: whereClause,
         include: {
             milestones: {
+                orderBy: { createdAt: 'asc' },
                 include: {
                     tasks: {
+                        orderBy: { createdAt: 'asc' },
                         include: {
                             assignees: true,
                         }

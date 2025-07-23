@@ -34,6 +34,8 @@ export function TaskList({ tasks, onEditTask, users, canManageTasks }: TaskListP
   }
 
   const userMap = new Map(users.map(u => [u.id, u.name]));
+  
+  const sortedTasks = [...tasks].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   return (
     <TooltipProvider>
@@ -49,7 +51,7 @@ export function TaskList({ tasks, onEditTask, users, canManageTasks }: TaskListP
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tasks.map((task) => {
+          {sortedTasks.map((task) => {
             const isOverdue = isPast(parseISO(task.endDate)) && task.status !== 'DONE';
             return (
               <TableRow key={task.id}>
