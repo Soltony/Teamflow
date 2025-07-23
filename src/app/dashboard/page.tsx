@@ -39,6 +39,7 @@ export default async function DashboardPage({ searchParams }: { searchParams: { 
             include: {
                 status: true,
                 pmoDivision: true,
+                projectManager: true,
                 responsibleDepartments: true,
                 milestones: {
                     include: {
