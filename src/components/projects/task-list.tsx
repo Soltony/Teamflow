@@ -2,7 +2,7 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Task, TaskStatus } from '@/lib/types';
 import { format, isPast, parseISO } from 'date-fns';
-import { Circle, CheckCircle2, CircleDot, AlertTriangle, Pencil, FileClock } from 'lucide-react';
+import { Circle, CheckCircle2, CircleDot, AlertTriangle, Pencil, FileClock, Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -11,6 +11,7 @@ type TaskListProps = {
   tasks: Task[];
   users: any[];
   onEditTask: (task: Task) => void;
+  onDeleteTask: (task: Task) => void;
   canManageTasks: boolean;
 };
 
@@ -23,7 +24,7 @@ const statusIcons: Record<TaskStatus, React.ReactNode> = {
 
 const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
 
-export function TaskList({ tasks, onEditTask, users, canManageTasks }: TaskListProps) {
+export function TaskList({ tasks, onEditTask, onDeleteTask, users, canManageTasks }: TaskListProps) {
   if (tasks.length === 0) {
     return (
       <div className="text-center text-muted-foreground py-8 border-2 border-dashed rounded-lg">
@@ -47,7 +48,7 @@ export function TaskList({ tasks, onEditTask, users, canManageTasks }: TaskListP
             <TableHead>Assignees</TableHead>
             <TableHead>Due Date</TableHead>
             <TableHead className="text-right">Weight</TableHead>
-            <TableHead className="w-[50px] text-right">Actions</TableHead>
+            <TableHead className="w-[100px] text-right">Actions</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -88,10 +89,16 @@ export function TaskList({ tasks, onEditTask, users, canManageTasks }: TaskListP
                 <TableCell className="text-right">{task.weight}%</TableCell>
                 <TableCell className="text-right">
                   {canManageTasks && (
-                    <Button variant="ghost" size="icon" onClick={() => onEditTask(task)}>
-                      <Pencil className="w-4 h-4" />
-                      <span className="sr-only">Edit Task</span>
-                    </Button>
+                    <div className="flex justify-end gap-1">
+                      <Button variant="ghost" size="icon" onClick={() => onEditTask(task)}>
+                        <Pencil className="w-4 h-4" />
+                        <span className="sr-only">Edit Task</span>
+                      </Button>
+                      <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
+                        <Trash2 className="w-4 h-4" />
+                        <span className="sr-only">Delete Task</span>
+                      </Button>
+                    </div>
                   )}
                 </TableCell>
               </TableRow>

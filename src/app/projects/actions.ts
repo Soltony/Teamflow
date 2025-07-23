@@ -280,6 +280,29 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
     revalidatePath(`/projects/${projectId}/milestones`);
 }
 
+export async function deleteTask(taskId: string, projectId: string) {
+    try {
+        await prisma.$transaction(async (tx) => {
+            await tx.taskUpdate.deleteMany({
+                where: { taskId: taskId }
+            });
+            await tx.task.delete({
+                where: { id: taskId }
+            });
+        });
+
+        revalidatePath(`/projects/${projectId}/milestones`);
+        revalidatePath(`/projects/${projectId}`);
+        revalidatePath('/my-tasks');
+        revalidatePath('/dashboard');
+        
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to delete task:", error);
+        return { success: false, error: "Failed to delete task." };
+    }
+}
+
 export async function getProjectsPageData(userId: string) {
     const user = await prisma.user.findUnique({
         where: { id: userId },

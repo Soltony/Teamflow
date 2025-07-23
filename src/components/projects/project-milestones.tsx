@@ -3,7 +3,7 @@
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from 'next/link';
-import { ArrowLeft, Pencil, PlusCircle, Building } from "lucide-react";
+import { ArrowLeft, Pencil, PlusCircle, Building, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import type { Milestone, Task, User, Department } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -16,10 +16,11 @@ import { AddTaskDialog } from "./add-task-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { EditTaskDialog } from "./edit-task-dialog";
 import { Progress } from "../ui/progress";
-import { addTask, addMilestone, updateMilestone, updateTask } from "@/app/projects/actions";
+import { addTask, addMilestone, updateMilestone, updateTask, deleteTask } from "@/app/projects/actions";
 import { useAuth } from "@/context/auth-context";
 import { AddMilestoneDialog } from "./add-milestone-dialog";
 import { useRouter } from "next/navigation";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 
 type UserWithRoles = User & { roles: { name: string }[] };
 
@@ -56,6 +57,7 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
   const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
   const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: Task; milestone: Milestone } | null>(null);
   const [isAddingMilestone, setIsAddingMilestone] = useState(false);
+  const [taskToDelete, setTaskToDelete] = useState<Task | null>(null);
 
   const projectUsers = useMemo(() => {
     if (!project?.departmentId) {
@@ -104,6 +106,26 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
     });
     setEditingTaskInfo(null);
     await fetchData();
+  };
+
+  const handleTaskDeleteConfirm = async () => {
+    if (!taskToDelete) return;
+
+    const result = await deleteTask(taskToDelete.id, project.id);
+    if (result.success) {
+      toast({
+        title: "Task Deleted!",
+        description: `The task "${taskToDelete.title}" has been removed.`,
+      });
+      await fetchData();
+    } else {
+      toast({
+        title: "Error",
+        description: result.error || "Failed to delete the task.",
+        variant: "destructive",
+      });
+    }
+    setTaskToDelete(null);
   };
 
   return (
@@ -181,6 +203,7 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
                                       tasks={milestone.tasks} 
                                       users={projectUsers}
                                       onEditTask={(task) => setEditingTaskInfo({ task, milestone })}
+                                      onDeleteTask={(task) => setTaskToDelete(task)}
                                       canManageTasks={canManageProjectTasks}
                                   />
                               </AccordionContent>
@@ -231,6 +254,25 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
             onTaskUpdate={handleTaskUpdate}
             users={projectUsers}
         />
+      )}
+
+      {taskToDelete && (
+        <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This action cannot be undone. This will permanently delete the task: <span className="font-semibold">"{taskToDelete.title}"</span>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleTaskDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete Task
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </div>
   );
