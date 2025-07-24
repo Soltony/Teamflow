@@ -240,7 +240,11 @@ export async function createUser(data: { firstName: string, lastName: string, em
 export async function forgotPasswordForUser(phoneNumber: string) {
     try {
         const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/forgot-password`;
-        const payload = { dto: { phoneNumber } };
+        const formattedPhoneNumber = phoneNumber.startsWith('09') && phoneNumber.length > 10
+            ? phoneNumber.substring(0, 10)
+            : phoneNumber;
+
+        const payload = { dto: { phoneNumber: formattedPhoneNumber } };
         const response = await axios.post<AuthResponse>(
             authApiUrl,
             payload,
@@ -258,7 +262,6 @@ export async function forgotPasswordForUser(phoneNumber: string) {
             console.error("Auth service forgot password failed. Response:", error.response.status, error.response.data);
             const responseData = error.response.data as any;
             
-            // Handle cases where the error response might be a simple string or an object with a 'message'
             let errorMessage = 'An unexpected error occurred during password reset initiation.';
             if (responseData) {
                 if (typeof responseData === 'string') {
@@ -272,7 +275,6 @@ export async function forgotPasswordForUser(phoneNumber: string) {
                     } else if (typeof errorDetails === 'string') {
                         errorMessage = errorDetails;
                     } else if (typeof errorDetails === 'object') {
-                        // Handle nested errors like the one from the prompt
                         errorMessage = Object.values(errorDetails).flat().join(' ');
                     }
                 }
