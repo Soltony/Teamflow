@@ -13,6 +13,7 @@ interface AuthResponse {
   refreshToken?: string;
   errors?: string[] | string | null;
   token?: string;
+  message?: string;
 }
 
 interface AuthenticatedUser {
@@ -240,43 +241,39 @@ export async function createUser(data: { firstName: string, lastName: string, em
 export async function forgotPasswordForUser(phoneNumber: string) {
     try {
         const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/forgot-password`;
-        const formattedPhoneNumber = phoneNumber.startsWith('09') && phoneNumber.length > 10
-            ? phoneNumber.substring(0, 10)
-            : phoneNumber;
-
-        const payload = { dto: { phoneNumber: formattedPhoneNumber } };
+        
         const response = await axios.post<AuthResponse>(
             authApiUrl,
-            payload,
+            { dto: { phoneNumber } },
             { headers: { 'Content-Type': 'application/json' } }
         );
 
-        if (response.data.isSuccess && response.data.token) {
-            return { success: true, token: response.data.token };
-        } else {
-            const errorMessage = Array.isArray(response.data.errors) ? response.data.errors.join(', ') : 'Failed to initiate password reset.';
-            return { success: false, error: errorMessage };
+        if (response.data.message) {
+            const token = response.data.message.split('is: ')[1];
+            if (token) {
+                return { success: true, token: token.trim() };
+            }
         }
+        
+        const errorMessage = Array.isArray(response.data.errors) ? response.data.errors.join(', ') : 'Failed to initiate password reset.';
+        return { success: false, error: errorMessage };
+
     } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
             console.error("Auth service forgot password failed. Response:", error.response.status, error.response.data);
             const responseData = error.response.data as any;
             
             let errorMessage = 'An unexpected error occurred during password reset initiation.';
-            if (responseData) {
-                if (typeof responseData === 'string') {
-                    errorMessage = responseData;
-                } else if (responseData.message && typeof responseData.message === 'string') {
-                    errorMessage = responseData.message;
-                } else if (responseData.errors) {
-                    const errorDetails = responseData.errors;
-                    if (Array.isArray(errorDetails) && errorDetails.length > 0) {
-                        errorMessage = errorDetails.join(', ');
-                    } else if (typeof errorDetails === 'string') {
-                        errorMessage = errorDetails;
-                    } else if (typeof errorDetails === 'object') {
-                        errorMessage = Object.values(errorDetails).flat().join(' ');
-                    }
+             if (responseData && responseData.message) {
+                errorMessage = responseData.message;
+            } else if (responseData && responseData.errors) {
+                const errorDetails = responseData.errors;
+                if (Array.isArray(errorDetails) && errorDetails.length > 0) {
+                    errorMessage = errorDetails.join(', ');
+                } else if (typeof errorDetails === 'string') {
+                    errorMessage = errorDetails;
+                } else if (typeof errorDetails === 'object') {
+                    errorMessage = Object.values(errorDetails).flat().join(' ');
                 }
             }
             
