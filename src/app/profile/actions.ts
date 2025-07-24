@@ -5,25 +5,17 @@ import axios from 'axios';
 
 interface ChangePasswordPayload {
     phoneNumber: string;
-    currentPassword?: string;
     newPassword?: string;
 }
 
 export async function changePassword(data: ChangePasswordPayload, accessToken: string) {
     try {
-        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-password`;
+        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/reset-password`;
         
-        // Admins changing other users' passwords won't have a 'currentPassword'.
-        // The backend auth service is configured to allow this based on the admin's token.
-        // We only send currentPassword if it is explicitly provided.
-        const payload: Partial<ChangePasswordPayload> = {
+        const payload = {
             phoneNumber: data.phoneNumber,
             newPassword: data.newPassword,
         };
-
-        if (data.currentPassword) {
-            payload.currentPassword = data.currentPassword;
-        }
 
         const response = await axios.post(authApiUrl, payload, {
             headers: {
@@ -31,20 +23,18 @@ export async function changePassword(data: ChangePasswordPayload, accessToken: s
             },
         });
         
-        // Check for a success message as per the updated API contract
-        if (response.data?.message === "Password changed successfully.") {
+        if (response.data?.isSuccess || response.status === 200 || response.status === 204) {
             return { success: true };
         } else {
-            // Handle cases where the server responds but doesn't confirm success
             const errorMessage = Array.isArray(response.data.errors) ? response.data.errors.join(', ') : 'An unknown error occurred.';
             return { success: false, error: errorMessage };
         }
     } catch (error) {
         if (axios.isAxiosError(error) && error.response) {
-            console.error("Auth service password change failed. Response:", error.response.status, error.response.data);
+            console.error("Auth service password reset failed. Response:", error.response.status, error.response.data);
              const responseData = error.response.data as any;
              const errorValue = responseData.errors;
-             let errorMessage = 'An unexpected error occurred during password change.';
+             let errorMessage = 'An unexpected error occurred during password reset.';
              if (Array.isArray(errorValue)) {
                  errorMessage = errorValue.join(', ');
              } else if (typeof errorValue === 'string') {
@@ -52,7 +42,7 @@ export async function changePassword(data: ChangePasswordPayload, accessToken: s
              }
             return { success: false, error: errorMessage };
         }
-        console.error("Failed to change password:", error);
+        console.error("Failed to reset password:", error);
         return { success: false, error: 'Could not connect to the authentication service.' };
     }
 }
