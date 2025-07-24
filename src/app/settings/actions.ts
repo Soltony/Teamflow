@@ -249,8 +249,9 @@ export async function forgotPasswordForUser(phoneNumber: string) {
         );
 
         if (response.data.message) {
-            const token = response.data.message.split('is: ')[1];
-            if (token) {
+            const tokenParts = response.data.message.split('is: ');
+            if (tokenParts.length > 1) {
+                const token = tokenParts[1];
                 return { success: true, token: token.trim() };
             }
         }
@@ -371,3 +372,5 @@ export async function deleteRole(id: string) {
         return { success: false, error: 'Failed to delete role.' };
     }
 }
+
+    
