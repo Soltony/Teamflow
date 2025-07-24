@@ -240,9 +240,10 @@ export async function createUser(data: { firstName: string, lastName: string, em
 export async function forgotPasswordForUser(phoneNumber: string) {
     try {
         const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/forgot-password`;
+        const payload = { dto: { phoneNumber } };
         const response = await axios.post<AuthResponse>(
             authApiUrl,
-            `"${phoneNumber}"`,
+            payload,
             { headers: { 'Content-Type': 'application/json' } }
         );
 
@@ -264,10 +265,16 @@ export async function forgotPasswordForUser(phoneNumber: string) {
                     errorMessage = responseData;
                 } else if (responseData.message && typeof responseData.message === 'string') {
                     errorMessage = responseData.message;
-                } else if (Array.isArray(responseData.errors)) {
-                    errorMessage = responseData.errors.join(', ');
-                } else if (typeof responseData.errors === 'string') {
-                    errorMessage = responseData.errors;
+                } else if (responseData.errors) {
+                    const errorDetails = responseData.errors;
+                    if (Array.isArray(errorDetails) && errorDetails.length > 0) {
+                        errorMessage = errorDetails.join(', ');
+                    } else if (typeof errorDetails === 'string') {
+                        errorMessage = errorDetails;
+                    } else if (typeof errorDetails === 'object') {
+                        // Handle nested errors like the one from the prompt
+                        errorMessage = Object.values(errorDetails).flat().join(' ');
+                    }
                 }
             }
             
