@@ -240,7 +240,11 @@ export async function createUser(data: { firstName: string, lastName: string, em
 export async function forgotPasswordForUser(phoneNumber: string) {
     try {
         const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/forgot-password`;
-        const response = await axios.post<AuthResponse>(authApiUrl, { phoneNumber });
+        const response = await axios.post<AuthResponse>(
+            authApiUrl,
+            `"${phoneNumber}"`,
+            { headers: { 'Content-Type': 'application/json' } }
+        );
 
         if (response.data.isSuccess && response.data.token) {
             return { success: true, token: response.data.token };
@@ -252,10 +256,21 @@ export async function forgotPasswordForUser(phoneNumber: string) {
         if (axios.isAxiosError(error) && error.response) {
             console.error("Auth service forgot password failed. Response:", error.response.status, error.response.data);
             const responseData = error.response.data as any;
-            const errorValue = responseData.errors;
+            
+            // Handle cases where the error response might be a simple string or an object with a 'message'
             let errorMessage = 'An unexpected error occurred during password reset initiation.';
-            if (Array.isArray(errorValue)) errorMessage = errorValue.join(', ');
-            else if (typeof errorValue === 'string') errorMessage = errorValue;
+            if (responseData) {
+                if (typeof responseData === 'string') {
+                    errorMessage = responseData;
+                } else if (responseData.message && typeof responseData.message === 'string') {
+                    errorMessage = responseData.message;
+                } else if (Array.isArray(responseData.errors)) {
+                    errorMessage = responseData.errors.join(', ');
+                } else if (typeof responseData.errors === 'string') {
+                    errorMessage = responseData.errors;
+                }
+            }
+            
             return { success: false, error: errorMessage };
         }
         console.error("Failed to initiate password reset:", error);
