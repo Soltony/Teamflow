@@ -56,7 +56,6 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
-import { Separator } from "../ui/separator";
 
 type UserWithRoles = User & { roles: Role[] };
 
@@ -76,7 +75,6 @@ const editUserSchema = z.object({
   roleIds: z.array(z.string()).refine((value) => value.some((item) => item), {
       message: "You have to select at least one role.",
   }),
-  newPassword: z.string().optional(),
 });
 type EditUserFormValues = z.infer<typeof editUserSchema>;
 
@@ -115,7 +113,6 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
       phoneNumber: "",
       pmoDivisionId: "",
       roleIds: [],
-      newPassword: "",
     },
   });
 
@@ -141,7 +138,6 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
       phoneNumber: user.phoneNumber ?? '',
       pmoDivisionId: user.pmoDivisionId ?? '',
       roleIds: user.roles.map(role => role.id),
-      newPassword: "",
     });
   };
 
@@ -160,9 +156,9 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
   };
 
   function onEditUserSubmit(data: EditUserFormValues) {
-    if (!editingUser || !accessToken) return;
+    if (!editingUser) return;
     startTransition(async () => {
-        const result = await updateUser(editingUser.id, data, accessToken);
+        const result = await updateUser(editingUser.id, data);
         if (result.success) {
             toast({
                 title: "User Updated",
@@ -387,35 +383,6 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
                                       ))}
                                   </DropdownMenuContent>
                               </DropdownMenu>
-                              <FormMessage />
-                          </FormItem>
-                      )}
-                  />
-                  <Separator />
-                   <FormField
-                      control={editUserForm.control}
-                      name="newPassword"
-                      render={({ field }) => (
-                          <FormItem>
-                              <FormLabel>New Password (Optional)</FormLabel>
-                               <div className="relative">
-                                  <FormControl>
-                                      <Input
-                                          type={showPassword ? 'text' : 'password'}
-                                          placeholder="Leave blank to keep current password"
-                                          className="pr-10"
-                                          {...field}
-                                      />
-                                  </FormControl>
-                                  <button
-                                      type="button"
-                                      onClick={() => setShowPassword(!showPassword)}
-                                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                                  >
-                                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                                  </button>
-                                </div>
                               <FormMessage />
                           </FormItem>
                       )}

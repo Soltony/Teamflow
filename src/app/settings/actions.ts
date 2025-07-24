@@ -5,7 +5,6 @@ import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import axios from 'axios';
 import { jwtDecode } from 'jwt-decode';
-import { changePassword } from '../profile/actions';
 
 interface AuthResponse {
   isSuccess: boolean;
@@ -112,9 +111,8 @@ export async function updateActiveWorkingYear(year: string) {
 }
 
 // --- User Management Actions ---
-export async function updateUser(userId: string, data: { firstName: string, lastName: string, email: string, phoneNumber: string, roleIds: string[], pmoDivisionId?: string, newPassword?: string }, accessToken: string) {
+export async function updateUser(userId: string, data: { firstName: string, lastName: string, email: string, phoneNumber: string, roleIds: string[], pmoDivisionId?: string }) {
     try {
-        // Update local database
         await prisma.user.update({
             where: { id: userId },
             data: {
@@ -130,25 +128,8 @@ export async function updateUser(userId: string, data: { firstName: string, last
             }
         });
 
-        // If a new password is provided, update it in the auth service
-        if (data.newPassword) {
-            const passwordResult = await changePassword({
-                phoneNumber: data.phoneNumber,
-                newPassword: data.newPassword,
-            }, accessToken);
-
-            if (!passwordResult.success) {
-                // We don't bubble up the error to the UI here to avoid complex states,
-                // but we log it. The user details would have been saved.
-                console.error(`Failed to update password for user ${userId}: ${passwordResult.error}`);
-                // Optionally, return a partial success or specific error message
-                return { success: false, error: `User details updated, but failed to change password: ${passwordResult.error}` };
-            }
-        }
-        
         revalidatePath('/settings');
         return { success: true };
-
     } catch (error) {
         console.error("Failed to update user:", error);
         return { success: false, error: 'Failed to update user. The email might already be in use by another account.' };
@@ -278,7 +259,6 @@ export async function createRole(data: { name: string, description?: string, per
             }
         });
         revalidatePath('/settings');
-        onDataChange();
         return { success: true };
     } catch (error) {
         console.error("Failed to create role:", error);
