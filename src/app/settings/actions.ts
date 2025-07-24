@@ -1,4 +1,5 @@
 
+
 'use server';
 
 import prisma from '@/lib/db';
@@ -11,6 +12,7 @@ interface AuthResponse {
   accessToken?: string;
   refreshToken?: string;
   errors?: string[] | string | null;
+  token?: string;
 }
 
 interface AuthenticatedUser {
@@ -232,6 +234,58 @@ export async function createUser(data: { firstName: string, lastName: string, em
         }
         console.error("Failed to create user:", error);
         return { success: false, error: 'An unexpected server error occurred. Could not connect to the authentication service.' };
+    }
+}
+
+export async function forgotPasswordForUser(phoneNumber: string) {
+    try {
+        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/forgot-password`;
+        const response = await axios.post<AuthResponse>(authApiUrl, { phoneNumber });
+
+        if (response.data.isSuccess && response.data.token) {
+            return { success: true, token: response.data.token };
+        } else {
+            const errorMessage = Array.isArray(response.data.errors) ? response.data.errors.join(', ') : 'Failed to initiate password reset.';
+            return { success: false, error: errorMessage };
+        }
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            console.error("Auth service forgot password failed. Response:", error.response.status, error.response.data);
+            const responseData = error.response.data as any;
+            const errorValue = responseData.errors;
+            let errorMessage = 'An unexpected error occurred during password reset initiation.';
+            if (Array.isArray(errorValue)) errorMessage = errorValue.join(', ');
+            else if (typeof errorValue === 'string') errorMessage = errorValue;
+            return { success: false, error: errorMessage };
+        }
+        console.error("Failed to initiate password reset:", error);
+        return { success: false, error: 'Could not connect to the authentication service.' };
+    }
+}
+
+export async function resetPasswordForUser(data: { phoneNumber: string, newPassword?: string, token: string }) {
+    try {
+        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/reset-password`;
+        const response = await axios.post(authApiUrl, data);
+
+        if (response.data?.isSuccess || response.status === 200 || response.status === 204) {
+            return { success: true };
+        } else {
+            const errorMessage = Array.isArray(response.data.errors) ? response.data.errors.join(', ') : 'An unknown error occurred.';
+            return { success: false, error: errorMessage };
+        }
+    } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            console.error("Auth service password reset failed. Response:", error.response.status, error.response.data);
+            const responseData = error.response.data as any;
+            const errorValue = responseData.errors;
+            let errorMessage = 'An unexpected error occurred during password reset.';
+            if (Array.isArray(errorValue)) errorMessage = errorValue.join(', ');
+            else if (typeof errorValue === 'string') errorMessage = errorValue;
+            return { success: false, error: errorMessage };
+        }
+        console.error("Failed to reset password:", error);
+        return { success: false, error: 'Could not connect to the authentication service.' };
     }
 }
 

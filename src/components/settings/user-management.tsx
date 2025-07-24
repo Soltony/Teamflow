@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useTransition } from "react";
@@ -22,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "../ui/button";
-import { Pencil, PlusCircle, Trash2, ChevronDown, Eye, EyeOff } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, ChevronDown, Eye, EyeOff, KeyRound } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -46,7 +47,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Role, User, PmoDivision } from "@prisma/client";
-import { updateUser, createUser, deleteUser } from "@/app/settings/actions";
+import { updateUser, createUser, deleteUser, forgotPasswordForUser, resetPasswordForUser } from "@/app/settings/actions";
 import { Badge } from "../ui/badge";
 import {
     DropdownMenu,
@@ -89,6 +90,15 @@ const addUserSchema = z.object({
 });
 type AddUserFormValues = z.infer<typeof addUserSchema>;
 
+const resetPasswordSchema = z.object({
+    password: z.string().min(6, 'New password must be at least 6 characters.'),
+    confirmPassword: z.string(),
+}).refine(data => data.password === data.confirmPassword, {
+    message: "Passwords don't match.",
+    path: ['confirmPassword'],
+});
+type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
+
 export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions, onDataChange }: UserManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
@@ -100,6 +110,9 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  
+  const [passwordResetData, setPasswordResetData] = useState<{ user: UserWithRoles, token: string } | null>(null);
+  const [userForPasswordChange, setUserForPasswordChange] = useState<UserWithRoles | null>(null);
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -129,6 +142,14 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
     },
   });
 
+  const resetPasswordForm = useForm<ResetPasswordFormValues>({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+        password: '',
+        confirmPassword: '',
+    },
+  });
+
   const handleEdit = (user: UserWithRoles) => {
     setEditingUser(user);
     editUserForm.reset({
@@ -153,6 +174,48 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
   
   const handleCloseAddUserDialog = () => {
     setIsAddUserDialogOpen(false);
+  };
+
+  const handleOpenPasswordDialog = (user: UserWithRoles) => {
+    setUserForPasswordChange(user);
+    setPasswordResetData(null); // Reset to stage 1
+  };
+
+  const handleClosePasswordDialog = () => {
+    setUserForPasswordChange(null);
+    setPasswordResetData(null);
+    resetPasswordForm.reset();
+  };
+
+  const handleForgotPassword = async () => {
+    if (!userForPasswordChange?.phoneNumber) return;
+    startTransition(async () => {
+        const result = await forgotPasswordForUser(userForPasswordChange.phoneNumber!);
+        if (result.success && result.token) {
+            toast({ title: "Token Sent", description: "A password reset token has been generated." });
+            setPasswordResetData({ user: userForPasswordChange, token: result.token });
+        } else {
+            toast({ title: "Error", description: result.error, variant: "destructive" });
+        }
+    });
+  };
+
+  const handleResetPassword = (data: ResetPasswordFormValues) => {
+    if (!passwordResetData) return;
+    startTransition(async () => {
+        const result = await resetPasswordForUser({
+            phoneNumber: passwordResetData.user.phoneNumber!,
+            newPassword: data.password,
+            token: passwordResetData.token
+        });
+
+        if (result.success) {
+            toast({ title: "Password Reset Successfully", description: `The password for ${passwordResetData.user.name} has been changed.` });
+            handleClosePasswordDialog();
+        } else {
+            toast({ title: "Error", description: result.error, variant: "destructive" });
+        }
+    });
   };
 
   function onEditUserSubmit(data: EditUserFormValues) {
@@ -272,6 +335,10 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
                             <Pencil className="h-4 w-4" />
                             <span className="sr-only">Edit User</span>
                           </Button>
+                          <Button variant="ghost" size="icon" onClick={() => handleOpenPasswordDialog(user)}>
+                            <KeyRound className="h-4 w-4" />
+                            <span className="sr-only">Change Password</span>
+                          </Button>
                            <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => setUserToDelete(user)}>
                             <Trash2 className="h-4 w-4" />
                             <span className="sr-only">Delete User</span>
@@ -309,6 +376,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
         </CardFooter>
       </Card>
 
+      {/* Edit User Dialog */}
       <Dialog open={!!editingUser} onOpenChange={(open) => !open && handleCloseEditDialog()}>
         <DialogContent className="p-0 flex flex-col max-h-[90dvh]">
           <DialogHeader className="p-6 pb-4">
@@ -399,6 +467,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
         </DialogContent>
       </Dialog>
       
+      {/* Add User Dialog */}
       <Dialog open={isAddUserDialogOpen} onOpenChange={setIsAddUserDialogOpen}>
         <DialogContent className="p-0 flex flex-col max-h-[90dvh]">
           <DialogHeader className="p-6 pb-4">
@@ -517,6 +586,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
         </DialogContent>
       </Dialog>
       
+      {/* Delete User Dialog */}
       <AlertDialog open={!!userToDelete} onOpenChange={(open) => !open && setUserToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -537,6 +607,76 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Change Password Dialog */}
+      <Dialog open={!!userForPasswordChange} onOpenChange={handleClosePasswordDialog}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Reset Password for {userForPasswordChange?.name}</DialogTitle>
+                <DialogDescription>
+                    {passwordResetData 
+                        ? "Enter a new password for the user." 
+                        : "To begin the password reset process, confirm the user's phone number."
+                    }
+                </DialogDescription>
+            </DialogHeader>
+
+            {!passwordResetData ? (
+                <div className="py-4">
+                    <p className="text-sm">
+                        An SMS with a reset token will be sent to the user's phone number: 
+                        <strong className="ml-1">{userForPasswordChange?.phoneNumber}</strong>.
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-2">
+                        For this demo, a token will be generated directly without sending an SMS.
+                    </p>
+                    <DialogFooter className="mt-6">
+                        <Button variant="outline" onClick={handleClosePasswordDialog} disabled={isPending}>Cancel</Button>
+                        <Button onClick={handleForgotPassword} disabled={isPending}>
+                            {isPending ? "Generating Token..." : "Get Reset Token"}
+                        </Button>
+                    </DialogFooter>
+                </div>
+            ) : (
+                <Form {...resetPasswordForm}>
+                    <form id="reset-password-form" onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4 py-4">
+                        <FormField
+                            control={resetPasswordForm.control}
+                            name="password"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>New Password</FormLabel>
+                                    <FormControl>
+                                        <Input type="password" placeholder="••••••••" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <FormField
+                            control={resetPasswordForm.control}
+                            name="confirmPassword"
+                            render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel>Confirm New Password</FormLabel>
+                                    <FormControl>
+                                        <Input type="password" placeholder="••••••••" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </form>
+                    <DialogFooter>
+                        <Button variant="outline" onClick={handleClosePasswordDialog} disabled={isPending}>Cancel</Button>
+                        <Button type="submit" form="reset-password-form" disabled={isPending}>
+                            {isPending ? "Resetting..." : "Reset Password"}
+                        </Button>
+                    </DialogFooter>
+                </Form>
+            )}
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
