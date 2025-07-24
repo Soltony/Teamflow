@@ -12,7 +12,19 @@ interface ChangePasswordPayload {
 export async function changePassword(data: ChangePasswordPayload, accessToken: string) {
     try {
         const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-password`;
-        const response = await axios.post(authApiUrl, data, {
+        
+        // Admins changing other users' passwords won't have a 'currentPassword'
+        // The backend auth service should be configured to allow this based on the admin's token.
+        // We only send currentPassword if it is explicitly provided.
+        const payload: Partial<ChangePasswordPayload> = {
+            phoneNumber: data.phoneNumber,
+            newPassword: data.newPassword,
+        };
+        if (data.currentPassword) {
+            payload.currentPassword = data.currentPassword;
+        }
+
+        const response = await axios.post(authApiUrl, payload, {
             headers: {
                 'Authorization': `Bearer ${accessToken}`,
             },

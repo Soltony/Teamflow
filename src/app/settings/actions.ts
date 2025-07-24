@@ -134,7 +134,8 @@ export async function updateUser(userId: string, data: { firstName: string, last
         if (data.newPassword) {
             const passwordResult = await changePassword({
                 phoneNumber: data.phoneNumber,
-                newPassword: data.newPassword
+                newPassword: data.newPassword,
+                // currentPassword is not provided, as this is an admin action
             }, accessToken);
 
             if (!passwordResult.success) {
