@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -57,6 +57,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
+import { Skeleton } from "../ui/skeleton";
 
 type UserWithRoles = User & { roles: Role[] };
 
@@ -111,8 +112,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
-  const [passwordResetData, setPasswordResetData] = useState<{ user: UserWithRoles, token: string } | null>(null);
-  const [userForPasswordChange, setUserForPasswordChange] = useState<UserWithRoles | null>(null);
+  const [passwordResetData, setPasswordResetData] = useState<{ user: UserWithRoles, token: string | null, error: string | null, loading: boolean }>({ user: {} as UserWithRoles, token: null, error: null, loading: false });
   
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -177,36 +177,39 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
   };
 
   const handleOpenPasswordDialog = (user: UserWithRoles) => {
-    setUserForPasswordChange(user);
-    setPasswordResetData(null); // Reset to stage 1
+    setPasswordResetData({ user, token: null, error: null, loading: true });
   };
-
+  
   const handleClosePasswordDialog = () => {
-    setUserForPasswordChange(null);
-    setPasswordResetData(null);
+    setPasswordResetData({ user: {} as UserWithRoles, token: null, error: null, loading: false });
     resetPasswordForm.reset();
   };
 
-  const handleForgotPassword = async () => {
-    if (!userForPasswordChange?.phoneNumber) return;
-    startTransition(async () => {
-        const result = await forgotPasswordForUser(userForPasswordChange.phoneNumber!);
-        if (result.success && result.token) {
-            toast({ title: "Token Sent", description: "A password reset token has been generated." });
-            setPasswordResetData({ user: userForPasswordChange, token: result.token });
-        } else {
-            toast({ title: "Error", description: result.error, variant: "destructive" });
-        }
-    });
-  };
+  useEffect(() => {
+      if (passwordResetData.loading && !passwordResetData.token && !passwordResetData.error) {
+          const fetchToken = async () => {
+              if (!passwordResetData.user.phoneNumber) {
+                   setPasswordResetData(prev => ({...prev, error: 'User does not have a phone number.', loading: false}));
+                   return;
+              }
+              const result = await forgotPasswordForUser(passwordResetData.user.phoneNumber);
+              if (result.success && result.token) {
+                  setPasswordResetData(prev => ({ ...prev, token: result.token, loading: false }));
+              } else {
+                  setPasswordResetData(prev => ({ ...prev, error: result.error || 'Failed to generate token.', loading: false }));
+              }
+          };
+          fetchToken();
+      }
+  }, [passwordResetData]);
 
   const handleResetPassword = (data: ResetPasswordFormValues) => {
-    if (!passwordResetData) return;
+    if (!passwordResetData.token) return;
     startTransition(async () => {
         const result = await resetPasswordForUser({
             phoneNumber: passwordResetData.user.phoneNumber!,
             newPassword: data.password,
-            token: passwordResetData.token
+            token: passwordResetData.token!
         });
 
         if (result.success) {
@@ -609,36 +612,30 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
       </AlertDialog>
 
       {/* Change Password Dialog */}
-      <Dialog open={!!userForPasswordChange} onOpenChange={handleClosePasswordDialog}>
+      <Dialog open={passwordResetData.loading || !!passwordResetData.token || !!passwordResetData.error} onOpenChange={handleClosePasswordDialog}>
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Reset Password for {userForPasswordChange?.name}</DialogTitle>
+                <DialogTitle>Reset Password for {passwordResetData.user?.name}</DialogTitle>
                 <DialogDescription>
-                    {passwordResetData 
-                        ? "Enter a new password for the user." 
-                        : "To begin the password reset process, confirm the user's phone number."
-                    }
+                    {passwordResetData.loading ? "Generating a secure reset token..." : (passwordResetData.error ? "An error occurred." : "Enter a new password for the user.")}
                 </DialogDescription>
             </DialogHeader>
 
-            {!passwordResetData ? (
-                <div className="py-4">
-                    <p className="text-sm">
-                        An SMS with a reset token will be sent to the user's phone number: 
-                        <strong className="ml-1">{userForPasswordChange?.phoneNumber}</strong>.
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-2">
-                        For this demo, a token will be generated directly without sending an SMS.
-                    </p>
-                    <DialogFooter className="mt-6">
-                        <Button variant="outline" onClick={handleClosePasswordDialog} disabled={isPending}>Cancel</Button>
-                        <Button onClick={handleForgotPassword} disabled={isPending}>
-                            {isPending ? "Generating Token..." : "Get Reset Token"}
-                        </Button>
-                    </DialogFooter>
+            {passwordResetData.loading && (
+                <div className="py-4 space-y-4">
+                    <Skeleton className="h-10 w-full" />
+                    <Skeleton className="h-10 w-full" />
                 </div>
-            ) : (
-                <Form {...resetPasswordForm}>
+            )}
+
+            {passwordResetData.error && (
+                <div className="py-4 text-center text-red-600">
+                    <p>{passwordResetData.error}</p>
+                </div>
+            )}
+            
+            {passwordResetData.token && !passwordResetData.loading && (
+                 <Form {...resetPasswordForm}>
                     <form id="reset-password-form" onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4 py-4">
                         <FormField
                             control={resetPasswordForm.control}
@@ -667,16 +664,20 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
                             )}
                         />
                     </form>
-                    <DialogFooter>
-                        <Button variant="outline" onClick={handleClosePasswordDialog} disabled={isPending}>Cancel</Button>
-                        <Button type="submit" form="reset-password-form" disabled={isPending}>
-                            {isPending ? "Resetting..." : "Reset Password"}
-                        </Button>
-                    </DialogFooter>
                 </Form>
             )}
+
+            <DialogFooter>
+                <Button variant="outline" onClick={handleClosePasswordDialog} disabled={isPending}>Cancel</Button>
+                {passwordResetData.token && !passwordResetData.loading && (
+                     <Button type="submit" form="reset-password-form" disabled={isPending}>
+                        {isPending ? "Resetting..." : "Reset Password"}
+                    </Button>
+                )}
+            </DialogFooter>
         </DialogContent>
       </Dialog>
     </>
   );
 }
+
