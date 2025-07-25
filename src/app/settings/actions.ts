@@ -211,7 +211,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
         }
        
         revalidatePath('/settings');
-        return { success: true, phoneNumber: data.phoneNumber };
+        return { success: true };
 
     } catch (error) {
         if (axios.isAxiosError(error)) {

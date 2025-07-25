@@ -20,27 +20,19 @@ function AuthLoadingScreen() {
 }
 
 export function AuthShell({ children }: { children: React.ReactNode }) {
-  const { accessToken, loading, localUser } = useAuth();
+  const { accessToken, loading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
     if (!loading) {
-      const forceChangePhoneNumber = localStorage.getItem('forcePasswordChange');
-      if (forceChangePhoneNumber && localUser && localUser.phoneNumber === forceChangePhoneNumber) {
-        if (pathname !== '/profile') {
-          router.replace('/profile');
-        }
-        return;
-      }
-
       if (!accessToken && !publicPaths.includes(pathname)) {
         router.replace("/login");
       } else if (accessToken && publicPaths.includes(pathname)) {
         router.replace("/dashboard");
       }
     }
-  }, [loading, accessToken, router, pathname, localUser]);
+  }, [loading, accessToken, router, pathname]);
 
   if (loading) {
     return <AuthLoadingScreen />;
@@ -58,12 +50,6 @@ export function AuthShell({ children }: { children: React.ReactNode }) {
   
   // If user is authenticated and on a public path, show loading while redirecting.
   if (publicPaths.includes(pathname)) {
-      return <AuthLoadingScreen />;
-  }
-  
-  // If user is being forced to change password, only render the profile page
-  const forceChangePhoneNumber = localStorage.getItem('forcePasswordChange');
-  if (forceChangePhoneNumber && localUser && localUser.phoneNumber === forceChangePhoneNumber && pathname !== '/profile') {
       return <AuthLoadingScreen />;
   }
   

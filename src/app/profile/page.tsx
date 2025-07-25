@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useTransition, useEffect } from 'react';
+import { useState, useTransition } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
@@ -23,29 +23,20 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Eye, EyeOff, AlertTriangle } from 'lucide-react';
+import { Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { changePassword } from './actions';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 
-const changePasswordSchema = (isForcedChange: boolean) => z.object({
-  currentPassword: z.string().optional(),
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, 'Current password is required.'),
   newPassword: z.string().min(6, 'New password must be at least 6 characters.'),
   confirmPassword: z.string(),
 }).refine(data => data.newPassword === data.confirmPassword, {
   message: "Passwords don't match.",
   path: ['confirmPassword'],
-}).refine(data => {
-    if (!isForcedChange) {
-      return !!data.currentPassword && data.currentPassword.length > 0;
-    }
-    return true;
-}, {
-    message: 'Current password is required.',
-    path: ['currentPassword']
 });
 
-type ChangePasswordFormValues = z.infer<ReturnType<typeof changePasswordSchema>>;
+type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 
 export default function ProfilePage() {
   const { localUser, accessToken, logout } = useAuth();
@@ -55,19 +46,9 @@ export default function ProfilePage() {
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  
-  const [isForcedChange, setIsForcedChange] = useState(false);
-
-  useEffect(() => {
-    const forcedPhone = localStorage.getItem('forcePasswordChange');
-    if (forcedPhone && localUser && forcedPhone === localUser.phoneNumber) {
-        setIsForcedChange(true);
-    }
-  }, [localUser]);
-
 
   const form = useForm<ChangePasswordFormValues>({
-    resolver: zodResolver(changePasswordSchema(isForcedChange)),
+    resolver: zodResolver(changePasswordSchema),
     defaultValues: {
       currentPassword: '',
       newPassword: '',
@@ -90,16 +71,12 @@ export default function ProfilePage() {
         phoneNumber: localUser.phoneNumber,
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
-        isForcedChange,
       }, accessToken);
 
       if (result.success) {
-        if (isForcedChange) {
-            localStorage.removeItem('forcePasswordChange');
-        }
         toast({
           title: 'Password Changed Successfully',
-          description: isForcedChange ? 'Your new password has been set. You can now access the application.' : 'Your password has been updated. Please log in again with your new password.',
+          description: 'Your password has been updated. Please log in again with your new password.',
         });
         logout();
       } else {
@@ -118,52 +95,39 @@ export default function ProfilePage() {
         <CardHeader>
           <CardTitle>Change Password</CardTitle>
           <CardDescription>
-             {isForcedChange 
-                ? 'As a new user, you must change your temporary password before you can proceed.'
-                : 'Enter your current password and a new password to update your account.'
-             }
+            Enter your current password and a new password to update your account.
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {isForcedChange && (
-            <Alert variant="destructive" className="mb-6">
-                <AlertTriangle className="h-4 w-4" />
-                <AlertDescription>
-                   A password change is required for your account. Please set a new password below.
-                </AlertDescription>
-            </Alert>
-          )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {!isForcedChange && (
-                <FormField
-                    control={form.control}
-                    name="currentPassword"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Current Password</FormLabel>
-                        <div className="relative">
-                        <FormControl>
-                            <Input
-                            type={showCurrentPassword ? 'text' : 'password'}
-                            placeholder="••••••••"
-                            {...field}
-                            disabled={isPending}
-                            />
-                        </FormControl>
-                        <button
-                            type="button"
-                            onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                            className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                        >
-                            {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                        </button>
-                        </div>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-              )}
+              <FormField
+                control={form.control}
+                name="currentPassword"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Current Password</FormLabel>
+                    <div className="relative">
+                      <FormControl>
+                        <Input
+                          type={showCurrentPassword ? 'text' : 'password'}
+                          placeholder="••••••••"
+                          {...field}
+                          disabled={isPending}
+                        />
+                      </FormControl>
+                      <button
+                        type="button"
+                        onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                        className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
+                      >
+                        {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                      </button>
+                    </div>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="newPassword"
