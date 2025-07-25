@@ -106,6 +106,12 @@ export async function updateProject(projectId: string, data: any) {
     const milestoneIdsToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
 
     try {
+        const completedStatus = await prisma.projectStatus.findUnique({
+            where: { name: 'Completed' },
+            select: { id: true }
+        });
+        const isCompletingProject = completedStatus && projectData.statusId === completedStatus.id;
+
         await prisma.$transaction(async (tx) => {
             if (milestoneIdsToDelete.length > 0) {
                 const tasksInDeletedMilestones = await tx.task.findMany({
@@ -168,6 +174,25 @@ export async function updateProject(projectId: string, data: any) {
                         data: {
                             ...dataForUpsert,
                              project: { connect: { id: projectId } },
+                        }
+                    });
+                }
+            }
+
+            if (isCompletingProject) {
+                const allProjectMilestones = await tx.milestone.findMany({
+                    where: { projectId: projectId },
+                    select: { id: true }
+                });
+                const allProjectMilestoneIds = allProjectMilestones.map(m => m.id);
+
+                if (allProjectMilestoneIds.length > 0) {
+                    await tx.task.updateMany({
+                        where: { milestoneId: { in: allProjectMilestoneIds } },
+                        data: {
+                            status: 'DONE',
+                            progress: 100,
+                            completedAt: new Date(),
                         }
                     });
                 }
