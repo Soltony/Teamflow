@@ -9,6 +9,8 @@ import { syncUser } from '@/app/auth/actions';
 import type { Role, User as PrismaUser } from '@prisma/client';
 import { allPermissions as ALL_PERMISSIONS } from '@/lib/permissions';
 import { useToast } from '@/hooks/use-toast';
+import { useIdle } from 'react-use';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 interface AuthenticatedUser {
   email: string;
@@ -64,6 +66,43 @@ const processQueue = (error: any, token: string | null = null) => {
   failedQueue = [];
 };
 
+function InactivityWarningDialog({ open, onConfirm, onIdle }: { open: boolean, onConfirm: () => void, onIdle: () => void }) {
+    const [countdown, setCountdown] = useState(60);
+
+    useEffect(() => {
+        if (open) {
+            setCountdown(60);
+            const timer = setInterval(() => {
+                setCountdown(prev => {
+                    if (prev <= 1) {
+                        clearInterval(timer);
+                        onIdle();
+                        return 0;
+                    }
+                    return prev - 1;
+                });
+            }, 1000);
+            return () => clearInterval(timer);
+        }
+    }, [open, onIdle]);
+
+    return (
+        <AlertDialog open={open}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you still there?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        You've been inactive for a while. You will be logged out in {countdown} seconds for security reasons.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogAction onClick={onConfirm}>Stay Logged In</AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
+    );
+}
+
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<(AuthenticatedUser & { nameid: string }) | null>(null);
   const [localUser, setLocalUser] = useState<(PrismaUser & { roles: Role[] }) | null>(null);
@@ -73,6 +112,34 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
   const router = useRouter();
   const { toast } = useToast();
+  
+  const [showIdleWarning, setShowIdleWarning] = useState(false);
+  const isIdle = useIdle(14 * 60 * 1000, false); // 14 minutes
+
+  const logout = useCallback(() => {
+    setSession(null, null);
+    router.replace('/login');
+  }, [setSession, router]);
+
+  useEffect(() => {
+      if (isIdle && accessToken) {
+          setShowIdleWarning(true);
+      }
+  }, [isIdle, accessToken]);
+
+  const handleIdleConfirm = () => {
+    setShowIdleWarning(false);
+  };
+
+  const handleIdleLogout = () => {
+      setShowIdleWarning(false);
+      logout();
+      toast({
+          title: "Session Timed Out",
+          description: "You have been logged out due to inactivity.",
+          variant: 'destructive',
+      });
+  };
 
   const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, authData?: any) => {
     setLoading(true);
@@ -156,10 +223,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, [router]);
 
-  const logout = useCallback(() => {
-    setSession(null, null);
-    router.replace('/login');
-  }, [setSession, router]);
   
   useEffect(() => {
     const responseInterceptor = axiosInstance.interceptors.response.use(
@@ -337,7 +400,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isUserAdmin,
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={value}>
+        {children}
+        <InactivityWarningDialog 
+            open={showIdleWarning}
+            onConfirm={handleIdleConfirm}
+            onIdle={handleIdleLogout}
+        />
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
