@@ -244,8 +244,6 @@ export async function forgotPasswordForUser(phoneNumber: string) {
         
         const payload = { phoneNumber };
 
-        console.log('Sending payload to forgot-password:', JSON.stringify(payload, null, 2));
-
         const response = await axios.post<AuthResponse>(
             authApiUrl,
             payload,
