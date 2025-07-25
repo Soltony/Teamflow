@@ -27,6 +27,25 @@ export function CelebrationSlider({ completedProjects, teams }: { completedProje
   const autoplayPlugin = React.useRef(
     Autoplay({ delay: 5000, stopOnInteraction: true, playOnInit: true })
   );
+  const [carouselApi, setCarouselApi] = React.useState<any>(null);
+
+  React.useEffect(() => {
+    if (!carouselApi) {
+      return;
+    }
+    const handleMouseEnter = () => autoplayPlugin.current.stop();
+    const handleMouseLeave = () => autoplayPlugin.current.play();
+
+    const carouselEl = carouselApi.containerNode();
+    carouselEl.addEventListener('mouseenter', handleMouseEnter);
+    carouselEl.addEventListener('mouseleave', handleMouseLeave);
+
+    return () => {
+      carouselEl.removeEventListener('mouseenter', handleMouseEnter);
+      carouselEl.removeEventListener('mouseleave', handleMouseLeave);
+    };
+  }, [carouselApi]);
+
 
   if (!completedProjects || completedProjects.length === 0) {
     return null;
@@ -40,14 +59,13 @@ export function CelebrationSlider({ completedProjects, teams }: { completedProje
     <div className="relative">
       <Confetti width={width} height={height} recycle={false} numberOfPieces={400} />
       <Carousel
+        setApi={setCarouselApi}
         plugins={[autoplayPlugin.current]}
         opts={{
           align: 'start',
           loop: true,
         }}
         className="w-full"
-        onMouseEnter={() => autoplayPlugin.current.stop()}
-        onMouseLeave={() => autoplayPlugin.current.play()}
       >
         <CarouselContent>
           {completedProjects.map((project, index) => {
