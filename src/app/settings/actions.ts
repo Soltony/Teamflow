@@ -242,7 +242,7 @@ export async function forgotPasswordForUser(phoneNumber: string) {
     try {
         const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/forgot-password`;
         
-        const payload = { dto: { phoneNumber } };
+        const payload = { phoneNumber };
 
         console.log('Sending payload to forgot-password:', JSON.stringify(payload, null, 2));
 
