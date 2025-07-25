@@ -72,19 +72,19 @@ function InactivityWarningDialog({ open, onConfirm, onIdle }: { open: boolean, o
     useEffect(() => {
         if (open) {
             setCountdown(60);
+        }
+    }, [open]);
+
+    useEffect(() => {
+        if (open && countdown > 0) {
             const timer = setInterval(() => {
-                setCountdown(prev => {
-                    if (prev <= 1) {
-                        clearInterval(timer);
-                        onIdle();
-                        return 0;
-                    }
-                    return prev - 1;
-                });
+                setCountdown(prev => prev - 1);
             }, 1000);
             return () => clearInterval(timer);
+        } else if (open && countdown === 0) {
+            onIdle();
         }
-    }, [open, onIdle]);
+    }, [open, countdown, onIdle]);
 
     return (
         <AlertDialog open={open}>
