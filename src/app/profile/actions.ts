@@ -11,25 +11,50 @@ interface ChangePasswordPayload {
     newPassword?: string;
 }
 
-export async function updateUserProfile(userId: string, data: { firstName: string, lastName: string, email: string, phoneNumber: string }) {
+export async function updateUserProfile(userId: string, data: { email: string, phoneNumber: string }, accessToken: string) {
     try {
+        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/update-profile`;
+
+        // First, update the profile on the external auth service
+        await axios.put(authApiUrl, {
+                email: data.email,
+                phoneNumber: data.phoneNumber
+            }, {
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+        });
+        
+        // If the auth service update is successful, update the local database
         await prisma.user.update({
             where: { id: userId },
             data: {
-                firstName: data.firstName,
-                lastName: data.lastName,
-                name: `${data.firstName} ${data.lastName}`,
                 email: data.email,
                 phoneNumber: data.phoneNumber,
             },
         });
+        
         revalidatePath('/profile');
         return { success: true };
     } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+            console.error("Auth service profile update failed. Response:", error.response.status, error.response.data);
+            const responseData = error.response.data as any;
+            const errorValue = responseData.errors;
+            let errorMessage = 'An unexpected error occurred during the profile update.';
+            if (Array.isArray(errorValue)) {
+                errorMessage = errorValue.join(', ');
+            } else if (typeof errorValue === 'string') {
+                errorMessage = errorValue;
+            }
+            return { success: false, error: errorMessage };
+        }
         console.error("Failed to update user profile:", error);
         return { success: false, error: "Failed to update profile. The email or phone number may already be in use." };
     }
 }
+
 
 export async function changePassword(data: ChangePasswordPayload, accessToken: string) {
     try {

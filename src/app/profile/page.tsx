@@ -29,8 +29,6 @@ import { changePassword, updateUserProfile } from './actions';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const profileSchema = z.object({
-    firstName: z.string().min(1, 'First name is required.'),
-    lastName: z.string().min(1, 'Last name is required.'),
     email: z.string().email('A valid email is required.'),
     phoneNumber: z.string().min(1, 'Phone number is required.'),
 });
@@ -60,8 +58,6 @@ export default function ProfilePage() {
   const profileForm = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      firstName: localUser?.firstName || '',
-      lastName: localUser?.lastName || '',
       email: localUser?.email || '',
       phoneNumber: localUser?.phoneNumber || '',
     },
@@ -78,8 +74,8 @@ export default function ProfilePage() {
 
   const onProfileSubmit = (data: ProfileFormValues) => {
     startProfileTransition(async () => {
-        if (!localUser) return;
-        const result = await updateUserProfile(localUser.id, data);
+        if (!localUser || !accessToken) return;
+        const result = await updateUserProfile(localUser.id, data, accessToken);
         if (result.success) {
             toast({
                 title: 'Profile Updated',
@@ -148,12 +144,18 @@ export default function ProfilePage() {
                         <Form {...profileForm}>
                             <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
                                 <div className="grid grid-cols-2 gap-4">
-                                    <FormField control={profileForm.control} name="firstName" render={({ field }) => (
-                                        <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
-                                    <FormField control={profileForm.control} name="lastName" render={({ field }) => (
-                                        <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
-                                    )} />
+                                    <FormItem>
+                                        <FormLabel>First Name</FormLabel>
+                                        <FormControl>
+                                            <Input value={localUser?.firstName || ''} disabled />
+                                        </FormControl>
+                                    </FormItem>
+                                    <FormItem>
+                                        <FormLabel>Last Name</FormLabel>
+                                        <FormControl>
+                                            <Input value={localUser?.lastName || ''} disabled />
+                                        </FormControl>
+                                    </FormItem>
                                 </div>
                                 <FormField control={profileForm.control} name="email" render={({ field }) => (
                                     <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
