@@ -116,31 +116,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [showIdleWarning, setShowIdleWarning] = useState(false);
   const isIdle = useIdle(14 * 60 * 1000, false); // 14 minutes
 
-  const logout = useCallback(() => {
-    setSession(null, null);
-    router.replace('/login');
-  }, [setSession, router]);
-
-  useEffect(() => {
-      if (isIdle && accessToken) {
-          setShowIdleWarning(true);
-      }
-  }, [isIdle, accessToken]);
-
-  const handleIdleConfirm = () => {
-    setShowIdleWarning(false);
-  };
-
-  const handleIdleLogout = () => {
-      setShowIdleWarning(false);
-      logout();
-      toast({
-          title: "Session Timed Out",
-          description: "You have been logged out due to inactivity.",
-          variant: 'destructive',
-      });
-  };
-
   const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, authData?: any) => {
     setLoading(true);
     if (newAccessToken && newRefreshToken) {
@@ -223,6 +198,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setLoading(false);
   }, [router]);
 
+  const logout = useCallback(() => {
+    setSession(null, null);
+    router.replace('/login');
+  }, [setSession, router]);
+
+  useEffect(() => {
+      if (isIdle && accessToken) {
+          setShowIdleWarning(true);
+      }
+  }, [isIdle, accessToken]);
+
+  const handleIdleConfirm = () => {
+    setShowIdleWarning(false);
+  };
+
+  const handleIdleLogout = () => {
+      setShowIdleWarning(false);
+      logout();
+      toast({
+          title: "Session Timed Out",
+          description: "You have been logged out due to inactivity.",
+          variant: 'destructive',
+      });
+  };
   
   useEffect(() => {
     const responseInterceptor = axiosInstance.interceptors.response.use(
