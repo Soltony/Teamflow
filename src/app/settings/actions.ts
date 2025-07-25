@@ -242,9 +242,13 @@ export async function forgotPasswordForUser(phoneNumber: string) {
     try {
         const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/forgot-password`;
         
+        const payload = { dto: { phoneNumber } };
+
+        console.log('Sending payload to forgot-password:', JSON.stringify(payload, null, 2));
+
         const response = await axios.post<AuthResponse>(
             authApiUrl,
-            { dto: { phoneNumber } },
+            payload,
             { headers: { 'Content-Type': 'application/json' } }
         );
 
