@@ -8,20 +8,31 @@ import { Button } from '@/components/ui/button';
 export function ProjectCard({ project, href }: { project: any, href?: string }) {
   const allTasks = project.milestones.flatMap((m: any) => m.tasks);
   const completedTasks = allTasks.filter((task: any) => task.status === 'DONE').length;
-
-  const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
-    const completedTaskWeightInMilestone = milestone.tasks
-      .filter((task: any) => task.status === 'DONE')
-      .reduce((sum: number, task: any) => sum + task.weight, 0);
-    
-    // Milestone progress is (completed weight / 100), as task weights are designed to sum to 100
-    const milestoneProgress = completedTaskWeightInMilestone / 100;
-
-    // Add this milestone's weighted contribution to the total project progress
-    return progress + (milestoneProgress * milestone.weight);
-  }, 0);
-  
   const status = project.status;
+
+  const calculateProgress = () => {
+    if (status?.name === 'Completed') {
+        return 100;
+    }
+    
+    if (!project.milestones || project.milestones.length === 0) {
+        return 0;
+    }
+
+    const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
+        const completedTaskWeightInMilestone = milestone.tasks
+        .filter((task: any) => task.status === 'DONE')
+        .reduce((sum: number, task: any) => sum + task.weight, 0);
+        
+        const milestoneProgress = completedTaskWeightInMilestone / 100;
+
+        return progress + (milestoneProgress * milestone.weight);
+    }, 0);
+
+    return weightedProgress;
+  };
+
+  const progress = calculateProgress();
   const projectLink = href || `/projects/${project.id}`;
   
   return (
@@ -36,9 +47,9 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
         <div className="space-y-2">
           <div className="flex justify-between items-center text-sm text-muted-foreground">
             <span>Progress</span>
-            <span>{Math.round(weightedProgress)}%</span>
+            <span>{Math.round(progress)}%</span>
           </div>
-          <Progress value={weightedProgress} className="h-2" />
+          <Progress value={progress} className="h-2" />
           <div className="flex justify-between text-sm text-muted-foreground">
             <span>Tasks</span>
             <span>{completedTasks} / {allTasks.length}</span>
