@@ -11,6 +11,26 @@ interface ChangePasswordPayload {
     newPassword?: string;
 }
 
+export async function updateUserProfile(userId: string, data: { firstName: string, lastName: string, email: string, phoneNumber: string }) {
+    try {
+        await prisma.user.update({
+            where: { id: userId },
+            data: {
+                firstName: data.firstName,
+                lastName: data.lastName,
+                name: `${data.firstName} ${data.lastName}`,
+                email: data.email,
+                phoneNumber: data.phoneNumber,
+            },
+        });
+        revalidatePath('/profile');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to update user profile:", error);
+        return { success: false, error: "Failed to update profile. The email or phone number may already be in use." };
+    }
+}
+
 export async function changePassword(data: ChangePasswordPayload, accessToken: string) {
     try {
         const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-password`;

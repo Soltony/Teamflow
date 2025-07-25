@@ -25,7 +25,15 @@ import {
 import { Input } from '@/components/ui/input';
 import { Eye, EyeOff } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { changePassword } from './actions';
+import { changePassword, updateUserProfile } from './actions';
+import { Separator } from '@/components/ui/separator';
+
+const profileSchema = z.object({
+    firstName: z.string().min(1, 'First name is required.'),
+    lastName: z.string().min(1, 'Last name is required.'),
+    email: z.string().email('A valid email is required.'),
+    phoneNumber: z.string().min(1, 'Phone number is required.'),
+});
 
 const changePasswordSchema = z.object({
   currentPassword: z.string().min(1, 'Current password is required.'),
@@ -36,18 +44,30 @@ const changePasswordSchema = z.object({
   path: ['confirmPassword'],
 });
 
+type ProfileFormValues = z.infer<typeof profileSchema>;
 type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 
 export default function ProfilePage() {
   const { localUser, accessToken, logout } = useAuth();
   const { toast } = useToast();
-  const [isPending, startTransition] = useTransition();
+  const [isProfilePending, startProfileTransition] = useTransition();
+  const [isPasswordPending, startPasswordTransition] = useTransition();
 
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  const form = useForm<ChangePasswordFormValues>({
+  const profileForm = useForm<ProfileFormValues>({
+    resolver: zodResolver(profileSchema),
+    defaultValues: {
+      firstName: localUser?.firstName || '',
+      lastName: localUser?.lastName || '',
+      email: localUser?.email || '',
+      phoneNumber: localUser?.phoneNumber || '',
+    },
+  });
+
+  const passwordForm = useForm<ChangePasswordFormValues>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: {
       currentPassword: '',
@@ -56,8 +76,28 @@ export default function ProfilePage() {
     },
   });
 
-  const onSubmit = (data: ChangePasswordFormValues) => {
-    startTransition(async () => {
+  const onProfileSubmit = (data: ProfileFormValues) => {
+    startProfileTransition(async () => {
+        if (!localUser) return;
+        const result = await updateUserProfile(localUser.id, data);
+        if (result.success) {
+            toast({
+                title: 'Profile Updated',
+                description: 'Your profile information has been successfully updated.',
+            });
+            // Optionally, refresh auth context data if it's stale
+        } else {
+            toast({
+                title: 'Error Updating Profile',
+                description: result.error,
+                variant: 'destructive',
+            });
+        }
+    });
+  };
+
+  const onPasswordSubmit = (data: ChangePasswordFormValues) => {
+    startPasswordTransition(async () => {
       if (!localUser || !localUser.phoneNumber || !accessToken) {
         toast({
           title: 'Authentication Error',
@@ -90,7 +130,43 @@ export default function ProfilePage() {
   };
 
   return (
-    <div className="p-4 sm:p-6">
+    <div className="p-4 sm:p-6 space-y-6">
+        <Card className="max-w-2xl mx-auto">
+            <CardHeader>
+                <CardTitle>User Profile</CardTitle>
+                <CardDescription>
+                    Update your personal information here.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Form {...profileForm}>
+                    <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                            <FormField control={profileForm.control} name="firstName" render={({ field }) => (
+                                <FormItem><FormLabel>First Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                            <FormField control={profileForm.control} name="lastName" render={({ field }) => (
+                                <FormItem><FormLabel>Last Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                            )} />
+                        </div>
+                        <FormField control={profileForm.control} name="email" render={({ field }) => (
+                            <FormItem><FormLabel>Email</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={profileForm.control} name="phoneNumber" render={({ field }) => (
+                            <FormItem><FormLabel>Phone Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <div className="pt-2">
+                            <Button type="submit" className="w-full" disabled={isProfilePending}>
+                                {isProfilePending ? 'Saving...' : 'Save Profile'}
+                            </Button>
+                        </div>
+                    </form>
+                </Form>
+            </CardContent>
+        </Card>
+      
+        <Separator />
+
       <Card className="max-w-2xl mx-auto">
         <CardHeader>
           <CardTitle>Change Password</CardTitle>
@@ -99,10 +175,10 @@ export default function ProfilePage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <Form {...passwordForm}>
+            <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
               <FormField
-                control={form.control}
+                control={passwordForm.control}
                 name="currentPassword"
                 render={({ field }) => (
                   <FormItem>
@@ -113,7 +189,7 @@ export default function ProfilePage() {
                           type={showCurrentPassword ? 'text' : 'password'}
                           placeholder="••••••••"
                           {...field}
-                          disabled={isPending}
+                          disabled={isPasswordPending}
                         />
                       </FormControl>
                       <button
@@ -129,7 +205,7 @@ export default function ProfilePage() {
                 )}
               />
               <FormField
-                control={form.control}
+                control={passwordForm.control}
                 name="newPassword"
                 render={({ field }) => (
                   <FormItem>
@@ -140,7 +216,7 @@ export default function ProfilePage() {
                           type={showNewPassword ? 'text' : 'password'}
                           placeholder="••••••••"
                           {...field}
-                          disabled={isPending}
+                          disabled={isPasswordPending}
                         />
                       </FormControl>
                       <button
@@ -156,7 +232,7 @@ export default function ProfilePage() {
                 )}
               />
               <FormField
-                control={form.control}
+                control={passwordForm.control}
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
@@ -167,7 +243,7 @@ export default function ProfilePage() {
                           type={showConfirmPassword ? 'text' : 'password'}
                           placeholder="••••••••"
                           {...field}
-                          disabled={isPending}
+                          disabled={isPasswordPending}
                         />
                       </FormControl>
                        <button
@@ -183,8 +259,8 @@ export default function ProfilePage() {
                 )}
               />
               <div className="pt-2">
-                 <Button type="submit" className="w-full" disabled={isPending}>
-                    {isPending ? 'Changing Password...' : 'Change Password'}
+                 <Button type="submit" className="w-full" disabled={isPasswordPending}>
+                    {isPasswordPending ? 'Changing Password...' : 'Change Password'}
                 </Button>
               </div>
             </form>
