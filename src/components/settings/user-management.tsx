@@ -245,7 +245,8 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
             return;
         }
         const result = await createUser({ ...data, roleIds: data.roleIds || [] }, accessToken);
-        if (result.success) {
+        if (result.success && result.phoneNumber) {
+            localStorage.setItem('forcePasswordChange', result.phoneNumber);
             toast({ title: "User Created", description: `User ${data.firstName} ${data.lastName} has been created.` });
             handleCloseAddUserDialog();
             onDataChange();
@@ -680,4 +681,3 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
     </>
   );
 }
-

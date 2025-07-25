@@ -1,12 +1,15 @@
 
 'use server';
 
+import { revalidatePath } from 'next/cache';
+import prisma from '@/lib/db';
 import axios from 'axios';
 
 interface ChangePasswordPayload {
     phoneNumber: string;
     currentPassword?: string;
     newPassword?: string;
+    isForcedChange?: boolean;
 }
 
 export async function changePassword(data: ChangePasswordPayload, accessToken: string) {
@@ -26,6 +29,11 @@ export async function changePassword(data: ChangePasswordPayload, accessToken: s
         });
         
         if (response.data?.isSuccess || response.status === 200 || response.status === 204) {
+            // If it was a forced change, update the user record to reflect completion
+            if (data.isForcedChange) {
+                // In a real scenario, you might have a flag like `passwordChangeRequired = false`
+                // For now, we assume the change itself is enough.
+            }
             return { success: true };
         } else {
             const errorMessage = Array.isArray(response.data.errors) ? response.data.errors.join(', ') : 'An unknown error occurred.';

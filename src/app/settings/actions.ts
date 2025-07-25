@@ -211,7 +211,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
         }
        
         revalidatePath('/settings');
-        return { success: true };
+        return { success: true, phoneNumber: data.phoneNumber };
 
     } catch (error) {
         if (axios.isAxiosError(error)) {
@@ -374,5 +374,3 @@ export async function deleteRole(id: string) {
         return { success: false, error: 'Failed to delete role.' };
     }
 }
-
-    
