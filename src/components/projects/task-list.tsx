@@ -1,7 +1,7 @@
 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import type { Task, TaskStatus } from '@/lib/types';
-import { format, isPast, parseISO } from 'date-fns';
+import { format, isPast, parseISO, isAfter, endOfDay } from 'date-fns';
 import { Circle, CheckCircle2, CircleDot, AlertTriangle, Pencil, FileClock, Trash2 } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
@@ -53,7 +53,8 @@ export function TaskList({ tasks, onEditTask, onDeleteTask, users, canManageTask
         </TableHeader>
         <TableBody>
           {sortedTasks.map((task) => {
-            const isOverdue = isPast(parseISO(task.endDate)) && task.status !== 'DONE';
+            const taskEndDate = parseISO(task.endDate);
+            const isOverdue = isAfter(new Date(), endOfDay(taskEndDate)) && task.status !== 'DONE';
             return (
               <TableRow key={task.id}>
                 <TableCell>
@@ -73,7 +74,7 @@ export function TaskList({ tasks, onEditTask, onDeleteTask, users, canManageTask
                 </TableCell>
                 <TableCell>
                   <div className={cn("flex items-center gap-1.5", isOverdue && "text-destructive")}>
-                    <span>{format(parseISO(task.endDate), 'MMM dd, yyyy')}</span>
+                    <span>{format(taskEndDate, 'MMM dd, yyyy')}</span>
                     {isOverdue && (
                       <Tooltip>
                           <TooltipTrigger>

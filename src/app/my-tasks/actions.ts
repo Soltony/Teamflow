@@ -71,14 +71,29 @@ export async function getMyTasks(userId: string) {
 
 export async function updateTaskStatusAction(taskId: string, newStatus: TaskStatus) {
   try {
+    const dataToUpdate: {
+      status: TaskStatus;
+      completedAt?: Date | null;
+      progress?: number;
+    } = {
+      status: newStatus,
+    };
+
+    if (newStatus === 'DONE') {
+      dataToUpdate.completedAt = new Date();
+      dataToUpdate.progress = 100;
+    } else if (newStatus === 'TODO') {
+      dataToUpdate.completedAt = null;
+      dataToUpdate.progress = 0;
+    } else if (newStatus === 'IN_PROGRESS' || newStatus === 'PENDING_REVIEW') {
+      dataToUpdate.completedAt = null;
+    }
+
     await prisma.task.update({
       where: { id: taskId },
-      data: {
-        status: newStatus,
-        completedAt: newStatus === 'DONE' ? new Date() : null,
-        progress: newStatus === 'DONE' ? 100 : (newStatus === 'TODO' ? 0 : undefined),
-      },
+      data: dataToUpdate,
     });
+
     revalidatePath('/my-tasks');
     return { success: true };
   } catch (error) {
@@ -110,7 +125,11 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
             };
             
             if (task.status === 'TODO' || task.status === 'IN_PROGRESS') {
-                updates.status = progressPercentage === 100 ? 'PENDING_REVIEW' : 'IN_PROGRESS';
+                if (progressPercentage === 100) {
+                    updates.status = 'PENDING_REVIEW';
+                } else if (progressPercentage > 0 && task.status === 'TODO') {
+                    updates.status = 'IN_PROGRESS';
+                }
             }
 
             await tx.task.update({

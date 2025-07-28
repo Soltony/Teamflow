@@ -28,7 +28,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { Task, User, TaskUpdate, TaskStatus } from "@/lib/types";
-import { format, formatDistanceToNow, isPast, parseISO, differenceInDays } from "date-fns";
+import { format, formatDistanceToNow, isPast, parseISO, differenceInDays, isAfter, endOfDay } from "date-fns";
 import { CheckCircle, XCircle, AlertTriangle, Clock, Check, Target, Award } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { UserTask } from "@/app/my-tasks/actions";
@@ -262,7 +262,7 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
     const allCompletedTasks = initialTasks.filter(t => t.status === 'DONE');
 
     initialTasks.forEach(task => {
-        const isTaskOverdue = isPast(parseISO(task.endDate)) && task.status !== 'DONE';
+        const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && task.status !== 'DONE';
         if (isTaskOverdue) {
             overdue.push(task);
         } else if (task.status === 'DONE') {
@@ -318,10 +318,10 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
     let toastDescription = "Your progress update has been recorded.";
 
     if (result.success) {
-        if (task.status === 'IN_PROGRESS' && data.progressPercentage === 100) {
+        if (data.progressPercentage === 100) {
             toastDescription = "Your update has been posted and the task is now pending review.";
-        } else if (task.status === 'IN_PROGRESS') {
-            toastDescription = "Your update has been posted.";
+        } else if (task.status === 'TODO' && data.progressPercentage > 0) {
+             toastDescription = "Your update has been posted and task status is now In Progress.";
         }
         toast({
             title: "Update Added",
