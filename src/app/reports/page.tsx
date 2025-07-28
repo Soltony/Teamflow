@@ -79,11 +79,6 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
         description = "A list of all projects.";
         filteredProjects = allProjects;
     }
-    
-    // Redirect logic for single project with active blockers
-    if (type === 'active-blockers' && filteredProjects.length === 1) {
-        redirect(`/projects/${filteredProjects[0].id}?tab=blockers`);
-    }
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -103,7 +98,7 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
                                 <ProjectCard 
                                     key={project.id} 
                                     project={project}
-                                    href={type === 'active-blockers' ? `/projects/${project.id}?tab=blockers` : undefined}
+                                    href={type === 'active-blockers' ? `/projects/${project.id}?tab=blockers` : `/projects/${project.id}`}
                                 />
                             ))}
                         </div>
