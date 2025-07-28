@@ -194,7 +194,7 @@ export function ProjectView({
               <span>{project.milestones.length} Milestones</span>
             </div>
              <div className="flex items-center gap-2">
-                {project.status.name === 'Completed' ? (
+                {project.status.name === 'Completed' || weightedProgress >= 100 ? (
                     <>
                         <ShieldCheck className="w-4 h-4 text-green-600" />
                         <span>Completed: {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
