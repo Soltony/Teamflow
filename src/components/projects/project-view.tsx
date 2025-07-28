@@ -4,8 +4,8 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot } from "lucide-react";
-import { format, differenceInDays, parseISO } from "date-fns";
+import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot, AlertTriangle } from "lucide-react";
+import { format, differenceInDays, parseISO, isAfter, endOfDay } from "date-fns";
 import type { Blocker, TaskStatus, Project } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -129,6 +129,37 @@ export function ProjectView({
       .reduce((sum: number, task: any) => sum + task.weight, 0);
   };
 
+  const renderTimelineStatus = () => {
+    const isProjectComplete = project.status.name === 'Completed' || weightedProgress >= 100;
+    const endDate = parseISO(project.endDate);
+    
+    if (isProjectComplete) {
+      return (
+        <>
+          <ShieldCheck className="w-4 h-4 text-green-600" />
+          <span>Completed: {format(endDate, "MMM d, yyyy")}</span>
+        </>
+      );
+    }
+    
+    const isOverdue = isAfter(new Date(), endOfDay(endDate));
+    if (isOverdue) {
+      return (
+        <>
+          <AlertTriangle className="w-4 h-4 text-destructive" />
+          <span className="text-destructive">Overdue</span>
+        </>
+      );
+    }
+
+    return (
+      <>
+        <CircleDot className="w-4 h-4" />
+        <span>{differenceInDays(endDate, new Date())} days left</span>
+      </>
+    );
+  };
+
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -194,17 +225,7 @@ export function ProjectView({
               <span>{project.milestones.length} Milestones</span>
             </div>
              <div className="flex items-center gap-2">
-                {project.status.name === 'Completed' || weightedProgress >= 100 ? (
-                    <>
-                        <ShieldCheck className="w-4 h-4 text-green-600" />
-                        <span>Completed: {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
-                    </>
-                ) : (
-                    <>
-                        <CircleDot className="w-4 h-4" />
-                        <span>{differenceInDays(parseISO(project.endDate), new Date())} days left</span>
-                    </>
-                )}
+                {renderTimelineStatus()}
             </div>
           </div>
           <div>
