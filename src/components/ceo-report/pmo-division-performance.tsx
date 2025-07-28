@@ -97,7 +97,7 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                                                     <h4 className="font-semibold text-muted-foreground mb-2">{status} ({projectList.length})</h4>
                                                     <div className="pl-4 border-l-2 space-y-2">
                                                         {projectList.map(p => (
-                                                            <Link href={`/projects/${p.id}`} key={p.id} className="block text-sm text-primary hover:underline">
+                                                            <Link href={`/reports?type=${status.toLowerCase()}`} key={p.id} className="block text-sm text-primary hover:underline">
                                                                 {p.name}
                                                             </Link>
                                                         ))}
