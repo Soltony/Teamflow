@@ -194,8 +194,17 @@ export function ProjectView({
               <span>{project.milestones.length} Milestones</span>
             </div>
              <div className="flex items-center gap-2">
-              <CircleDot className="w-4 h-4" />
-              <span>{differenceInDays(parseISO(project.endDate), new Date())} days left</span>
+                {project.status.name === 'Completed' ? (
+                    <>
+                        <ShieldCheck className="w-4 h-4 text-green-600" />
+                        <span>Completed: {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
+                    </>
+                ) : (
+                    <>
+                        <CircleDot className="w-4 h-4" />
+                        <span>{differenceInDays(parseISO(project.endDate), new Date())} days left</span>
+                    </>
+                )}
             </div>
           </div>
           <div>
