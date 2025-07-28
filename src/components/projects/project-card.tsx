@@ -1,4 +1,3 @@
-
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -33,13 +32,14 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
   };
 
   const progress = calculateProgress();
-  const projectLink = href || `/projects/${project.id}`;
+  const projectLink = `/projects/${project.id}`;
+  const titleLink = href || projectLink;
   
   return (
     <Card className="flex flex-col">
       <CardHeader>
         <CardTitle className="hover:text-primary transition-colors">
-          <Link href={projectLink}>{project.name}</Link>
+          <Link href={titleLink}>{project.name}</Link>
         </CardTitle>
         <CardDescription className="line-clamp-2">{project.description}</CardDescription>
       </CardHeader>
