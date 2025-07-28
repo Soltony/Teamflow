@@ -292,11 +292,27 @@ export async function addTask(milestoneId: string, projectId: string, data: any)
 
 export async function updateTask(taskId: string, projectId: string, data: any) {
     const { assignedUserIds, ...taskData } = data;
+
+    const finalTaskData = { ...taskData };
+
+    if (finalTaskData.status === 'DONE') {
+        finalTaskData.progress = 100;
+        finalTaskData.completedAt = new Date();
+    } else if (finalTaskData.status === 'TODO') {
+        finalTaskData.progress = 0;
+        finalTaskData.completedAt = null;
+    } else if (finalTaskData.status === 'IN_PROGRESS' && finalTaskData.progress === 100) {
+        // If a user moves a task back to "In Progress" from "Done" or "Pending Review",
+        // but the progress is still 100%, we might want to adjust it.
+        // For now, let's assume the user will manage the progress slider separately.
+        // Or we could reset it:
+        // finalTaskData.progress = 95; // or some other value
+    }
     
     await prisma.task.update({
         where: { id: taskId },
         data: {
-            ...taskData,
+            ...finalTaskData,
             assignees: assignedUserIds ? {
                 set: assignedUserIds.map((id:string) => ({ id }))
             } : undefined,
