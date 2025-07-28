@@ -85,7 +85,6 @@ const addUserSchema = z.object({
   lastName: z.string().min(1, "Last name is required."),
   email: z.string().email("A valid email is required."),
   phoneNumber: z.string().min(1, "Phone number is required."),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
   pmoDivisionId: z.string().nonempty("Please select a PMO division."),
   roleIds: z.array(z.string()).optional(),
 });
@@ -136,7 +135,6 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
       lastName: "",
       email: "",
       phoneNumber: "",
-      password: "",
       pmoDivisionId: "",
       roleIds: [],
     },
@@ -245,8 +243,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
             return;
         }
         const result = await createUser({ ...data, roleIds: data.roleIds || [] }, accessToken);
-        if (result.success && result.phoneNumber) {
-            localStorage.setItem('forcePasswordChange', result.phoneNumber);
+        if (result.success) {
             toast({ title: "User Created", description: `User ${data.firstName} ${data.lastName} has been created.` });
             handleCloseAddUserDialog();
             onDataChange();
@@ -476,7 +473,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
         <DialogContent className="p-0 flex flex-col max-h-[90dvh]">
           <DialogHeader className="p-6 pb-4">
             <DialogTitle>Add New User</DialogTitle>
-            <DialogDescription>Create a new user account and assign initial roles.</DialogDescription>
+            <DialogDescription>Create a new user account and assign initial roles. The password will be set to "Welcome2PMO".</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-6">
             <Form {...addUserForm}>
@@ -494,34 +491,6 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
                   )} />
                   <FormField control={addUserForm.control} name="email" render={({ field }) => (
                       <FormItem><FormLabel>Email</FormLabel><FormControl><Input placeholder="john.doe@example.com" {...field} /></FormControl><FormMessage /></FormItem>
-                  )} />
-                  <FormField control={addUserForm.control} name="password" render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Set Password</FormLabel>
-                          <div className="relative">
-                            <FormControl>
-                                <Input
-                                    type={showPassword ? 'text' : 'password'}
-                                    placeholder="••••••••"
-                                    className="pr-10"
-                                    {...field}
-                                />
-                            </FormControl>
-                            <button
-                                type="button"
-                                onClick={() => setShowPassword(!showPassword)}
-                                className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                                aria-label={showPassword ? 'Hide password' : 'Show password'}
-                            >
-                                {showPassword ? (
-                                    <EyeOff className="h-5 w-5" />
-                                ) : (
-                                    <Eye className="h-5 w-5" />
-                                )}
-                            </button>
-                          </div>
-                          <FormMessage />
-                      </FormItem>
                   )} />
                   <FormField
                       control={addUserForm.control}

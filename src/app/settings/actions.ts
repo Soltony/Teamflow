@@ -139,10 +139,7 @@ export async function updateUser(userId: string, data: { firstName: string, last
     }
 }
 
-export async function createUser(data: { firstName: string, lastName: string, email: string, phoneNumber: string, password?: string, roleIds: string[], pmoDivisionId: string }, accessToken: string) {
-    if (!data.password) {
-        return { success: false, error: "Password is required." };
-    }
+export async function createUser(data: { firstName: string, lastName: string, email: string, phoneNumber: string, roleIds: string[], pmoDivisionId: string }, accessToken: string) {
     if (!accessToken) {
         return { success: false, error: "Authentication token is missing. You may need to log in again." };
     }
@@ -155,7 +152,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
             lastName: data.lastName,
             email: data.email,
             phoneNumber: data.phoneNumber,
-            password: data.password,
+            password: "Welcome2PMO",
         };
 
         const registrationResponse = await axios.post<AuthResponse>(authApiUrl, registrationPayload, {
