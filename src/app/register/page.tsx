@@ -21,18 +21,12 @@ import { useToast } from '@/hooks/use-toast';
 import { NibLogo } from '@/components/logo';
 import Link from 'next/link';
 import { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
 
 const registerSchema = z.object({
   firstName: z.string().min(1, 'First name is required'),
   lastName: z.string().min(1, 'Last name is required'),
   phoneNumber: z.string().min(1, 'Phone number is required'),
   email: z.string().email('Invalid email address').optional().or(z.literal('')),
-  password: z.string().min(6, 'Password must be at least 6 characters'),
-  confirmPassword: z.string(),
-}).refine(data => data.password === data.confirmPassword, {
-    message: "Passwords don't match",
-    path: ["confirmPassword"],
 });
 
 type RegisterFormValues = z.infer<typeof registerSchema>;
@@ -41,8 +35,6 @@ export default function RegisterPage() {
   const { register } = useAuth();
   const router = useRouter();
   const { toast } = useToast();
-  const [showPassword, setShowPassword] = useState(false);
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const form = useForm<RegisterFormValues>({
     resolver: zodResolver(registerSchema),
@@ -51,8 +43,6 @@ export default function RegisterPage() {
       lastName: '',
       phoneNumber: '',
       email: '',
-      password: '',
-      confirmPassword: '',
     },
   });
 
@@ -62,6 +52,7 @@ export default function RegisterPage() {
     const normalizedData = {
       ...data,
       phoneNumber: data.phoneNumber.replace(/\D/g, ''),
+      password: 'Welcome2PMO',
     };
 
     const result = await register(normalizedData);
@@ -150,72 +141,6 @@ export default function RegisterPage() {
                   <FormControl>
                     <Input placeholder="0912345678" {...field} disabled={isSubmitting} />
                   </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="password"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        className="pr-10"
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                      aria-label={showPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="confirmPassword"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Confirm Password</FormLabel>
-                  <div className="relative">
-                    <FormControl>
-                      <Input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        className="pr-10"
-                        {...field}
-                        disabled={isSubmitting}
-                      />
-                    </FormControl>
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
-                      aria-label={showConfirmPassword ? 'Hide password' : 'Show password'}
-                    >
-                      {showConfirmPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
-                    </button>
-                  </div>
                   <FormMessage />
                 </FormItem>
               )}
