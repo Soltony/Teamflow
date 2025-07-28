@@ -14,7 +14,7 @@ export async function getMilestonesPageData(userId: string) {
         return [];
     }
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager');
+    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
 
     let whereClause: Prisma.ProjectWhereInput = {};
 

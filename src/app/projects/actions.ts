@@ -357,7 +357,7 @@ export async function getProjectsPageData(userId: string) {
         };
     }
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager');
+    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
 
     let whereClause: Prisma.ProjectWhereInput = {};
 
@@ -458,7 +458,7 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
         return null; // Project not found
     }
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager');
+    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
     if (isManagerOrAdmin) {
         return JSON.parse(JSON.stringify(project));
     }
@@ -513,7 +513,7 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
 
     if (!user) return null;
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager');
+    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
     
     let whereClause: Prisma.ProjectWhereUniqueInput = { id: projectId };
     

@@ -73,7 +73,7 @@ export async function getTeamsPageData(userId: string) {
         return { teams: [], projects: [], users: [] };
     }
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager');
+    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
     
     let whereClause: Prisma.TeamWhereInput = {};
 
