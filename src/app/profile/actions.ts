@@ -13,20 +13,32 @@ interface ChangePasswordPayload {
 
 export async function updateUserProfile(userId: string, data: { email: string, phoneNumber: string }, accessToken: string) {
     try {
-        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/update-profile`;
+        const currentUser = await prisma.user.findUnique({ where: { id: userId } });
+        if (!currentUser) {
+            return { success: false, error: "User not found." };
+        }
 
-        // First, update the profile on the external auth service
-        await axios.put(authApiUrl, {
-                email: data.email,
-                phoneNumber: data.phoneNumber
-            }, {
-                headers: {
-                    'Authorization': `Bearer ${accessToken}`,
-                    'Content-Type': 'application/json'
-                },
-        });
-        
-        // If the auth service update is successful, update the local database
+        const emailChanged = data.email !== currentUser.email;
+        const phoneChanged = data.phoneNumber !== currentUser.phoneNumber;
+
+        if (phoneChanged) {
+            const changePhoneUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-phone-number`;
+            await axios.post(changePhoneUrl, { newPhoneNumber: data.phoneNumber }, {
+                headers: { 'Authorization': `Bearer ${accessToken}` }
+            });
+        }
+
+        if (emailChanged) {
+             const updateProfileUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/update-profile`;
+             await axios.put(updateProfileUrl, { email: data.email, phoneNumber: data.phoneNumber }, {
+                 headers: {
+                     'Authorization': `Bearer ${accessToken}`,
+                     'Content-Type': 'application/json'
+                 },
+             });
+        }
+
+        // If either auth service update is successful, update the local database
         await prisma.user.update({
             where: { id: userId },
             data: {
