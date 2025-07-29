@@ -23,7 +23,7 @@ export async function updateUserProfile(userId: string, data: { email: string, p
 
         if (phoneChanged) {
             const changePhoneUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-phone-number`;
-            await axios.post(changePhoneUrl, { newPhoneNumber: data.phoneNumber }, {
+            await axios.post(changePhoneUrl, { currentPhoneNumber: currentUser.phoneNumber, newPhoneNumber: data.phoneNumber }, {
                 headers: { 'Authorization': `Bearer ${accessToken}` }
             });
         }
