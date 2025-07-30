@@ -405,7 +405,7 @@ Let’s keep projects on track—together.
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-          <Card className="md:col-span-2">
+          <Card>
             <CardHeader>
             <CardTitle>Organization EPMO Divisions</CardTitle>
             <CardDescription>
@@ -433,8 +433,9 @@ Let’s keep projects on track—together.
                             {division.responsibleName}, {division.responsibleTitle}
                         </p>
                         </div>
-                        <a href={`tel:${division.responsiblePhone}`} className="text-sm text-muted-foreground hover:text-primary">
+                        <a href={`tel:${division.responsiblePhone}`} className="text-sm text-muted-foreground hover:text-primary flex items-center gap-2">
                             <Phone className="h-4 w-4" />
+                            {division.responsiblePhone}
                         </a>
                     </div>
                     {index < pmoDivisions.length - 1 && <Separator />}
@@ -448,9 +449,48 @@ Let’s keep projects on track—together.
             </div>
             </CardContent>
         </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Project Teams</CardTitle>
+                <CardDescription>
+                A list of all teams.
+                {hasPermission('teams:read') && (
+                    <>
+                    {' '}Manage them in the{' '}
+                    <Link href="/teams" className="text-primary hover:underline">
+                        Teams page
+                    </Link>
+                    .
+                    </>
+                )}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-4">
+                {filteredTeams.length > 0 ? (
+                    filteredTeams.map((team: any, index: number) => (
+                    <React.Fragment key={team.id}>
+                        <div className="flex items-start justify-between p-2 rounded-md hover:bg-muted/50">
+                        <div>
+                            <p className="font-semibold">{team.name}</p>
+                            <p className="text-sm text-muted-foreground">
+                            Lead: {team.teamLead.name}
+                            </p>
+                        </div>
+                        <Badge variant="outline">{team.project.name}</Badge>
+                        </div>
+                        {index < filteredTeams.length - 1 && <Separator />}
+                    </React.Fragment>
+                    ))
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                    No teams found for the current selection.
+                    </p>
+                )}
+                </div>
+            </CardContent>
+        </Card>
       </div>
     </div>
   );
 }
-
-    
