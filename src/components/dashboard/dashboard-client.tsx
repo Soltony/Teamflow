@@ -163,7 +163,9 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     return totalProgress;
   };
 
-  const epmoLeader = pmoDivisions.length > 0 ? pmoDivisions[0] : null;
+  const epmoLeader = pmoDivisions.find((d: any) => d.responsibleTitle === 'Director EPMO');
+  const otherDivisions = pmoDivisions.filter((d: any) => d.responsibleTitle !== 'Director EPMO');
+
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -412,15 +414,6 @@ Let’s keep projects on track—together.
                 <CardTitle>EPMO Leader</CardTitle>
                 <CardDescription>
                 The primary contact for the Enterprise Project Management Office.
-                {hasPermission('pmo-divisions:view') && (
-                    <>
-                    {' '}Manage divisions in the{' '}
-                    <Link href="/pmo-divisions" className="text-primary hover:underline">
-                        EPMO Divisions page
-                    </Link>
-                    .
-                    </>
-                )}
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -438,21 +431,21 @@ Let’s keep projects on track—together.
                     </div>
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                        No EPMO divisions found. Add one on the EPMO Divisions page.
+                        No EPMO Leader with the title "Director EPMO" found. Add one on the EPMO Divisions page.
                     </p>
                 )}
             </CardContent>
         </Card>
         <Card>
             <CardHeader>
-            <CardTitle>Project Teams</CardTitle>
+            <CardTitle>Other EPMO Divisions</CardTitle>
             <CardDescription>
-              A list of all teams.
-              {hasPermission('teams:read') && (
+              A list of other EPMO divisions.
+              {hasPermission('pmo-divisions:view') && (
                 <>
                   {' '}Manage them in the{' '}
-                  <Link href="/teams" className="text-primary hover:underline">
-                    Teams page
+                  <Link href="/pmo-divisions" className="text-primary hover:underline">
+                    EPMO Divisions page
                   </Link>
                   .
                 </>
@@ -461,24 +454,26 @@ Let’s keep projects on track—together.
             </CardHeader>
             <CardContent>
             <div className="space-y-2">
-                {filteredTeams.length > 0 ? (
-                filteredTeams.map((team: any, index: number) => (
-                    <React.Fragment key={team.id}>
+                {otherDivisions.length > 0 ? (
+                otherDivisions.map((division: any, index: number) => (
+                    <React.Fragment key={division.id}>
                     <div className="flex items-start justify-between p-2 rounded-md hover:bg-muted/50">
                         <div>
-                        <p className="font-semibold">{team.name}</p>
+                        <p className="font-semibold">{division.name}</p>
                         <p className="text-sm text-muted-foreground">
-                            Lead: {team.teamLead.name}
+                            {division.responsibleName}, {division.responsibleTitle}
                         </p>
                         </div>
-                        <Badge variant="secondary">{team.project.name}</Badge>
+                        <a href={`tel:${division.responsiblePhone}`} className="text-sm text-muted-foreground hover:text-primary">
+                            <Phone className="h-4 w-4" />
+                        </a>
                     </div>
-                    {index < filteredTeams.length - 1 && <Separator />}
+                    {index < otherDivisions.length - 1 && <Separator />}
                     </React.Fragment>
                 ))
                 ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                    No teams found for the current selection.
+                    No other EPMO divisions found.
                 </p>
                 )}
             </div>

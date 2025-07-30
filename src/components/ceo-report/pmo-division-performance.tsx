@@ -26,38 +26,40 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
     const completedStatusId = useMemo(() => projectStatuses.find(s => s.name === 'Completed')?.id, [projectStatuses]);
 
     const pmoDivisionPerformance = useMemo(() => {
-        return pmoDivisions.map(div => {
-            const divisionProjects = projects.filter(p => p.pmoDivisionId === div.id);
-            const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
-            
-            const divOnTimeCount = divCompletedProjects.filter(project => {
-                const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate)));
-                if (allTaskEndDates.length === 0) return true;
-                const lastTaskDate = dateMax(allTaskEndDates);
-                return lastTaskDate <= parseISO(project.endDate as unknown as string);
-            }).length;
+        return pmoDivisions
+            .filter(div => div.responsibleTitle !== 'Director EPMO')
+            .map(div => {
+                const divisionProjects = projects.filter(p => p.pmoDivisionId === div.id);
+                const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
+                
+                const divOnTimeCount = divCompletedProjects.filter(project => {
+                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate)));
+                    if (allTaskEndDates.length === 0) return true;
+                    const lastTaskDate = dateMax(allTaskEndDates);
+                    return lastTaskDate <= parseISO(project.endDate as unknown as string);
+                }).length;
 
-            const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 0;
-            const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate as unknown as string))).length;
-            
-            const projectsByStatus = divisionProjects.reduce((acc, project) => {
-                const statusName = statusMap.get(project.statusId) || 'Unknown';
-                if (!acc[statusName]) {
-                    acc[statusName] = [];
-                }
-                acc[statusName].push(project);
-                return acc;
-            }, {} as Record<string, ProjectWithRelations[]>);
+                const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 0;
+                const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate as unknown as string))).length;
+                
+                const projectsByStatus = divisionProjects.reduce((acc, project) => {
+                    const statusName = statusMap.get(project.statusId) || 'Unknown';
+                    if (!acc[statusName]) {
+                        acc[statusName] = [];
+                    }
+                    acc[statusName].push(project);
+                    return acc;
+                }, {} as Record<string, ProjectWithRelations[]>);
 
-            return {
-                id: div.id,
-                name: div.name,
-                totalProjects: divisionProjects.length,
-                completionRate: divCompletionRate,
-                overdueCount: divOverdueCount,
-                projectsByStatus
-            };
-        });
+                return {
+                    id: div.id,
+                    name: div.name,
+                    totalProjects: divisionProjects.length,
+                    completionRate: divCompletionRate,
+                    overdueCount: divOverdueCount,
+                    projectsByStatus
+                };
+            });
     }, [projects, pmoDivisions, statusMap, completedStatusId]);
 
     const defaultOpenAccordionItems = useMemo(() => {
