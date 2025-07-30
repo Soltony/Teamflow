@@ -54,7 +54,7 @@ const menuItems = [
   { href: "/projects", label: "Projects", icon: FolderKanban, permission: 'projects:read' },
   { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
-  { href: "/pmo-divisions", label: "PMO Divisions", icon: Library, permission: 'pmo-divisions:view' },
+  { href: "/pmo-divisions", label: "EPMO Divisions", icon: Library, permission: 'pmo-divisions:view' },
   { href: "/departments", label: "Departments", icon: Building2, permission: 'departments:read' },
   { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
   { href: "/payments", label: "Payments", icon: DollarSign, permission: 'payments:view' },
