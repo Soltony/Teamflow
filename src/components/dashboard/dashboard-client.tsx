@@ -163,10 +163,6 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     return totalProgress;
   };
 
-  const epmoLeader = pmoDivisions.find((d: any) => d.name === 'EPMO');
-  const otherDivisions = pmoDivisions.filter((d: any) => d.name !== 'EPMO');
-
-
   return (
     <div className="p-4 sm:p-6 space-y-6">
        {completedProjects.length > 0 && (
@@ -409,38 +405,11 @@ Let’s keep projects on track—together.
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
+          <Card className="md:col-span-2">
             <CardHeader>
-                <CardTitle>EPMO Leader</CardTitle>
-                <CardDescription>
-                The primary contact for the Enterprise Project Management Office.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {epmoLeader ? (
-                    <div className="flex items-center gap-4">
-                        <User className="h-12 w-12 text-muted-foreground" />
-                        <div className="space-y-1">
-                            <p className="font-bold text-lg">{epmoLeader.responsibleName}</p>
-                            <p className="font-semibold text-muted-foreground">{epmoLeader.responsibleTitle}</p>
-                            <a href={`tel:${epmoLeader.responsiblePhone}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
-                                <Phone className="h-4 w-4" />
-                                <span>{epmoLeader.responsiblePhone}</span>
-                            </a>
-                        </div>
-                    </div>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">
-                        No EPMO Leader with the division name "EPMO" found. Add one on the EPMO Divisions page.
-                    </p>
-                )}
-            </CardContent>
-        </Card>
-        <Card>
-            <CardHeader>
-            <CardTitle>Other EPMO Divisions</CardTitle>
+            <CardTitle>Organization EPMO Divisions</CardTitle>
             <CardDescription>
-              A list of other EPMO divisions.
+              A list of all EPMO divisions.
               {hasPermission('pmo-divisions:view') && (
                 <>
                   {' '}Manage them in the{' '}
@@ -454,8 +423,8 @@ Let’s keep projects on track—together.
             </CardHeader>
             <CardContent>
             <div className="space-y-2">
-                {otherDivisions.length > 0 ? (
-                otherDivisions.map((division: any, index: number) => (
+                {pmoDivisions.length > 0 ? (
+                pmoDivisions.map((division: any, index: number) => (
                     <React.Fragment key={division.id}>
                     <div className="flex items-start justify-between p-2 rounded-md hover:bg-muted/50">
                         <div>
@@ -468,12 +437,12 @@ Let’s keep projects on track—together.
                             <Phone className="h-4 w-4" />
                         </a>
                     </div>
-                    {index < otherDivisions.length - 1 && <Separator />}
+                    {index < pmoDivisions.length - 1 && <Separator />}
                     </React.Fragment>
                 ))
                 ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                    No other EPMO divisions found.
+                    No EPMO divisions found.
                 </p>
                 )}
             </div>
@@ -483,3 +452,5 @@ Let’s keep projects on track—together.
     </div>
   );
 }
+
+    
