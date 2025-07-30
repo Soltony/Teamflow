@@ -66,7 +66,7 @@ const projectSchema = z.object({
   endDate: z.date({ required_error: "An end date is required."}),
   workingYear: z.string().nonempty("An active working year must be set on the Settings page."),
   statusId: z.string().nonempty("Please select a project status."),
-  pmoDivisionId: z.string().nonempty("Please select a PMO division."),
+  pmoDivisionId: z.string().nonempty("Please select an EPMO division."),
   projectManagerId: z.string().nonempty("Please select a project manager."),
   responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
   hasCost: z.boolean().default(false),
@@ -312,10 +312,10 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                     name="pmoDivisionId"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Owning PMO Division</FormLabel>
+                            <FormLabel>Owning EPMO Division</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl>
-                                    <SelectTrigger><SelectValue placeholder="Select an Owning PMO Division" /></SelectTrigger>
+                                    <SelectTrigger><SelectValue placeholder="Select an Owning EPMO Division" /></SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
                                     {pmoDivisions.map(div => <SelectItem key={div.id} value={div.id}>{div.name}</SelectItem>)}

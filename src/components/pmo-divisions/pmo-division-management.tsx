@@ -76,7 +76,7 @@ export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: Pmo
 
       if (result.success) {
         toast({
-          title: isEditing ? "PMO Division Updated!" : "PMO Division Added!",
+          title: isEditing ? "EPMO Division Updated!" : "EPMO Division Added!",
           description: `The "${data.name}" division has been successfully saved.`,
         });
         setEditingPmoDivision(null);
@@ -109,7 +109,7 @@ export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: Pmo
       const result = await deletePmoDivision(pmoDivisionToDelete.id);
       if (result.success) {
         toast({
-          title: "PMO Division Deleted",
+          title: "EPMO Division Deleted",
           description: `The "${pmoDivisionToDelete.name}" division has been removed.`,
         });
         onDataChange();
@@ -131,7 +131,7 @@ export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: Pmo
           <div className="md:col-span-1">
             <Card>
               <CardHeader>
-                <CardTitle>{isEditing ? "Edit PMO Division" : "Add New PMO Division"}</CardTitle>
+                <CardTitle>{isEditing ? "Edit EPMO Division" : "Add New EPMO Division"}</CardTitle>
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -141,7 +141,7 @@ export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: Pmo
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>PMO Division Name</FormLabel>
+                          <FormLabel>EPMO Division Name</FormLabel>
                           <FormControl>
                             <Input placeholder="e.g., Marketing" {...field} disabled={isPending} />
                           </FormControl>
@@ -190,7 +190,7 @@ export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: Pmo
                     />
                     <div className="space-y-2 pt-2">
                       <Button type="submit" className="w-full" disabled={isPending}>
-                         {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update PMO Division" : "Add PMO Division")}
+                         {isPending ? (isEditing ? "Updating..." : "Adding...") : (isEditing ? "Update EPMO Division" : "Add EPMO Division")}
                       </Button>
                       {isEditing && (
                         <Button type="button" variant="outline" className="w-full" onClick={handleCancelEdit} disabled={isPending}>
@@ -207,11 +207,11 @@ export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: Pmo
         <div className={canManage ? "md:col-span-2" : "md:col-span-3"}>
           <Card>
             <CardHeader>
-              <CardTitle>Existing PMO Divisions</CardTitle>
+              <CardTitle>Existing EPMO Divisions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {initialPmoDivisions.length === 0 && (
-                <p className="text-muted-foreground">No PMO divisions have been added yet.</p>
+                <p className="text-muted-foreground">No EPMO divisions have been added yet.</p>
               )}
               {initialPmoDivisions.map((div, index) => (
                 <div key={div.id}>
@@ -255,7 +255,7 @@ export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: Pmo
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
             <AlertDialogDescription>
               This action cannot be undone. This will permanently delete the{' '}
-              <span className="font-semibold">{pmoDivisionToDelete?.name}</span> PMO division.
+              <span className="font-semibold">{pmoDivisionToDelete?.name}</span> EPMO division.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

@@ -70,9 +70,9 @@ export default function PmoDivisionsPage() {
         <div className="p-4 sm:p-6">
            <Card>
             <CardHeader>
-              <CardTitle>PMO Division Management</CardTitle>
+              <CardTitle>EPMO Division Management</CardTitle>
               <CardDescription>
-                Add, view, and manage the PMO divisions that are responsible for managing projects.
+                Add, view, and manage the EPMO divisions that are responsible for managing projects.
               </CardDescription>
             </CardHeader>
             <CardContent>

@@ -186,10 +186,10 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
             </Select>
             <Select value={selectedDivision} onValueChange={(value) => handleQueryChange('division', value)}>
               <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Select a PMO division" />
+                <SelectValue placeholder="Select an EPMO division" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">All PMO Divisions</SelectItem>
+                <SelectItem value="all">All EPMO Divisions</SelectItem>
                 {pmoDivisions.map((div: any) => (
                     <SelectItem key={div.id} value={div.id}>
                         {div.name}
@@ -368,9 +368,9 @@ Let’s keep projects on track—together.
       <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-3">
         <Card>
           <CardHeader>
-            <CardTitle>Projects by Owning PMO Division</CardTitle>
+            <CardTitle>Projects by Owning EPMO Division</CardTitle>
             <CardDescription>
-              Distribution of projects across owning PMO divisions.
+              Distribution of projects across owning EPMO divisions.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -407,14 +407,14 @@ Let’s keep projects on track—together.
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Organization PMO Divisions</CardTitle>
+            <CardTitle>Organization EPMO Divisions</CardTitle>
             <CardDescription>
-              A list of all PMO divisions.
+              A list of all EPMO divisions.
               {hasPermission('pmo-divisions:view') && (
                 <>
                   {' '}Manage them in the{' '}
                   <Link href="/pmo-divisions" className="text-primary hover:underline">
-                    PMO Divisions page
+                    EPMO Divisions page
                   </Link>
                   .
                 </>
@@ -443,7 +443,7 @@ Let’s keep projects on track—together.
                 ))
               ) : (
                 <p className="text-sm text-muted-foreground text-center py-4">
-                  No PMO divisions found. Add one on the PMO Divisions page.
+                  No EPMO divisions found. Add one on the EPMO Divisions page.
                 </p>
               )}
             </div>

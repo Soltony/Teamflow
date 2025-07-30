@@ -25,7 +25,7 @@ export function DepartmentProjectsChart({ projects, pmoDivisions }: { projects: 
   const pmoDivisionMap = new Map(pmoDivisions.map((d) => [d.id, d.name]));
 
   const projectsByDivision = projects.reduce((acc, project) => {
-    const divName = pmoDivisionMap.get(project.pmoDivisionId) || "Unknown PMO Division";
+    const divName = pmoDivisionMap.get(project.pmoDivisionId) || "Unknown EPMO Division";
     acc[divName] = (acc[divName] || 0) + 1;
     return acc;
   }, {} as Record<string, number>);

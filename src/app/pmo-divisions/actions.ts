@@ -26,7 +26,7 @@ export async function createPmoDivision(data: Omit<PmoDivision, 'id' | 'createdA
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
-        return { success: false, error: "Failed to create PMO division. A division with this name may already exist." };
+        return { success: false, error: "Failed to create EPMO division. A division with this name may already exist." };
     }
 }
 
@@ -40,7 +40,7 @@ export async function updatePmoDivision(id: string, data: Omit<PmoDivision, 'id'
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
-        return { success: false, error: "Failed to update PMO division." };
+        return { success: false, error: "Failed to update EPMO division." };
     }
 }
 
@@ -57,7 +57,7 @@ export async function deletePmoDivision(id: string) {
         revalidatePath('/dashboard');
         return { success: true };
     } catch (error) {
-        console.error('Failed to delete PMO division:', error);
-        return { success: false, error: 'Failed to delete PMO division. It might be in use in other parts of the system (e.g., by users).' };
+        console.error('Failed to delete EPMO division:', error);
+        return { success: false, error: 'Failed to delete EPMO division. It might be in use in other parts of the system (e.g., by users).' };
     }
 }

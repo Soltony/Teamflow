@@ -67,14 +67,14 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
     return (
         <Card className="md:col-span-2">
             <CardHeader>
-                <CardTitle>PMO Division Performance</CardTitle>
-                <CardDescription>A breakdown of key metrics for each PMO division.</CardDescription>
+                <CardTitle>EPMO Division Performance</CardTitle>
+                <CardDescription>A breakdown of key metrics for each EPMO division.</CardDescription>
             </CardHeader>
             <CardContent>
                 <div className="border rounded-md">
                     {/* Header Row */}
                     <div className="flex p-4 bg-muted/50 border-b font-semibold text-sm text-muted-foreground">
-                        <div className="flex-1">PMO Division</div>
+                        <div className="flex-1">EPMO Division</div>
                         <div className="w-32 text-center">Total Projects</div>
                         <div className="w-32 text-center">Completion Rate</div>
                         <div className="w-32 text-center">Overdue</div>
@@ -113,7 +113,7 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                         </Accordion>
                     ) : (
                         <div className="text-center p-8 text-muted-foreground">
-                            No PMO divisions found.
+                            No EPMO divisions found.
                         </div>
                     )}
                 </div>

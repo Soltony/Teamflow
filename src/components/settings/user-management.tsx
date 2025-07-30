@@ -85,7 +85,7 @@ const addUserSchema = z.object({
   lastName: z.string().min(1, "Last name is required."),
   email: z.string().email("A valid email is required."),
   phoneNumber: z.string().min(1, "Phone number is required."),
-  pmoDivisionId: z.string().nonempty("Please select a PMO division."),
+  pmoDivisionId: z.string().nonempty("Please select an EPMO division."),
   roleIds: z.array(z.string()).optional(),
 });
 type AddUserFormValues = z.infer<typeof addUserSchema>;
@@ -406,10 +406,10 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
                       name="pmoDivisionId"
                       render={({ field }) => (
                           <FormItem>
-                              <FormLabel>PMO Division</FormLabel>
+                              <FormLabel>EPMO Division</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                      <SelectTrigger><SelectValue placeholder="Select a PMO division" /></SelectTrigger>
+                                      <SelectTrigger><SelectValue placeholder="Select an EPMO division" /></SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
                                       {initialPmoDivisions.map(div => <SelectItem key={div.id} value={div.id}>{div.name}</SelectItem>)}
@@ -497,10 +497,10 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
                       name="pmoDivisionId"
                       render={({ field }) => (
                           <FormItem>
-                              <FormLabel>PMO Division</FormLabel>
+                              <FormLabel>EPMO Division</FormLabel>
                               <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                      <SelectTrigger><SelectValue placeholder="Select a PMO division" /></SelectTrigger>
+                                      <SelectTrigger><SelectValue placeholder="Select an EPMO division" /></SelectTrigger>
                                   </FormControl>
                                   <SelectContent>
                                       {initialPmoDivisions.map(div => <SelectItem key={div.id} value={div.id}>{div.name}</SelectItem>)}
