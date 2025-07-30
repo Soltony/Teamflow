@@ -55,7 +55,6 @@ export async function updateUserProfile(userId: string, data: { email: string, p
             });
         }
 
-        // Update local database regardless if any changes were attempted
         if (emailChanged || phoneChanged) {
             await prisma.user.update({
                 where: { id: userId },
