@@ -31,6 +31,17 @@ export async function updateUserProfile(userId: string, data: { email: string, p
         const emailChanged = data.email !== currentUser.email;
         const phoneChanged = data.phoneNumber !== currentUser.phoneNumber;
 
+        if (emailChanged) {
+             const changeEmailUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-email`;
+             const emailPayload = {
+                 currentEmail: currentUser.email,
+                 newEmail: data.email,
+             };
+             await axios.post(changeEmailUrl, emailPayload, {
+                 headers: { 'Authorization': `Bearer ${accessToken}` }
+             });
+        }
+        
         if (phoneChanged) {
             const changePhoneUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-phone-number`;
             
@@ -44,24 +55,16 @@ export async function updateUserProfile(userId: string, data: { email: string, p
             });
         }
 
-        if (emailChanged && !phoneChanged) { // Only update email if phone didn't change, as phone change implies profile update
-             const updateProfileUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/update-profile`;
-             await axios.put(updateProfileUrl, { email: data.email, phoneNumber: formatPhoneNumber(data.phoneNumber) }, {
-                 headers: {
-                     'Authorization': `Bearer ${accessToken}`,
-                     'Content-Type': 'application/json'
-                 },
-             });
+        // Update local database regardless if any changes were attempted
+        if (emailChanged || phoneChanged) {
+            await prisma.user.update({
+                where: { id: userId },
+                data: {
+                    email: data.email,
+                    phoneNumber: data.phoneNumber,
+                },
+            });
         }
-
-        // Update local database regardless
-        await prisma.user.update({
-            where: { id: userId },
-            data: {
-                email: data.email,
-                phoneNumber: data.phoneNumber,
-            },
-        });
         
         revalidatePath('/profile');
         return { success: true };
