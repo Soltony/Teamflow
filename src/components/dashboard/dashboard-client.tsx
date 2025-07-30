@@ -4,7 +4,7 @@
 import * as React from "react";
 import Link from "next/link";
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { CheckCircle, Clock, AlertOctagon, ShieldAlert, Phone, Target, Award, CircleDot } from "lucide-react";
+import { CheckCircle, Clock, AlertOctagon, ShieldAlert, Phone, Target, Award, CircleDot, User, Building } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { DepartmentProjectsChart } from "@/components/dashboard/department-projects-chart";
 import { ProjectStatusChart } from "@/components/dashboard/project-status-chart";
@@ -162,6 +162,8 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     }, 0);
     return totalProgress;
   };
+
+  const epmoLeader = pmoDivisions.length > 0 ? pmoDivisions[0] : null;
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -406,48 +408,40 @@ Let’s keep projects on track—together.
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardHeader>
-            <CardTitle>Organization EPMO Divisions</CardTitle>
-            <CardDescription>
-              A list of all EPMO divisions.
-              {hasPermission('pmo-divisions:view') && (
-                <>
-                  {' '}Manage them in the{' '}
-                  <Link href="/pmo-divisions" className="text-primary hover:underline">
-                    EPMO Divisions page
-                  </Link>
-                  .
-                </>
-              )}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-2">
-              {pmoDivisions.length > 0 ? (
-                pmoDivisions.map((div: any, index: number) => (
-                  <React.Fragment key={div.id}>
-                    <div className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50">
-                      <div>
-                        <p className="font-semibold">{div.name}</p>
-                        <p className="text-sm text-muted-foreground">
-                          {div.responsibleName}, {div.responsibleTitle}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <Phone className="h-4 w-4" />
-                        <span>{div.responsiblePhone}</span>
-                      </div>
+            <CardHeader>
+                <CardTitle>EPMO Leader</CardTitle>
+                <CardDescription>
+                The primary contact for the Enterprise Project Management Office.
+                {hasPermission('pmo-divisions:view') && (
+                    <>
+                    {' '}Manage divisions in the{' '}
+                    <Link href="/pmo-divisions" className="text-primary hover:underline">
+                        EPMO Divisions page
+                    </Link>
+                    .
+                    </>
+                )}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {epmoLeader ? (
+                    <div className="flex items-center gap-4">
+                        <User className="h-12 w-12 text-muted-foreground" />
+                        <div className="space-y-1">
+                            <p className="font-bold text-lg">{epmoLeader.responsibleName}</p>
+                            <p className="font-semibold text-muted-foreground">{epmoLeader.responsibleTitle}</p>
+                            <a href={`tel:${epmoLeader.responsiblePhone}`} className="flex items-center gap-2 text-sm text-muted-foreground hover:text-primary">
+                                <Phone className="h-4 w-4" />
+                                <span>{epmoLeader.responsiblePhone}</span>
+                            </a>
+                        </div>
                     </div>
-                    {index < pmoDivisions.length - 1 && <Separator />}
-                  </React.Fragment>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  No EPMO divisions found. Add one on the EPMO Divisions page.
-                </p>
-              )}
-            </div>
-          </CardContent>
+                ) : (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                        No EPMO divisions found. Add one on the EPMO Divisions page.
+                    </p>
+                )}
+            </CardContent>
         </Card>
         <Card>
             <CardHeader>
