@@ -27,7 +27,7 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
 
     const pmoDivisionPerformance = useMemo(() => {
         return pmoDivisions
-            .filter(div => div.responsibleTitle !== 'Director EPMO')
+            .filter(div => div.name !== 'EPMO')
             .map(div => {
                 const divisionProjects = projects.filter(p => p.pmoDivisionId === div.id);
                 const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);

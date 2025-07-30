@@ -163,8 +163,8 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     return totalProgress;
   };
 
-  const epmoLeader = pmoDivisions.find((d: any) => d.responsibleTitle === 'Director EPMO');
-  const otherDivisions = pmoDivisions.filter((d: any) => d.responsibleTitle !== 'Director EPMO');
+  const epmoLeader = pmoDivisions.find((d: any) => d.name === 'EPMO');
+  const otherDivisions = pmoDivisions.filter((d: any) => d.name !== 'EPMO');
 
 
   return (
@@ -431,7 +431,7 @@ Let’s keep projects on track—together.
                     </div>
                 ) : (
                     <p className="text-sm text-muted-foreground text-center py-4">
-                        No EPMO Leader with the title "Director EPMO" found. Add one on the EPMO Divisions page.
+                        No EPMO Leader with the division name "EPMO" found. Add one on the EPMO Divisions page.
                     </p>
                 )}
             </CardContent>
