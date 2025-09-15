@@ -51,7 +51,7 @@ export default async function CEOReportPage() {
     
     // An on-time project is a completed project where the last task was finished on or before the project's planned end date.
     const onTimeProjectsCount = completedProjects.filter(project => {
-        const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.completedAt ? parseISO(t.completedAt.toISOString()) : new Date()));
+        const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.completedAt ? parseISO(t.completedAt.toISOString()) : new Date(0)));
         if (allTaskEndDates.length === 0) return true; // No tasks, considered on-time.
         const lastTaskDate = dateMax(allTaskEndDates);
         return !isAfter(lastTaskDate, project.endDate);

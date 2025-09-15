@@ -32,7 +32,7 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                 const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
                 
                 const divOnTimeCount = divCompletedProjects.filter(project => {
-                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.completedAt ? parseISO(t.completedAt) : new Date()));
+                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.completedAt ? parseISO(t.completedAt) : new Date(0)));
                     if (allTaskEndDates.length === 0) return true;
                     const lastTaskDate = dateMax(allTaskEndDates);
                     return !isAfter(lastTaskDate, parseISO(project.endDate as unknown as string));
