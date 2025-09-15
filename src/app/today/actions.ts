@@ -25,6 +25,17 @@ export async function getTodaysTasks() {
                         gte: todayStart,
                         lte: todayEnd
                     }
+                },
+                // Tasks that had an update today
+                {
+                    updates: {
+                        some: {
+                            createdAt: {
+                                gte: todayStart,
+                                lte: todayEnd
+                            }
+                        }
+                    }
                 }
             ]
         },

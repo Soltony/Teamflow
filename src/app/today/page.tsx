@@ -98,6 +98,24 @@ export default function TodayPage() {
     }
   }, [authLoading, hasPermission, router, fetchData]);
 
+  const uniqueProjects = useMemo(() => {
+    const projectMap = new Map<string, ProjectWithTasks>();
+    projects.forEach(project => {
+      if (!projectMap.has(project.id)) {
+        projectMap.set(project.id, { ...project, tasks: [] });
+      }
+      const existingProject = projectMap.get(project.id)!;
+      const existingTaskIds = new Set(existingProject.tasks.map(t => t.id));
+      project.tasks.forEach(task => {
+        if (!existingTaskIds.has(task.id)) {
+          existingProject.tasks.push(task);
+        }
+      });
+    });
+    return Array.from(projectMap.values());
+  }, [projects]);
+
+
   if (isLoading || authLoading) {
     return <LoadingSkeleton />;
   }
@@ -112,9 +130,9 @@ export default function TodayPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-            {projects.length > 0 ? (
-                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projects.map(p => p.id)}>
-                    {projects.map(project => {
+            {uniqueProjects.length > 0 ? (
+                <Accordion type="multiple" className="w-full space-y-4" defaultValue={uniqueProjects.map(p => p.id)}>
+                    {uniqueProjects.map(project => {
                         const activeTasks = project.tasks.filter(t => t.status !== 'DONE');
                         const completedTasks = project.tasks.filter(t => t.status === 'DONE');
 
