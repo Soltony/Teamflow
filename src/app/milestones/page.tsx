@@ -75,6 +75,18 @@ export default function AllMilestonesPage() {
     return completedTaskWeight;
   };
 
+  const calculateProjectProgress = (project: ProjectWithMilestones) => {
+    if (!project.milestones || project.milestones.length === 0) {
+      return 0;
+    }
+    const totalWeightedProgress = project.milestones.reduce((acc, milestone) => {
+      const milestoneProgress = calculateMilestoneProgress(milestone) / 100; // progress of milestone (0 to 1)
+      const milestoneWeight = milestone.weight / 100; // weight of milestone in project (0 to 1)
+      return acc + (milestoneProgress * milestoneWeight);
+    }, 0);
+    return totalWeightedProgress * 100;
+  }
+
   const isMemberOnly = localUser && !localUser.roles.some((r: Role) => r.name === 'Admin' || r.name === 'Project Manager');
 
   return (
@@ -97,14 +109,19 @@ export default function AllMilestonesPage() {
                       const completedMilestones = project.milestones.filter(
                         m => m.tasks.length > 0 && m.tasks.every(t => t.status === 'DONE')
                       ).length;
+                      const projectProgress = calculateProjectProgress(project);
 
                       return (
                         <AccordionItem value={project.id} key={project.id}>
                             <AccordionTrigger>
-                                <div className="flex justify-between items-center w-full pr-4">
-                                    <Link href={`/projects/${project.id}`} className="font-semibold text-base hover:underline text-left flex-1">
+                                <div className="flex justify-between items-center w-full pr-4 gap-4">
+                                    <Link href={`/projects/${project.id}`} className="font-semibold text-base hover:underline text-left flex-1 truncate" title={project.name}>
                                         {project.name}
                                     </Link>
+                                    <div className="flex items-center gap-4 w-1/3">
+                                      <Progress value={projectProgress} className="h-2 flex-1" />
+                                      <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
+                                    </div>
                                     <div className="flex items-center gap-2 text-xs text-muted-foreground ml-4">
                                       <span>{totalMilestones} Milestones</span>
                                       <span className="text-gray-400">&bull;</span>
