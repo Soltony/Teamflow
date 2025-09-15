@@ -12,13 +12,9 @@ import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User } from '@prisma/client';
-import { Calendar, Edit, AlertTriangle } from 'lucide-react';
-import { Separator } from '@/components/ui/separator';
-import { isToday, parseISO, startOfDay } from 'date-fns';
 
 type TaskWithAssigneesAndUpdates = Task & { 
     assignees: User[],
-    updates: { createdAt: string }[]
 };
 type ProjectWithTasks = {
   id: string;
@@ -74,22 +70,6 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => (
     </div>
 );
 
-const TaskSection = ({ title, icon, tasks }: { title: string, icon: React.ReactNode, tasks: TaskWithAssigneesAndUpdates[] }) => {
-    if (tasks.length === 0) return null;
-
-    return (
-        <div>
-            <div className="flex items-center gap-2 mb-4">
-                {icon}
-                <h3 className="font-semibold text-muted-foreground">{title}</h3>
-            </div>
-            <div className="space-y-4">
-                {tasks.map(task => <TaskItem key={task.id} task={task} />)}
-            </div>
-        </div>
-    )
-}
-
 export default function TodayPage() {
   const { hasPermission, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -118,30 +98,6 @@ export default function TodayPage() {
     }
   }, [authLoading, hasPermission, router, fetchData]);
   
-  const projectsWithActivity = useMemo(() => {
-    return projects.map(project => {
-        const todayStart = startOfDay(new Date());
-
-        const scheduledToday = project.tasks.filter(t => {
-            const startDate = parseISO(t.startDate.toString());
-            const endDate = parseISO(t.endDate.toString());
-            return todayStart >= startDate && todayStart <= endDate;
-        });
-
-        const dueToday = project.tasks.filter(t => isToday(parseISO(t.endDate.toString())));
-
-        const updatedToday = project.tasks.filter(t => t.updates?.some(u => isToday(parseISO(u.createdAt))));
-
-        return {
-            ...project,
-            scheduledToday,
-            dueToday,
-            updatedToday,
-            hasActivity: scheduledToday.length > 0 || dueToday.length > 0 || updatedToday.length > 0
-        };
-    }).filter(p => p.hasActivity);
-  }, [projects]);
-  
   if (isLoading || authLoading) {
     return <LoadingSkeleton />;
   }
@@ -156,42 +112,24 @@ export default function TodayPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-            {projectsWithActivity.length > 0 ? (
-                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projectsWithActivity.map(p => p.id)}>
-                    {projectsWithActivity.map(project => {
-                        return (
-                            <AccordionItem value={project.id} key={project.id} className="border rounded-lg">
-                                <AccordionTrigger className="p-4 font-semibold text-lg hover:no-underline">
-                                    {project.name}
-                                </AccordionTrigger>
-                                <AccordionContent className="p-4 pt-0">
-                                    <div className="space-y-6">
-                                        <TaskSection 
-                                            title="Scheduled Today"
-                                            icon={<Calendar className="h-5 w-5 text-blue-500" />}
-                                            tasks={project.scheduledToday}
-                                        />
-                                        
-                                        {(project.dueToday.length > 0 && project.scheduledToday.length > 0) && <Separator />}
-                                        
-                                        <TaskSection 
-                                            title="Due Today"
-                                            icon={<AlertTriangle className="h-5 w-5 text-destructive" />}
-                                            tasks={project.dueToday}
-                                        />
-
-                                        {(project.updatedToday.length > 0 && (project.dueToday.length > 0 || project.scheduledToday.length > 0)) && <Separator />}
-
-                                        <TaskSection 
-                                            title="Updated Today"
-                                            icon={<Edit className="h-5 w-5 text-orange-500" />}
-                                            tasks={project.updatedToday}
-                                        />
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                        )
-                    })}
+            {projects.length > 0 ? (
+                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projects.map(p => p.id)}>
+                    {projects.map(project => (
+                        <AccordionItem value={project.id} key={project.id} className="border rounded-lg">
+                            <AccordionTrigger className="p-4 font-semibold text-lg hover:no-underline">
+                                {project.name}
+                            </AccordionTrigger>
+                            <AccordionContent className="p-4 pt-0">
+                                <div className="space-y-4">
+                                  {project.tasks.length > 0 ? (
+                                    project.tasks.map(task => <TaskItem key={task.id} task={task} />)
+                                  ) : (
+                                    <p className="text-sm text-center text-muted-foreground py-4">No activity recorded for this project today.</p>
+                                  )}
+                                </div>
+                            </AccordionContent>
+                        </AccordionItem>
+                    ))}
                 </Accordion>
             ) : (
                  <div className="text-center py-12 text-muted-foreground">
