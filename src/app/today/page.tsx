@@ -122,6 +122,18 @@ export default function TodayPage() {
     return <LoadingSkeleton />;
   }
 
+  const projectsWithActivity = projects.filter(project => {
+      const todayStart = startOfDay(new Date());
+      const hasScheduled = project.tasks.some(t => {
+          const startDate = parseISO(t.startDate.toString());
+          const endDate = parseISO(t.endDate.toString());
+          return todayStart >= startDate && todayStart <= endDate;
+      });
+      const hasDue = project.tasks.some(t => isToday(parseISO(t.endDate.toString())));
+      const hasUpdates = project.tasks.some(t => t.updates?.some(u => isToday(parseISO(u.createdAt))));
+      return hasScheduled || hasDue || hasUpdates;
+  });
+  
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <Card>
@@ -132,9 +144,9 @@ export default function TodayPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-            {projects.length > 0 ? (
-                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projects.map(p => p.id)}>
-                    {projects.map(project => {
+            {projectsWithActivity.length > 0 ? (
+                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projectsWithActivity.map(p => p.id)}>
+                    {projectsWithActivity.map(project => {
                         const todayStart = startOfDay(new Date());
                         
                         const scheduledToday = project.tasks.filter(t => {
@@ -146,11 +158,7 @@ export default function TodayPage() {
                         const dueToday = project.tasks.filter(t => isToday(parseISO(t.endDate.toString())));
                         
                         const updatedToday = project.tasks.filter(t => t.updates?.some(u => isToday(parseISO(u.createdAt))));
-
-                        if (scheduledToday.length === 0 && dueToday.length === 0 && updatedToday.length === 0) {
-                            return null;
-                        }
-
+                        
                         return (
                             <AccordionItem value={project.id} key={project.id} className="border rounded-lg">
                                 <AccordionTrigger className="p-4 font-semibold text-lg hover:no-underline">
