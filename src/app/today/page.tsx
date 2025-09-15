@@ -117,20 +117,6 @@ export default function TodayPage() {
       }
     }
   }, [authLoading, hasPermission, router, fetchData]);
-
-  const projectsWithActivity = useMemo(() => {
-    return projects.filter(project => {
-        const todayStart = startOfDay(new Date());
-        return project.tasks.some(task => {
-            const startDate = parseISO(task.startDate.toString());
-            const endDate = parseISO(task.endDate.toString());
-            const isScheduledToday = todayStart >= startDate && todayStart <= endDate;
-            const isDueToday = isToday(parseISO(task.endDate.toString()));
-            const wasUpdatedToday = task.updates?.some(u => isToday(parseISO(u.createdAt)));
-            return isScheduledToday || isDueToday || wasUpdatedToday;
-        });
-    });
-  }, [projects]);
   
   if (isLoading || authLoading) {
     return <LoadingSkeleton />;
@@ -146,9 +132,9 @@ export default function TodayPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-            {projectsWithActivity.length > 0 ? (
-                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projectsWithActivity.map(p => p.id)}>
-                    {projectsWithActivity.map(project => {
+            {projects.length > 0 ? (
+                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projects.map(p => p.id)}>
+                    {projects.map(project => {
                         const todayStart = startOfDay(new Date());
                         
                         const scheduledToday = project.tasks.filter(t => {
@@ -160,6 +146,10 @@ export default function TodayPage() {
                         const dueToday = project.tasks.filter(t => isToday(parseISO(t.endDate.toString())));
                         
                         const updatedToday = project.tasks.filter(t => t.updates?.some(u => isToday(parseISO(u.createdAt))));
+
+                        if (scheduledToday.length === 0 && dueToday.length === 0 && updatedToday.length === 0) {
+                            return null;
+                        }
 
                         return (
                             <AccordionItem value={project.id} key={project.id} className="border rounded-lg">
@@ -174,7 +164,7 @@ export default function TodayPage() {
                                             tasks={scheduledToday}
                                         />
                                         
-                                        {dueToday.length > 0 && scheduledToday.length > 0 && <Separator />}
+                                        {(dueToday.length > 0 && scheduledToday.length > 0) && <Separator />}
                                         
                                         <TaskSection 
                                             title="Due Today"
@@ -182,7 +172,7 @@ export default function TodayPage() {
                                             tasks={dueToday}
                                         />
 
-                                        {updatedToday.length > 0 && (dueToday.length > 0 || scheduledToday.length > 0) && <Separator />}
+                                        {(updatedToday.length > 0 && (dueToday.length > 0 || scheduledToday.length > 0)) && <Separator />}
 
                                         <TaskSection 
                                             title="Updated Today"
