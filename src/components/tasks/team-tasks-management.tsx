@@ -74,15 +74,6 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     setTaskToDecline(null);
   };
   
-  const defaultOpenProjects = useMemo(() => {
-    if (!projectStatuses) return [];
-    const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
-    return sortedProjects
-      .filter(({ project }) => project.statusId !== completedStatusId)
-      .map(({ project }) => project.id);
-  }, [sortedProjects, projectStatuses]);
-
-
   if (ledTeams.length === 0) {
     return (
         <div className="p-4 sm:p-6">
@@ -122,7 +113,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <Accordion type="multiple" className="w-full space-y-4" defaultValue={defaultOpenProjects}>
+          <Accordion type="multiple" className="w-full space-y-4">
             {sortedProjects.map(({ project, tasks, stats }) => {
                 const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
                 
