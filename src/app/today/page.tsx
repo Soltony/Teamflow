@@ -47,8 +47,8 @@ function LoadingSkeleton() {
 const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
     const isScheduledToday = isToday(parseISO(task.startDate));
     const isDueToday = isToday(parseISO(task.endDate));
-    const wasUpdatedToday = task.updates?.some(update => isToday(parseISO(update.createdAt)));
     const wasCompletedToday = task.completedAt && isToday(parseISO(task.completedAt as unknown as string));
+    const wasUpdatedToday = !wasCompletedToday && task.updates?.some(update => isToday(parseISO(update.createdAt)));
 
     return (
         <div className="p-4 border rounded-md bg-muted/50">
