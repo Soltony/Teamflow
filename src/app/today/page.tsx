@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Task, User } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isToday, parseISO } from 'date-fns';
-import { Calendar, Clock, Edit3 } from 'lucide-react';
+import { Calendar, Clock, Edit3, CheckCircle } from 'lucide-react';
 
 type TaskWithAssigneesAndUpdates = Task & { 
     assignees: User[],
@@ -48,6 +48,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
     const isScheduledToday = isToday(parseISO(task.startDate));
     const isDueToday = isToday(parseISO(task.endDate));
     const wasUpdatedToday = task.updates?.some(update => isToday(parseISO(update.createdAt)));
+    const wasCompletedToday = task.completedAt && isToday(parseISO(task.completedAt as unknown as string));
 
     return (
         <div className="p-4 border rounded-md bg-muted/50">
@@ -90,6 +91,11 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                 {wasUpdatedToday && (
                      <Badge className="flex items-center gap-1.5 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
                         <Edit3 className="w-3 h-3" /> Updated Today
+                    </Badge>
+                )}
+                {wasCompletedToday && (
+                     <Badge className="flex items-center gap-1.5 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
+                        <CheckCircle className="w-3 h-3" /> Completed Today
                     </Badge>
                 )}
             </div>
