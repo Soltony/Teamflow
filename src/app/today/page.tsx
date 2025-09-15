@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
-import { startOfDay, isToday, parseISO } from 'date-fns';
+import { isToday, parseISO } from 'date-fns';
 import { Calendar, Clock, Edit3 } from 'lucide-react';
 
 type TaskWithAssigneesAndUpdates = Task & { 
@@ -45,10 +45,7 @@ function LoadingSkeleton() {
 }
 
 const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
-    const today = new Date();
-    const todayStart = startOfDay(today);
-
-    const isScheduledToday = parseISO(task.startDate) <= today && parseISO(task.endDate) >= today;
+    const isScheduledToday = isToday(parseISO(task.startDate));
     const isDueToday = isToday(parseISO(task.endDate));
     const wasUpdatedToday = task.updates?.some(update => isToday(parseISO(update.createdAt)));
 
@@ -81,17 +78,17 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
             </div>
             <div className="flex flex-wrap gap-2 mt-3">
                 {isScheduledToday && (
-                    <Badge variant="outline" className="flex items-center gap-1.5 text-xs">
+                    <Badge className="flex items-center gap-1.5 text-xs bg-green-100 text-green-800 border-green-200 hover:bg-green-200">
                         <Calendar className="w-3 h-3" /> Scheduled Today
                     </Badge>
                 )}
                 {isDueToday && (
-                    <Badge variant="outline" className="flex items-center gap-1.5 text-xs text-amber-700 border-amber-300">
+                    <Badge className="flex items-center gap-1.5 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
                         <Clock className="w-3 h-3" /> Due Today
                     </Badge>
                 )}
                 {wasUpdatedToday && (
-                     <Badge variant="outline" className="flex items-center gap-1.5 text-xs text-blue-700 border-blue-300">
+                     <Badge className="flex items-center gap-1.5 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
                         <Edit3 className="w-3 h-3" /> Updated Today
                     </Badge>
                 )}
