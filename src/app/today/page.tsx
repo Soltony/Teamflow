@@ -117,21 +117,29 @@ export default function TodayPage() {
       }
     }
   }, [authLoading, hasPermission, router, fetchData]);
-
+  
   const projectsWithActivity = useMemo(() => {
-    return projects.filter(project => 
-        project.tasks.some(t => {
-            const todayStart = startOfDay(new Date());
+    return projects.map(project => {
+        const todayStart = startOfDay(new Date());
+
+        const scheduledToday = project.tasks.filter(t => {
             const startDate = parseISO(t.startDate.toString());
             const endDate = parseISO(t.endDate.toString());
-            
-            const isScheduled = todayStart >= startDate && todayStart <= endDate;
-            const isDue = isToday(endDate);
-            const isUpdated = t.updates?.some(u => isToday(parseISO(u.createdAt)));
-            
-            return isScheduled || isDue || isUpdated;
-        })
-    );
+            return todayStart >= startDate && todayStart <= endDate;
+        });
+
+        const dueToday = project.tasks.filter(t => isToday(parseISO(t.endDate.toString())));
+
+        const updatedToday = project.tasks.filter(t => t.updates?.some(u => isToday(parseISO(u.createdAt))));
+
+        return {
+            ...project,
+            scheduledToday,
+            dueToday,
+            updatedToday,
+            hasActivity: scheduledToday.length > 0 || dueToday.length > 0 || updatedToday.length > 0
+        };
+    }).filter(p => p.hasActivity);
   }, [projects]);
   
   if (isLoading || authLoading) {
@@ -151,18 +159,6 @@ export default function TodayPage() {
             {projectsWithActivity.length > 0 ? (
                 <Accordion type="multiple" className="w-full space-y-4" defaultValue={projectsWithActivity.map(p => p.id)}>
                     {projectsWithActivity.map(project => {
-                        const todayStart = startOfDay(new Date());
-                        
-                        const scheduledToday = project.tasks.filter(t => {
-                            const startDate = parseISO(t.startDate.toString());
-                            const endDate = parseISO(t.endDate.toString());
-                            return todayStart >= startDate && todayStart <= endDate;
-                        });
-
-                        const dueToday = project.tasks.filter(t => isToday(parseISO(t.endDate.toString())));
-                        
-                        const updatedToday = project.tasks.filter(t => t.updates?.some(u => isToday(parseISO(u.createdAt))));
-                        
                         return (
                             <AccordionItem value={project.id} key={project.id} className="border rounded-lg">
                                 <AccordionTrigger className="p-4 font-semibold text-lg hover:no-underline">
@@ -173,23 +169,23 @@ export default function TodayPage() {
                                         <TaskSection 
                                             title="Scheduled Today"
                                             icon={<Calendar className="h-5 w-5 text-blue-500" />}
-                                            tasks={scheduledToday}
+                                            tasks={project.scheduledToday}
                                         />
                                         
-                                        {(dueToday.length > 0 && scheduledToday.length > 0) && <Separator />}
+                                        {(project.dueToday.length > 0 && project.scheduledToday.length > 0) && <Separator />}
                                         
                                         <TaskSection 
                                             title="Due Today"
                                             icon={<AlertTriangle className="h-5 w-5 text-destructive" />}
-                                            tasks={dueToday}
+                                            tasks={project.dueToday}
                                         />
 
-                                        {(updatedToday.length > 0 && (dueToday.length > 0 || scheduledToday.length > 0)) && <Separator />}
+                                        {(project.updatedToday.length > 0 && (project.dueToday.length > 0 || project.scheduledToday.length > 0)) && <Separator />}
 
                                         <TaskSection 
                                             title="Updated Today"
                                             icon={<Edit className="h-5 w-5 text-orange-500" />}
-                                            tasks={updatedToday}
+                                            tasks={project.updatedToday}
                                         />
                                     </div>
                                 </AccordionContent>
