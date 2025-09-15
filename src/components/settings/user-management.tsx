@@ -2,7 +2,7 @@
 
 "use client";
 
-import { useState, useTransition, useEffect } from "react";
+import { useState, useTransition, useEffect, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -23,7 +23,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Button } from "../ui/button";
-import { Pencil, PlusCircle, Trash2, ChevronDown, Eye, EyeOff, KeyRound } from "lucide-react";
+import { Pencil, PlusCircle, Trash2, ChevronDown, Eye, EyeOff, KeyRound, Search } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
@@ -113,8 +113,20 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
   
   const [passwordResetData, setPasswordResetData] = useState<{ user: UserWithRoles, token: string | null, error: string | null, loading: boolean }>({ user: {} as UserWithRoles, token: null, error: null, loading: false });
   
+  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
+
+  const filteredUsers = useMemo(() => {
+    if (!searchQuery) {
+      return initialUsers;
+    }
+    return initialUsers.filter(user =>
+      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.phoneNumber && user.phoneNumber.includes(searchQuery))
+    );
+  }, [initialUsers, searchQuery]);
 
   const editUserForm = useForm<EditUserFormValues>({
     resolver: zodResolver(editUserSchema),
@@ -270,10 +282,14 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
   const selectedRolesForEditUser = initialRoles.filter(role => editUserForm.watch('roleIds')?.includes(role.id));
   const selectedRolesForNewUser = initialRoles.filter(role => addUserForm.watch('roleIds')?.includes(role.id));
   
-  const totalPages = Math.ceil(initialUsers.length / itemsPerPage);
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const currentUsers = initialUsers.slice(startIndex, endIndex);
+  const currentUsers = filteredUsers.slice(startIndex, endIndex);
 
   const handleNextPage = () => {
     if (currentPage < totalPages) {
@@ -291,18 +307,30 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
     <>
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <CardTitle>Users</CardTitle>
               <CardDescription>
                 A list of all users in the system. Assign roles to manage their permissions.
               </CardDescription>
             </div>
-            {canManageUsers && (
-              <Button onClick={handleOpenAddUserDialog}>
-                <PlusCircle className="mr-2 h-4 w-4" /> Add User
-              </Button>
-            )}
+            <div className="flex flex-col-reverse sm:flex-row items-center gap-2 w-full sm:w-auto">
+                <div className="relative w-full sm:w-auto">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                        type="search"
+                        placeholder="Search users..."
+                        className="w-full rounded-lg bg-background pl-8 sm:w-[200px] lg:w-[250px]"
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                </div>
+                {canManageUsers && (
+                    <Button onClick={handleOpenAddUserDialog} className="w-full sm:w-auto">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add User
+                    </Button>
+                )}
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -352,29 +380,31 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
             </TableBody>
           </Table>
         </CardContent>
-        <CardFooter>
-          <div className="flex items-center justify-center w-full space-x-2">
-            <span className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-            </span>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={handlePrevPage}
-                disabled={currentPage === 1}
-            >
-                Previous
-            </Button>
-            <Button
-                variant="outline"
-                size="sm"
-                onClick={handleNextPage}
-                disabled={currentPage === totalPages}
-            >
-                Next
-            </Button>
-          </div>
-        </CardFooter>
+        {totalPages > 1 && (
+            <CardFooter>
+            <div className="flex items-center justify-center w-full space-x-2">
+                <span className="text-sm text-muted-foreground">
+                    Page {currentPage} of {totalPages}
+                </span>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handlePrevPage}
+                    disabled={currentPage === 1}
+                >
+                    Previous
+                </Button>
+                <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNextPage}
+                    disabled={currentPage === totalPages}
+                >
+                    Next
+                </Button>
+            </div>
+            </CardFooter>
+        )}
       </Card>
 
       {/* Edit User Dialog */}
