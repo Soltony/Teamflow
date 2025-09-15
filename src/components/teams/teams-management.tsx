@@ -220,7 +220,7 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
                 <p className="text-sm">Click "Add New Team" to get started.</p>
             </div>
           ) : (
-            <Accordion type="multiple" className="w-full" defaultValue={Object.keys(teamsByProject)}>
+            <Accordion type="multiple" className="w-full">
               {Object.entries(teamsByProject).map(([projectName, projectTeams]) => (
                 <AccordionItem value={projectName} key={projectName}>
                   <AccordionTrigger className="font-semibold">{projectName}</AccordionTrigger>
