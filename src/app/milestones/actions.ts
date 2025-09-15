@@ -60,12 +60,12 @@ export async function getMilestonesPageData(userId: string) {
                     tasks: true, // Include tasks to check milestone completion status
                 },
                 orderBy: {
-                    dueDate: 'asc'
+                    createdAt: 'desc'
                 }
             }
         },
         orderBy: {
-            name: 'asc'
+            createdAt: 'desc'
         }
     });
 
