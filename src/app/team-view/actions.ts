@@ -5,18 +5,39 @@ import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import { type ProjectWithTasksAndStats, type TeamViewTask } from "./page";
 import type { TaskStatus as TaskStatusType, TaskUpdate, User } from "@/lib/types";
+import type { Prisma } from "@prisma/client";
 
 export async function getTeamViewData(userId: string) {
-    const [allUsers, projectStatuses, ledTeams] = await Promise.all([
+    const [allUsers, projectStatuses, currentUser] = await Promise.all([
         prisma.user.findMany(),
         prisma.projectStatus.findMany(),
-        prisma.team.findMany({
-            where: { teamLeadId: userId },
-            include: { members: true }
+        prisma.user.findUnique({
+            where: { id: userId },
+            include: { roles: true }
         })
     ]);
 
-    const teamMemberIds = Array.from(new Set(ledTeams.flatMap(team => team.members.map(m => m.id))));
+    if (!currentUser) {
+        return {
+            allUsers: [],
+            ledTeams: [],
+            tasksByProject: [],
+            projectStatuses: [],
+        };
+    }
+    
+    const canManageAll = currentUser.roles.some(role => 
+        role.permissions.includes('team-view:manage-all') || role.name === 'Admin'
+    );
+    
+    const teamWhereClause: Prisma.TeamWhereInput = canManageAll ? {} : { teamLeadId: userId };
+
+    const teams = await prisma.team.findMany({
+        where: teamWhereClause,
+        include: { members: true }
+    });
+
+    const teamMemberIds = Array.from(new Set(teams.flatMap(team => team.members.map(m => m.id))));
 
     let tasksByProject: Record<string, ProjectWithTasksAndStats> = {};
 
@@ -98,7 +119,7 @@ export async function getTeamViewData(userId: string) {
 
     return {
         allUsers: JSON.parse(JSON.stringify(allUsers)),
-        ledTeams: JSON.parse(JSON.stringify(ledTeams)),
+        ledTeams: JSON.parse(JSON.stringify(teams)),
         tasksByProject: JSON.parse(JSON.stringify(Object.values(tasksByProject))),
         projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
     };
