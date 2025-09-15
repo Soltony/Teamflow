@@ -12,9 +12,13 @@ import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User } from '@prisma/client';
+import { Badge } from '@/components/ui/badge';
+import { startOfDay, isToday, parseISO } from 'date-fns';
+import { Calendar, Clock, Edit3 } from 'lucide-react';
 
 type TaskWithAssigneesAndUpdates = Task & { 
     assignees: User[],
+    updates: {createdAt: string}[],
 };
 type ProjectWithTasks = {
   id: string;
@@ -40,35 +44,62 @@ function LoadingSkeleton() {
   );
 }
 
-const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => (
-    <div className="p-4 border rounded-md bg-muted/50">
-        <div className="flex justify-between items-start">
-            <h4 className="font-semibold">{task.title}</h4>
-            <div className="flex -space-x-2">
-                <TooltipProvider>
-                    {task.assignees.map(assignee => (
-                        <Tooltip key={assignee.id}>
-                            <TooltipTrigger>
-                                <Avatar className="h-8 w-8 border-2 border-background">
-                                    <AvatarImage src={assignee.avatar || undefined} />
-                                    <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
-                                </Avatar>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{assignee.name}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    ))}
-                </TooltipProvider>
+const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
+    const today = new Date();
+    const todayStart = startOfDay(today);
+
+    const isScheduledToday = parseISO(task.startDate) <= today && parseISO(task.endDate) >= today;
+    const isDueToday = isToday(parseISO(task.endDate));
+    const wasUpdatedToday = task.updates?.some(update => isToday(parseISO(update.createdAt)));
+
+    return (
+        <div className="p-4 border rounded-md bg-muted/50">
+            <div className="flex justify-between items-start">
+                <h4 className="font-semibold">{task.title}</h4>
+                <div className="flex -space-x-2">
+                    <TooltipProvider>
+                        {task.assignees.map(assignee => (
+                            <Tooltip key={assignee.id}>
+                                <TooltipTrigger>
+                                    <Avatar className="h-8 w-8 border-2 border-background">
+                                        <AvatarImage src={assignee.avatar || undefined} />
+                                        <AvatarFallback>{assignee.name.charAt(0)}</AvatarFallback>
+                                    </Avatar>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{assignee.name}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        ))}
+                    </TooltipProvider>
+                </div>
+            </div>
+            <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
+            <div className="flex items-center gap-4 mt-2">
+                <Progress value={task.progress || 0} className="flex-1 h-2" />
+                <span className="text-xs font-semibold">{task.progress || 0}%</span>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-3">
+                {isScheduledToday && (
+                    <Badge variant="outline" className="flex items-center gap-1.5 text-xs">
+                        <Calendar className="w-3 h-3" /> Scheduled Today
+                    </Badge>
+                )}
+                {isDueToday && (
+                    <Badge variant="outline" className="flex items-center gap-1.5 text-xs text-amber-700 border-amber-300">
+                        <Clock className="w-3 h-3" /> Due Today
+                    </Badge>
+                )}
+                {wasUpdatedToday && (
+                     <Badge variant="outline" className="flex items-center gap-1.5 text-xs text-blue-700 border-blue-300">
+                        <Edit3 className="w-3 h-3" /> Updated Today
+                    </Badge>
+                )}
             </div>
         </div>
-        <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
-        <div className="flex items-center gap-4 mt-2">
-            <Progress value={task.progress || 0} className="flex-1 h-2" />
-            <span className="text-xs font-semibold">{task.progress || 0}%</span>
-        </div>
-    </div>
-);
+    );
+};
+
 
 export default function TodayPage() {
   const { hasPermission, loading: authLoading } = useAuth();
@@ -108,7 +139,7 @@ export default function TodayPage() {
         <CardHeader>
           <CardTitle>Today's Activity</CardTitle>
           <CardDescription>
-            A snapshot of all activity happening today across all projects.
+            A snapshot of all activity happening today across all projects. This includes tasks that are scheduled, due, or have been updated today.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -122,7 +153,7 @@ export default function TodayPage() {
                             <AccordionContent className="p-4 pt-0">
                                 <div className="space-y-4">
                                   {project.tasks.length > 0 ? (
-                                    project.tasks.map(task => <TaskItem key={task.id} task={task} />)
+                                    project.tasks.map(task => <TaskItem key={task.id} task={task as TaskWithAssigneesAndUpdates} />)
                                   ) : (
                                     <p className="text-sm text-center text-muted-foreground py-4">No activity recorded for this project today.</p>
                                   )}
