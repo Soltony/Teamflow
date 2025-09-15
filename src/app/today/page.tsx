@@ -12,9 +12,9 @@ import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User } from '@prisma/client';
-import { Calendar, CircleDot, Edit, AlertTriangle } from 'lucide-react';
+import { Calendar, Edit, AlertTriangle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
-import { isToday, parseISO } from 'date-fns';
+import { isToday, parseISO, startOfDay } from 'date-fns';
 
 type TaskWithAssigneesAndUpdates = Task & { 
     assignees: User[],
@@ -122,6 +122,19 @@ export default function TodayPage() {
     return <LoadingSkeleton />;
   }
 
+  const projectsWithActivity = projects.filter(project => {
+      const todayStart = startOfDay(new Date());
+      const hasRelevantTask = project.tasks.some(task => {
+        const startDate = parseISO(task.startDate.toString());
+        const endDate = parseISO(task.endDate.toString());
+        const isScheduledToday = todayStart >= startDate && todayStart <= endDate;
+        const isDueToday = isToday(parseISO(task.endDate.toString()));
+        const wasUpdatedToday = task.updates?.some(u => isToday(parseISO(u.createdAt)));
+        return isScheduledToday || isDueToday || wasUpdatedToday;
+      });
+      return hasRelevantTask;
+  });
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <Card>
@@ -132,29 +145,24 @@ export default function TodayPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-            {projects.length > 0 ? (
-                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projects.map(p => p.id)}>
-                    {projects.map(project => {
-                        const today = new Date();
+            {projectsWithActivity.length > 0 ? (
+                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projectsWithActivity.map(p => p.id)}>
+                    {projectsWithActivity.map(project => {
+                        const todayStart = startOfDay(new Date());
                         
                         const scheduledToday = project.tasks.filter(t => {
                             const startDate = parseISO(t.startDate.toString());
                             const endDate = parseISO(t.endDate.toString());
-                            return today >= startDate && today <= endDate;
+                            return todayStart >= startDate && todayStart <= endDate;
                         });
 
                         const dueToday = project.tasks.filter(t => isToday(parseISO(t.endDate.toString())));
                         
                         const updatedToday = project.tasks.filter(t => t.updates?.some(u => isToday(parseISO(u.createdAt))));
-                        
-                        // Create a set of all unique tasks across the three categories
-                        const allRelevantTasks = new Set([
-                            ...scheduledToday.map(t => t.id), 
-                            ...dueToday.map(t => t.id), 
-                            ...updatedToday.map(t => t.id)
-                        ]);
-                        
-                        if (allRelevantTasks.size === 0) {
+
+                        const hasAnyTasks = scheduledToday.length > 0 || dueToday.length > 0 || updatedToday.length > 0;
+
+                        if (!hasAnyTasks) {
                             return null;
                         }
 
@@ -171,7 +179,7 @@ export default function TodayPage() {
                                             tasks={scheduledToday}
                                         />
                                         
-                                        {dueToday.length > 0 && <Separator />}
+                                        {dueToday.length > 0 && scheduledToday.length > 0 && <Separator />}
                                         
                                         <TaskSection 
                                             title="Due Today"
@@ -179,7 +187,7 @@ export default function TodayPage() {
                                             tasks={dueToday}
                                         />
 
-                                        {updatedToday.length > 0 && <Separator />}
+                                        {updatedToday.length > 0 && (dueToday.length > 0 || scheduledToday.length > 0) && <Separator />}
 
                                         <TaskSection 
                                             title="Updated Today"
