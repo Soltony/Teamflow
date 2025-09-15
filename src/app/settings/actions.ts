@@ -299,10 +299,22 @@ export async function resetPasswordForUser(data: { phoneNumber: string, newPassw
         if (axios.isAxiosError(error) && error.response) {
             console.error("Auth service password reset failed. Response:", error.response.status, error.response.data);
             const responseData = error.response.data as any;
-            const errorValue = responseData.errors;
+            
             let errorMessage = 'An unexpected error occurred during password reset.';
-            if (Array.isArray(errorValue)) errorMessage = errorValue.join(', ');
-            else if (typeof errorValue === 'string') errorMessage = errorValue;
+             if (responseData && responseData.message) {
+                errorMessage = responseData.message;
+            } else if (responseData && responseData.errors) {
+                const errorDetails = responseData.errors;
+                if (Array.isArray(errorDetails) && errorDetails.length > 0) {
+                    errorMessage = errorDetails.join(', ');
+                } else if (typeof errorDetails === 'string') {
+                    errorMessage = errorDetails;
+                } else if (typeof errorDetails === 'object') {
+                    // Handle cases where errors is an object of arrays, e.g., { "Password": ["error1", "error2"] }
+                    errorMessage = Object.values(errorDetails).flat().join(' ');
+                }
+            }
+            
             return { success: false, error: errorMessage };
         }
         console.error("Failed to reset password:", error);
