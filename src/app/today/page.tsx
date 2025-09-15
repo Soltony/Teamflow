@@ -118,22 +118,23 @@ export default function TodayPage() {
     }
   }, [authLoading, hasPermission, router, fetchData]);
 
+  const projectsWithActivity = useMemo(() => {
+    return projects.filter(project => {
+        const todayStart = startOfDay(new Date());
+        return project.tasks.some(task => {
+            const startDate = parseISO(task.startDate.toString());
+            const endDate = parseISO(task.endDate.toString());
+            const isScheduledToday = todayStart >= startDate && todayStart <= endDate;
+            const isDueToday = isToday(parseISO(task.endDate.toString()));
+            const wasUpdatedToday = task.updates?.some(u => isToday(parseISO(u.createdAt)));
+            return isScheduledToday || isDueToday || wasUpdatedToday;
+        });
+    });
+  }, [projects]);
+  
   if (isLoading || authLoading) {
     return <LoadingSkeleton />;
   }
-
-  const projectsWithActivity = projects.filter(project => {
-      const todayStart = startOfDay(new Date());
-      const hasRelevantTask = project.tasks.some(task => {
-        const startDate = parseISO(task.startDate.toString());
-        const endDate = parseISO(task.endDate.toString());
-        const isScheduledToday = todayStart >= startDate && todayStart <= endDate;
-        const isDueToday = isToday(parseISO(task.endDate.toString()));
-        const wasUpdatedToday = task.updates?.some(u => isToday(parseISO(u.createdAt)));
-        return isScheduledToday || isDueToday || wasUpdatedToday;
-      });
-      return hasRelevantTask;
-  });
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -159,12 +160,6 @@ export default function TodayPage() {
                         const dueToday = project.tasks.filter(t => isToday(parseISO(t.endDate.toString())));
                         
                         const updatedToday = project.tasks.filter(t => t.updates?.some(u => isToday(parseISO(u.createdAt))));
-
-                        const hasAnyTasks = scheduledToday.length > 0 || dueToday.length > 0 || updatedToday.length > 0;
-
-                        if (!hasAnyTasks) {
-                            return null;
-                        }
 
                         return (
                             <AccordionItem value={project.id} key={project.id} className="border rounded-lg">
