@@ -10,20 +10,20 @@ export async function getTodaysTasks() {
 
     const tasks = await prisma.task.findMany({
         where: {
-            AND: [
+            OR: [
+                // Tasks that are currently active and not done
                 {
-                    startDate: {
-                        lte: todayEnd,
-                    },
+                    AND: [
+                        { startDate: { lte: todayEnd } },
+                        { endDate: { gte: todayStart } },
+                        { status: { not: 'DONE' } }
+                    ]
                 },
+                // Tasks that were completed today
                 {
-                    endDate: {
+                    completedAt: {
                         gte: todayStart,
-                    },
-                },
-                {
-                    status: {
-                        not: 'DONE'
+                        lte: todayEnd
                     }
                 }
             ]
