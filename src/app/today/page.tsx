@@ -13,7 +13,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
-import { isToday, parseISO } from 'date-fns';
+import { isToday, parseISO, startOfDay } from 'date-fns';
 import { Calendar, Clock, Edit3, CheckCircle } from 'lucide-react';
 
 type TaskWithAssigneesAndUpdates = Task & { 
@@ -45,10 +45,10 @@ function LoadingSkeleton() {
 }
 
 const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
-    const isScheduledToday = isToday(parseISO(task.startDate));
-    const isDueToday = isToday(parseISO(task.endDate));
+    const isScheduledToday = isToday(parseISO(task.startDate as unknown as string));
+    const isDueToday = isToday(parseISO(task.endDate as unknown as string));
     const wasCompletedToday = task.completedAt && isToday(parseISO(task.completedAt as unknown as string));
-    const wasUpdatedToday = !wasCompletedToday && task.updates?.some(update => isToday(parseISO(update.createdAt)));
+    const wasUpdatedToday = !wasCompletedToday && task.updates?.some(update => isToday(parseISO(update.createdAt as unknown as string)));
 
     return (
         <div className="p-4 border rounded-md bg-muted/50">

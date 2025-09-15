@@ -49,7 +49,7 @@ export async function getTodaysTasks() {
             updates: {
                 orderBy: {
                     createdAt: 'desc'
-                }
+                },
             }
         },
         orderBy: {
