@@ -67,6 +67,7 @@ export const projectStatusesData = [
   { name: 'Active' },
   { name: 'Pending' },
   { name: 'Parked' },
+  { name: 'On Handover' },
   { name: 'Completed' },
 ];
 
@@ -204,6 +205,8 @@ export const teamsData = [
     memberEmails: ['diana.miller@teamflow.com', 'fiona.garcia@teamflow.com'] 
   },
 ];
+
+    
 
     
 

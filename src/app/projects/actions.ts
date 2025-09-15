@@ -356,69 +356,74 @@ export async function getProjectsPageData(userId: string) {
             statuses: []
         };
     }
+    
+    const statuses = await prisma.projectStatus.findMany({
+        orderBy: {
+            name: 'asc'
+        }
+    });
+    
+    const archivedStatusNames = ['Completed', 'On Handover'];
+    const archivedStatusIds = statuses.filter(s => archivedStatusNames.includes(s.name)).map(s => s.id);
+
 
     const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
 
-    let whereClause: Prisma.ProjectWhereInput = {};
+    let whereClause: Prisma.ProjectWhereInput = {
+        statusId: {
+            notIn: archivedStatusIds,
+        }
+    };
 
     if (!isManagerOrAdmin) {
         // User is a member, so filter projects to only ones they are involved in
-        whereClause = {
-            OR: [
-                { projectManagerId: userId },
-                {
-                    teams: {
-                        some: {
-                            members: {
-                                some: { id: userId }
-                            }
+        whereClause.OR = [
+            { projectManagerId: userId },
+            {
+                teams: {
+                    some: {
+                        members: {
+                            some: { id: userId }
                         }
                     }
-                },
-                { // Also check if they are assigned to any task in the project
-                    milestones: {
-                        some: {
-                            tasks: {
-                                some: {
-                                    assignees: {
-                                        some: {
-                                            id: userId
-                                        }
+                }
+            },
+            { // Also check if they are assigned to any task in the project
+                milestones: {
+                    some: {
+                        tasks: {
+                            some: {
+                                assignees: {
+                                    some: {
+                                        id: userId
                                     }
                                 }
                             }
                         }
                     }
                 }
-            ]
-        };
+            }
+        ];
     }
-
-    const [projects, statuses] = await Promise.all([
-        prisma.project.findMany({
-            where: whereClause,
-            include: {
-                status: true,
-                milestones: {
-                    include: {
-                        tasks: true,
-                    },
+    
+    const projects = await prisma.project.findMany({
+        where: whereClause,
+        include: {
+            status: true,
+            milestones: {
+                include: {
+                    tasks: true,
                 },
             },
-            orderBy: {
-                createdAt: 'desc'
-            }
-        }),
-        prisma.projectStatus.findMany({
-            orderBy: {
-                name: 'asc'
-            }
-        })
-    ]);
+        },
+        orderBy: {
+            createdAt: 'desc'
+        }
+    });
 
     return {
         projects: JSON.parse(JSON.stringify(projects)),
-        statuses: JSON.parse(JSON.stringify(statuses))
+        statuses: JSON.parse(JSON.stringify(statuses.filter(s => !archivedStatusNames.includes(s.name))))
     };
 }
 
@@ -632,3 +637,5 @@ export async function deleteProject(projectId: string) {
         return { success: false, error: "Failed to delete project. Please ensure all related items are handled." };
     }
 }
+
+    

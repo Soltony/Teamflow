@@ -83,7 +83,9 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     const tempTeams = teams.filter((t: any) => projectIds.has(t.projectId));
 
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
-    const activeProjs = tempProjects.filter((p: any) => p.statusId !== completedStatusId);
+    const onHandoverStatusId = projectStatuses.find((s: any) => s.name === 'On Handover')?.id;
+    
+    const activeProjs = tempProjects.filter((p: any) => p.statusId !== completedStatusId && p.statusId !== onHandoverStatusId);
     const completedProjs = tempProjects.filter((p: any) => p.statusId === completedStatusId);
 
     return { 
@@ -97,7 +99,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
   const { stats, projectsWithBlockers } = React.useMemo(() => {
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
     const completedProjects = filteredProjects.filter((p: any) => p.statusId === completedStatusId);
-    const overdueProjects = filteredProjects.filter((p: any) => p.statusId !== completedStatusId && isPast(parseISO(p.endDate)));
+    const overdueProjects = filteredProjects.filter((p: any) => p.status.name === 'Active' && isPast(parseISO(p.endDate)));
     const projectsWithOpenBlockers = filteredProjects.filter((p: any) => p.blockers?.some((b: any) => b.status === 'OPEN'));
     
     const onTimeProjectsCount = completedProjects.filter((project: any) => {
@@ -494,3 +496,5 @@ Let’s keep projects on track—together.
     </div>
   );
 }
+
+    

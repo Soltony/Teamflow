@@ -21,6 +21,7 @@ import {
   DollarSign,
   CheckSquare,
   ListTodo,
+  Archive,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -54,6 +55,7 @@ const menuItems = [
   { href: "/my-tasks", label: "My Tasks", icon: ClipboardCheck, permission: 'my-tasks:view' },
   { href: "/team-view", label: "Team View", icon: ClipboardList, permission: 'team-view:view' },
   { href: "/projects", label: "Projects", icon: FolderKanban, permission: 'projects:read' },
+  { href: "/archive", label: "Archive", icon: Archive, permission: 'projects:read' },
   { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
   { href: "/pmo-divisions", label: "EPMO Divisions", icon: Library, permission: 'pmo-divisions:view' },
@@ -183,3 +185,5 @@ export function AppShellProvider({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
+
+    

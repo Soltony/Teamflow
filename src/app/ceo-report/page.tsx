@@ -40,11 +40,12 @@ export default async function CEOReportPage() {
     ]);
 
     const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
+    const activeStatusId = projectStatuses.find(s => s.name === 'Active')?.id;
 
     // KPI Calculations
-    const totalActiveProjects = projects.filter(p => p.statusId !== completedStatusId).length;
+    const totalActiveProjects = projects.filter(p => p.status.name === 'Active').length;
     const totalOpenBlockers = projects.reduce((acc, p) => acc + p.blockers.length, 0);
-    const overdueProjects = projects.filter(p => p.statusId !== completedStatusId && isPast(p.endDate));
+    const overdueProjects = projects.filter(p => p.status.name === 'Active' && isPast(p.endDate));
     const totalOverdueProjects = overdueProjects.length;
 
     const completedProjects = projects.filter(p => p.statusId === completedStatusId);
@@ -63,7 +64,7 @@ export default async function CEOReportPage() {
 
     // At-Risk Projects
     const atRiskProjects = projects.filter(p => 
-        p.statusId !== completedStatusId && (isPast(p.endDate) || p.blockers.length > 0)
+        p.status.name === 'Active' && (isPast(p.endDate) || p.blockers.length > 0)
     ).sort((a,b) => b.blockers.length - a.blockers.length || a.endDate.getTime() - b.endDate.getTime());
 
     const serializableProjects = JSON.parse(JSON.stringify(projects));
@@ -201,3 +202,5 @@ export default async function CEOReportPage() {
         </div>
     );
 }
+
+    

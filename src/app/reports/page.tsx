@@ -15,7 +15,7 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
     let title = "Projects Report";
     let description = "A list of projects based on the selected filter.";
     
-    const projectStatuses = await prisma.projectStatus.findMany();
+    const allProjectStatuses = await prisma.projectStatus.findMany();
 
     const allProjectsQuery = prisma.project.findMany({
         where: year && year !== 'all' ? { workingYear: year } : {},
@@ -30,7 +30,7 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
         }
     });
     
-    let [allProjects, allProjectStatuses] = await Promise.all([allProjectsQuery, projectStatuses]);
+    let [allProjects] = await Promise.all([allProjectsQuery]);
 
     let filteredProjects: any[] = [];
     const completedStatusId = allProjectStatuses.find(s => s.name === 'Completed')?.id;
@@ -62,7 +62,7 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
             case 'overdue':
                 title = "Overdue Projects";
                 description = "Active projects that are past their deadline.";
-                filteredProjects = allProjects.filter(p => p.statusId !== completedStatusId && isPast(p.endDate));
+                filteredProjects = allProjects.filter(p => p.status.name === 'Active' && isPast(p.endDate));
                 break;
             case 'active-blockers':
                 title = "Projects with Active Blockers";
@@ -120,3 +120,5 @@ export default function ReportsPage({ searchParams }: { searchParams: { type?: s
         </Suspense>
     );
 }
+
+    

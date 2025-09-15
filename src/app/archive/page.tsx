@@ -1,0 +1,191 @@
+
+'use client';
+
+import { useEffect, useState, useCallback, useMemo } from "react";
+import { useAuth } from "@/context/auth-context";
+import { ProjectCard } from "@/components/projects/project-card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { getArchivedProjects } from "./actions";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { ProjectStatus } from "@prisma/client";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Search, X } from "lucide-react";
+
+function LoadingSkeleton() {
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between">
+                    <div>
+                        <Skeleton className="h-8 w-48" />
+                        <Skeleton className="h-4 w-96 mt-2" />
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                        <Skeleton className="h-64" />
+                        <Skeleton className="h-64" />
+                        <Skeleton className="h-64" />
+                    </div>
+                </CardContent>
+            </Card>
+        </div>
+    )
+}
+
+export default function ArchivePage() {
+    const { localUser, loading: authLoading } = useAuth();
+    const [projects, setProjects] = useState<any[]>([]);
+    const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
+    const [isLoading, setIsLoading] = useState(true);
+    const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const projectsPerPage = 12;
+
+    const fetchProjects = useCallback(async () => {
+        if (localUser?.id) {
+            setIsLoading(true);
+            try {
+                const data = await getArchivedProjects(localUser.id);
+                setProjects(data.projects);
+                setStatuses(data.statuses);
+            } catch (error) {
+                console.error("Failed to fetch archived projects", error);
+                setProjects([]);
+                setStatuses([]);
+            } finally {
+                setIsLoading(false);
+            }
+        }
+    }, [localUser?.id]);
+
+    useEffect(() => {
+        if (localUser?.id) {
+            fetchProjects();
+        } else if (!authLoading) {
+            setIsLoading(false);
+        }
+    }, [localUser, authLoading, fetchProjects]);
+
+    const filteredProjects = useMemo(() => {
+        let filtered = projects;
+        if (selectedStatus) {
+            filtered = filtered.filter(p => p.statusId === selectedStatus);
+        }
+        if (searchQuery) {
+            filtered = filtered.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        return filtered;
+    }, [projects, selectedStatus, searchQuery]);
+    
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [selectedStatus, searchQuery]);
+
+    const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
+    const paginatedProjects = useMemo(() => {
+        const startIndex = (currentPage - 1) * projectsPerPage;
+        const endIndex = startIndex + projectsPerPage;
+        return filteredProjects.slice(startIndex, endIndex);
+    }, [filteredProjects, currentPage, projectsPerPage]);
+
+    if (isLoading || authLoading) {
+        return <LoadingSkeleton />;
+    }
+
+    if (!localUser) {
+        return (
+            <div className="p-4 sm:p-6">
+                <p>Could not load archived projects. Please try logging in again.</p>
+            </div>
+        )
+    }
+
+    return (
+        <div className="p-4 sm:p-6 space-y-6">
+            <Card>
+                <CardHeader className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                        <CardTitle>Archived Projects</CardTitle>
+                        <CardDescription>
+                            A list of all completed or handed-over projects.
+                        </CardDescription>
+                    </div>
+                    <div className="flex flex-col-reverse sm:flex-row items-center gap-2">
+                        <div className="relative w-full sm:w-auto">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                placeholder="Search projects..."
+                                className="w-full rounded-lg bg-background pl-8 sm:w-[200px] lg:w-[250px]"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex items-center gap-2">
+                             <Select onValueChange={(value) => setSelectedStatus(value === 'all' ? null : value)} value={selectedStatus || 'all'}>
+                                <SelectTrigger className="w-full sm:w-[180px]">
+                                    <SelectValue placeholder="Filter by status..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Statuses</SelectItem>
+                                    {statuses.map(status => (
+                                        <SelectItem key={status.id} value={status.id}>
+                                            {status.name}
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                            {selectedStatus && (
+                                <Button variant="ghost" size="icon" onClick={() => setSelectedStatus(null)}>
+                                    <X className="h-4 w-4" />
+                                </Button>
+                            )}
+                        </div>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {paginatedProjects.length > 0 ? (
+                        <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                            {paginatedProjects.map((project: any) => (
+                                <ProjectCard key={project.id} project={project} />
+                            ))}
+                        </div>
+                    ) : (
+                        <div className="text-center py-12">
+                            <p className="text-muted-foreground">
+                                No archived projects found.
+                            </p>
+                        </div>
+                    )}
+                </CardContent>
+                {totalPages > 1 && (
+                    <CardFooter className="flex justify-center items-center gap-4">
+                        <Button
+                            variant="outline"
+                            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                            disabled={currentPage === 1}
+                        >
+                            Previous
+                        </Button>
+                        <span className="text-sm text-muted-foreground">
+                            Page {currentPage} of {totalPages}
+                        </span>
+                        <Button
+                            variant="outline"
+                            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                            disabled={currentPage === totalPages}
+                        >
+                            Next
+                        </Button>
+                    </CardFooter>
+                )}
+            </Card>
+        </div>
+    );
+}
+
+    
