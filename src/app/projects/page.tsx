@@ -11,7 +11,8 @@ import { Skeleton } from "@/components/ui/skeleton";
 import type { ProjectStatus } from "@prisma/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
-import { X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Search, X } from "lucide-react";
 
 function LoadingSkeleton() {
     return (
@@ -42,6 +43,7 @@ export default function ProjectsPage() {
     const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+    const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const projectsPerPage = 12;
 
@@ -74,15 +76,19 @@ export default function ProjectsPage() {
     }, [localUser, authLoading, fetchProjects]);
 
     const filteredProjects = useMemo(() => {
-        if (!selectedStatus) {
-            return projects;
+        let filtered = projects;
+        if (selectedStatus) {
+            filtered = filtered.filter(p => p.statusId === selectedStatus);
         }
-        return projects.filter(p => p.statusId === selectedStatus);
-    }, [projects, selectedStatus]);
+        if (searchQuery) {
+            filtered = filtered.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
+        }
+        return filtered;
+    }, [projects, selectedStatus, searchQuery]);
     
     useEffect(() => {
         setCurrentPage(1);
-    }, [selectedStatus]);
+    }, [selectedStatus, searchQuery]);
 
     const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
     const paginatedProjects = useMemo(() => {
@@ -116,9 +122,19 @@ export default function ProjectsPage() {
                         </CardDescription>
                     </div>
                     <div className="flex flex-col-reverse sm:flex-row items-center gap-2">
+                        <div className="relative w-full sm:w-auto">
+                            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                            <Input
+                                type="search"
+                                placeholder="Search projects..."
+                                className="w-full rounded-lg bg-background pl-8 sm:w-[200px] lg:w-[250px]"
+                                value={searchQuery}
+                                onChange={(e) => setSearchQuery(e.target.value)}
+                            />
+                        </div>
                         <div className="flex items-center gap-2">
                              <Select onValueChange={(value) => setSelectedStatus(value === 'all' ? null : value)} value={selectedStatus || 'all'}>
-                                <SelectTrigger className="w-[180px]">
+                                <SelectTrigger className="w-full sm:w-[180px]">
                                     <SelectValue placeholder="Filter by status..." />
                                 </SelectTrigger>
                                 <SelectContent>

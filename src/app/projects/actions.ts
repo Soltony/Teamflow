@@ -406,7 +406,7 @@ export async function getProjectsPageData(userId: string) {
                 },
             },
             orderBy: {
-                name: 'asc'
+                createdAt: 'desc'
             }
         }),
         prisma.projectStatus.findMany({
