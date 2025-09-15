@@ -7,11 +7,11 @@ import type { Project, PmoDivision, ProjectStatus } from '@prisma/client';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
-import { isPast, max as dateMax, parseISO } from 'date-fns';
+import { isPast, max as dateMax, parseISO, isAfter } from 'date-fns';
 
 type ProjectWithRelations = Project & {
     status: ProjectStatus;
-    milestones: { tasks: { endDate: string }[] }[];
+    milestones: { tasks: { endDate: string; completedAt: string | null }[] }[];
 };
 
 type PmoDivisionPerformanceProps = {
@@ -32,10 +32,10 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                 const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
                 
                 const divOnTimeCount = divCompletedProjects.filter(project => {
-                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => parseISO(t.endDate)));
+                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.completedAt ? parseISO(t.completedAt) : new Date()));
                     if (allTaskEndDates.length === 0) return true;
                     const lastTaskDate = dateMax(allTaskEndDates);
-                    return lastTaskDate <= parseISO(project.endDate as unknown as string);
+                    return !isAfter(lastTaskDate, parseISO(project.endDate as unknown as string));
                 }).length;
 
                 const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 0;
@@ -122,5 +122,4 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
         </Card>
     );
 }
-
     

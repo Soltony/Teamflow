@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import prisma from "@/lib/db";
-import { isPast, max as dateMax, parseISO } from 'date-fns';
+import { isPast, max as dateMax, parseISO, isAfter } from 'date-fns';
 import { ProjectStatusChart } from "@/components/dashboard/project-status-chart";
 import Link from 'next/link';
 import { AlertTriangle, ShieldAlert } from "lucide-react";
@@ -48,15 +48,18 @@ export default async function CEOReportPage() {
     const totalOverdueProjects = overdueProjects.length;
 
     const completedProjects = projects.filter(p => p.statusId === completedStatusId);
+    
+    // An on-time project is a completed project where the last task was finished on or before the project's planned end date.
     const onTimeProjectsCount = completedProjects.filter(project => {
-        const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.endDate));
-        if (allTaskEndDates.length === 0) return true;
+        const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.completedAt ? parseISO(t.completedAt.toISOString()) : new Date()));
+        if (allTaskEndDates.length === 0) return true; // No tasks, considered on-time.
         const lastTaskDate = dateMax(allTaskEndDates);
-        return lastTaskDate <= project.endDate;
+        return !isAfter(lastTaskDate, project.endDate);
     }).length;
     
-    // Corrected logic: Default to 0 if no projects are completed, not 100.
-    const overallCompletionRate = completedProjects.length > 0 ? (onTimeProjectsCount / completedProjects.length) * 100 : 0;
+    const overallCompletionRate = completedProjects.length > 0 
+        ? (onTimeProjectsCount / completedProjects.length) * 100 
+        : 0;
 
     // At-Risk Projects
     const atRiskProjects = projects.filter(p => 
