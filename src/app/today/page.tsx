@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -116,24 +117,26 @@ export default function TodayPage() {
       }
     }
   }, [authLoading, hasPermission, router, fetchData]);
+
+  const projectsWithActivity = useMemo(() => {
+    return projects.filter(project => 
+        project.tasks.some(t => {
+            const todayStart = startOfDay(new Date());
+            const startDate = parseISO(t.startDate.toString());
+            const endDate = parseISO(t.endDate.toString());
+            
+            const isScheduled = todayStart >= startDate && todayStart <= endDate;
+            const isDue = isToday(endDate);
+            const isUpdated = t.updates?.some(u => isToday(parseISO(u.createdAt)));
+            
+            return isScheduled || isDue || isUpdated;
+        })
+    );
+  }, [projects]);
   
   if (isLoading || authLoading) {
     return <LoadingSkeleton />;
   }
-
-  const projectsWithActivity = useMemo(() => {
-    return projects.filter(project => {
-        const todayStart = startOfDay(new Date());
-        return project.tasks.some(t => {
-            const startDate = parseISO(t.startDate.toString());
-            const endDate = parseISO(t.endDate.toString());
-            const isScheduled = todayStart >= startDate && todayStart <= endDate;
-            const isDue = isToday(endDate);
-            const isUpdated = t.updates?.some(u => isToday(parseISO(u.createdAt)));
-            return isScheduled || isDue || isUpdated;
-        });
-    });
-  }, [projects]);
   
   return (
     <div className="p-4 sm:p-6 space-y-6">
