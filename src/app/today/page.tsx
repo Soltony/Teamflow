@@ -18,7 +18,7 @@ import { Calendar, Clock, Edit3, CheckCircle } from 'lucide-react';
 
 type TaskWithAssigneesAndUpdates = Task & { 
     assignees: User[],
-    updates: {createdAt: string}[],
+    updates: {createdAt: string, progressPercentage: number | null}[],
 };
 type ProjectWithTasks = {
   id: string;
@@ -48,7 +48,38 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
     const isScheduledToday = isToday(parseISO(task.startDate as unknown as string));
     const isDueToday = isToday(parseISO(task.endDate as unknown as string));
     const wasCompletedToday = task.completedAt && isToday(parseISO(task.completedAt as unknown as string));
-    const wasUpdatedToday = !wasCompletedToday && task.updates?.some(update => isToday(parseISO(update.createdAt as unknown as string)));
+    
+    const todaysUpdates = useMemo(() => 
+        (task.updates || [])
+            .map(u => ({...u, createdAt: parseISO(u.createdAt)}))
+            .filter(update => isToday(update.createdAt))
+            .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+    , [task.updates]);
+
+    const wasUpdatedToday = !wasCompletedToday && todaysUpdates.length > 0;
+
+    const progressText = useMemo(() => {
+        if (wasCompletedToday) {
+            const lastUpdateBeforeCompletion = (task.updates || [])
+                .map(u => ({...u, createdAt: parseISO(u.createdAt)}))
+                .filter(u => u.createdAt < parseISO(task.completedAt as string))
+                .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+            const previousProgress = lastUpdateBeforeCompletion?.progressPercentage ?? 0;
+            return `Progress: ${previousProgress}% → 100%`;
+        }
+        if (wasUpdatedToday) {
+            const firstUpdateToday = todaysUpdates[0];
+            const updatesBeforeToday = (task.updates || [])
+                .map(u => ({...u, createdAt: parseISO(u.createdAt)}))
+                .filter(u => u.createdAt < firstUpdateToday.createdAt)
+                .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
+            
+            const previousProgress = updatesBeforeToday[0]?.progressPercentage ?? 0;
+            return `Progress: ${previousProgress}% → ${task.progress || 0}%`;
+        }
+        return `${task.progress || 0}%`;
+    }, [task, wasCompletedToday, wasUpdatedToday, todaysUpdates]);
+
 
     return (
         <div className="p-4 border rounded-md bg-muted/50">
@@ -75,7 +106,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
             <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{task.description}</p>
             <div className="flex items-center gap-4 mt-2">
                 <Progress value={task.progress || 0} className="flex-1 h-2" />
-                <span className="text-xs font-semibold">{task.progress || 0}%</span>
+                <span className="text-xs font-semibold">{progressText}</span>
             </div>
             <div className="flex flex-wrap gap-2 mt-3">
                 {isScheduledToday && (
@@ -175,3 +206,4 @@ export default function TodayPage() {
     </div>
   );
 }
+
