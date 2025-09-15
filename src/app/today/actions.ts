@@ -46,6 +46,11 @@ export async function getTodaysTasks() {
                     project: true,
                 },
             },
+            updates: {
+                orderBy: {
+                    createdAt: 'desc'
+                }
+            }
         },
         orderBy: {
             milestone: {
