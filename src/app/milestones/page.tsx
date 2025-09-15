@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { getMilestonesPageData } from './actions';
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Project, Milestone, Department, Role, Task } from "@prisma/client";
+import { Progress } from "@/components/ui/progress";
 
 type ProjectWithMilestones = Project & {
     milestones: (Milestone & { tasks: Task[] })[],
@@ -65,6 +66,14 @@ export default function AllMilestonesPage() {
         </div>
     )
   }
+  
+  const calculateMilestoneProgress = (milestone: Milestone & { tasks: Task[] }) => {
+    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+    const completedTaskWeight = milestone.tasks
+        .filter(t => t.status === 'DONE')
+        .reduce((sum, task) => sum + task.weight, 0);
+    return completedTaskWeight;
+  };
 
   const isMemberOnly = localUser && !localUser.roles.some((r: Role) => r.name === 'Admin' || r.name === 'Project Manager');
 
@@ -107,9 +116,16 @@ export default function AllMilestonesPage() {
                             <div className="space-y-4 pl-4 border-l-2 ml-2">
                                 {(project.milestones && project.milestones.length > 0) ? (
                                 project.milestones.map(milestone => {
+                                    const progress = calculateMilestoneProgress(milestone);
                                     return (
                                     <div key={milestone.id} className="p-4 border rounded-md">
-                                        <h4 className="font-semibold">{milestone.title}</h4>
+                                        <div className="flex justify-between items-start">
+                                            <h4 className="font-semibold">{milestone.title}</h4>
+                                            <div className="flex items-center gap-2 w-1/4">
+                                                <Progress value={progress} className="h-2" />
+                                                <span className="text-xs font-semibold">{Math.round(progress)}%</span>
+                                            </div>
+                                        </div>
                                         <p className="text-sm text-muted-foreground mt-1">{milestone.description}</p>
                                         <div className="flex flex-wrap items-center gap-2 mt-2">
                                             <Badge variant="outline">
