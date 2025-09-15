@@ -12,14 +12,18 @@ import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User } from '@prisma/client';
-import { CheckCircle2, CircleDot } from 'lucide-react';
+import { Calendar, CircleDot, Edit, AlertTriangle } from 'lucide-react';
 import { Separator } from '@/components/ui/separator';
+import { isToday, parseISO } from 'date-fns';
 
-type TaskWithAssignees = Task & { assignees: User[] };
+type TaskWithAssigneesAndUpdates = Task & { 
+    assignees: User[],
+    updates: { createdAt: string }[]
+};
 type ProjectWithTasks = {
   id: string;
   name: string;
-  tasks: TaskWithAssignees[];
+  tasks: TaskWithAssigneesAndUpdates[];
 };
 
 function LoadingSkeleton() {
@@ -40,7 +44,7 @@ function LoadingSkeleton() {
   );
 }
 
-const TaskItem = ({ task }: { task: TaskWithAssignees }) => (
+const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => (
     <div className="p-4 border rounded-md bg-muted/50">
         <div className="flex justify-between items-start">
             <h4 className="font-semibold">{task.title}</h4>
@@ -70,6 +74,22 @@ const TaskItem = ({ task }: { task: TaskWithAssignees }) => (
     </div>
 );
 
+const TaskSection = ({ title, icon, tasks }: { title: string, icon: React.ReactNode, tasks: TaskWithAssigneesAndUpdates[] }) => {
+    if (tasks.length === 0) return null;
+
+    return (
+        <div>
+            <div className="flex items-center gap-2 mb-4">
+                {icon}
+                <h3 className="font-semibold text-muted-foreground">{title}</h3>
+            </div>
+            <div className="space-y-4">
+                {tasks.map(task => <TaskItem key={task.id} task={task} />)}
+            </div>
+        </div>
+    )
+}
+
 export default function TodayPage() {
   const { hasPermission, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -98,24 +118,6 @@ export default function TodayPage() {
     }
   }, [authLoading, hasPermission, router, fetchData]);
 
-  const uniqueProjects = useMemo(() => {
-    const projectMap = new Map<string, ProjectWithTasks>();
-    projects.forEach(project => {
-      if (!projectMap.has(project.id)) {
-        projectMap.set(project.id, { ...project, tasks: [] });
-      }
-      const existingProject = projectMap.get(project.id)!;
-      const existingTaskIds = new Set(existingProject.tasks.map(t => t.id));
-      project.tasks.forEach(task => {
-        if (!existingTaskIds.has(task.id)) {
-          existingProject.tasks.push(task);
-        }
-      });
-    });
-    return Array.from(projectMap.values());
-  }, [projects]);
-
-
   if (isLoading || authLoading) {
     return <LoadingSkeleton />;
   }
@@ -126,15 +128,35 @@ export default function TodayPage() {
         <CardHeader>
           <CardTitle>Today's Activity</CardTitle>
           <CardDescription>
-            A snapshot of all tasks that are active or were completed today across all projects.
+            A snapshot of all activity happening today across all projects.
           </CardDescription>
         </CardHeader>
         <CardContent>
-            {uniqueProjects.length > 0 ? (
-                <Accordion type="multiple" className="w-full space-y-4" defaultValue={uniqueProjects.map(p => p.id)}>
-                    {uniqueProjects.map(project => {
-                        const activeTasks = project.tasks.filter(t => t.status !== 'DONE');
-                        const completedTasks = project.tasks.filter(t => t.status === 'DONE');
+            {projects.length > 0 ? (
+                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projects.map(p => p.id)}>
+                    {projects.map(project => {
+                        const today = new Date();
+                        
+                        const scheduledToday = project.tasks.filter(t => {
+                            const startDate = parseISO(t.startDate.toString());
+                            const endDate = parseISO(t.endDate.toString());
+                            return today >= startDate && today <= endDate;
+                        });
+
+                        const dueToday = project.tasks.filter(t => isToday(parseISO(t.endDate.toString())));
+                        
+                        const updatedToday = project.tasks.filter(t => t.updates?.some(u => isToday(parseISO(u.createdAt))));
+                        
+                        // Create a set of all unique tasks across the three categories
+                        const allRelevantTasks = new Set([
+                            ...scheduledToday.map(t => t.id), 
+                            ...dueToday.map(t => t.id), 
+                            ...updatedToday.map(t => t.id)
+                        ]);
+                        
+                        if (allRelevantTasks.size === 0) {
+                            return null;
+                        }
 
                         return (
                             <AccordionItem value={project.id} key={project.id} className="border rounded-lg">
@@ -143,30 +165,27 @@ export default function TodayPage() {
                                 </AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0">
                                     <div className="space-y-6">
-                                        {activeTasks.length > 0 && (
-                                            <div>
-                                                <div className="flex items-center gap-2 mb-4">
-                                                    <CircleDot className="h-5 w-5 text-blue-500" />
-                                                    <h3 className="font-semibold text-muted-foreground">Active Tasks</h3>
-                                                </div>
-                                                <div className="space-y-4">
-                                                    {activeTasks.map(task => <TaskItem key={task.id} task={task} />)}
-                                                </div>
-                                            </div>
-                                        )}
+                                        <TaskSection 
+                                            title="Scheduled Today"
+                                            icon={<Calendar className="h-5 w-5 text-blue-500" />}
+                                            tasks={scheduledToday}
+                                        />
+                                        
+                                        {dueToday.length > 0 && <Separator />}
+                                        
+                                        <TaskSection 
+                                            title="Due Today"
+                                            icon={<AlertTriangle className="h-5 w-5 text-destructive" />}
+                                            tasks={dueToday}
+                                        />
 
-                                        {completedTasks.length > 0 && (
-                                            <div>
-                                                 {activeTasks.length > 0 && <Separator className="my-6" />}
-                                                <div className="flex items-center gap-2 mb-4">
-                                                     <CheckCircle2 className="h-5 w-5 text-green-600" />
-                                                    <h3 className="font-semibold text-muted-foreground">Completed Today</h3>
-                                                </div>
-                                                <div className="space-y-4">
-                                                    {completedTasks.map(task => <TaskItem key={task.id} task={task} />)}
-                                                </div>
-                                            </div>
-                                        )}
+                                        {updatedToday.length > 0 && <Separator />}
+
+                                        <TaskSection 
+                                            title="Updated Today"
+                                            icon={<Edit className="h-5 w-5 text-orange-500" />}
+                                            tasks={updatedToday}
+                                        />
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
@@ -175,7 +194,7 @@ export default function TodayPage() {
                 </Accordion>
             ) : (
                  <div className="text-center py-12 text-muted-foreground">
-                    <p>No tasks are active or were completed today. Enjoy the calm!</p>
+                    <p>No tasks are active or were updated today. Enjoy the calm!</p>
                 </div>
             )}
         </CardContent>
