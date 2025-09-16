@@ -64,9 +64,9 @@ export default function PaymentsPage() {
         <div className="p-4 sm:p-6">
            <Card>
             <CardHeader>
-              <CardTitle>Milestone Payments</CardTitle>
+              <CardTitle>Project Payments</CardTitle>
               <CardDescription>
-                Record and track payments made against project milestones.
+                Record and track payments made against projects.
               </CardDescription>
             </CardHeader>
             <CardContent>
