@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, ChevronDown, PlusCircle, X } from "lucide-react";
+import { CalendarIcon, ChevronDown, PlusCircle, X, DollarSign } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -53,10 +53,17 @@ const milestoneSchema = z.object({
   startDate: z.date(),
   dueDate: z.date(),
   weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
-  cost: z.coerce.number().optional(),
 }).refine(data => data.dueDate >= data.startDate, {
     message: "Due date must be on or after the start date.",
     path: ["dueDate"],
+});
+
+const paymentSchema = z.object({
+    id: z.string().optional(),
+    title: z.string().min(3, "Payment title is required."),
+    description: z.string().optional(),
+    amount: z.coerce.number().positive("Amount must be a positive number."),
+    paymentDate: z.date({ required_error: "A payment date is required." }),
 });
 
 const projectSchema = z.object({
@@ -71,8 +78,8 @@ const projectSchema = z.object({
   responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
   hasCost: z.boolean().default(false),
   totalCost: z.coerce.number().optional(),
-  costByMilestones: z.boolean().default(false),
   milestones: z.array(milestoneSchema),
+  payments: z.array(paymentSchema).optional(),
 }).refine(data => data.endDate > data.startDate, {
     message: "End date must be after start date.",
     path: ["endDate"],
@@ -101,12 +108,12 @@ const projectSchema = z.object({
         }
     });
 
-    if (data.hasCost && data.costByMilestones) {
-        const milestoneCostSum = data.milestones.reduce((sum, m) => sum + (m.cost || 0), 0);
-        if (milestoneCostSum !== data.totalCost) {
+    if (data.hasCost && data.payments && data.payments.length > 0) {
+        const paymentTotal = data.payments.reduce((sum, p) => sum + p.amount, 0);
+        if (data.totalCost !== paymentTotal) {
             ctx.addIssue({
                 path: ["totalCost"],
-                message: `The sum of milestone costs (${milestoneCostSum.toLocaleString()}) must equal the total project cost (${(data.totalCost || 0).toLocaleString()}).`,
+                message: `The sum of payment items (${paymentTotal.toLocaleString()}) must equal the total project cost (${(data.totalCost || 0).toLocaleString()}).`,
                 code: z.ZodIssueCode.custom
             });
         }
@@ -159,14 +166,13 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       responsibleDepartmentIds: [],
       hasCost: false,
       totalCost: 0,
-      costByMilestones: false,
       milestones: [],
+      payments: [],
     },
   });
 
   const selectedPmoDivisionId = form.watch("pmoDivisionId");
   const hasCost = form.watch("hasCost");
-  const costByMilestones = form.watch("costByMilestones");
 
   const projectManagers = useMemo(() => {
     const usersToFilter = nonAdminUsers;
@@ -182,9 +188,14 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
     }
   }, [initialData, isEditMode, form]);
 
-  const { fields, append, remove } = useFieldArray({
+  const { fields: milestoneFields, append: appendMilestone, remove: removeMilestone } = useFieldArray({
     control: form.control,
     name: "milestones",
+  });
+
+  const { fields: paymentFields, append: appendPayment, remove: removePayment } = useFieldArray({
+    control: form.control,
+    name: "payments",
   });
 
   const milestonesError = form.formState.errors.milestones?.root;
@@ -423,80 +434,18 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                   }}
               />
              </div>
-             <Separator />
-             <div className="space-y-4">
-                <div>
-                    <h3 className="text-lg font-medium">Cost Management</h3>
-                    <p className="text-sm text-muted-foreground">Manage the financial aspects of your project.</p>
-                </div>
-                 <FormField
-                    control={form.control}
-                    name="hasCost"
-                    render={({ field }) => (
-                    <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                        <div className="space-y-0.5">
-                        <FormLabel className="text-base">This project has a cost</FormLabel>
-                        <FormDescription>
-                            Enable to add financial tracking to this project.
-                        </FormDescription>
-                        </div>
-                        <FormControl>
-                        <Switch
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                        />
-                        </FormControl>
-                    </FormItem>
-                    )}
-                />
-                {hasCost && (
-                    <div className="space-y-4 p-4 border rounded-lg">
-                        <FormField
-                            control={form.control}
-                            name="totalCost"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Total Project Cost</FormLabel>
-                                <FormControl>
-                                    <Input type="number" placeholder="e.g., 50000" {...field} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={form.control}
-                            name="costByMilestones"
-                            render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                                <div className="space-y-0.5">
-                                <FormLabel>Divide cost by milestones</FormLabel>
-                                <FormDescription>
-                                    Allocate the total cost across individual milestones.
-                                </FormDescription>
-                                </div>
-                                <FormControl>
-                                <Switch
-                                    checked={field.value}
-                                    onCheckedChange={field.onChange}
-                                />
-                                </FormControl>
-                            </FormItem>
-                            )}
-                        />
-                    </div>
-                )}
-             </div>
         </div>
+
+        <Separator />
         
         <div className="space-y-4">
             <div>
                 <h3 className="text-lg font-medium">Milestones</h3>
                 <p className="text-sm text-muted-foreground">Define the major milestones for this project. The sum of all milestone weights must equal 100%.</p>
             </div>
-            {fields.map((field, index) => (
+            {milestoneFields.map((field, index) => (
               <Card key={field.id} className="relative">
-                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => remove(index)}>
+                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => removeMilestone(index)}>
                     <X className="h-4 w-4" />
                 </Button>
                 <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -585,36 +534,19 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                           />
                       </div>
                       
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                            control={form.control}
-                            name={`milestones.${index}.weight`}
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Milestone Weight (%)</FormLabel>
-                                <FormControl>
-                                    <Input type="number" placeholder="e.g., 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        {hasCost && costByMilestones && (
-                            <FormField
-                                control={form.control}
-                                name={`milestones.${index}.cost`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Milestone Cost</FormLabel>
-                                    <FormControl>
-                                        <Input type="number" placeholder="e.g., 10000" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        )}
-                      </div>
+                      <FormField
+                          control={form.control}
+                          name={`milestones.${index}.weight`}
+                          render={({ field }) => (
+                              <FormItem>
+                              <FormLabel>Milestone Weight (%)</FormLabel>
+                              <FormControl>
+                                  <Input type="number" placeholder="e.g., 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                              </FormControl>
+                              <FormMessage />
+                              </FormItem>
+                          )}
+                      />
                   </div>
                 </CardContent>
               </Card>
@@ -624,7 +556,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                 type="button"
                 variant="outline"
                 className="w-full"
-                onClick={() => append({ title: '', description: '', startDate: new Date(), dueDate: new Date(), weight: 20, cost: 0 })}
+                onClick={() => appendMilestone({ title: '', description: '', startDate: new Date(), dueDate: new Date(), weight: 20 })}
             >
                 <PlusCircle className="w-4 h-4 mr-2" />
                 Add Milestone
@@ -633,6 +565,137 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                 <p className="text-sm font-medium text-destructive">{milestonesError.message}</p>
             )}
         </div>
+
+        <Separator />
+         <div className="space-y-4">
+            <div>
+                <h3 className="text-lg font-medium">Cost Management</h3>
+                <p className="text-sm text-muted-foreground">Manage the financial aspects of your project.</p>
+            </div>
+             <FormField
+                control={form.control}
+                name="hasCost"
+                render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                    <FormLabel className="text-base">This project has a cost</FormLabel>
+                    <FormDescription>
+                        Enable to add financial tracking and define a payment schedule.
+                    </FormDescription>
+                    </div>
+                    <FormControl>
+                    <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                    />
+                    </FormControl>
+                </FormItem>
+                )}
+            />
+            {hasCost && (
+                <div className="space-y-4 p-4 border rounded-lg">
+                    <FormField
+                        control={form.control}
+                        name="totalCost"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Total Project Cost</FormLabel>
+                            <FormControl>
+                                <Input type="number" placeholder="e.g., 50000" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    
+                    <Separator />
+                    
+                    <div>
+                        <h4 className="font-medium">Payment Schedule</h4>
+                        <p className="text-sm text-muted-foreground">Define the payment items for this project. The sum must equal the total project cost.</p>
+                    </div>
+
+                     {paymentFields.map((field, index) => (
+                        <Card key={field.id} className="relative bg-muted/50">
+                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => removePayment(index)}>
+                                <X className="h-4 w-4" />
+                            </Button>
+                            <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div className="space-y-4">
+                                     <FormField
+                                        control={form.control}
+                                        name={`payments.${index}.title`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Payment Title</FormLabel>
+                                            <FormControl><Input placeholder="e.g., Initial Deposit" {...field} /></FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name={`payments.${index}.description`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Description (Optional)</FormLabel>
+                                            <FormControl><Textarea placeholder="Payment for Phase 1 deliverables" {...field} /></FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                </div>
+                                 <div className="space-y-4">
+                                     <FormField
+                                        control={form.control}
+                                        name={`payments.${index}.amount`}
+                                        render={({ field }) => (
+                                            <FormItem>
+                                            <FormLabel>Amount</FormLabel>
+                                            <FormControl>
+                                                <div className="relative">
+                                                    <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                                                    <Input type="number" className="pl-8" placeholder="10000" {...field} />
+                                                </div>
+                                            </FormControl>
+                                            <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <FormField
+                                        control={form.control}
+                                        name={`payments.${index}.paymentDate`}
+                                        render={({ field: dateField }) => (
+                                        <FormItem className="flex flex-col">
+                                            <FormLabel>Payment Date</FormLabel>
+                                            <Popover>
+                                                <PopoverTrigger asChild>
+                                                    <FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !dateField.value && "text-muted-foreground")}>{dateField.value ? format(dateField.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl>
+                                                </PopoverTrigger>
+                                                <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateField.value} onSelect={dateField.onChange} initialFocus /></PopoverContent>
+                                            </Popover>
+                                            <FormMessage />
+                                        </FormItem>
+                                        )}
+                                    />
+                                 </div>
+                            </CardContent>
+                        </Card>
+                     ))}
+
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => appendPayment({ title: '', description: '', amount: 0, paymentDate: new Date() })}
+                    >
+                        <PlusCircle className="w-4 h-4 mr-2" />
+                        Add Payment Item
+                    </Button>
+                </div>
+            )}
+         </div>
+
         <Separator />
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>
