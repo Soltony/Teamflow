@@ -56,21 +56,11 @@ model PmoDivision {
 }
 
 model Department {
-  id       String               @id @default(cuid())
-  name     String               @unique
-  projects ProjectToDepartment[]
-  createdAt DateTime             @default(now())
-  updatedAt DateTime             @updatedAt
-}
-
-model ProjectToDepartment {
-  project      Project    @relation(fields: [projectId], references: [id])
-  projectId    String
-  department   Department @relation(fields: [departmentId], references: [id])
-  departmentId String
-
-  @@id([projectId, departmentId])
-  @@map("_ProjectResponsibleDepartments")
+  id                  String    @id @default(cuid())
+  name                String    @unique
+  responsibleProjects Project[] @relation("ResponsibleDepartments")
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 }
 
 enum Currency {
@@ -79,27 +69,27 @@ enum Currency {
 }
 
 model Project {
-  id                     String                @id @default(cuid())
+  id                     String       @id @default(cuid())
   name                   String
   description            String
   startDate              DateTime
   endDate                DateTime
   workingYear            String
-  status                 ProjectStatus         @relation(fields: [statusId], references: [id])
+  status                 ProjectStatus @relation(fields: [statusId], references: [id])
   statusId               String
-  pmoDivision            PmoDivision           @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivision            PmoDivision  @relation(fields: [pmoDivisionId], references: [id])
   pmoDivisionId          String
-  projectManager         User                  @relation("ProjectManager", fields: [projectManagerId], references: [id])
+  projectManager         User         @relation("ProjectManager", fields: [projectManagerId], references: [id])
   projectManagerId       String
-  totalCost              Decimal?              @db.Decimal(12, 2)
-  currency               Currency              @default(ETB)
-  responsibleDepartments ProjectToDepartment[]
+  totalCost              Decimal?     @db.Decimal(12, 2)
+  currency               Currency     @default(ETB)
+  responsibleDepartments Department[] @relation("ResponsibleDepartments")
   milestones             Milestone[]
   teams                  Team[]
   blockers               Blocker[]
   payments               Payment[]
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 }
 
 model ProjectStatus {
@@ -109,15 +99,15 @@ model ProjectStatus {
 }
 
 model Team {
-  id         String   @id @default(cuid())
-  name       String
-  project    Project  @relation(fields: [projectId], references: [id])
-  projectId  String
-  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  id        String   @id @default(cuid())
+  name      String
+  project   Project  @relation(fields: [projectId], references: [id])
+  projectId String
+  teamLead  User     @relation("TeamLead", fields: [teamLeadId], references: [id])
   teamLeadId String
-  members    User[]   @relation("TeamMembers")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  members   User[]   @relation("TeamMembers")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Milestone {
