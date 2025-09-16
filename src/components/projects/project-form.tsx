@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useFieldArray, useForm } from "react-hook-form";
@@ -134,6 +135,17 @@ type ProjectFormProps = {
   departments: Department[];
   projectStatuses: ProjectStatus[];
   onSubmit: (data: ProjectFormValues) => Promise<any>;
+}
+
+const formatCurrency = (value: number | string | undefined) => {
+    if (value === undefined || value === null) return '';
+    const num = Number(String(value).replace(/,/g, ''));
+    if (isNaN(num)) return '';
+    return new Intl.NumberFormat('en-US').format(num);
+};
+
+const unformatCurrency = (value: string) => {
+    return value.replace(/,/g, '');
 }
 
 export function ProjectForm({ mode, initialData, users, pmoDivisions, departments, projectStatuses, onSubmit }: ProjectFormProps) {
@@ -628,9 +640,23 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                                 <FormItem>
                                 <FormLabel>Total Project Cost</FormLabel>
                                 <FormControl>
-                                     <div className="relative">
+                                    <div className="relative">
                                         <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currencySymbol}</span>
-                                        <Input type="number" className="pl-8" placeholder="50000" {...field} />
+                                        <Input 
+                                          type="text" 
+                                          className="pl-8" 
+                                          placeholder="50,000"
+                                          value={field.value === undefined ? '' : formatCurrency(String(field.value))}
+                                          onChange={(e) => {
+                                            const unformattedValue = unformatCurrency(e.target.value);
+                                            const numberValue = parseFloat(unformattedValue);
+                                            field.onChange(isNaN(numberValue) ? undefined : numberValue);
+                                          }}
+                                          onBlur={(e) => {
+                                            const formatted = formatCurrency(e.target.value);
+                                            e.target.value = formatted;
+                                          }}
+                                        />
                                     </div>
                                 </FormControl>
                                 <FormMessage />
@@ -683,10 +709,24 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                                         render={({ field }) => (
                                             <FormItem>
                                             <FormLabel>Amount</FormLabel>
-                                            <FormControl>
+                                             <FormControl>
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currencySymbol}</span>
-                                                    <Input type="number" className="pl-8" placeholder="10000" {...field} />
+                                                    <Input 
+                                                      type="text" 
+                                                      className="pl-8" 
+                                                      placeholder="10,000" 
+                                                      value={field.value === undefined ? '' : formatCurrency(String(field.value))}
+                                                      onChange={(e) => {
+                                                        const unformattedValue = unformatCurrency(e.target.value);
+                                                        const numberValue = parseFloat(unformattedValue);
+                                                        field.onChange(isNaN(numberValue) ? undefined : numberValue);
+                                                      }}
+                                                      onBlur={(e) => {
+                                                        const formatted = formatCurrency(e.target.value);
+                                                        e.target.value = formatted;
+                                                      }}
+                                                    />
                                                 </div>
                                             </FormControl>
                                             <FormMessage />
