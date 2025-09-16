@@ -77,7 +77,7 @@ const projectSchema = z.object({
   projectManagerId: z.string().nonempty("Please select a project manager."),
   responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
   hasCost: z.boolean().default(false),
-  currency: z.enum(['ETB', 'USD']),
+  currency: z.string(),
   totalCost: z.coerce.number().optional(),
   milestones: z.array(milestoneSchema),
   payments: z.array(paymentSchema).optional(),
@@ -176,6 +176,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
   const selectedPmoDivisionId = form.watch("pmoDivisionId");
   const hasCost = form.watch("hasCost");
   const currency = form.watch("currency");
+  const currencySymbol = currency === 'USD' ? '$' : 'ETB';
 
   const projectManagers = useMemo(() => {
     const usersToFilter = nonAdminUsers;
@@ -677,10 +678,10 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                                         name={`payments.${index}.amount`}
                                         render={({ field }) => (
                                             <FormItem>
-                                            <FormLabel>Amount ({currency})</FormLabel>
+                                            <FormLabel>Amount ({currencySymbol})</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currency}</span>
+                                                    <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currencySymbol}</span>
                                                     <Input type="number" className="pl-12" placeholder="10000" {...field} />
                                                 </div>
                                             </FormControl>
