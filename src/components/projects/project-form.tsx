@@ -112,9 +112,10 @@ const projectSchema = z.object({
     if (data.hasCost && data.payments && data.payments.length > 0) {
         const paymentTotal = data.payments.reduce((sum, p) => sum + p.amount, 0);
         if (data.totalCost !== paymentTotal) {
+            const currencySymbol = data.currency === 'USD' ? '$' : 'ETB';
             ctx.addIssue({
                 path: ["totalCost"],
-                message: `The sum of payment items (${(data.currency || 'ETB')} ${paymentTotal.toLocaleString()}) must equal the total project cost (${(data.currency || 'ETB')} ${(data.totalCost || 0).toLocaleString()}).`,
+                message: `The sum of payment items (${currencySymbol} ${paymentTotal.toLocaleString()}) must equal the total project cost (${currencySymbol} ${(data.totalCost || 0).toLocaleString()}).`,
                 code: z.ZodIssueCode.custom
             });
         }
@@ -625,9 +626,12 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                             name="totalCost"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel>Total Project Cost ({currency})</FormLabel>
+                                <FormLabel>Total Project Cost</FormLabel>
                                 <FormControl>
-                                    <Input type="number" placeholder="e.g., 50000" {...field} />
+                                     <div className="relative">
+                                        <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currencySymbol}</span>
+                                        <Input type="number" className="pl-8" placeholder="50000" {...field} />
+                                    </div>
                                 </FormControl>
                                 <FormMessage />
                                 </FormItem>
@@ -678,11 +682,11 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                                         name={`payments.${index}.amount`}
                                         render={({ field }) => (
                                             <FormItem>
-                                            <FormLabel>Amount ({currencySymbol})</FormLabel>
+                                            <FormLabel>Amount</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
                                                     <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currencySymbol}</span>
-                                                    <Input type="number" className="pl-12" placeholder="10000" {...field} />
+                                                    <Input type="number" className="pl-8" placeholder="10000" {...field} />
                                                 </div>
                                             </FormControl>
                                             <FormMessage />
