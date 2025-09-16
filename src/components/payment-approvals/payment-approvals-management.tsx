@@ -118,7 +118,7 @@ export function PaymentApprovalManagement({ initialPayments, onDataChange }: Pay
                 <TableCell className="font-medium">{payment.project.name}</TableCell>
                 <TableCell>{payment.title}</TableCell>
                 <TableCell>{format(new Date(payment.createdAt), 'MMM dd, yyyy')}</TableCell>
-                <TableCell className="text-right font-semibold">${parseFloat(payment.amount.toString()).toFixed(2)}</TableCell>
+                <TableCell className="text-right font-semibold">ETB {parseFloat(payment.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                 <TableCell className="text-right">
                   {canManage && (
                     <div className="flex gap-2 justify-end">

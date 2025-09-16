@@ -113,7 +113,7 @@ const projectSchema = z.object({
         if (data.totalCost !== paymentTotal) {
             ctx.addIssue({
                 path: ["totalCost"],
-                message: `The sum of payment items (${paymentTotal.toLocaleString()}) must equal the total project cost (${(data.totalCost || 0).toLocaleString()}).`,
+                message: `The sum of payment items (ETB ${paymentTotal.toLocaleString()}) must equal the total project cost (ETB ${(data.totalCost || 0).toLocaleString()}).`,
                 code: z.ZodIssueCode.custom
             });
         }
@@ -599,7 +599,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                         name="totalCost"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Total Project Cost</FormLabel>
+                            <FormLabel>Total Project Cost (ETB)</FormLabel>
                             <FormControl>
                                 <Input type="number" placeholder="e.g., 50000" {...field} />
                             </FormControl>
@@ -651,11 +651,11 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                                         name={`payments.${index}.amount`}
                                         render={({ field }) => (
                                             <FormItem>
-                                            <FormLabel>Amount</FormLabel>
+                                            <FormLabel>Amount (ETB)</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
-                                                    <DollarSign className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                                                    <Input type="number" className="pl-8" placeholder="10000" {...field} />
+                                                    <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">ETB</span>
+                                                    <Input type="number" className="pl-12" placeholder="10000" {...field} />
                                                 </div>
                                             </FormControl>
                                             <FormMessage />

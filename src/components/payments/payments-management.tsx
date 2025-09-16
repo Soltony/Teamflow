@@ -82,7 +82,7 @@ export function PaymentsManagement({ initialProjects, onDataChange }: PaymentsMa
                   <span className="text-left flex-1">{project.name}</span>
                   <div className="flex items-center gap-4 w-full md:w-auto">
                     <div className="flex flex-col items-end w-48">
-                        <span className="text-xs text-muted-foreground">${totalPaid.toFixed(2)} / ${projectCost.toFixed(2)}</span>
+                        <span className="text-xs text-muted-foreground">ETB {totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ETB {projectCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
               </div>
@@ -103,7 +103,7 @@ export function PaymentsManagement({ initialProjects, onDataChange }: PaymentsMa
                         <TableCell className="font-medium">{payment.title}</TableCell>
                         <TableCell>{format(new Date(payment.paymentDate), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                        <TableCell className="text-right">${parseFloat(payment.amount.toString()).toFixed(2)}</TableCell>
+                        <TableCell className="text-right">ETB {parseFloat(payment.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                   )) : (
                     <TableRow>
