@@ -644,7 +644,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                                         <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currencySymbol}</span>
                                         <Input 
                                           type="text" 
-                                          className="pl-8" 
+                                          className={cn("pl-8", currency === 'ETB' && "pl-10")}
                                           placeholder="50,000"
                                           value={field.value === undefined ? '' : formatCurrency(String(field.value))}
                                           onChange={(e) => {
@@ -714,7 +714,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                                                     <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currencySymbol}</span>
                                                     <Input 
                                                       type="text" 
-                                                      className="pl-8" 
+                                                      className={cn("pl-8", currency === 'ETB' && "pl-10")}
                                                       placeholder="10,000" 
                                                       value={field.value === undefined ? '' : formatCurrency(String(field.value))}
                                                       onChange={(e) => {
@@ -778,3 +778,4 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
     </Form>
   );
 }
+
