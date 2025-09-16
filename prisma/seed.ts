@@ -263,6 +263,7 @@ async function main() {
         startDate: new Date(project.startDate),
         endDate: new Date(project.endDate),
         workingYear: project.workingYear,
+        currency: 'ETB',
         statusId: statusId,
         pmoDivisionId: pmoDivisionId,
         projectManagerId: projectManagerId,

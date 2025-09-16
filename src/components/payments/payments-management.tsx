@@ -74,6 +74,7 @@ export function PaymentsManagement({ initialProjects, onDataChange }: PaymentsMa
           const projectCost = parseFloat(project.totalCost?.toString() || '0');
           const balance = projectCost - totalPaid;
           const progress = projectCost > 0 ? (totalPaid / projectCost) * 100 : 0;
+          const currencySymbol = project.currency === 'USD' ? '$' : 'ETB';
           
           return (
           <AccordionItem value={project.id} key={project.id} className="border rounded-lg bg-background">
@@ -82,7 +83,7 @@ export function PaymentsManagement({ initialProjects, onDataChange }: PaymentsMa
                   <span className="text-left flex-1">{project.name}</span>
                   <div className="flex items-center gap-4 w-full md:w-auto">
                     <div className="flex flex-col items-end w-48">
-                        <span className="text-xs text-muted-foreground">ETB {totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / ETB {projectCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                        <span className="text-xs text-muted-foreground">{currencySymbol} {totalPaid.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} / {currencySymbol} {projectCost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
                     </div>
                   </div>
               </div>
@@ -103,7 +104,7 @@ export function PaymentsManagement({ initialProjects, onDataChange }: PaymentsMa
                         <TableCell className="font-medium">{payment.title}</TableCell>
                         <TableCell>{format(new Date(payment.paymentDate), 'MMM dd, yyyy')}</TableCell>
                         <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                        <TableCell className="text-right">ETB {parseFloat(payment.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        <TableCell className="text-right">{currencySymbol} {parseFloat(payment.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       </TableRow>
                   )) : (
                     <TableRow>

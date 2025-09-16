@@ -14,6 +14,7 @@ export async function getPendingPayments() {
                 select: {
                     id: true,
                     name: true,
+                    currency: true,
                 }
             }
         },

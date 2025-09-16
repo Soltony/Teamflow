@@ -14,6 +14,7 @@ type PendingPaymentWithRelations = Payment & {
     project: {
         id: string;
         name: string;
+        currency: 'ETB' | 'USD';
     } 
 };
 

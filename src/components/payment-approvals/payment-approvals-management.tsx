@@ -41,6 +41,7 @@ type PendingPaymentWithRelations = Payment & {
     project: {
         id: string;
         name: string;
+        currency: 'ETB' | 'USD';
     } 
 };
 
@@ -113,26 +114,29 @@ export function PaymentApprovalManagement({ initialPayments, onDataChange }: Pay
         </TableHeader>
         <TableBody>
           {initialPayments.length > 0 ? (
-            initialPayments.map(payment => (
-              <TableRow key={payment.id}>
-                <TableCell className="font-medium">{payment.project.name}</TableCell>
-                <TableCell>{payment.title}</TableCell>
-                <TableCell>{format(new Date(payment.createdAt), 'MMM dd, yyyy')}</TableCell>
-                <TableCell className="text-right font-semibold">ETB {parseFloat(payment.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                <TableCell className="text-right">
-                  {canManage && (
-                    <div className="flex gap-2 justify-end">
-                      <Button size="sm" variant="outline" onClick={() => handleOpenRejectDialog(payment)} disabled={isPending}>
-                        Reject
-                      </Button>
-                      <Button size="sm" onClick={() => handleApprove(payment.id)} disabled={isPending}>
-                        Approve
-                      </Button>
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))
+            initialPayments.map(payment => {
+              const currencySymbol = payment.project.currency === 'USD' ? '$' : 'ETB';
+              return (
+                <TableRow key={payment.id}>
+                  <TableCell className="font-medium">{payment.project.name}</TableCell>
+                  <TableCell>{payment.title}</TableCell>
+                  <TableCell>{format(new Date(payment.createdAt), 'MMM dd, yyyy')}</TableCell>
+                  <TableCell className="text-right font-semibold">{currencySymbol} {parseFloat(payment.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                  <TableCell className="text-right">
+                    {canManage && (
+                      <div className="flex gap-2 justify-end">
+                        <Button size="sm" variant="outline" onClick={() => handleOpenRejectDialog(payment)} disabled={isPending}>
+                          Reject
+                        </Button>
+                        <Button size="sm" onClick={() => handleApprove(payment.id)} disabled={isPending}>
+                          Approve
+                        </Button>
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              )
+            })
           ) : (
             <TableRow>
               <TableCell colSpan={5} className="h-24 text-center">

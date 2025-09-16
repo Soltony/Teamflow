@@ -172,6 +172,7 @@ export async function updateProject(projectId: string, data: any) {
                   pmoDivisionId: projectData.pmoDivisionId,
                   projectManagerId: projectData.projectManagerId,
                   workingYear: projectData.workingYear,
+                  currency: projectData.currency,
                   totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
                   responsibleDepartments: {
                     set: responsibleDepartmentIds.map((id: string) => ({ id }))
@@ -696,5 +697,3 @@ export async function deleteProject(projectId: string) {
         return { success: false, error: "Failed to delete project. Please ensure all related items are handled." };
     }
 }
-
-    

@@ -22,7 +22,7 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon, ChevronDown, PlusCircle, X, DollarSign } from "lucide-react";
+import { CalendarIcon, ChevronDown, PlusCircle, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import {
@@ -77,6 +77,7 @@ const projectSchema = z.object({
   projectManagerId: z.string().nonempty("Please select a project manager."),
   responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
   hasCost: z.boolean().default(false),
+  currency: z.enum(['ETB', 'USD']),
   totalCost: z.coerce.number().optional(),
   milestones: z.array(milestoneSchema),
   payments: z.array(paymentSchema).optional(),
@@ -113,7 +114,7 @@ const projectSchema = z.object({
         if (data.totalCost !== paymentTotal) {
             ctx.addIssue({
                 path: ["totalCost"],
-                message: `The sum of payment items (ETB ${paymentTotal.toLocaleString()}) must equal the total project cost (ETB ${(data.totalCost || 0).toLocaleString()}).`,
+                message: `The sum of payment items (${(data.currency || 'ETB')} ${paymentTotal.toLocaleString()}) must equal the total project cost (${(data.currency || 'ETB')} ${(data.totalCost || 0).toLocaleString()}).`,
                 code: z.ZodIssueCode.custom
             });
         }
@@ -165,6 +166,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       projectManagerId: "",
       responsibleDepartmentIds: [],
       hasCost: false,
+      currency: 'ETB',
       totalCost: 0,
       milestones: [],
       payments: [],
@@ -173,6 +175,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
 
   const selectedPmoDivisionId = form.watch("pmoDivisionId");
   const hasCost = form.watch("hasCost");
+  const currency = form.watch("currency");
 
   const projectManagers = useMemo(() => {
     const usersToFilter = nonAdminUsers;
@@ -594,19 +597,42 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
             />
             {hasCost && (
                 <div className="space-y-4 p-4 border rounded-lg">
-                    <FormField
-                        control={form.control}
-                        name="totalCost"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>Total Project Cost (ETB)</FormLabel>
-                            <FormControl>
-                                <Input type="number" placeholder="e.g., 50000" {...field} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                         <FormField
+                            control={form.control}
+                            name="currency"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Currency</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                    <FormControl>
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select a currency" />
+                                    </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                    <SelectItem value="ETB">ETB</SelectItem>
+                                    <SelectItem value="USD">USD</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                         />
+                         <FormField
+                            control={form.control}
+                            name="totalCost"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Total Project Cost ({currency})</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="e.g., 50000" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                    </div>
                     
                     <Separator />
                     
@@ -651,10 +677,10 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                                         name={`payments.${index}.amount`}
                                         render={({ field }) => (
                                             <FormItem>
-                                            <FormLabel>Amount (ETB)</FormLabel>
+                                            <FormLabel>Amount ({currency})</FormLabel>
                                             <FormControl>
                                                 <div className="relative">
-                                                    <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">ETB</span>
+                                                    <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currency}</span>
                                                     <Input type="number" className="pl-12" placeholder="10000" {...field} />
                                                 </div>
                                             </FormControl>
