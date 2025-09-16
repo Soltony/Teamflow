@@ -8,12 +8,6 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum RoleName {
-  Admin
-  ProjectManager
-  Member
-}
-
 model Role {
   id          String   @id @default(cuid())
   name        String   @unique
@@ -102,15 +96,15 @@ model ProjectStatus {
 }
 
 model Team {
-  id         String   @id @default(cuid())
-  name       String
-  project    Project  @relation(fields: [projectId], references: [id])
-  projectId  String
-  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  id        String   @id @default(cuid())
+  name      String
+  project   Project  @relation(fields: [projectId], references: [id])
+  projectId String
+  teamLead  User     @relation("TeamLead", fields: [teamLeadId], references: [id])
   teamLeadId String
-  members    User[]   @relation("TeamMembers")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  members   User[]   @relation("TeamMembers")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 model Milestone {
