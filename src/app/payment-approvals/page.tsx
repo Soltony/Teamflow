@@ -8,15 +8,12 @@ import { PaymentApprovalManagement } from "@/components/payment-approvals/paymen
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPendingPayments } from "./actions";
-import type { MilestonePayment } from '@prisma/client';
+import type { Payment } from '@prisma/client';
 
-type PendingPaymentWithRelations = MilestonePayment & { 
-    milestone: { 
-        title: string;
-        project: {
-            id: string;
-            name: string;
-        } 
+type PendingPaymentWithRelations = Payment & { 
+    project: {
+        id: string;
+        name: string;
     } 
 };
 
@@ -76,7 +73,7 @@ export default function PaymentApprovalsPage() {
             <CardHeader>
               <CardTitle>Payment Approvals</CardTitle>
               <CardDescription>
-                Review and approve or reject pending milestone payments.
+                Review and approve or reject pending project payments.
               </CardDescription>
             </CardHeader>
             <CardContent>

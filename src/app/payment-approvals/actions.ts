@@ -5,20 +5,15 @@ import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 
 export async function getPendingPayments() {
-    const payments = await prisma.milestonePayment.findMany({
+    const payments = await prisma.payment.findMany({
         where: {
             status: 'PENDING',
         },
         include: {
-            milestone: {
+            project: {
                 select: {
-                    title: true,
-                    project: {
-                        select: {
-                            id: true,
-                            name: true,
-                        }
-                    }
+                    id: true,
+                    name: true,
                 }
             }
         },
@@ -32,7 +27,7 @@ export async function getPendingPayments() {
 
 export async function approvePayment(paymentId: string, notes?: string) {
     try {
-        await prisma.milestonePayment.update({
+        await prisma.payment.update({
             where: { id: paymentId },
             data: {
                 status: 'APPROVED',
@@ -53,7 +48,7 @@ export async function rejectPayment(paymentId: string, notes: string) {
         return { success: false, error: "A rejection reason of at least 10 characters is required."}
     }
     try {
-        await prisma.milestonePayment.update({
+        await prisma.payment.update({
             where: { id: paymentId },
             data: {
                 status: 'REJECTED',

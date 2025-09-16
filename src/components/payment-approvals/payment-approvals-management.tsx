@@ -35,15 +35,12 @@ import { useToast } from "@/hooks/use-toast";
 import { approvePayment, rejectPayment } from "@/app/payment-approvals/actions";
 import { useAuth } from "@/context/auth-context";
 import { format } from "date-fns";
-import type { MilestonePayment } from "@prisma/client";
+import type { Payment } from "@prisma/client";
 
-type PendingPaymentWithRelations = MilestonePayment & { 
-    milestone: { 
-        title: string;
-        project: {
-            id: string;
-            name: string;
-        } 
+type PendingPaymentWithRelations = Payment & { 
+    project: {
+        id: string;
+        name: string;
     } 
 };
 
@@ -108,8 +105,8 @@ export function PaymentApprovalManagement({ initialPayments, onDataChange }: Pay
         <TableHeader>
           <TableRow>
             <TableHead>Project</TableHead>
-            <TableHead>Milestone</TableHead>
-            <TableHead>Date Submitted</TableHead>
+            <TableHead>Payment Title</TableHead>
+            <TableHead>Date Requested</TableHead>
             <TableHead className="text-right">Amount</TableHead>
             <TableHead className="text-right">Actions</TableHead>
           </TableRow>
@@ -118,8 +115,8 @@ export function PaymentApprovalManagement({ initialPayments, onDataChange }: Pay
           {initialPayments.length > 0 ? (
             initialPayments.map(payment => (
               <TableRow key={payment.id}>
-                <TableCell className="font-medium">{payment.milestone.project.name}</TableCell>
-                <TableCell>{payment.milestone.title}</TableCell>
+                <TableCell className="font-medium">{payment.project.name}</TableCell>
+                <TableCell>{payment.title}</TableCell>
                 <TableCell>{format(new Date(payment.createdAt), 'MMM dd, yyyy')}</TableCell>
                 <TableCell className="text-right font-semibold">${parseFloat(payment.amount.toString()).toFixed(2)}</TableCell>
                 <TableCell className="text-right">
