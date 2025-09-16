@@ -7,10 +7,121 @@ generator client {
   provider = "prisma-client-js"
 }
 
-enum RoleName {
-  Admin
-  ProjectManager
-  Member
+model Project {
+  id                      String       @id @default(cuid())
+  name                    String
+  description             String
+  startDate               DateTime
+  endDate                 DateTime
+  workingYear             String
+  totalCost               Decimal?     @db.Decimal(12, 2)
+  currency                String       @default("ETB")
+  status                  ProjectStatus @relation(fields: [statusId], references: [id])
+  statusId                String
+  pmoDivision             PmoDivision  @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivisionId           String
+  projectManager          User         @relation(fields: [projectManagerId], references: [id])
+  projectManagerId        String
+  responsibleDepartments  Department[] @relation("ProjectResponsibleDepartments")
+  milestones              Milestone[]
+  teams                   Team[]
+  blockers                Blocker[]
+  payments                Payment[]
+  createdAt               DateTime     @default(now())
+  updatedAt               DateTime     @updatedAt
+}
+
+model PmoDivision {
+  id                String    @id @default(cuid())
+  name              String    @unique
+  responsibleName   String
+  responsibleTitle  String
+  responsiblePhone  String
+  users             User[]
+  projects          Project[]
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+}
+
+model Department {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  projects  Project[] @relation("ProjectResponsibleDepartments")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model ProjectStatus {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  projects  Project[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+model Milestone {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  startDate   DateTime
+  dueDate     DateTime
+  weight      Int
+  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   String
+  tasks       Task[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Task {
+  id          String      @id @default(cuid())
+  title       String
+  description String
+  status      String
+  startDate   DateTime
+  endDate     DateTime
+  weight      Int
+  progress    Int         @default(0)
+  completedAt DateTime?
+  milestone   Milestone   @relation(fields: [milestoneId], references: [id])
+  milestoneId String
+  assignees   User[]      @relation("TaskAssignees")
+  updates     TaskUpdate[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+}
+
+model TaskUpdate {
+  id                  String   @id @default(cuid())
+  text                String
+  type                String   // e.g., 'COMMENT', 'STATUS_CHANGE'
+  progressPercentage  Int?
+  author              User     @relation(fields: [authorId], references: [id])
+  authorId            String
+  task                Task     @relation(fields: [taskId], references: [id])
+  taskId              String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}
+
+model User {
+  id            String       @id @default(cuid())
+  name          String
+  firstName     String
+  lastName      String
+  email         String       @unique
+  avatar        String?
+  phoneNumber   String?
+  pmoDivision   PmoDivision? @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivisionId String?
+  roles         Role[]       @relation("UserRoles")
+  assignedTasks Task[]       @relation("TaskAssignees")
+  teamsAsLead   Team[]       @relation("TeamLead")
+  teamsAsMember Team[]       @relation("TeamMembers")
+  taskUpdates   TaskUpdate[]
+  managedProjects Project[]
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
 }
 
 model Role {
@@ -23,187 +134,44 @@ model Role {
   updatedAt   DateTime @updatedAt
 }
 
-model User {
-  id              String       @id @default(cuid())
-  name            String
-  firstName       String
-  lastName        String
-  email           String       @unique
-  avatar          String?
-  phoneNumber     String?      @unique
-  roles           Role[]       @relation("UserRoles")
-  pmoDivision     PmoDivision? @relation(fields: [pmoDivisionId], references: [id])
-  pmoDivisionId   String?
-  managedProjects Project[]    @relation("ProjectManager")
-  tasks           Task[]       @relation("TaskAssignees")
-  teamsAsLead     Team[]       @relation("TeamLead")
-  teamsAsMember   Team[]       @relation("TeamMembers")
-  taskUpdates     TaskUpdate[]
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
-}
-
-model PmoDivision {
-  id               String    @id @default(cuid())
-  name             String    @unique
-  responsibleName  String
-  responsibleTitle String
-  responsiblePhone String
-  users            User[]
-  projects         Project[]
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-}
-
-model Department {
-  id                  String    @id @default(cuid())
-  name                String    @unique
-  responsibleProjects Project[] @relation("ResponsibleDepartments")
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
-}
-
-enum Currency {
-  ETB
-  USD
-}
-
-model Project {
-  id                     String       @id @default(cuid())
-  name                   String
-  description            String
-  startDate              DateTime
-  endDate                DateTime
-  workingYear            String
-  status                 ProjectStatus @relation(fields: [statusId], references: [id])
-  statusId               String
-  pmoDivision            PmoDivision  @relation(fields: [pmoDivisionId], references: [id])
-  pmoDivisionId          String
-  projectManager         User         @relation("ProjectManager", fields: [projectManagerId], references: [id])
-  projectManagerId       String
-  totalCost              Decimal?     @db.Decimal(12, 2)
-  currency               Currency     @default(ETB)
-  responsibleDepartments Department[] @relation("ResponsibleDepartments")
-  milestones             Milestone[]
-  teams                  Team[]
-  blockers               Blocker[]
-  payments               Payment[]
-  createdAt              DateTime     @default(now())
-  updatedAt              DateTime     @updatedAt
-}
-
-model ProjectStatus {
-  id       String    @id @default(cuid())
-  name     String    @unique
-  projects Project[]
-}
-
 model Team {
-  id        String   @id @default(cuid())
-  name      String
-  project   Project  @relation(fields: [projectId], references: [id])
-  projectId String
-  teamLead  User     @relation("TeamLead", fields: [teamLeadId], references: [id])
+  id         String   @id @default(cuid())
+  name       String
+  project    Project  @relation(fields: [projectId], references: [id])
+  projectId  String
+  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
   teamLeadId String
-  members   User[]   @relation("TeamMembers")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Milestone {
-  id          String    @id @default(cuid())
-  title       String
-  description String
-  startDate   DateTime
-  dueDate     DateTime
-  weight      Float
-  project     Project   @relation(fields: [projectId], references: [id])
-  projectId   String
-  tasks       Task[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-}
-
-enum TaskStatus {
-  TODO
-  IN_PROGRESS
-  PENDING_REVIEW
-  DONE
-}
-
-model Task {
-  id          String     @id @default(cuid())
-  title       String
-  description String
-  status      TaskStatus @default(TODO)
-  startDate   DateTime
-  endDate     DateTime
-  weight      Float
-  progress    Float      @default(0)
-  completedAt DateTime?
-  milestone   Milestone  @relation(fields: [milestoneId], references: [id])
-  milestoneId String
-  assignees   User[]     @relation("TaskAssignees")
-  updates     TaskUpdate[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-}
-
-enum UpdateType {
-  COMMENT
-  STATUS_CHANGE
-}
-
-model TaskUpdate {
-  id                 String     @id @default(cuid())
-  text               String
-  type               UpdateType @default(COMMENT)
-  progressPercentage Float?
-  author             User       @relation(fields: [authorId], references: [id])
-  authorId           String
-  task               Task       @relation(fields: [taskId], references: [id])
-  taskId             String
-  createdAt          DateTime   @default(now())
-  updatedAt          DateTime   @updatedAt
-}
-
-enum BlockerStatus {
-  OPEN
-  RESOLVED
+  members    User[]   @relation("TeamMembers")
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 }
 
 model Blocker {
-  id          String        @id @default(cuid())
+  id          String    @id @default(cuid())
   description String
-  status      BlockerStatus @default(OPEN)
-  createdAt   DateTime      @default(now())
-  resolvedAt  DateTime?
+  status      String // "OPEN" or "RESOLVED"
   resolution  String?
-  project     Project       @relation(fields: [projectId], references: [id])
+  createdAt   DateTime  @default(now())
+  resolvedAt  DateTime?
+  project     Project   @relation(fields: [projectId], references: [id])
   projectId   String
-}
-
-enum PaymentStatus {
-  PENDING
-  APPROVED
-  REJECTED
-}
-
-model Payment {
-  id          String        @id @default(cuid())
-  title       String
-  description String?
-  amount      Decimal       @db.Decimal(12, 2)
-  status      PaymentStatus @default(PENDING)
-  notes       String?
-  paymentDate DateTime
-  project     Project       @relation(fields: [projectId], references: [id])
-  projectId   String
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
 }
 
 model Setting {
   key   String @id
   value String
+}
+
+model Payment {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  amount      Decimal  @db.Decimal(12, 2)
+  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  notes       String?
+  paymentDate DateTime
+  project     Project  @relation(fields: [projectId], references: [id])
+  projectId   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
 }
