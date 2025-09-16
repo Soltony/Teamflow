@@ -26,13 +26,12 @@ export async function getNewProjectData() {
 
 
 export async function createProject(data: any) {
-    const { milestones, responsibleDepartmentIds, hasCost, ...projectData } = data;
+    const { milestones, responsibleDepartmentIds, hasCost, payments, ...projectData } = data;
 
     const newProject = await prisma.project.create({
         data: {
             ...projectData,
             totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
-            costByMilestones: hasCost ? projectData.costByMilestones : false,
             responsibleDepartments: {
                 connect: responsibleDepartmentIds.map((id: string) => ({ id }))
             },
@@ -43,18 +42,28 @@ export async function createProject(data: any) {
                     startDate: m.startDate,
                     dueDate: m.dueDate,
                     weight: m.weight,
-                    cost: hasCost && projectData.costByMilestones ? new Decimal(m.cost || 0) : null,
                 }))
-            }
+            },
+            payments: hasCost && payments ? {
+                create: payments.map((p: any) => ({
+                    title: p.title,
+                    description: p.description,
+                    amount: new Decimal(p.amount || 0),
+                    paymentDate: p.paymentDate,
+                    status: 'PENDING',
+                }))
+            } : undefined,
         },
         include: {
             milestones: true,
+            payments: true,
         }
     });
 
     revalidatePath('/dashboard');
     revalidatePath('/projects');
     revalidatePath('/gantt');
+    revalidatePath('/payments');
     return { success: true, project: newProject };
 }
 
@@ -66,7 +75,8 @@ export async function getProjectForEdit(projectId: string) {
                 milestones: true,
                 responsibleDepartments: {
                     select: { id: true }
-                }
+                },
+                payments: true,
             }
         }),
         prisma.user.findMany({ include: { roles: { select: { name: true } } }, orderBy: { name: 'asc' } }),
@@ -94,7 +104,7 @@ export async function getProjectForEdit(projectId: string) {
 
 
 export async function updateProject(projectId: string, data: any) {
-    const { milestones, responsibleDepartmentIds, hasCost, ...projectData } = data;
+    const { milestones, responsibleDepartmentIds, hasCost, payments, ...projectData } = data;
 
     const existingMilestones = await prisma.milestone.findMany({
         where: { projectId: projectId },
@@ -104,6 +114,15 @@ export async function updateProject(projectId: string, data: any) {
 
     const incomingMilestoneIds = milestones.filter((m: any) => m.id).map((m: any) => m.id);
     const milestoneIdsToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
+    
+    const existingPayments = await prisma.payment.findMany({
+        where: { projectId: projectId },
+        select: { id: true }
+    });
+    const existingPaymentIds = existingPayments.map(p => p.id);
+
+    const incomingPaymentIds = payments.filter((p: any) => p.id).map((p: any) => p.id);
+    const paymentIdsToDelete = existingPaymentIds.filter((id: string) => !incomingPaymentIds.includes(id));
 
     try {
         const completedStatus = await prisma.projectStatus.findUnique({
@@ -113,6 +132,7 @@ export async function updateProject(projectId: string, data: any) {
         const isCompletingProject = completedStatus && projectData.statusId === completedStatus.id;
 
         await prisma.$transaction(async (tx) => {
+            // --- MILESTONE SYNC ---
             if (milestoneIdsToDelete.length > 0) {
                 const tasksInDeletedMilestones = await tx.task.findMany({
                     where: { milestoneId: { in: milestoneIdsToDelete }},
@@ -133,6 +153,14 @@ export async function updateProject(projectId: string, data: any) {
                 });
             }
 
+            // --- PAYMENT SYNC ---
+            if (paymentIdsToDelete.length > 0) {
+                await tx.payment.deleteMany({
+                    where: { id: { in: paymentIdsToDelete } }
+                });
+            }
+
+            // --- PROJECT UPDATE ---
             await tx.project.update({
                 where: { id: projectId },
                 data: {
@@ -145,13 +173,13 @@ export async function updateProject(projectId: string, data: any) {
                   projectManagerId: projectData.projectManagerId,
                   workingYear: projectData.workingYear,
                   totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
-                  costByMilestones: hasCost ? projectData.costByMilestones : false,
                   responsibleDepartments: {
                     set: responsibleDepartmentIds.map((id: string) => ({ id }))
                   }
                 }
             });
 
+            // --- MILESTONE UPSERT ---
             for (const milestone of milestones) {
                 const { id, ...milestoneData } = milestone;
                 
@@ -161,7 +189,6 @@ export async function updateProject(projectId: string, data: any) {
                     startDate: milestoneData.startDate,
                     dueDate: milestoneData.dueDate,
                     weight: milestoneData.weight,
-                    cost: hasCost && projectData.costByMilestones ? new Decimal(milestoneData.cost || 0) : null,
                 };
 
                 if (id) {
@@ -178,7 +205,38 @@ export async function updateProject(projectId: string, data: any) {
                     });
                 }
             }
+            
+            // --- PAYMENT UPSERT ---
+            if (hasCost && payments) {
+                for (const payment of payments) {
+                    const { id, ...paymentData } = payment;
+                    
+                    const dataForPaymentUpsert = {
+                        title: paymentData.title,
+                        description: paymentData.description,
+                        amount: new Decimal(paymentData.amount || 0),
+                        paymentDate: paymentData.paymentDate,
+                    };
 
+                    if (id) {
+                        await tx.payment.update({
+                            where: { id: id },
+                            data: dataForPaymentUpsert
+                        });
+                    } else {
+                        await tx.payment.create({
+                            data: {
+                                ...dataForPaymentUpsert,
+                                status: 'PENDING', // New payments default to pending
+                                project: { connect: { id: projectId } },
+                            }
+                        });
+                    }
+                }
+            }
+
+
+            // --- PROJECT COMPLETION LOGIC ---
             if (isCompletingProject) {
                 const allProjectMilestones = await tx.milestone.findMany({
                     where: { projectId: projectId },
@@ -205,6 +263,7 @@ export async function updateProject(projectId: string, data: any) {
         revalidatePath('/dashboard');
         revalidatePath('/gantt');
         revalidatePath('/milestones');
+        revalidatePath('/payments');
         return { success: true };
     } catch (e) {
         console.error("Failed to update project", e);
@@ -582,11 +641,6 @@ export async function deleteProject(projectId: string) {
             const milestoneIds = milestones.map(m => m.id);
 
             if (milestoneIds.length > 0) {
-                 // Delete milestone payments
-                await tx.milestonePayment.deleteMany({
-                    where: { milestoneId: { in: milestoneIds } }
-                });
-
                 // Find all tasks associated with these milestones
                 const tasks = await tx.task.findMany({
                     where: { milestoneId: { in: milestoneIds } },
@@ -618,6 +672,11 @@ export async function deleteProject(projectId: string) {
 
             // Delete teams
             await tx.team.deleteMany({
+                where: { projectId: projectId }
+            });
+            
+            // Delete payments
+            await tx.payment.deleteMany({
                 where: { projectId: projectId }
             });
             

@@ -114,6 +114,11 @@ export default function EditProjectPage() {
           cost: m.cost ? parseFloat(m.cost) : 0,
           startDate: parseISO(m.startDate),
           dueDate: parseISO(m.dueDate),
+      })),
+      payments: data.project.payments.map((p: any) => ({
+        ...p,
+        amount: p.amount ? parseFloat(p.amount) : 0,
+        paymentDate: parseISO(p.paymentDate),
       }))
   };
 
