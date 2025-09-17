@@ -1,10 +1,12 @@
 # Low-Level Design (LLD) for NIB EPMO
 
-## Feature: Project Timeline Change Workflow
+This document provides a detailed, technical breakdown of specific features and components within the NIB EPMO application.
 
-This document details the low-level design for the feature that allows project managers to request changes to a project's deadline, which must then be approved or rejected by an authorized user.
+## 1. Feature: Project Timeline Change Workflow
 
-### 1. Database Schema
+This section details the low-level design for the feature that allows project managers to request changes to a project's deadline, which must then be approved or rejected by an authorized user.
+
+### 1.1. Database Schema
 
 A new model, `TimelineChangeRequest`, is introduced to the Prisma schema (`prisma/schema.prisma`) to track each request.
 
@@ -27,96 +29,113 @@ model TimelineChangeRequest {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 }
-```
 
-Two new relations are added to the `User` model to link users to the requests they've made or reviewed:
-```prisma
+// Relations added to User model
 model User {
-  // ... existing fields
+  // ...
   timelineChangeRequestsMade    TimelineChangeRequest[] @relation("RequestedChanges")
   timelineChangeRequestsReviewed TimelineChangeRequest[] @relation("ReviewedChanges")
 }
-```
-And a new relation is added to the `Project` model:
-```prisma
+
+// Relation added to Project model
 model Project {
-  // ... existing fields
+  // ...
   timelineChangeRequests TimelineChangeRequest[]
 }
 ```
 
-### 2. Component Breakdown
+### 1.2. Component & UI Flow
 
-#### 2.1. Project Form (`src/components/projects/project-form.tsx`)
+1.  **`src/components/projects/project-form.tsx`**:
+    *   **State:** The form maintains the `originalEndDate` of the project when loaded in "edit" mode.
+    *   **Logic:** On submission (`handleFormSubmit`), it checks if the `endDate` has been modified by the user.
+    *   If the date has changed and the user has the `timeline:request` permission, it prevents the default submission and opens an `AlertDialog` (`isTimelineChangeDialogOpen`).
+    *   This dialog contains a `textarea` for the `timelineChangeReason`.
+    *   When the dialog's "Submit for Approval" button is clicked (`handleTimelineChangeSubmit`), it validates the reason and then calls the main `onSubmit` function with the complete form data, now including the reason.
 
-- **State Management:**
-  - `originalEndDate`: A `useState` hook stores the project's end date when the form is first loaded in "edit" mode.
-  - `isTimelineChangeDialogOpen`: A `useState` hook to control the visibility of the "Reason for Change" dialog.
+2.  **`src/app/timeline-approvals/page.tsx` & `.../timeline-approvals-management.tsx`**:
+    *   **Data Fetching:** The page calls the `getPendingTimelineChanges` server action to retrieve all requests with "PENDING" status.
+    *   **UI:** The `TimelineApprovalManagement` component renders the pending requests in a `Table`, showing the project, old/new dates, and the reason.
+    *   **Actions:**
+        *   Each row has "Approve" and "Reject" buttons.
+        *   "Approve" directly calls the `approveTimelineChange` server action.
+        *   "Reject" opens a dialog to collect `reviewNotes`, which then calls the `rejectTimelineChange` server action.
 
-- **Logic Flow:**
-  1. The main `handleFormSubmit` function is triggered on form submission.
-  2. It checks three conditions:
-     - Is the form in "edit" mode?
-     - Does the user have the `timeline:request` permission?
-     - Has the `endDate` in the form changed from the `originalEndDate`?
-  3. If all conditions are true, it prevents the default form submission and instead opens the "Reason for Change" dialog (`setIsTimelineChangeDialogOpen(true)`).
-  4. If the conditions are not met, it proceeds with the standard `onSubmit` function.
+3.  **`src/components/projects/project-card.tsx`**:
+    *   The card component checks if a project has any associated `timelineChangeRequests` with a `PENDING` status.
+    *   If a pending request exists, it displays a "Pending Approval" badge in the card's footer, providing clear visual feedback.
 
-#### 2.2. Timeline Change Dialog (`AlertDialog` in `project-form.tsx`)
+### 1.3. Server Actions
 
-- This is an `AlertDialog` component that contains another form field for `timelineChangeReason`.
-- When its "Submit for Approval" button is clicked, it calls `handleTimelineChangeSubmit`.
-- `handleTimelineChangeSubmit` validates the reason, then calls the main `onSubmit` prop with the complete form data, including the reason. The dialog is then closed.
+1.  **`updateProject` (`src/app/projects/actions.ts`)**:
+    *   This action is modified to be aware of the timeline change workflow.
+    *   It compares the submitted `endDate` with the existing project's `endDate`.
+    *   **If the date has changed:** It creates a new `TimelineChangeRequest` record with status "PENDING". It **does not** update the `endDate` on the `Project` model itself. The original deadline remains in effect.
+    *   **If the date has not changed:** It proceeds to update other project fields as normal.
 
-#### 2.3. Timeline Approvals Page (`src/app/timeline-approvals/page.tsx`)
+2.  **`approveTimelineChange` (`src/app/timeline-approvals/actions.ts`)**:
+    *   **Input:** `requestId`, `reviewerId`.
+    *   **Logic:** Executes a Prisma transaction (`prisma.$transaction`) to:
+        1.  Update the `TimelineChangeRequest` status to "APPROVED".
+        2.  Update the corresponding `Project` record's `endDate` to the `newEndDate` from the request.
+    *   Revalidates Next.js cache paths (`revalidatePath`) to ensure the UI updates across the app.
 
-- **Data Fetching:** On page load, `getPendingTimelineChanges` from `actions.ts` is called to retrieve all requests with "PENDING" status.
-- **UI:** The `TimelineApprovalManagement` component (`src/components/timeline-approvals/timeline-approvals-management.tsx`) renders the pending requests in a `Table`.
-- **Actions:**
-  - Each row has "Approve" and "Reject" buttons.
-  - Clicking "Approve" directly calls the `approveTimelineChange` server action.
-  - Clicking "Reject" opens a dialog (`Rejection Dialog`) asking for rejection notes. Submitting this dialog calls the `rejectTimelineChange` server action.
+3.  **`rejectTimelineChange` (`src/app/timeline-approvals/actions.ts`)**:
+    *   **Input:** `requestId`, `reviewerId`, `notes`.
+    *   **Logic:** Updates the `TimelineChangeRequest` record's status to "REJECTED" and saves the `reviewNotes`. The project's original deadline is not changed.
 
-### 3. Server Actions
+## 2. Feature: "My Tasks" Page & Task Updates
 
-#### 3.1. `updateProject` (`src/app/projects/actions.ts`)
+This section details the design of the "My Tasks" page, which serves as a personal dashboard for users to manage their assigned work and report progress.
 
-- This action is modified to be aware of the timeline change workflow.
-- It compares the submitted `endDate` with the existing project's `endDate`.
-- **If the date has changed:**
-  - It creates a new `TimelineChangeRequest` record with the status "PENDING".
-  - It **does not** update the `endDate` on the `Project` model itself. The original deadline remains in effect.
-- **If the date has not changed:**
-  - It proceeds to update other project fields as normal.
+### 2.1. Component Breakdown
 
-#### 3.2. `approveTimelineChange` (`src/app/timeline-approvals/actions.ts`)
+1.  **`src/app/my-tasks/page.tsx` (Main Page Component)**:
+    *   **Responsibility:** Acts as the entry point and data fetcher for the "My Tasks" view.
+    *   **Data Fetching:** On load, it calls the `getMyTasks(userId)` server action to get all tasks assigned to the current user.
+    *   **State Management:** Uses `useState` to hold the `userTasks` and a list of `allUsers` (for displaying avatars and names).
+    *   **Logic:** It categorizes tasks into "Overdue", "Active", and "Accomplished This Week" based on their `endDate` and `status`. It then passes these categorized lists and handler functions down to the `MyTasksManagement` component.
 
-- **Input:** `requestId`, `reviewerId`.
-- **Logic:**
-  1. Finds the `TimelineChangeRequest` record by its ID.
-  2. Executes a Prisma transaction (`prisma.$transaction`):
-     - Updates the `TimelineChangeRequest` status to "APPROVED" and records the `reviewerId`.
-     - Updates the corresponding `Project` record's `endDate` to the `newEndDate` from the request.
-  3. Revalidates relevant Next.js cache paths to ensure UI updates.
+2.  **`src/components/tasks/my-tasks-management.tsx` (Layout & Stats)**:
+    *   **Responsibility:** Renders the overall layout, including the KPI cards (Overdue Tasks, Active Tasks, etc.) and the main task sections.
+    *   **UI:** Uses `Card` components for the stats and `TaskSection` components to render the lists of tasks.
+    *   **Props:** Receives categorized task lists and action handlers (`handleStatusChange`, `handleUpdateSubmit`) from the parent page.
 
-#### 3.3. `rejectTimelineChange` (`src/app/timeline-approvals/actions.ts`)
+3.  **`TaskItem` (within `my-tasks-management.tsx`)**:
+    *   **Responsibility:** Renders a single, interactive task item within an `Accordion`.
+    *   **Form:** Each `TaskItem` has its own independent `react-hook-form` instance for handling new task updates. The form schema (`taskUpdateSchema`) dynamically validates that the new progress percentage is not less than the current progress.
+    *   **UI:** Displays task details, progress bar, existing updates, and the form for adding a new update.
+    *   **Actions:**
+        *   The status `Select` dropdown calls the `onStatusChange` handler.
+        *   The "Post Update" form calls the `onUpdateSubmit` handler.
 
-- **Input:** `requestId`, `reviewerId`, `notes`.
-- **Logic:**
-  1. Updates the `TimelineChangeRequest` record's status to "REJECTED".
-  2. Records the `reviewerId` and the rejection `reviewNotes`.
-  3. The project's original deadline remains unchanged.
-  4. Revalidates relevant Next.js cache paths.
+### 2.2. Server Actions (`src/app/my-tasks/actions.ts`)
 
-### 4. UI/UX Flow
+1.  **`getMyTasks(userId)`**:
+    *   Fetches all tasks from the database where the `assignees` relation includes the `userId`.
+    *   It `includes` related data like the project, milestone, and existing task updates with their authors.
+    *   Returns a structured `UserTask[]` object.
 
-1.  A Project Manager edits a project and changes the "End Date".
-2.  Upon clicking "Save Changes", a dialog appears asking for a reason.
-3.  The PM enters a reason and clicks "Submit for Approval".
-4.  The project page now shows a "Pending Approval" badge. The end date has not yet changed.
-5.  An Admin navigates to the "Timeline Approvals" page from the sidebar.
-6.  The Admin sees the new request in the table, showing the project name, old date, new date, and reason.
-7.  The Admin clicks "Approve".
-8.  The project's end date is officially updated in the database.
-9.  The "Pending Approval" badge disappears from the project card.
-10. The approval is logged in the project's "Timeline History" tab.
+2.  **`updateTaskStatusAction(taskId, newStatus)`**:
+    *   Updates the `status` of a specific task.
+    *   Contains logic to automatically set `progress` to 100 and `completedAt` to the current time if the new status is `DONE`.
+
+3.  **`addTaskUpdateAction(taskId, text, authorId, progressPercentage)`**:
+    *   This action runs within a Prisma transaction (`prisma.$transaction`) to ensure atomicity.
+    *   **Step 1:** Creates a new `TaskUpdate` record with the provided text, author, and progress.
+    *   **Step 2:** Updates the parent `Task` record's `progress` to the new `progressPercentage`.
+    *   **Step 3:** Contains logic to automatically advance the task's `status`:
+        *   If progress becomes 100%, the status is set to `PENDING_REVIEW`.
+        *   If progress moves from 0 to greater than 0, the status is set from `TODO` to `IN_PROGRESS`.
+    *   Revalidates the cache for `/my-tasks` and `/team-view` to reflect changes immediately.
+
+### 2.3. UI/UX Flow
+
+1.  A user navigates to the "My Tasks" page.
+2.  The page fetches all tasks assigned to them.
+3.  The user sees their tasks grouped into "Overdue", "Active", and recently "Accomplished".
+4.  The user clicks on a task to expand its details.
+5.  Inside, they can see a history of all previous updates.
+6.  They type a new update into the `Textarea` and adjust the `Slider` to indicate their new progress percentage.
+7.  Upon clicking "Post Update", the `addTaskUpdateAction` is called. The backend updates the progress, adds the comment, and potentially changes the task's status (e.g., to `PENDING_REVIEW` if progress is 100%).
+8.  The page re-fetches its data, and the new update appears at the top of the list. The progress bar and task status update automatically.
