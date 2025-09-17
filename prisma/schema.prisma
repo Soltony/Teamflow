@@ -8,27 +8,28 @@ generator client {
 }
 
 model Project {
-  id                      String       @id @default(cuid())
+  id                      String                 @id @default(cuid())
   name                    String
   description             String
   startDate               DateTime
   endDate                 DateTime
   workingYear             String
-  totalCost               Decimal?     @db.Decimal(12, 2)
-  currency                String       @default("ETB")
-  status                  ProjectStatus @relation(fields: [statusId], references: [id])
+  totalCost               Decimal?               @db.Decimal(12, 2)
+  currency                String                 @default("ETB")
+  status                  ProjectStatus          @relation(fields: [statusId], references: [id])
   statusId                String
-  pmoDivision             PmoDivision  @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivision             PmoDivision            @relation(fields: [pmoDivisionId], references: [id])
   pmoDivisionId           String
-  projectManager          User         @relation(fields: [projectManagerId], references: [id])
+  projectManager          User                   @relation(fields: [projectManagerId], references: [id])
   projectManagerId        String
-  responsibleDepartments  Department[] @relation("ProjectResponsibleDepartments")
+  responsibleDepartments  Department[]           @relation("ProjectResponsibleDepartments")
   milestones              Milestone[]
   teams                   Team[]
   blockers                Blocker[]
   payments                Payment[]
-  createdAt               DateTime     @default(now())
-  updatedAt               DateTime     @updatedAt
+  timelineChangeRequests  TimelineChangeRequest[]
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
 }
 
 model PmoDivision {
@@ -65,7 +66,7 @@ model Milestone {
   description String
   startDate   DateTime
   dueDate     DateTime
-  weight      Int
+  weight      Float
   project     Project  @relation(fields: [projectId], references: [id])
   projectId   String
   tasks       Task[]
@@ -74,28 +75,28 @@ model Milestone {
 }
 
 model Task {
-  id          String      @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   description String
   status      String
   startDate   DateTime
   endDate     DateTime
-  weight      Int
-  progress    Int         @default(0)
+  weight      Float
+  progress    Float     @default(0)
   completedAt DateTime?
-  milestone   Milestone   @relation(fields: [milestoneId], references: [id])
+  milestone   Milestone @relation(fields: [milestoneId], references: [id])
   milestoneId String
-  assignees   User[]      @relation("TaskAssignees")
+  assignees   User[]    @relation("TaskAssignees")
   updates     TaskUpdate[]
-  createdAt   DateTime    @default(now())
-  updatedAt   DateTime    @updatedAt
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 }
 
 model TaskUpdate {
   id                  String   @id @default(cuid())
   text                String
   type                String   // e.g., 'COMMENT', 'STATUS_CHANGE'
-  progressPercentage  Int?
+  progressPercentage  Float?
   author              User     @relation(fields: [authorId], references: [id])
   authorId            String
   task                Task     @relation(fields: [taskId], references: [id])
@@ -105,23 +106,25 @@ model TaskUpdate {
 }
 
 model User {
-  id            String       @id @default(cuid())
-  name          String
-  firstName     String
-  lastName      String
-  email         String       @unique
-  avatar        String?
-  phoneNumber   String?
-  pmoDivision   PmoDivision? @relation(fields: [pmoDivisionId], references: [id])
-  pmoDivisionId String?
-  roles         Role[]       @relation("UserRoles")
-  assignedTasks Task[]       @relation("TaskAssignees")
-  teamsAsLead   Team[]       @relation("TeamLead")
-  teamsAsMember Team[]       @relation("TeamMembers")
-  taskUpdates   TaskUpdate[]
-  managedProjects Project[]
-  createdAt     DateTime     @default(now())
-  updatedAt     DateTime     @updatedAt
+  id                      String                 @id @default(cuid())
+  name                    String
+  firstName               String
+  lastName                String
+  email                   String                 @unique
+  avatar                  String?
+  phoneNumber             String?
+  pmoDivision             PmoDivision?           @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivisionId           String?
+  roles                   Role[]                 @relation("UserRoles")
+  assignedTasks           Task[]                 @relation("TaskAssignees")
+  teamsAsLead             Team[]                 @relation("TeamLead")
+  teamsAsMember           Team[]                 @relation("TeamMembers")
+  taskUpdates             TaskUpdate[]
+  managedProjects         Project[]
+  timelineChangeRequests  TimelineChangeRequest[] @relation("RequestedBy")
+  timelineChangeApprovals TimelineChangeRequest[] @relation("ReviewedBy")
+  createdAt               DateTime               @default(now())
+  updatedAt               DateTime               @updatedAt
 }
 
 model Role {
@@ -174,4 +177,27 @@ model Payment {
   projectId   String
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+}
+
+enum RequestStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model TimelineChangeRequest {
+  id          String        @id @default(cuid())
+  project     Project       @relation(fields: [projectId], references: [id])
+  projectId   String
+  oldEndDate  DateTime
+  newEndDate  DateTime
+  reason      String
+  status      RequestStatus @default(PENDING)
+  requestedBy User          @relation("RequestedBy", fields: [requestedById], references: [id])
+  requestedById String
+  reviewedBy  User?         @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  reviewedById String?
+  reviewNotes String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
 }

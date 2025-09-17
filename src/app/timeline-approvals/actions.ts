@@ -1,0 +1,85 @@
+
+'use server';
+
+import prisma from "@/lib/db";
+import { revalidatePath } from "next/cache";
+
+export async function getPendingTimelineChanges() {
+    const requests = await prisma.timelineChangeRequest.findMany({
+        where: {
+            status: 'PENDING',
+        },
+        include: {
+            project: {
+                select: {
+                    id: true,
+                    name: true,
+                }
+            },
+            requestedBy: {
+                select: {
+                    id: true,
+                    name: true
+                }
+            }
+        },
+        orderBy: {
+            createdAt: 'asc'
+        }
+    });
+
+    return JSON.parse(JSON.stringify(requests));
+}
+
+export async function approveTimelineChange(requestId: string, reviewerId: string) {
+    try {
+        const request = await prisma.timelineChangeRequest.findUnique({ where: { id: requestId } });
+        if (!request) {
+            return { success: false, error: "Request not found." };
+        }
+
+        await prisma.$transaction([
+            prisma.timelineChangeRequest.update({
+                where: { id: requestId },
+                data: {
+                    status: 'APPROVED',
+                    reviewedById: reviewerId,
+                }
+            }),
+            prisma.project.update({
+                where: { id: request.projectId },
+                data: {
+                    endDate: request.newEndDate,
+                }
+            })
+        ]);
+
+        revalidatePath('/timeline-approvals');
+        revalidatePath(`/projects/${request.projectId}`);
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to approve timeline change:", error);
+        return { success: false, error: "An unexpected error occurred." };
+    }
+}
+
+export async function rejectTimelineChange(requestId: string, reviewerId: string, notes: string) {
+    if (!notes || notes.trim().length < 10) {
+        return { success: false, error: "A rejection reason of at least 10 characters is required."}
+    }
+    try {
+        await prisma.timelineChangeRequest.update({
+            where: { id: requestId },
+            data: {
+                status: 'REJECTED',
+                reviewedById: reviewerId,
+                reviewNotes: notes,
+            }
+        });
+        revalidatePath('/timeline-approvals');
+        return { success: true };
+    } catch (error) {
+        console.error("Failed to reject timeline change:", error);
+        return { success: false, error: "An unexpected error occurred." };
+    }
+}

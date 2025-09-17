@@ -104,7 +104,18 @@ export async function getProjectForEdit(projectId: string) {
 
 
 export async function updateProject(projectId: string, data: any) {
-    const { milestones, responsibleDepartmentIds, hasCost, payments, ...projectData } = data;
+    const { milestones, responsibleDepartmentIds, hasCost, payments, timelineChangeReason, ...projectData } = data;
+
+    const existingProject = await prisma.project.findUnique({ where: { id: projectId } });
+    if (!existingProject) {
+        return { success: false, error: 'Project not found.' };
+    }
+
+    const endDateChanged = new Date(projectData.endDate).getTime() !== new Date(existingProject.endDate).getTime();
+
+    if (endDateChanged && !timelineChangeReason) {
+        return { success: false, error: 'A reason for changing the project deadline is required.' };
+    }
 
     const existingMilestones = await prisma.milestone.findMany({
         where: { projectId: projectId },
@@ -159,6 +170,20 @@ export async function updateProject(projectId: string, data: any) {
                     where: { id: { in: paymentIdsToDelete } }
                 });
             }
+            
+            // --- TIMELINE CHANGE REQUEST ---
+            if (endDateChanged) {
+                await tx.timelineChangeRequest.create({
+                    data: {
+                        projectId: projectId,
+                        oldEndDate: existingProject.endDate,
+                        newEndDate: projectData.endDate,
+                        reason: timelineChangeReason,
+                        requestedById: projectData.projectManagerId, // Or whoever is making the request
+                        status: 'PENDING',
+                    }
+                });
+            }
 
             // --- PROJECT UPDATE ---
             await tx.project.update({
@@ -167,7 +192,9 @@ export async function updateProject(projectId: string, data: any) {
                   name: projectData.name,
                   description: projectData.description,
                   startDate: projectData.startDate,
-                  endDate: projectData.endDate,
+                  // endDate is NOT updated here directly anymore if a change is requested.
+                  // It will be updated upon approval. If no change, it remains the same.
+                  endDate: endDateChanged ? existingProject.endDate : projectData.endDate,
                   statusId: projectData.statusId,
                   pmoDivisionId: projectData.pmoDivisionId,
                   projectManagerId: projectData.projectManagerId,
@@ -265,6 +292,7 @@ export async function updateProject(projectId: string, data: any) {
         revalidatePath('/gantt');
         revalidatePath('/milestones');
         revalidatePath('/payments');
+        revalidatePath('/timeline-approvals');
         return { success: true };
     } catch (e) {
         console.error("Failed to update project", e);
@@ -678,6 +706,11 @@ export async function deleteProject(projectId: string) {
             
             // Delete payments
             await tx.payment.deleteMany({
+                where: { projectId: projectId }
+            });
+            
+            // Delete timeline change requests
+            await tx.timelineChangeRequest.deleteMany({
                 where: { projectId: projectId }
             });
             

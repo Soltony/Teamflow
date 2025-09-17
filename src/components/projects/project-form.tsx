@@ -45,6 +45,8 @@ import type { User, Department, ProjectStatus, PmoDivision } from "@prisma/clien
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { Switch } from "../ui/switch";
+import { useAuth } from "@/context/auth-context";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 
 
 const milestoneSchema = z.object({
@@ -82,6 +84,7 @@ const projectSchema = z.object({
   totalCost: z.coerce.number().optional(),
   milestones: z.array(milestoneSchema),
   payments: z.array(paymentSchema).optional(),
+  timelineChangeReason: z.string().optional(),
 }).refine(data => data.endDate > data.startDate, {
     message: "End date must be after start date.",
     path: ["endDate"],
@@ -150,8 +153,13 @@ const unformatCurrency = (value: string) => {
 
 export function ProjectForm({ mode, initialData, users, pmoDivisions, departments, projectStatuses, onSubmit }: ProjectFormProps) {
   const router = useRouter();
+  const { hasPermission } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isTimelineChangeDialogOpen, setIsTimelineChangeDialogOpen] = useState(false);
+  const [originalEndDate, setOriginalEndDate] = useState<Date | undefined>(initialData?.endDate);
+
   const isEditMode = mode === 'edit';
+  const canRequestTimelineChange = hasPermission('timeline:request');
 
   const nonAdminUsers = useMemo(() => {
     return users.filter(user => !user.roles.some(role => role.name === 'Admin'));
@@ -202,6 +210,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
   useEffect(() => {
     if (isEditMode && initialData) {
       form.reset(initialData);
+      setOriginalEndDate(initialData.endDate);
     }
   }, [initialData, isEditMode, form]);
 
@@ -218,12 +227,31 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
   const milestonesError = form.formState.errors.milestones?.root;
 
   async function handleFormSubmit(data: ProjectFormValues) {
+    if (isEditMode && canRequestTimelineChange && originalEndDate && data.endDate.getTime() !== originalEndDate.getTime()) {
+      setIsTimelineChangeDialogOpen(true);
+      return;
+    }
+    
     setIsSubmitting(true);
     await onSubmit(data);
     setIsSubmitting(false);
   }
+  
+  async function handleTimelineChangeSubmit() {
+    const reason = form.getValues("timelineChangeReason");
+    if (!reason || reason.length < 10) {
+        form.setError("timelineChangeReason", { type: "manual", message: "A reason of at least 10 characters is required." });
+        return;
+    }
+
+    setIsTimelineChangeDialogOpen(false);
+    setIsSubmitting(true);
+    await onSubmit(form.getValues());
+    setIsSubmitting(false);
+  }
 
   return (
+    <>
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
         <div className="space-y-4">
@@ -776,6 +804,38 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
         </div>
       </form>
     </Form>
+
+    <AlertDialog open={isTimelineChangeDialogOpen} onOpenChange={setIsTimelineChangeDialogOpen}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Reason for Deadline Change</AlertDialogTitle>
+                <AlertDialogDescription>
+                    You have changed the project's end date. Please provide a clear reason for this change. This will be submitted for approval.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <Form {...form}>
+                <form id="timeline-change-form" onSubmit={(e) => { e.preventDefault(); handleTimelineChangeSubmit(); }}>
+                     <FormField
+                        control={form.control}
+                        name="timelineChangeReason"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Reason</FormLabel>
+                            <FormControl>
+                                <Textarea placeholder="e.g., Unforeseen technical challenges in Phase 2 have caused a delay..." {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </form>
+            </Form>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction type="submit" form="timeline-change-form">Submit for Approval</AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
-

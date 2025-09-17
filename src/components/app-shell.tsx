@@ -22,6 +22,7 @@ import {
   CheckSquare,
   ListTodo,
   Archive,
+  Clock,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -63,6 +64,7 @@ const menuItems = [
   { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
   { href: "/payments", label: "Payments", icon: DollarSign, permission: 'payments:view' },
   { href: "/payment-approvals", label: "Payment Approvals", icon: CheckSquare, permission: 'payment-approvals:view' },
+  { href: "/timeline-approvals", label: "Timeline Approvals", icon: Clock, permission: 'timeline:approve' },
   { href: "/ceo-report", label: "Reports", icon: AreaChart, permission: 'reports:view' },
   { href: "/settings", label: "Settings", icon: Settings, permission: ['settings:manage', 'config:manage-users', 'config:manage-roles'] },
 ];
@@ -185,5 +187,3 @@ export function AppShellProvider({ children }: { children: React.ReactNode }) {
     </SidebarProvider>
   );
 }
-
-    
