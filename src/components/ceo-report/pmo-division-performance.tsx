@@ -26,6 +26,8 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
     const completedStatusId = useMemo(() => projectStatuses.find(s => s.name === 'Completed')?.id, [projectStatuses]);
 
     const pmoDivisionPerformance = useMemo(() => {
+        const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
+        
         return pmoDivisions
             .map(div => {
                 const divisionProjects = projects.filter(p => p.pmoDivisionId === div.id);
@@ -39,7 +41,9 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                 }).length;
 
                 const divCompletionRate = divisionProjects.length > 0 ? (divOnTimeCount / divisionProjects.length) * 100 : 0;
-                const divOverdueCount = divisionProjects.filter(p => p.statusId !== completedStatusId && isPast(parseISO(p.endDate as unknown as string))).length;
+                const divOverdueCount = divisionProjects.filter(p => 
+                    nonArchivedStatusNames.includes(p.status.name) && isPast(parseISO(p.endDate as unknown as string))
+                ).length;
                 
                 const projectsByStatus = divisionProjects.reduce((acc, project) => {
                     const statusName = statusMap.get(project.statusId) || 'Unknown';
