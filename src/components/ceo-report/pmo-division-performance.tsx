@@ -40,7 +40,8 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                     return !isAfter(lastTaskDate, parseISO(project.endDate as unknown as string));
                 }).length;
 
-                const divCompletionRate = divisionProjects.length > 0 ? (divOnTimeCount / divisionProjects.length) * 100 : 0;
+                const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 0;
+                
                 const divOverdueCount = divisionProjects.filter(p => 
                     nonArchivedStatusNames.includes(p.status.name) && isPast(parseISO(p.endDate as unknown as string))
                 ).length;
