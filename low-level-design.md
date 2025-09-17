@@ -2,11 +2,65 @@
 
 This document provides a detailed, technical breakdown of specific features and components within the NIB EPMO application.
 
-## 1. Feature: Project Timeline Change Workflow
+## 1. Feature: Project Creation & Editing
+
+This section details the design of the core `ProjectForm` component and the associated server actions (`createProject`, `updateProject`) that handle the application's primary data entry workflow.
+
+### 1.1. Data Validation (`zod` Schema)
+
+A comprehensive `zod` schema is defined in `src/components/projects/project-form.tsx` to ensure data integrity before submission.
+
+- **Top-Level Fields:** Validates `name`, `description`, `startDate`, `endDate`, and required IDs for `status`, `pmoDivision`, and `projectManager`.
+- **Nested Milestones:** Uses `z.array(milestoneSchema)` to validate each milestone, ensuring each has a title, dates, and a weight.
+- **Nested Payments:** If `hasCost` is true, it validates an array of payment objects, ensuring each has a title, amount, and date.
+- **Cross-Field Validation (`.refine`):**
+    1.  Ensures the sum of all `milestones.weight` equals exactly 100.
+    2.  If `hasCost` is enabled, ensures the sum of all `payments.amount` equals the `totalCost`.
+- **Date Logic (`.superRefine`):**
+    1.  Checks that each milestone's `startDate` is not before the project's `startDate`.
+    2.  Checks that each milestone's `dueDate` is not after the project's `endDate`.
+
+### 1.2. Component: `ProjectForm` (`src/components/projects/project-form.tsx`)
+
+- **State Management:**
+    - Uses `react-hook-form` with `useFieldArray` to dynamically manage the nested `milestones` and `payments` arrays. This allows users to add or remove items on the fly.
+    - Manages its own submission state (`isSubmitting`) to disable buttons and prevent duplicate form submissions.
+    - In 'edit' mode, it stores the `originalEndDate` to detect if the deadline has been changed, which triggers the timeline change approval workflow.
+
+- **Conditional Rendering:**
+    - **Mode ('create' vs 'edit'):** The form's title, description, and submit button text change based on the `mode` prop.
+    - **Cost Management:** The entire "Payment Schedule" section, including `totalCost`, `currency`, and the payment items list, is conditionally rendered based on the `hasCost` boolean switch.
+    - **Currency Symbol:** A `currencySymbol` variable is derived from the `currency` form value and is used to dynamically prefix the cost and payment amount fields.
+
+- **Server Action Calls:**
+    - The main `onSubmit` handler is passed down as a prop from the parent page (`/projects/new/page.tsx` or `/projects/[id]/edit/page.tsx`).
+    - The `handleFormSubmit` function within the form acts as a middleware. In edit mode, if the end date has changed, it intercepts the submission to open the `TimelineChangeRequest` dialog instead of calling `onSubmit` directly.
+
+### 1.3. Server Actions (`src/app/projects/actions.ts`)
+
+- **`createProject`**:
+    - Receives the validated form data.
+    - Uses `prisma.project.create` to insert the new project into the database.
+    - **Transactional Nested Writes:** It creates the `milestones` and `payments` records in the same database transaction using Prisma's nested create feature. This ensures that if any part of the creation fails, the entire operation is rolled back, preventing orphaned data.
+    - Connects the project to responsible departments using `connect`.
+    - Revalidates multiple Next.js cache paths (`/dashboard`, `/projects`, etc.) to ensure the new project appears everywhere immediately.
+
+- **`updateProject`**:
+    - **Handles Timeline Change:** It first checks if the `endDate` has been modified. If so, it creates a `TimelineChangeRequest` record and **does not** update the project's `endDate`.
+    - **Syncs Nested Data (Milestones & Payments):**
+        1.  It fetches the IDs of existing milestones/payments for the project.
+        2.  It compares them to the IDs submitted from the form to identify which items were deleted.
+        3.  It runs a Prisma transaction (`prisma.$transaction`) to perform deletions, updates, and creations atomically.
+        4.  **Deletions:** It deletes any milestones or payments (and their child records like tasks) that are no longer present in the form data.
+        5.  **Upserts:** It iterates through the submitted milestones/payments. If an item has an ID, it performs an `update`; if not, it performs a `create`.
+    - **Updates Project Data:** Updates the flat fields on the `Project` model.
+    - Revalidates all relevant cache paths to reflect the changes across the app.
+
+## 2. Feature: Project Timeline Change Workflow
 
 This section details the low-level design for the feature that allows project managers to request changes to a project's deadline, which must then be approved or rejected by an authorized user.
 
-### 1.1. Database Schema
+### 2.1. Database Schema
 
 A new model, `TimelineChangeRequest`, is introduced to the Prisma schema (`prisma/schema.prisma`) to track each request.
 
@@ -44,7 +98,7 @@ model Project {
 }
 ```
 
-### 1.2. Component & UI Flow
+### 2.2. Component & UI Flow
 
 1.  **`src/components/projects/project-form.tsx`**:
     *   **State:** The form maintains the `originalEndDate` of the project when loaded in "edit" mode.
@@ -65,7 +119,7 @@ model Project {
     *   The card component checks if a project has any associated `timelineChangeRequests` with a `PENDING` status.
     *   If a pending request exists, it displays a "Pending Approval" badge in the card's footer, providing clear visual feedback.
 
-### 1.3. Server Actions
+### 2.3. Server Actions
 
 1.  **`updateProject` (`src/app/projects/actions.ts`)**:
     *   This action is modified to be aware of the timeline change workflow.
@@ -84,11 +138,11 @@ model Project {
     *   **Input:** `requestId`, `reviewerId`, `notes`.
     *   **Logic:** Updates the `TimelineChangeRequest` record's status to "REJECTED" and saves the `reviewNotes`. The project's original deadline is not changed.
 
-## 2. Feature: "My Tasks" Page & Task Updates
+## 3. Feature: "My Tasks" Page & Task Updates
 
 This section details the design of the "My Tasks" page, which serves as a personal dashboard for users to manage their assigned work and report progress.
 
-### 2.1. Component Breakdown
+### 3.1. Component Breakdown
 
 1.  **`src/app/my-tasks/page.tsx` (Main Page Component)**:
     *   **Responsibility:** Acts as the entry point and data fetcher for the "My Tasks" view.
@@ -109,7 +163,7 @@ This section details the design of the "My Tasks" page, which serves as a person
         *   The status `Select` dropdown calls the `onStatusChange` handler.
         *   The "Post Update" form calls the `onUpdateSubmit` handler.
 
-### 2.2. Server Actions (`src/app/my-tasks/actions.ts`)
+### 3.2. Server Actions (`src/app/my-tasks/actions.ts`)
 
 1.  **`getMyTasks(userId)`**:
     *   Fetches all tasks from the database where the `assignees` relation includes the `userId`.
@@ -129,7 +183,7 @@ This section details the design of the "My Tasks" page, which serves as a person
         *   If progress moves from 0 to greater than 0, the status is set from `TODO` to `IN_PROGRESS`.
     *   Revalidates the cache for `/my-tasks` and `/team-view` to reflect changes immediately.
 
-### 2.3. UI/UX Flow
+### 3.3. UI/UX Flow
 
 1.  A user navigates to the "My Tasks" page.
 2.  The page fetches all tasks assigned to them.
