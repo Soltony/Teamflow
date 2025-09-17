@@ -34,6 +34,7 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
 
     let filteredProjects: any[] = [];
     const completedStatusId = allProjectStatuses.find(s => s.name === 'Completed')?.id;
+    const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
     
     if (type) {
         const allCompletedProjects = allProjects.filter(p => p.statusId === completedStatusId);
@@ -62,7 +63,7 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
             case 'overdue':
                 title = "Overdue Projects";
                 description = "Active projects that are past their deadline.";
-                filteredProjects = allProjects.filter(p => p.status.name === 'Active' && isPast(p.endDate));
+                filteredProjects = allProjects.filter(p => nonArchivedStatusNames.includes(p.status.name) && isPast(p.endDate));
                 break;
             case 'active-blockers':
                 title = "Projects with Active Blockers";
@@ -120,5 +121,3 @@ export default function ReportsPage({ searchParams }: { searchParams: { type?: s
         </Suspense>
     );
 }
-
-    

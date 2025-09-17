@@ -143,14 +143,14 @@ export function ProjectView({
   };
 
   const renderTimelineStatus = () => {
-    const isProjectComplete = project.status.name === 'Completed' || weightedProgress >= 100;
+    const isProjectComplete = project.status.name === 'Completed' || project.status.name === 'On Handover';
     const endDate = parseISO(project.endDate);
     
     if (isProjectComplete) {
       return (
         <>
           <ShieldCheck className="w-4 h-4 text-green-600" />
-          <span>Completed: {format(endDate, "MMM d, yyyy")}</span>
+          <span>{project.status.name}: {format(endDate, "MMM d, yyyy")}</span>
         </>
       );
     }

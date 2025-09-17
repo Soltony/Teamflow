@@ -45,7 +45,11 @@ export default async function CEOReportPage() {
     // KPI Calculations
     const totalActiveProjects = projects.filter(p => p.status.name === 'Active').length;
     const totalOpenBlockers = projects.reduce((acc, p) => acc + p.blockers.length, 0);
-    const overdueProjects = projects.filter(p => p.status.name === 'Active' && isPast(p.endDate));
+    
+    const nonArchivedStatuses = ['Active', 'Pending', 'Parked'];
+    const overdueProjects = projects.filter(p => 
+        nonArchivedStatuses.includes(p.status.name) && isPast(p.endDate)
+    );
     const totalOverdueProjects = overdueProjects.length;
 
     const completedProjects = projects.filter(p => p.statusId === completedStatusId);
@@ -202,5 +206,3 @@ export default async function CEOReportPage() {
         </div>
     );
 }
-
-    
