@@ -32,6 +32,7 @@ export async function createProject(data: any) {
         data: {
             ...projectData,
             totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
+            currency: projectData.currency,
             responsibleDepartments: {
                 connect: responsibleDepartmentIds.map((id: string) => ({ id }))
             },
@@ -547,6 +548,15 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
                             updates: true,
                         }
                     }
+                }
+            },
+            timelineChangeRequests: {
+                include: {
+                    requestedBy: true,
+                    reviewedBy: true,
+                },
+                orderBy: {
+                    createdAt: 'desc'
                 }
             }
         }

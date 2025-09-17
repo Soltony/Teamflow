@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot, AlertTriangle, ArrowRight } from "lucide-react";
 import { format, differenceInDays, parseISO, isAfter, endOfDay } from "date-fns";
 import type { Blocker, TaskStatus, Project } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -79,6 +79,19 @@ const getStatusBadge = (status: TaskStatus) => {
             return <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Done</Badge>;
         default:
             return <Badge variant="secondary">Unknown</Badge>;
+    }
+}
+
+const getTimelineStatusBadge = (status: 'PENDING' | 'APPROVED' | 'REJECTED') => {
+    switch (status) {
+        case 'PENDING':
+            return <Badge variant="secondary" className="bg-amber-500/80 text-white">Pending</Badge>;
+        case 'APPROVED':
+            return <Badge variant="secondary" className="bg-green-600 text-white">Approved</Badge>;
+        case 'REJECTED':
+            return <Badge variant="destructive">Rejected</Badge>;
+        default:
+            return <Badge variant="outline">Unknown</Badge>;
     }
 }
 
@@ -239,9 +252,10 @@ export function ProjectView({
       </Card>
       
       <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-2 mb-4">
+        <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="milestones">Milestones & Tasks</TabsTrigger>
             <TabsTrigger value="blockers">Blockers</TabsTrigger>
+            <TabsTrigger value="timeline">Timeline History</TabsTrigger>
         </TabsList>
         <TabsContent value="milestones">
             <Card>
@@ -382,6 +396,50 @@ export function ProjectView({
                     ))
                     )}
                 </div>
+                </CardContent>
+            </Card>
+        </TabsContent>
+        <TabsContent value="timeline">
+            <Card>
+                 <CardHeader>
+                    <CardTitle>Timeline Change History</CardTitle>
+                    <CardDescription>A log of all requested and completed changes to the project deadline.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                     {project.timelineChangeRequests.length > 0 ? (
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Requested On</TableHead>
+                                    <TableHead>Requested By</TableHead>
+                                    <TableHead>Deadline Change</TableHead>
+                                    <TableHead>Reason</TableHead>
+                                    <TableHead>Status</TableHead>
+                                    <TableHead>Reviewed By</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {project.timelineChangeRequests.map((req: any) => (
+                                    <TableRow key={req.id}>
+                                        <TableCell>{format(parseISO(req.createdAt), 'MMM dd, yyyy')}</TableCell>
+                                        <TableCell>{req.requestedBy?.name ?? 'N/A'}</TableCell>
+                                        <TableCell>
+                                            <div className="flex items-center gap-2">
+                                                <Badge variant="outline">{format(parseISO(req.oldEndDate), 'MMM dd, yy')}</Badge>
+                                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                                                <Badge variant="default">{format(parseISO(req.newEndDate), 'MMM dd, yy')}</Badge>
+                                            </div>
+                                        </TableCell>
+                                        <TableCell className="max-w-xs truncate">{req.reason}</TableCell>
+                                        <TableCell>{getTimelineStatusBadge(req.status)}</TableCell>
+                                        <TableCell>{req.reviewedBy?.name ?? 'N/A'}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    ) : (
+                        <p className="text-center text-sm text-muted-foreground py-8">No timeline change requests have been made for this project.</p>
+                    )}
                 </CardContent>
             </Card>
         </TabsContent>
