@@ -503,6 +503,11 @@ export async function getProjectsPageData(userId: string) {
                     tasks: true,
                 },
             },
+            timelineChangeRequests: {
+                where: {
+                    status: 'PENDING'
+                }
+            }
         },
         orderBy: {
             createdAt: 'desc'
