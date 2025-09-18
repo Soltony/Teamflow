@@ -162,8 +162,8 @@ export const projectsData = [
             dueDate: '2024-11-15',
             weight: 50,
             tasks: [
-                { id: 'task-2-1', title: 'Market Research', description: 'Analyze competitor apps and market trends.', status: 'DONE', startDate: '2024-09-01', endDate: '2024-09-15', weight: 30, assignedUserEmails: ['diana.miller@teamflow.com'] },
-                { id: 'task-2-2', title: 'API Development', description: 'Develop REST APIs for the mobile app.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-11-15', weight: 70, assignedUserEmails: ['bob.williams@teamflow.com'] },
+                { id: 'task-2-1', title: 'Market Research', description: 'Analyze competitor apps and market trends.', status: 'DONE', startDate: '2024-09-01', endDate: '2024-09-15', weight: 30, assignedUserEmails: ['diana.miller@teamflow.com'], updates: [] },
+                { id: 'task-2-2', title: 'API Development', description: 'Develop REST APIs for the mobile app.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-11-15', weight: 70, assignedUserEmails: ['bob.williams@teamflow.com'], updates: [] },
             ]
         },
         {
@@ -174,11 +174,12 @@ export const projectsData = [
             dueDate: '2024-12-15',
             weight: 50,
             tasks: [
-                { id: 'task-2-3', title: 'Mobile UI/UX Design', description: 'Design the user interface and experience for iOS and Android.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-10-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'] },
-                { id: 'task-2-4', title: 'Mobile App Development', description: 'Develop the native mobile application.', status: 'TODO', startDate: '2024-10-16', endDate: '2024-12-15', weight: 60, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'] },
+                { id: 'task-2-3', title: 'Mobile UI/UX Design', description: 'Design the user interface and experience for iOS and Android.', status: 'IN_PROGRESS', startDate: '2024-09-16', endDate: '2024-10-15', weight: 40, assignedUserEmails: ['ethan.davis@teamflow.com', 'fiona.garcia@teamflow.com'], updates: [] },
+                { id: 'task-2-4', title: 'Mobile App Development', description: 'Develop the native mobile application.', status: 'TODO', startDate: '2024-10-16', endDate: '2024-12-15', weight: 60, assignedUserEmails: ['alice.johnson@teamflow.com', 'charlie.brown@teamflow.com'], updates: [] },
             ]
         }
-    ]
+    ],
+    blockers: [],
   },
 ];
 
@@ -193,7 +194,7 @@ export const teamsData = [
   { 
     id: 'team-2', 
     name: 'Backend Titans', 
-    projectId: 'proj-1', 
+    projectId: 'proj-1', _id: 'proj-1', 
     teamLeadEmail: 'bob.williams@teamflow.com', 
     memberEmails: ['bob.williams@teamflow.com', 'diana.miller@teamflow.com'] 
   },
@@ -205,11 +206,3 @@ export const teamsData = [
     memberEmails: ['diana.miller@teamflow.com', 'fiona.garcia@teamflow.com'] 
   },
 ];
-
-    
-
-    
-
-    
-
-    
