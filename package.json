@@ -1,4 +1,3 @@
-
 {
   "name": "nextn",
   "version": "0.1.0",
@@ -12,7 +11,8 @@
     "lint": "next lint",
     "typecheck": "tsc --noEmit",
     "db:seed": "prisma db seed",
-    "prisma:generate": "prisma generate"
+    "prisma:generate": "prisma generate",
+    "prisma:baseline": "prisma migrate dev --create-only --name init"
   },
   "prisma": {
     "seed": "tsx prisma/seed.ts"
