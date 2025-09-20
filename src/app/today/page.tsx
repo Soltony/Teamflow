@@ -178,7 +178,7 @@ export default function TodayPage() {
         </CardHeader>
         <CardContent>
             {projects.length > 0 ? (
-                <Accordion type="multiple" className="w-full space-y-4" defaultValue={projects.map(p => p.id)}>
+                <Accordion type="multiple" className="w-full space-y-4">
                     {projects.map(project => (
                         <AccordionItem value={project.id} key={project.id} className="border rounded-lg">
                             <AccordionTrigger className="p-4 font-semibold text-lg hover:no-underline">
