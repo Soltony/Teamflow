@@ -347,13 +347,40 @@ export async function updateMilestone(milestoneId: string, projectId: string, da
     revalidatePath(`/projects/${projectId}`);
 }
 
-export async function addTask(milestoneId: string, projectId: string, data: any) {
+export async function addTask(projectId: string, milestoneId: string | null, data: any) {
     const { assignedUserIds, ...taskData } = data;
+    let finalMilestoneId = milestoneId;
+
+    if (!finalMilestoneId) {
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            include: { milestones: true }
+        });
+        
+        if (!project) throw new Error("Project not found");
+
+        let generalMilestone = project.milestones.find(m => m.title === "General Tasks");
+
+        if (!generalMilestone) {
+            generalMilestone = await prisma.milestone.create({
+                data: {
+                    title: "General Tasks",
+                    description: "A default collection of tasks for this project.",
+                    startDate: project.startDate,
+                    dueDate: project.endDate,
+                    weight: 0, // General milestone has no weight towards project completion
+                    projectId: projectId,
+                }
+            });
+        }
+        finalMilestoneId = generalMilestone.id;
+    }
+    
     await prisma.task.create({
         data: {
             ...taskData,
             status: 'TODO',
-            milestoneId,
+            milestoneId: finalMilestoneId,
             assignees: {
                 connect: assignedUserIds.map((id:string) => ({ id }))
             }
@@ -488,7 +515,7 @@ export async function getProjectsPageData(userId: string) {
         where: whereClause,
         include: {
             status: true,
-            milestones: { // Correctly include tasks through milestones
+            milestones: {
                 include: {
                     tasks: true
                 }

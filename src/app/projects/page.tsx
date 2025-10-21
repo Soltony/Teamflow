@@ -5,12 +5,10 @@ import { useEffect, useState, useCallback, useMemo } from "react";
 import { useAuth } from "@/context/auth-context";
 import { ProjectListItem } from "@/components/projects/project-card";
 import { CreateProjectButton } from "@/components/projects/create-project-button";
-import { getProjectsPageData, addTask, updateTask, deleteTask, addMilestone } from "./actions";
+import { getProjectsPageData, addTask, updateTask, deleteTask } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, X } from "lucide-react";
+import { Search } from "lucide-react";
 import type { Task as TaskType, User, Project, Milestone } from "@/lib/types";
 import { AddTaskDialog } from "@/components/projects/add-task-dialog";
 import { EditTaskDialog } from "@/components/projects/edit-task-dialog";
@@ -45,7 +43,7 @@ export default function ProjectsPage() {
 
     // State for modals
     const [addingTaskToProject, setAddingTaskToProject] = useState<Project | null>(null);
-    const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: TaskType; project: Project } | null>(null);
+    const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: TaskType; project: Project, milestone: Milestone } | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<TaskType | null>(null);
 
     const fetchData = useCallback(async () => {
@@ -80,13 +78,13 @@ export default function ProjectsPage() {
         return filtered;
     }, [projects, searchQuery]);
 
-    const handleTaskAdd = async (projectId: string, milestoneId: string, newTask: any) => {
-        if (!projectId || !milestoneId) {
-             toast({ title: "Error", description: "Could not find the parent project or milestone for this task.", variant: "destructive" });
+    const handleTaskAdd = async (projectId: string, milestoneId: string | null, newTask: any) => {
+        if (!projectId) {
+             toast({ title: "Error", description: "Could not find the parent project for this task.", variant: "destructive" });
              return;
         }
 
-        await addTask(milestoneId, projectId, newTask);
+        await addTask(projectId, milestoneId, newTask);
         toast({ title: "Task Added!", description: `The task "${newTask.title}" has been added.` });
         setAddingTaskToProject(null);
         await fetchData();
@@ -156,18 +154,8 @@ export default function ProjectsPage() {
                             key={project.id} 
                             project={project}
                             users={users}
-                            onAddTask={(project) => {
-                               if (project.milestones.length === 0) {
-                                    toast({
-                                        title: 'No Milestones',
-                                        description: 'Please add a milestone to this project before adding tasks.',
-                                        variant: 'destructive',
-                                    });
-                                } else {
-                                    setAddingTaskToProject(project);
-                                }
-                            }}
-                            onEditTask={(task, project) => setEditingTaskInfo({task, project})}
+                            onAddTask={(project) => setAddingTaskToProject(project)}
+                            onEditTask={(task, milestone) => setEditingTaskInfo({task, project, milestone})}
                             onDeleteTask={setTaskToDelete}
                             taskToDelete={taskToDelete}
                             setTaskToDelete={setTaskToDelete}
@@ -196,10 +184,10 @@ export default function ProjectsPage() {
                 <EditTaskDialog
                     isOpen={!!editingTaskInfo}
                     onOpenChange={(open) => !open && setEditingTaskInfo(null)}
-                    project={editingTaskInfo.project}
+                    milestone={editingTaskInfo.milestone}
                     task={editingTaskInfo.task}
                     users={users}
-                    onTaskUpdate={handleTaskUpdate}
+                    onTaskUpdate={(milestoneId, updatedTask) => handleTaskUpdate(editingTaskInfo.project.id, updatedTask)}
                 />
             )}
         </div>
