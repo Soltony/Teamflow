@@ -93,7 +93,7 @@ const projectSchema = z.object({
     const totalWeight = data.milestones.reduce((sum, m) => sum + m.weight, 0);
     return totalWeight === 100;
 }, {
-    message: "The sum of all milestone weights must be exactly 100.",
+    message: "If milestones are provided, their total weight must sum to exactly 100.",
     path: ["milestones"],
 }).superRefine((data, ctx) => {
     data.milestones.forEach((milestone, index) => {
@@ -486,7 +486,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
         <div className="space-y-4">
             <div>
                 <h3 className="text-lg font-medium">Milestones</h3>
-                <p className="text-sm text-muted-foreground">Define the major milestones for this project. The sum of all milestone weights must equal 100%.</p>
+                <p className="text-sm text-muted-foreground">Define the major milestones for this project. If provided, the sum of all milestone weights must equal 100%.</p>
             </div>
             {milestoneFields.map((field, index) => (
               <Card key={field.id} className="relative">
