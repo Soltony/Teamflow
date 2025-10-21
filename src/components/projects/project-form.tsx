@@ -79,39 +79,42 @@ const projectSchema = z.object({
   pmoDivisionId: z.string().nonempty("Please select an EPMO division."),
   projectManagerId: z.string().nonempty("Please select a project manager."),
   responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
+  hasMilestones: z.boolean().default(false),
   hasCost: z.boolean().default(false),
   currency: z.string(),
   totalCost: z.coerce.number().optional(),
-  milestones: z.array(milestoneSchema),
+  milestones: z.array(milestoneSchema).optional(),
   payments: z.array(paymentSchema).optional(),
   timelineChangeReason: z.string().optional(),
 }).refine(data => data.endDate > data.startDate, {
     message: "End date must be after start date.",
     path: ["endDate"],
 }).refine(data => {
-    if (data.milestones.length === 0) return true;
+    if (!data.hasMilestones || !data.milestones || data.milestones.length === 0) return true;
     const totalWeight = data.milestones.reduce((sum, m) => sum + m.weight, 0);
     return totalWeight === 100;
 }, {
     message: "If milestones are provided, their total weight must sum to exactly 100.",
     path: ["milestones"],
 }).superRefine((data, ctx) => {
-    data.milestones.forEach((milestone, index) => {
-        if (milestone.startDate < data.startDate) {
-            ctx.addIssue({
-                path: [`milestones.${index}.startDate`],
-                message: "Start date cannot be before the project's start date.",
-                code: z.ZodIssueCode.custom
-            });
-        }
-        if (milestone.dueDate > data.endDate) {
-            ctx.addIssue({
-                path: [`milestones.${index}.dueDate`],
-                message: "Due date cannot be after the project's end date.",
-                code: z.ZodIssueCode.custom
-            });
-        }
-    });
+    if (data.hasMilestones && data.milestones) {
+        data.milestones.forEach((milestone, index) => {
+            if (milestone.startDate < data.startDate) {
+                ctx.addIssue({
+                    path: [`milestones.${index}.startDate`],
+                    message: "Start date cannot be before the project's start date.",
+                    code: z.ZodIssueCode.custom
+                });
+            }
+            if (milestone.dueDate > data.endDate) {
+                ctx.addIssue({
+                    path: [`milestones.${index}.dueDate`],
+                    message: "Due date cannot be after the project's end date.",
+                    code: z.ZodIssueCode.custom
+                });
+            }
+        });
+    }
 
     if (data.hasCost && data.payments && data.payments.length > 0) {
         const paymentTotal = data.payments.reduce((sum, p) => sum + p.amount, 0);
@@ -175,10 +178,10 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       return `${year - 1}/${year}`;
     }
   };
-
-  const form = useForm<ProjectFormValues>({
-    resolver: zodResolver(projectSchema),
-    defaultValues: isEditMode && initialData ? initialData : {
+  
+  const augmentedInitialData = isEditMode && initialData
+  ? { ...initialData, hasMilestones: !!(initialData.milestones && initialData.milestones.length > 0) }
+  : {
       name: "",
       description: "",
       workingYear: getCurrentWorkingYear(),
@@ -186,15 +189,21 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       pmoDivisionId: "",
       projectManagerId: "",
       responsibleDepartmentIds: [],
+      hasMilestones: false,
       hasCost: false,
       currency: 'ETB',
       totalCost: 0,
       milestones: [],
       payments: [],
-    },
+    };
+
+  const form = useForm<ProjectFormValues>({
+    resolver: zodResolver(projectSchema),
+    defaultValues: augmentedInitialData,
   });
 
   const selectedPmoDivisionId = form.watch("pmoDivisionId");
+  const hasMilestones = form.watch("hasMilestones");
   const hasCost = form.watch("hasCost");
   const currency = form.watch("currency");
   const currencySymbol = currency === 'USD' ? '$' : 'ETB';
@@ -209,8 +218,12 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
 
   useEffect(() => {
     if (isEditMode && initialData) {
-      form.reset(initialData);
-      setOriginalEndDate(initialData.endDate);
+        const resetData = {
+            ...initialData,
+            hasMilestones: !!(initialData.milestones && initialData.milestones.length > 0)
+        }
+        form.reset(resetData);
+        setOriginalEndDate(initialData.endDate);
     }
   }, [initialData, isEditMode, form]);
 
@@ -484,140 +497,160 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
         <Separator />
         
         <div className="space-y-4">
-            <div>
-                <h3 className="text-lg font-medium">Milestones</h3>
-                <p className="text-sm text-muted-foreground">Define the major milestones for this project. If provided, the sum of all milestone weights must equal 100%.</p>
-            </div>
-            {milestoneFields.map((field, index) => (
-              <Card key={field.id} className="relative">
-                <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => removeMilestone(index)}>
-                    <X className="h-4 w-4" />
-                </Button>
-                <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-4">
-                      <FormField
-                          control={form.control}
-                          name={`milestones.${index}.title`}
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Milestone Title</FormLabel>
-                              <FormControl>
-                                  <Input placeholder="e.g., Q1 Goals" {...field} />
-                              </FormControl>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                      />
-                      
-                      <FormField
-                          control={form.control}
-                          name={`milestones.${index}.description`}
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Milestone Description</FormLabel>
-                              <FormControl>
-                                  <Textarea placeholder="Describe the milestone goals and deliverables." {...field} />
-                              </FormControl>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                      />
-                  </div>
-                  <div className="space-y-4">
-                      <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                              control={form.control}
-                              name={`milestones.${index}.startDate`}
-                              render={({ field: dateField }) => (
-                              <FormItem className="flex flex-col">
-                                  <FormLabel>Start Date</FormLabel>
-                                  <Popover>
-                                  <PopoverTrigger asChild>
-                                      <FormControl>
-                                      <Button
-                                          variant={"outline"}
-                                          className={cn("w-full pl-3 text-left font-normal", !dateField.value && "text-muted-foreground")}
-                                      >
-                                          {dateField.value ? format(dateField.value, "PPP") : <span>Pick a date</span>}
-                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                      </Button>
-                                      </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar mode="single" selected={dateField.value} onSelect={dateField.onChange} initialFocus />
-                                  </PopoverContent>
-                                  </Popover>
-                                  <FormMessage />
-                              </FormItem>
-                              )}
-                          />
-                          <FormField
-                              control={form.control}
-                              name={`milestones.${index}.dueDate`}
-                              render={({ field: dateField }) => (
-                              <FormItem className="flex flex-col">
-                                  <FormLabel>Due Date</FormLabel>
-                                  <Popover>
-                                  <PopoverTrigger asChild>
-                                      <FormControl>
-                                      <Button
-                                          variant={"outline"}
-                                          className={cn("w-full pl-3 text-left font-normal", !dateField.value && "text-muted-foreground")}
-                                      >
-                                          {dateField.value ? format(dateField.value, "PPP") : <span>Pick a date</span>}
-                                          <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                      </Button>
-                                      </FormControl>
-                                  </PopoverTrigger>
-                                  <PopoverContent className="w-auto p-0" align="start">
-                                      <Calendar mode="single" selected={dateField.value} onSelect={dateField.onChange} initialFocus />
-                                  </PopoverContent>
-                                  </Popover>
-                                  <FormMessage />
-                              </FormItem>
-                              )}
-                          />
-                      </div>
-                      
-                      <FormField
-                          control={form.control}
-                          name={`milestones.${index}.weight`}
-                          render={({ field }) => (
-                              <FormItem>
-                              <FormLabel>Milestone Weight (%)</FormLabel>
-                              <FormControl>
-                                  <Input type="number" placeholder="e.g., 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
-                              </FormControl>
-                              <FormMessage />
-                              </FormItem>
-                          )}
-                      />
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+             <FormField
+                control={form.control}
+                name="hasMilestones"
+                render={({ field }) => (
+                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                    <div className="space-y-0.5">
+                    <FormLabel className="text-base">This project has milestones</FormLabel>
+                    <FormDescription>
+                        Enable to define the major milestones for this project.
+                    </FormDescription>
+                    </div>
+                    <FormControl>
+                    <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                    />
+                    </FormControl>
+                </FormItem>
+                )}
+            />
+            {hasMilestones && (
+                <div className="space-y-4 p-4 border rounded-lg">
+                    <div>
+                        <h3 className="text-lg font-medium">Milestones</h3>
+                        <p className="text-sm text-muted-foreground">Define the major milestones for this project. The sum of all milestone weights must equal 100%.</p>
+                    </div>
+                    {milestoneFields.map((field, index) => (
+                    <Card key={field.id} className="relative">
+                        <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => removeMilestone(index)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                        <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-4">
+                            <FormField
+                                control={form.control}
+                                name={`milestones.${index}.title`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Milestone Title</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="e.g., Q1 Goals" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            
+                            <FormField
+                                control={form.control}
+                                name={`milestones.${index}.description`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Milestone Description</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Describe the milestone goals and deliverables." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        <div className="space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <FormField
+                                    control={form.control}
+                                    name={`milestones.${index}.startDate`}
+                                    render={({ field: dateField }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Start Date</FormLabel>
+                                        <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn("w-full pl-3 text-left font-normal", !dateField.value && "text-muted-foreground")}
+                                            >
+                                                {dateField.value ? format(dateField.value, "PPP") : <span>Pick a date</span>}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar mode="single" selected={dateField.value} onSelect={dateField.onChange} initialFocus />
+                                        </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name={`milestones.${index}.dueDate`}
+                                    render={({ field: dateField }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Due Date</FormLabel>
+                                        <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn("w-full pl-3 text-left font-normal", !dateField.value && "text-muted-foreground")}
+                                            >
+                                                {dateField.value ? format(dateField.value, "PPP") : <span>Pick a date</span>}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar mode="single" selected={dateField.value} onSelect={dateField.onChange} initialFocus />
+                                        </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+                            
+                            <FormField
+                                control={form.control}
+                                name={`milestones.${index}.weight`}
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>Milestone Weight (%)</FormLabel>
+                                    <FormControl>
+                                        <Input type="number" placeholder="e.g., 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                        </div>
+                        </CardContent>
+                    </Card>
+                    ))}
 
-            <Button
-                type="button"
-                variant="outline"
-                className="w-full"
-                onClick={() => appendMilestone({ title: '', description: '', startDate: new Date(), dueDate: new Date(), weight: 20 })}
-            >
-                <PlusCircle className="w-4 h-4 mr-2" />
-                Add Milestone
-            </Button>
-            {milestonesError && (
-                <p className="text-sm font-medium text-destructive">{milestonesError.message}</p>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => appendMilestone({ title: '', description: '', startDate: new Date(), dueDate: new Date(), weight: 20 })}
+                    >
+                        <PlusCircle className="w-4 h-4 mr-2" />
+                        Add Milestone
+                    </Button>
+                    {milestonesError && (
+                        <p className="text-sm font-medium text-destructive">{milestonesError.message}</p>
+                    )}
+                </div>
             )}
         </div>
 
         <Separator />
          <div className="space-y-4">
-            <div>
-                <h3 className="text-lg font-medium">Cost Management</h3>
-                <p className="text-sm text-muted-foreground">Manage the financial aspects of your project.</p>
-            </div>
-             <FormField
+            <FormField
                 control={form.control}
                 name="hasCost"
                 render={({ field }) => (

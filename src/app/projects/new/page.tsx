@@ -98,7 +98,7 @@ export default function NewProjectPage() {
         <CardHeader>
           <CardTitle className="text-2xl">Create a New Project</CardTitle>
           <CardDescription>
-            Fill in the project details, assign it to a PMO Division, and define the major milestones.
+            Fill in the project details below. You can add milestones and payment schedules later.
           </CardDescription>
         </CardHeader>
         <CardContent className="pt-6">

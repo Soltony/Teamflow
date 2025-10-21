@@ -26,7 +26,7 @@ export async function getNewProjectData() {
 
 
 export async function createProject(data: any) {
-    const { milestones, responsibleDepartmentIds, hasCost, payments, ...projectData } = data;
+    const { milestones, responsibleDepartmentIds, hasCost, payments, hasMilestones, ...projectData } = data;
 
     const newProject = await prisma.project.create({
         data: {
@@ -36,7 +36,7 @@ export async function createProject(data: any) {
             responsibleDepartments: {
                 connect: responsibleDepartmentIds.map((id: string) => ({ id }))
             },
-            milestones: {
+            milestones: hasMilestones && milestones ? {
                 create: milestones.map((m: any) => ({
                     title: m.title,
                     description: m.description,
@@ -44,7 +44,7 @@ export async function createProject(data: any) {
                     dueDate: m.dueDate,
                     weight: m.weight,
                 }))
-            },
+            } : undefined,
             payments: hasCost && payments ? {
                 create: payments.map((p: any) => ({
                     title: p.title,
@@ -105,7 +105,7 @@ export async function getProjectForEdit(projectId: string) {
 
 
 export async function updateProject(projectId: string, data: any) {
-    const { milestones, responsibleDepartmentIds, hasCost, payments, timelineChangeReason, ...projectData } = data;
+    const { milestones, responsibleDepartmentIds, hasCost, payments, timelineChangeReason, hasMilestones, ...projectData } = data;
 
     const existingProject = await prisma.project.findUnique({ where: { id: projectId } });
     if (!existingProject) {
@@ -124,7 +124,7 @@ export async function updateProject(projectId: string, data: any) {
     });
     const existingMilestoneIds = existingMilestones.map(m => m.id);
 
-    const incomingMilestoneIds = milestones.filter((m: any) => m.id).map((m: any) => m.id);
+    const incomingMilestoneIds = hasMilestones && milestones ? milestones.filter((m: any) => m.id).map((m: any) => m.id) : [];
     const milestoneIdsToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
     
     const existingPayments = await prisma.payment.findMany({
@@ -133,7 +133,7 @@ export async function updateProject(projectId: string, data: any) {
     });
     const existingPaymentIds = existingPayments.map(p => p.id);
 
-    const incomingPaymentIds = payments.filter((p: any) => p.id).map((p: any) => p.id);
+    const incomingPaymentIds = payments ? payments.filter((p: any) => p.id).map((p: any) => p.id) : [];
     const paymentIdsToDelete = existingPaymentIds.filter((id: string) => !incomingPaymentIds.includes(id));
 
     try {
@@ -209,30 +209,50 @@ export async function updateProject(projectId: string, data: any) {
             });
 
             // --- MILESTONE UPSERT ---
-            for (const milestone of milestones) {
-                const { id, ...milestoneData } = milestone;
-                
-                const dataForUpsert = {
-                    title: milestoneData.title,
-                    description: milestoneData.description,
-                    startDate: milestoneData.startDate,
-                    dueDate: milestoneData.dueDate,
-                    weight: milestoneData.weight,
-                };
+            if (hasMilestones && milestones) {
+                for (const milestone of milestones) {
+                    const { id, ...milestoneData } = milestone;
+                    
+                    const dataForUpsert = {
+                        title: milestoneData.title,
+                        description: milestoneData.description,
+                        startDate: milestoneData.startDate,
+                        dueDate: milestoneData.dueDate,
+                        weight: milestoneData.weight,
+                    };
 
-                if (id) {
-                    await tx.milestone.update({
-                        where: { id: id },
-                        data: dataForUpsert
+                    if (id) {
+                        await tx.milestone.update({
+                            where: { id: id },
+                            data: dataForUpsert
+                        });
+                    } else {
+                        await tx.milestone.create({
+                            data: {
+                                ...dataForUpsert,
+                                project: { connect: { id: projectId } },
+                            }
+                        });
+                    }
+                }
+            } else if (!hasMilestones) { // if hasMilestones is false, delete all existing milestones
+                 const tasksInAllMilestones = await tx.task.findMany({
+                    where: { milestoneId: { in: existingMilestoneIds }},
+                    select: { id: true }
+                });
+                const taskIdsToDelete = tasksInAllMilestones.map(t => t.id);
+
+                if (taskIdsToDelete.length > 0) {
+                     await tx.taskUpdate.deleteMany({
+                        where: { taskId: { in: taskIdsToDelete }}
                     });
-                } else {
-                    await tx.milestone.create({
-                        data: {
-                            ...dataForUpsert,
-                             project: { connect: { id: projectId } },
-                        }
+                    await tx.task.deleteMany({
+                        where: { id: { in: taskIdsToDelete }}
                     });
                 }
+                await tx.milestone.deleteMany({
+                    where: { id: { in: existingMilestoneIds } }
+                });
             }
             
             // --- PAYMENT UPSERT ---
@@ -262,6 +282,10 @@ export async function updateProject(projectId: string, data: any) {
                         });
                     }
                 }
+            } else if (!hasCost) { // if hasCost is false, delete all payments
+                await tx.payment.deleteMany({
+                    where: { projectId }
+                });
             }
 
 
