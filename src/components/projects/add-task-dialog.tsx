@@ -29,7 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import type { Project, Task, User } from "@/lib/types";
+import type { Milestone, Project, Task, User } from "@/lib/types";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -38,18 +38,19 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { useMemo, useEffect } from "react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 
 type UserWithRoles = User & { roles: { name: string }[] };
 
 type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project;
+  milestone: Milestone;
   users: UserWithRoles[];
-  onTaskAdd: (projectId: string, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
+  onTaskAdd: (milestoneId: string, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
 
-export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users }: AddTaskDialogProps) {
+export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, users }: AddTaskDialogProps) {
 
   const nonAdminUsers = useMemo(() => {
     if (!users) return [];
@@ -57,8 +58,10 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   }, [users]);
 
   const existingTasksWeight = useMemo(() => {
-    return (project.tasks || []).reduce((sum, task) => sum + task.weight, 0);
-  }, [project.tasks]);
+    if (!milestone?.tasks) return 0;
+    return milestone.tasks.reduce((sum, task) => sum + task.weight, 0);
+  }, [milestone]);
+
   const remainingWeight = 100 - existingTasksWeight;
 
   const taskSchema = useMemo(() => z.object({
@@ -74,29 +77,29 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   }).refine(data => {
       return data.weight <= remainingWeight;
   }, {
-      message: `Total task weight for this project cannot exceed 100%. Remaining: ${remainingWeight}%.`,
+      message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${remainingWeight}%.`,
       path: ["weight"],
   }).superRefine((data, ctx) => {
-    if (data.startDate < parseISO(project.startDate)) {
+    if (data.startDate < parseISO(milestone.startDate)) {
         ctx.addIssue({
             path: ['startDate'],
-            message: `Must be on or after project start: ${format(parseISO(project.startDate), 'MMM d')}.`
+            message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
         });
     }
-    if (data.endDate > parseISO(project.endDate)) {
+    if (data.endDate > parseISO(milestone.dueDate)) {
         ctx.addIssue({
             path: ['endDate'],
-            message: `Must be on or before project end date: ${format(parseISO(project.endDate), 'MMM d')}.`
+            message: `Must be on or before milestone end date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
         });
     }
-  }), [remainingWeight, project.startDate, project.endDate]);
+  }), [remainingWeight, milestone]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
   });
-
+  
   useEffect(() => {
     if (isOpen) {
       form.reset({
@@ -105,10 +108,10 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
         startDate: new Date(),
         endDate: new Date(),
         assignedUserIds: [],
-        weight: Math.min(10, remainingWeight),
+        weight: Math.min(10, remainingWeight > 0 ? remainingWeight : 0),
       });
     }
-  }, [isOpen, project.id, remainingWeight, form]);
+  }, [isOpen, milestone.id, remainingWeight, form]);
 
 
   const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
@@ -122,7 +125,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
       assignedUserIds: data.assignedUserIds,
       weight: data.weight,
     };
-    await onTaskAdd(project.id, newTask as any);
+    await onTaskAdd(milestone.id, newTask as any);
   }
 
   return (
@@ -134,8 +137,8 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
     }}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add New Task to "{project.name}"</DialogTitle>
-          <DialogDescription>Fill in the details for the new task. The total weight of all tasks in a project cannot exceed 100%.</DialogDescription>
+          <DialogTitle>Add New Task to "{milestone.title}"</DialogTitle>
+          <DialogDescription>Fill in the details for the new task. The total weight of all tasks in a milestone cannot exceed 100%.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
@@ -275,12 +278,12 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                 name="weight"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Task Weight (Remaining available: {remainingWeight}%): {field.value}%</FormLabel>
+                        <FormLabel>Task Weight (Remaining available in milestone: {remainingWeight}%): {field.value}%</FormLabel>
                         <FormControl>
                             <Slider
                                 value={[field.value ?? 0]}
                                 onValueChange={(value) => field.onChange(value[0])}
-                                max={remainingWeight}
+                                max={remainingWeight > 0 ? remainingWeight : 0}
                                 step={5}
                             />
                         </FormControl>

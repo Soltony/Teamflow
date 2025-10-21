@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
-import type { Task, User } from '@/lib/types';
+import type { Task, User, Milestone } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -21,13 +21,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { useState } from 'react';
 
 type ProjectListItemProps = {
   project: any;
   users: User[];
-  onAddTask: (project: any) => void;
-  onEditTask: (task: any, project: any) => void;
+  onAddTask: (milestone: Milestone) => void;
+  onEditTask: (task: any, milestone: Milestone) => void;
   onDeleteTask: (task: any) => void;
   taskToDelete: any;
   setTaskToDelete: (task: any) => void;
@@ -37,6 +39,7 @@ type ProjectListItemProps = {
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
   const canManageTasks = hasPermission('projects:update');
+  const [selectedMilestone, setSelectedMilestone] = useState<string | undefined>(project.milestones?.[0]?.id);
 
   const allTasks = project.milestones.flatMap((m: any) => m.tasks);
   
@@ -50,8 +53,6 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
         .filter((task: any) => task.status === 'DONE')
         .reduce((sum: number, task: any) => sum + task.weight, 0);
       
-      const milestoneProgress = completedTaskWeightInMilestone / 100; // This is task weight within milestone, not milestone progress
-
       const totalMilestoneTaskWeight = milestone.tasks.reduce((sum: number, task: any) => sum + task.weight, 0);
       const milestoneTaskProgress = totalMilestoneTaskWeight > 0 ? completedTaskWeightInMilestone / totalMilestoneTaskWeight : 0;
       
@@ -97,14 +98,37 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
         <div className="flex justify-between items-center">
             <h4 className="font-semibold text-card-foreground">Tasks</h4>
             {canManageTasks && (
-                <Button variant="ghost" size="sm" onClick={() => onAddTask(project)}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Task
-                </Button>
+                <div className="flex items-center gap-2">
+                    {project.milestones.length > 1 && (
+                      <Select value={selectedMilestone} onValueChange={setSelectedMilestone}>
+                        <SelectTrigger className="w-[150px] h-9 text-xs">
+                          <SelectValue placeholder="Select Milestone" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {project.milestones.map((m: Milestone) => (
+                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    )}
+                    <Button variant="ghost" size="sm" onClick={() => {
+                        const milestoneToAdd = project.milestones.find((m: Milestone) => m.id === selectedMilestone);
+                        if (milestoneToAdd) {
+                          onAddTask(milestoneToAdd);
+                        } else if (project.milestones.length > 0) {
+                          onAddTask(project.milestones[0]);
+                        } else {
+                           // This case is handled on the page for now
+                        }
+                    }} disabled={project.milestones.length === 0}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Task
+                    </Button>
+                </div>
             )}
         </div>
         <div className="space-y-4">
-            {allTasks.length > 0 ? allTasks.map((task: any) => (
+            {allTasks.length > 0 ? project.milestones.find((m:Milestone) => m.id === selectedMilestone)?.tasks.map((task: any) => (
                 <div key={task.id} className="space-y-1 group">
                     <div className="flex justify-between items-center">
                         <span className="text-sm font-medium">{task.title}</span>
@@ -112,7 +136,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                             <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
                             {canManageTasks && (
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project.milestones.find((m:Milestone) => m.id === selectedMilestone))}>
                                         <Pencil className="h-3 w-3" />
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
@@ -136,10 +160,12 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <Badge variant="outline" className="gap-1.5 items-center bg-amber-100 border-amber-300 text-amber-900">
+                           <Link href={`/projects/${project.id}?tab=timeline`}>
+                            <Badge variant="outline" className="gap-1.5 items-center bg-amber-100 border-amber-300 text-amber-900 cursor-pointer">
                                 <ShieldAlert className="w-3.5 h-3.5"/>
                                 Pending Timeline Approval
                             </Badge>
+                           </Link>
                         </TooltipTrigger>
                         <TooltipContent>
                             <p>A deadline change for this project is awaiting approval.</p>
