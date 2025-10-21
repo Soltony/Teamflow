@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -28,8 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import type { Milestone, Task, User } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
+import type { Project, Task, User } from "@/lib/types";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -44,20 +44,21 @@ type UserWithRoles = User & { roles: { name: string }[] };
 type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  milestone: Milestone;
+  project: Project;
   users: UserWithRoles[];
-  onTaskAdd: (milestoneId: string, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
+  onTaskAdd: (projectId: string, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
 
-export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, users }: AddTaskDialogProps) {
+export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users }: AddTaskDialogProps) {
 
   const nonAdminUsers = useMemo(() => {
-    return users.filter(user => !user.roles.some(role => role.name === 'Admin'));
+    if (!users) return [];
+    return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
   }, [users]);
 
   const existingTasksWeight = useMemo(() => {
-    return milestone.tasks.reduce((sum, task) => sum + task.weight, 0);
-  }, [milestone.tasks]);
+    return (project.tasks || []).reduce((sum, task) => sum + task.weight, 0);
+  }, [project.tasks]);
   const remainingWeight = 100 - existingTasksWeight;
 
   const taskSchema = useMemo(() => z.object({
@@ -73,22 +74,22 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
   }).refine(data => {
       return data.weight <= remainingWeight;
   }, {
-      message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${remainingWeight}%.`,
+      message: `Total task weight for this project cannot exceed 100%. Remaining: ${remainingWeight}%.`,
       path: ["weight"],
   }).superRefine((data, ctx) => {
-    if (data.startDate < parseISO(milestone.startDate)) {
+    if (data.startDate < parseISO(project.startDate)) {
         ctx.addIssue({
             path: ['startDate'],
-            message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
+            message: `Must be on or after project start: ${format(parseISO(project.startDate), 'MMM d')}.`
         });
     }
-    if (data.endDate > parseISO(milestone.dueDate)) {
+    if (data.endDate > parseISO(project.endDate)) {
         ctx.addIssue({
             path: ['endDate'],
-            message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
+            message: `Must be on or before project end date: ${format(parseISO(project.endDate), 'MMM d')}.`
         });
     }
-  }), [remainingWeight, milestone.startDate, milestone.dueDate]);
+  }), [remainingWeight, project.startDate, project.endDate]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
@@ -107,10 +108,10 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
         weight: Math.min(10, remainingWeight),
       });
     }
-  }, [isOpen, milestone.id, remainingWeight, form]);
+  }, [isOpen, project.id, remainingWeight, form]);
 
 
-  const selectedUsers = users.filter(user => form.watch('assignedUserIds')?.includes(user.id));
+  const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
 
   async function onSubmit(data: TaskFormValues) {
     const newTask = {
@@ -121,7 +122,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
       assignedUserIds: data.assignedUserIds,
       weight: data.weight,
     };
-    await onTaskAdd(milestone.id, newTask as any);
+    await onTaskAdd(project.id, newTask as any);
   }
 
   return (
@@ -133,8 +134,8 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
     }}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add New Task to "{milestone.title}"</DialogTitle>
-          <DialogDescription>Fill in the details for the new task. The total weight of all tasks in a milestone cannot exceed 100%.</DialogDescription>
+          <DialogTitle>Add New Task to "{project.name}"</DialogTitle>
+          <DialogDescription>Fill in the details for the new task. The total weight of all tasks in a project cannot exceed 100%.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">

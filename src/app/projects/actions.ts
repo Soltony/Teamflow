@@ -126,7 +126,6 @@ export async function updateProject(projectId: string, data: any) {
     const existingMilestoneIds = existingMilestones.map(m => m.id);
 
     const incomingMilestoneIds = hasMilestones && milestones ? milestones.filter((m: any) => m.id).map((m: any) => m.id) : [];
-    const milestoneIdsToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
     
     const existingPayments = await prisma.payment.findMany({
         where: { projectId: projectId },
@@ -145,27 +144,6 @@ export async function updateProject(projectId: string, data: any) {
         const isCompletingProject = completedStatus && projectData.statusId === completedStatus.id;
 
         await prisma.$transaction(async (tx) => {
-            // --- MILESTONE SYNC ---
-            if (milestoneIdsToDelete.length > 0) {
-                const tasksInDeletedMilestones = await tx.task.findMany({
-                    where: { milestoneId: { in: milestoneIdsToDelete }},
-                    select: { id: true }
-                });
-                const taskIdsToDelete = tasksInDeletedMilestones.map(t => t.id);
-
-                if (taskIdsToDelete.length > 0) {
-                     await tx.taskUpdate.deleteMany({
-                        where: { taskId: { in: taskIdsToDelete }}
-                    });
-                    await tx.task.deleteMany({
-                        where: { id: { in: taskIdsToDelete }}
-                    });
-                }
-                await tx.milestone.deleteMany({
-                    where: { id: { in: milestoneIdsToDelete } }
-                });
-            }
-
             // --- PAYMENT SYNC ---
             if (paymentIdsToDelete.length > 0) {
                 await tx.payment.deleteMany({
@@ -209,9 +187,8 @@ export async function updateProject(projectId: string, data: any) {
                 }
             });
 
-            // --- MILESTONE UPSERT ---
             if (hasMilestones && milestones) {
-                for (const milestone of milestones) {
+                 for (const milestone of milestones) {
                     const { id, ...milestoneData } = milestone;
                     
                     const dataForUpsert = {
@@ -237,22 +214,8 @@ export async function updateProject(projectId: string, data: any) {
                     }
                 }
             } else if (!hasMilestones) { // if hasMilestones is false, delete all existing milestones
-                 const tasksInAllMilestones = await tx.task.findMany({
-                    where: { milestoneId: { in: existingMilestoneIds }},
-                    select: { id: true }
-                });
-                const taskIdsToDelete = tasksInAllMilestones.map(t => t.id);
-
-                if (taskIdsToDelete.length > 0) {
-                     await tx.taskUpdate.deleteMany({
-                        where: { taskId: { in: taskIdsToDelete }}
-                    });
-                    await tx.task.deleteMany({
-                        where: { id: { in: taskIdsToDelete }}
-                    });
-                }
                 await tx.milestone.deleteMany({
-                    where: { id: { in: existingMilestoneIds } }
+                    where: { projectId }
                 });
             }
             
@@ -292,22 +255,14 @@ export async function updateProject(projectId: string, data: any) {
 
             // --- PROJECT COMPLETION LOGIC ---
             if (isCompletingProject) {
-                const allProjectMilestones = await tx.milestone.findMany({
+                await tx.task.updateMany({
                     where: { projectId: projectId },
-                    select: { id: true }
+                    data: {
+                        status: 'DONE',
+                        progress: 100,
+                        completedAt: new Date(),
+                    }
                 });
-                const allProjectMilestoneIds = allProjectMilestones.map(m => m.id);
-
-                if (allProjectMilestoneIds.length > 0) {
-                    await tx.task.updateMany({
-                        where: { milestoneId: { in: allProjectMilestoneIds } },
-                        data: {
-                            status: 'DONE',
-                            progress: 100,
-                            completedAt: new Date(),
-                        }
-                    });
-                }
             }
         });
 
@@ -367,44 +322,20 @@ export async function updateBlocker(blockerId: string, description: string, proj
     revalidatePath(`/projects/${projectId}`);
 }
 
-export async function addMilestone(projectId: string, data: any) {
-  const { ...milestoneData } = data;
-  const newMilestone = await prisma.milestone.create({
-    data: {
-      ...milestoneData,
-      project: { connect: { id: projectId } },
-    }
-  });
-  revalidatePath(`/projects`);
-  revalidatePath(`/projects/${projectId}/milestones`);
-  return { success: true, milestone: newMilestone };
-}
-
-export async function updateMilestone(milestoneId: string, projectId: string, data: any) {
-    const { ...milestoneData } = data;
-    await prisma.milestone.update({
-        where: { id: milestoneId },
-        data: {
-            ...milestoneData,
-        }
-    });
-    revalidatePath(`/projects/${projectId}/milestones`);
-}
-
-export async function addTask(milestoneId: string, projectId: string, data: any) {
+export async function addTask(projectId: string, data: any) {
     const { assignedUserIds, ...taskData } = data;
     await prisma.task.create({
         data: {
             ...taskData,
             status: 'TODO',
-            milestoneId,
+            projectId,
             assignees: {
                 connect: assignedUserIds.map((id:string) => ({ id }))
             }
         }
     });
     revalidatePath(`/projects`);
-    revalidatePath(`/projects/${projectId}/milestones`);
+    revalidatePath(`/projects/${projectId}`);
 }
 
 export async function updateTask(taskId: string, projectId: string, data: any) {
@@ -436,7 +367,7 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         }
     });
     revalidatePath(`/projects`);
-    revalidatePath(`/projects/${projectId}/milestones`);
+    revalidatePath(`/projects/${projectId}`);
 }
 
 export async function deleteTask(taskId: string, projectId: string) {
@@ -451,7 +382,7 @@ export async function deleteTask(taskId: string, projectId: string) {
         });
         
         revalidatePath(`/projects`);
-        revalidatePath(`/projects/${projectId}/milestones`);
+        if (projectId) revalidatePath(`/projects/${projectId}`);
         revalidatePath('/my-tasks');
         revalidatePath('/dashboard');
         
@@ -482,7 +413,7 @@ export async function getProjectsPageData(userId: string) {
         }
     });
 
-    const users = await prisma.user.findMany();
+    const users = await prisma.user.findMany({ include: { roles: true }});
     
     const archivedStatusNames = ['Completed', 'On Handover'];
     const archivedStatusIds = statuses.filter(s => archivedStatusNames.includes(s.name)).map(s => s.id);
@@ -510,15 +441,11 @@ export async function getProjectsPageData(userId: string) {
                 }
             },
             { // Also check if they are assigned to any task in the project
-                milestones: {
+                tasks: {
                     some: {
-                        tasks: {
+                        assignees: {
                             some: {
-                                assignees: {
-                                    some: {
-                                        id: userId
-                                    }
-                                }
+                                id: userId
                             }
                         }
                     }
@@ -531,11 +458,7 @@ export async function getProjectsPageData(userId: string) {
         where: whereClause,
         include: {
             status: true,
-            milestones: {
-                include: {
-                    tasks: true,
-                },
-            },
+            tasks: true,
             timelineChangeRequests: {
                 where: {
                     status: 'PENDING'
@@ -578,14 +501,10 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
             projectManager: true,
             responsibleDepartments: true,
             blockers: true,
-            milestones: {
+            tasks: {
                 include: {
-                    tasks: {
-                        include: {
-                            assignees: true,
-                            updates: true,
-                        }
-                    }
+                    assignees: true,
+                    updates: true,
                 }
             },
             timelineChangeRequests: {
@@ -625,15 +544,11 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
                     }
                 },
                 {
-                    milestones: {
+                    tasks: {
                         some: {
-                            tasks: {
+                            assignees: {
                                 some: {
-                                    assignees: {
-                                        some: {
-                                            id: userId
-                                        }
-                                    }
+                                    id: userId
                                 }
                             }
                         }
@@ -670,7 +585,7 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
                 OR: [
                     { projectManagerId: userId },
                     { teams: { some: { members: { some: { id: userId } } } } },
-                    { milestones: { some: { tasks: { some: { assignees: { some: { id: userId } } } } } } }
+                    { tasks: { some: { assignees: { some: { id: userId } } } } }
                 ]
             },
             select: { id: true }
@@ -683,17 +598,12 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
     const project = await prisma.project.findUnique({
         where: whereClause,
         include: {
-            milestones: {
+            tasks: {
                 orderBy: { createdAt: 'desc' },
                 include: {
-                    tasks: {
-                        orderBy: { createdAt: 'desc' },
-                        include: {
-                            assignees: true,
-                        }
-                    },
+                    assignees: true,
                 }
-            }
+            },
         }
     });
 
@@ -715,37 +625,22 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
 export async function deleteProject(projectId: string) {
     try {
         await prisma.$transaction(async (tx) => {
-            // Find all milestones associated with the project
-            const milestones = await tx.milestone.findMany({
+            const tasks = await tx.task.findMany({
                 where: { projectId: projectId },
                 select: { id: true }
             });
-            const milestoneIds = milestones.map(m => m.id);
-
-            if (milestoneIds.length > 0) {
-                // Find all tasks associated with these milestones
-                const tasks = await tx.task.findMany({
-                    where: { milestoneId: { in: milestoneIds } },
-                    select: { id: true }
+            const taskIds = tasks.map(t => t.id);
+            
+            if (taskIds.length > 0) {
+                // Delete task updates
+                await tx.taskUpdate.deleteMany({
+                    where: { taskId: { in: taskIds } }
                 });
-                const taskIds = tasks.map(t => t.id);
-                
-                if (taskIds.length > 0) {
-                    // Delete task updates
-                    await tx.taskUpdate.deleteMany({
-                        where: { taskId: { in: taskIds } }
-                    });
-                     // Delete tasks
-                    await tx.task.deleteMany({
-                        where: { id: { in: taskIds } }
-                    });
-                }
+                 // Delete tasks
+                await tx.task.deleteMany({
+                    where: { id: { in: taskIds } }
+                });
             }
-
-            // Delete milestones
-            await tx.milestone.deleteMany({
-                where: { projectId: projectId }
-            });
 
             // Delete blockers
             await tx.blocker.deleteMany({
