@@ -44,8 +44,8 @@ export default function ProjectsPage() {
     const [searchQuery, setSearchQuery] = useState('');
 
     // State for modals
-    const [addingTaskToMilestone, setAddingTaskToMilestone] = useState<Milestone | null>(null);
-    const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: TaskType; milestone: Milestone } | null>(null);
+    const [addingTaskToProject, setAddingTaskToProject] = useState<Project | null>(null);
+    const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: TaskType; project: Project } | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<TaskType | null>(null);
 
     const fetchData = useCallback(async () => {
@@ -56,7 +56,7 @@ export default function ProjectsPage() {
                 setProjects(data.projects);
                 setStatuses(data.statuses);
                 setUsers(data.users || []);
-            } catch (error) => {
+            } catch (error) {
                 console.error("Failed to fetch projects", error);
             } finally {
                 setIsLoading(false);
@@ -80,25 +80,35 @@ export default function ProjectsPage() {
         return filtered;
     }, [projects, searchQuery]);
 
-    const handleTaskAdd = async (milestoneId: string, newTask: any) => {
-        const projectForTask = projects.find(p => p.milestones.some((m: Milestone) => m.id === milestoneId));
+    const handleTaskAdd = async (projectId: string, newTask: any) => {
+        const projectForTask = projects.find(p => p.id === projectId);
         if (!projectForTask) {
             toast({ title: "Error", description: "Could not find the parent project for this task.", variant: "destructive" });
             return;
         }
 
-        await addTask(milestoneId, projectForTask.id, newTask);
+        let milestoneId = projectForTask.milestones?.[0]?.id;
+        if (!milestoneId) {
+            const result = await addMilestone(projectId, { title: 'General Tasks', description: 'Default milestone for tasks.', startDate: new Date(projectForTask.startDate), dueDate: new Date(projectForTask.endDate), weight: 100 });
+            if (result.success) {
+                milestoneId = result.milestone.id;
+            } else {
+                 toast({ title: "Error", description: "Could not create a default milestone for the task.", variant: "destructive" });
+                 return;
+            }
+        }
+
+        await addTask(milestoneId, projectId, newTask);
         toast({ title: "Task Added!", description: `The task "${newTask.title}" has been added.` });
-        setAddingTaskToMilestone(null);
+        setAddingTaskToProject(null);
         await fetchData();
     };
 
-    const handleTaskUpdate = async (milestoneId: string, updatedTask: TaskType) => {
+    const handleTaskUpdate = async (projectId: string, updatedTask: TaskType) => {
         const { id, ...dataToUpdate } = updatedTask;
         if (!editingTaskInfo) return;
-        const project = projects.find(p => p.milestones.some((m: Milestone) => m.id === milestoneId));
 
-        await updateTask(id, project.id, dataToUpdate);
+        await updateTask(id, projectId, dataToUpdate);
         toast({ title: "Task Updated!", description: "The task has been successfully updated." });
         setEditingTaskInfo(null);
         await fetchData();
@@ -158,8 +168,8 @@ export default function ProjectsPage() {
                             key={project.id} 
                             project={project}
                             users={users}
-                            onAddTask={setAddingTaskToMilestone}
-                            onEditTask={(task, milestone) => setEditingTaskInfo({task, milestone})}
+                            onAddTask={setAddingTaskToProject}
+                            onEditTask={(task, project) => setEditingTaskInfo({task, project})}
                             onDeleteTask={setTaskToDelete}
                             taskToDelete={taskToDelete}
                             setTaskToDelete={setTaskToDelete}
@@ -174,11 +184,11 @@ export default function ProjectsPage() {
                 </div>
             )}
             
-            {addingTaskToMilestone && (
+            {addingTaskToProject && (
                 <AddTaskDialog
-                    isOpen={!!addingTaskToMilestone}
-                    onOpenChange={(open) => !open && setAddingTaskToMilestone(null)}
-                    milestone={addingTaskToMilestone}
+                    isOpen={!!addingTaskToProject}
+                    onOpenChange={(open) => !open && setAddingTaskToProject(null)}
+                    project={addingTaskToProject}
                     users={users}
                     onTaskAdd={handleTaskAdd}
                 />
@@ -188,7 +198,7 @@ export default function ProjectsPage() {
                 <EditTaskDialog
                     isOpen={!!editingTaskInfo}
                     onOpenChange={(open) => !open && setEditingTaskInfo(null)}
-                    milestone={editingTaskInfo.milestone}
+                    project={editingTaskInfo.project}
                     task={editingTaskInfo.task}
                     users={users}
                     onTaskUpdate={handleTaskUpdate}
