@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -29,7 +28,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import type { Milestone, Project, Task, User } from "@/lib/types";
+import type { Milestone, Project, Task, User, TaskStatus } from "@/lib/types";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -45,25 +44,18 @@ type UserWithRoles = User & { roles: { name: string }[] };
 type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  milestone: Milestone;
+  project: Project & { milestones: Milestone[] };
   users: UserWithRoles[];
-  onTaskAdd: (milestoneId: string, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
+  onTaskAdd: (projectId: string, milestoneId: string, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
 
-export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, users }: AddTaskDialogProps) {
+export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users }: AddTaskDialogProps) {
 
   const nonAdminUsers = useMemo(() => {
     if (!users) return [];
     return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
   }, [users]);
-
-  const existingTasksWeight = useMemo(() => {
-    if (!milestone?.tasks) return 0;
-    return milestone.tasks.reduce((sum, task) => sum + task.weight, 0);
-  }, [milestone]);
-
-  const remainingWeight = 100 - existingTasksWeight;
-
+  
   const taskSchema = useMemo(() => z.object({
     title: z.string().min(3, "Task title must be at least 3 characters."),
     description: z.string().optional(),
@@ -71,35 +63,45 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
     endDate: z.date({ required_error: "An end date is required."}),
     assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
     weight: z.number().min(0).max(100),
+    milestoneId: z.string().nonempty("You must select a milestone for the task."),
   }).refine(data => data.endDate >= data.startDate, {
       message: "End date must be on or after start date.",
       path: ["endDate"],
-  }).refine(data => {
-      return data.weight <= remainingWeight;
-  }, {
-      message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${remainingWeight}%.`,
-      path: ["weight"],
   }).superRefine((data, ctx) => {
-    if (data.startDate < parseISO(milestone.startDate)) {
+    const selectedMilestone = project.milestones.find(m => m.id === data.milestoneId);
+    if (!selectedMilestone) return;
+
+    const existingTasksInMilestone = selectedMilestone.tasks || [];
+    const existingTasksWeight = existingTasksInMilestone.reduce((sum, task) => sum + task.weight, 0);
+    const remainingWeight = 100 - existingTasksWeight;
+
+    if (data.weight > remainingWeight) {
+         ctx.addIssue({
+            path: ['weight'],
+            message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${remainingWeight}%.`,
+        });
+    }
+
+    if (data.startDate < parseISO(selectedMilestone.startDate)) {
         ctx.addIssue({
             path: ['startDate'],
-            message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
+            message: `Must be on or after milestone start: ${format(parseISO(selectedMilestone.startDate), 'MMM d')}.`
         });
     }
-    if (data.endDate > parseISO(milestone.dueDate)) {
+    if (data.endDate > parseISO(selectedMilestone.dueDate)) {
         ctx.addIssue({
             path: ['endDate'],
-            message: `Must be on or before milestone end date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
+            message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), 'MMM d')}.`
         });
     }
-  }), [remainingWeight, milestone]);
+  }), [project.milestones]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
   });
-  
+
   useEffect(() => {
     if (isOpen) {
       form.reset({
@@ -108,25 +110,29 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
         startDate: new Date(),
         endDate: new Date(),
         assignedUserIds: [],
-        weight: Math.min(10, remainingWeight > 0 ? remainingWeight : 0),
+        weight: 10,
+        milestoneId: project.milestones?.[0]?.id || "",
       });
     }
-  }, [isOpen, milestone.id, remainingWeight, form]);
+  }, [isOpen, project, form]);
 
 
   const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
 
   async function onSubmit(data: TaskFormValues) {
-    const newTask = {
-      title: data.title,
-      description: data.description || "",
-      startDate: data.startDate,
-      endDate: data.endDate,
-      assignedUserIds: data.assignedUserIds,
-      weight: data.weight,
-    };
-    await onTaskAdd(milestone.id, newTask as any);
+    const { milestoneId, ...newTaskData } = data;
+    await onTaskAdd(project.id, milestoneId, newTaskData as any);
   }
+
+  const selectedMilestoneId = form.watch('milestoneId');
+  const selectedMilestone = project.milestones.find(m => m.id === selectedMilestoneId);
+
+  const remainingWeight = useMemo(() => {
+    if (!selectedMilestone) return 0;
+    const existingTasksInMilestone = selectedMilestone.tasks || [];
+    const existingTasksWeight = existingTasksInMilestone.reduce((sum, task) => sum + task.weight, 0);
+    return 100 - existingTasksWeight;
+  }, [selectedMilestone]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -137,11 +143,33 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
     }}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Add New Task to "{milestone.title}"</DialogTitle>
+          <DialogTitle>Add New Task to "{project.name}"</DialogTitle>
           <DialogDescription>Fill in the details for the new task. The total weight of all tasks in a milestone cannot exceed 100%.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+            <FormField
+              control={form.control}
+              name="milestoneId"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Milestone</FormLabel>
+                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select a milestone" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {project.milestones.map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <FormField
               control={form.control}
               name="title"
@@ -278,13 +306,14 @@ export function AddTaskDialog({ isOpen, onOpenChange, milestone, onTaskAdd, user
                 name="weight"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Task Weight (Remaining available in milestone: {remainingWeight}%): {field.value}%</FormLabel>
+                        <FormLabel>Task Weight (Remaining in milestone: {remainingWeight}%): {field.value}%</FormLabel>
                         <FormControl>
                             <Slider
                                 value={[field.value ?? 0]}
                                 onValueChange={(value) => field.onChange(value[0])}
                                 max={remainingWeight > 0 ? remainingWeight : 0}
                                 step={5}
+                                disabled={!selectedMilestone}
                             />
                         </FormControl>
                         <FormMessage />

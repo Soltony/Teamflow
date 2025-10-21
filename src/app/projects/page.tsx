@@ -80,22 +80,10 @@ export default function ProjectsPage() {
         return filtered;
     }, [projects, searchQuery]);
 
-    const handleTaskAdd = async (projectId: string, newTask: any) => {
-        const projectForTask = projects.find(p => p.id === projectId);
-        if (!projectForTask) {
-            toast({ title: "Error", description: "Could not find the parent project for this task.", variant: "destructive" });
-            return;
-        }
-
-        let milestoneId = projectForTask.milestones?.[0]?.id;
-        if (!milestoneId) {
-            const result = await addMilestone(projectId, { title: 'General Tasks', description: 'Default milestone for tasks.', startDate: new Date(projectForTask.startDate), dueDate: new Date(projectForTask.endDate), weight: 100 });
-            if (result.success) {
-                milestoneId = result.milestone.id;
-            } else {
-                 toast({ title: "Error", description: "Could not create a default milestone for the task.", variant: "destructive" });
-                 return;
-            }
+    const handleTaskAdd = async (projectId: string, milestoneId: string, newTask: any) => {
+        if (!projectId || !milestoneId) {
+             toast({ title: "Error", description: "Could not find the parent project or milestone for this task.", variant: "destructive" });
+             return;
         }
 
         await addTask(milestoneId, projectId, newTask);
@@ -168,7 +156,17 @@ export default function ProjectsPage() {
                             key={project.id} 
                             project={project}
                             users={users}
-                            onAddTask={setAddingTaskToProject}
+                            onAddTask={(project) => {
+                               if (project.milestones.length === 0) {
+                                    toast({
+                                        title: 'No Milestones',
+                                        description: 'Please add a milestone to this project before adding tasks.',
+                                        variant: 'destructive',
+                                    });
+                                } else {
+                                    setAddingTaskToProject(project);
+                                }
+                            }}
                             onEditTask={(task, project) => setEditingTaskInfo({task, project})}
                             onDeleteTask={setTaskToDelete}
                             taskToDelete={taskToDelete}

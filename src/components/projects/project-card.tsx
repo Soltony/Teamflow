@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -10,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
-import type { Task, User, Milestone } from '@/lib/types';
+import type { Task, User, Milestone, Project } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -28,8 +27,8 @@ import { useState } from 'react';
 type ProjectListItemProps = {
   project: any;
   users: User[];
-  onAddTask: (milestone: Milestone) => void;
-  onEditTask: (task: any, milestone: Milestone) => void;
+  onAddTask: (project: Project) => void;
+  onEditTask: (task: any, project: any) => void;
   onDeleteTask: (task: any) => void;
   taskToDelete: any;
   setTaskToDelete: (task: any) => void;
@@ -39,9 +38,10 @@ type ProjectListItemProps = {
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
   const canManageTasks = hasPermission('projects:update');
-  const [selectedMilestone, setSelectedMilestone] = useState<string | undefined>(project.milestones?.[0]?.id);
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | undefined>(project.milestones?.[0]?.id);
 
-  const allTasks = project.milestones.flatMap((m: any) => m.tasks);
+  const selectedMilestone = project.milestones.find((m: Milestone) => m.id === selectedMilestoneId);
+  const tasksToShow = selectedMilestone ? selectedMilestone.tasks : [];
   
   const calculateProgress = () => {
     if (!project.milestones || project.milestones.length === 0) {
@@ -100,7 +100,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             {canManageTasks && (
                 <div className="flex items-center gap-2">
                     {project.milestones.length > 1 && (
-                      <Select value={selectedMilestone} onValueChange={setSelectedMilestone}>
+                      <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
                         <SelectTrigger className="w-[150px] h-9 text-xs">
                           <SelectValue placeholder="Select Milestone" />
                         </SelectTrigger>
@@ -111,16 +111,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                         </SelectContent>
                       </Select>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => {
-                        const milestoneToAdd = project.milestones.find((m: Milestone) => m.id === selectedMilestone);
-                        if (milestoneToAdd) {
-                          onAddTask(milestoneToAdd);
-                        } else if (project.milestones.length > 0) {
-                          onAddTask(project.milestones[0]);
-                        } else {
-                           // This case is handled on the page for now
-                        }
-                    }} disabled={project.milestones.length === 0}>
+                    <Button variant="ghost" size="sm" onClick={() => onAddTask(project)}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Task
                     </Button>
@@ -128,7 +119,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             )}
         </div>
         <div className="space-y-4">
-            {allTasks.length > 0 ? project.milestones.find((m:Milestone) => m.id === selectedMilestone)?.tasks.map((task: any) => (
+            {project.milestones.length > 0 && tasksToShow.length > 0 ? tasksToShow.map((task: any) => (
                 <div key={task.id} className="space-y-1 group">
                     <div className="flex justify-between items-center">
                         <span className="text-sm font-medium">{task.title}</span>
@@ -136,7 +127,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                             <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
                             {canManageTasks && (
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project.milestones.find((m:Milestone) => m.id === selectedMilestone))}>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
                                         <Pencil className="h-3 w-3" />
                                     </Button>
                                     <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
