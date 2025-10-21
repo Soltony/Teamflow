@@ -148,6 +148,9 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
   }
   
   const calculateProjectProgress = (project: any) => {
+    if (!project.milestones || project.milestones.length === 0) {
+      return 0;
+    }
     return project.milestones.reduce((progress: number, milestone: any) => {
         const completedTaskWeightInMilestone = milestone.tasks
             .filter((task: any) => task.status === 'DONE')

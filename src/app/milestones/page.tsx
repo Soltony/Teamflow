@@ -80,6 +80,7 @@ export default function AllMilestonesPage() {
       return 0;
     }
     const totalWeightedProgress = project.milestones.reduce((acc, milestone) => {
+      if (!milestone.tasks || milestone.tasks.length === 0) return acc;
       const milestoneProgress = calculateMilestoneProgress(milestone) / 100; // progress of milestone (0 to 1)
       const milestoneWeight = milestone.weight / 100; // weight of milestone in project (0 to 1)
       return acc + (milestoneProgress * milestoneWeight);

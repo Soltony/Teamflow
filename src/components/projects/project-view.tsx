@@ -124,7 +124,7 @@ export function ProjectView({
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'milestones';
   
-  const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
+  const weightedProgress = (!project.milestones || project.milestones.length === 0) ? 0 : project.milestones.reduce((progress: number, milestone: any) => {
     const completedTaskWeightInMilestone = milestone.tasks
       .filter((task: any) => task.status === 'DONE')
       .reduce((sum: number, task: any) => sum + task.weight, 0);
@@ -137,6 +137,9 @@ export function ProjectView({
   const allResponsibleDepartments = project.responsibleDepartments?.map((d: any) => d.name) || [];
 
   const calculateMilestoneProgress = (milestone: any) => {
+    if (!milestone.tasks || milestone.tasks.length === 0) {
+      return 0;
+    }
     return milestone.tasks
       .filter((t: any) => t.status === 'DONE')
       .reduce((sum: number, task: any) => sum + task.weight, 0);
@@ -264,6 +267,11 @@ export function ProjectView({
                     <CardDescription>A breakdown of all milestones and their associated tasks for this project.</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {(!project.milestones || project.milestones.length === 0) ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      No milestones have been created for this project yet.
+                    </div>
+                  ) : (
                     <Accordion type="multiple" className="w-full space-y-2">
                         {project.milestones.map((milestone: any) => {
                             const milestoneProgress = calculateMilestoneProgress(milestone);
@@ -322,6 +330,7 @@ export function ProjectView({
                             )
                         })}
                     </Accordion>
+                    )}
                 </CardContent>
             </Card>
         </TabsContent>
