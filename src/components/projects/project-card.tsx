@@ -23,6 +23,7 @@ import {
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 type ProjectListItemProps = {
   project: any;
@@ -37,6 +38,7 @@ type ProjectListItemProps = {
 
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
+  const { toast } = useToast();
   const canManageTasks = hasPermission('projects:update');
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | undefined>(project.milestones?.[0]?.id);
 
@@ -59,6 +61,18 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       return progress + (milestoneTaskProgress * milestone.weight);
     }, 0);
     return weightedProgress;
+  };
+
+  const handleAddTaskClick = () => {
+    if (!project.milestones || project.milestones.length === 0) {
+      toast({
+        title: "No Milestones Found",
+        description: "Please edit the project and add at least one milestone before adding tasks.",
+        variant: "destructive",
+      });
+    } else {
+      onAddTask(project);
+    }
   };
 
   const progress = calculateProgress();
@@ -111,7 +125,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                         </SelectContent>
                       </Select>
                     )}
-                    <Button variant="ghost" size="sm" onClick={() => onAddTask(project)}>
+                    <Button variant="ghost" size="sm" onClick={handleAddTaskClick}>
                         <PlusCircle className="mr-2 h-4 w-4" />
                         Add Task
                     </Button>
