@@ -91,6 +91,7 @@ export async function getProjectForEdit(projectId: string) {
     const normalizedProject = {
         ...project,
         hasCost: project.totalCost !== null,
+        hasMilestones: project.milestones.length > 0,
         responsibleDepartmentIds: project.responsibleDepartments.map(d => d.id),
     };
 
@@ -368,13 +369,15 @@ export async function updateBlocker(blockerId: string, description: string, proj
 
 export async function addMilestone(projectId: string, data: any) {
   const { ...milestoneData } = data;
-  await prisma.milestone.create({
+  const newMilestone = await prisma.milestone.create({
     data: {
       ...milestoneData,
       project: { connect: { id: projectId } },
     }
   });
+  revalidatePath(`/projects`);
   revalidatePath(`/projects/${projectId}/milestones`);
+  return { success: true, milestone: newMilestone };
 }
 
 export async function updateMilestone(milestoneId: string, projectId: string, data: any) {
@@ -400,6 +403,7 @@ export async function addTask(milestoneId: string, projectId: string, data: any)
             }
         }
     });
+    revalidatePath(`/projects`);
     revalidatePath(`/projects/${projectId}/milestones`);
 }
 
@@ -431,6 +435,7 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
             } : undefined,
         }
     });
+    revalidatePath(`/projects`);
     revalidatePath(`/projects/${projectId}/milestones`);
 }
 
@@ -444,9 +449,9 @@ export async function deleteTask(taskId: string, projectId: string) {
                 where: { id: taskId }
             });
         });
-
+        
+        revalidatePath(`/projects`);
         revalidatePath(`/projects/${projectId}/milestones`);
-        revalidatePath(`/projects/${projectId}`);
         revalidatePath('/my-tasks');
         revalidatePath('/dashboard');
         
@@ -466,7 +471,8 @@ export async function getProjectsPageData(userId: string) {
     if (!user) {
         return {
             projects: [],
-            statuses: []
+            statuses: [],
+            users: [],
         };
     }
     
@@ -475,6 +481,8 @@ export async function getProjectsPageData(userId: string) {
             name: 'asc'
         }
     });
+
+    const users = await prisma.user.findMany();
     
     const archivedStatusNames = ['Completed', 'On Handover'];
     const archivedStatusIds = statuses.filter(s => archivedStatusNames.includes(s.name)).map(s => s.id);
@@ -532,6 +540,11 @@ export async function getProjectsPageData(userId: string) {
                 where: {
                     status: 'PENDING'
                 }
+            },
+            teams: {
+                include: {
+                    members: true
+                }
             }
         },
         orderBy: {
@@ -541,7 +554,8 @@ export async function getProjectsPageData(userId: string) {
 
     return {
         projects: JSON.parse(JSON.stringify(projects)),
-        statuses: JSON.parse(JSON.stringify(statuses.filter(s => !archivedStatusNames.includes(s.name))))
+        statuses: JSON.parse(JSON.stringify(statuses.filter(s => !archivedStatusNames.includes(s.name)))),
+        users: JSON.parse(JSON.stringify(users)),
     };
 }
 

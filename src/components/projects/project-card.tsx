@@ -1,79 +1,143 @@
+
+'use client';
+
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Clock } from 'lucide-react';
+import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+import { useAuth } from '@/context/auth-context';
+import type { Task, User } from '@/lib/types';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
-export function ProjectCard({ project, href }: { project: any, href?: string }) {
+type ProjectListItemProps = {
+  project: any;
+  users: User[];
+  onAddTask: (project: any) => void;
+  onEditTask: (task: any, project: any) => void;
+  onDeleteTask: (task: any) => void;
+  taskToDelete: any;
+  setTaskToDelete: (task: any) => void;
+  handleDeleteTask: () => void;
+};
+
+export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
+  const { hasPermission } = useAuth();
+  const canManageTasks = hasPermission('projects:update');
+
   const allTasks = project.milestones.flatMap((m: any) => m.tasks);
-  const completedTasks = allTasks.filter((task: any) => task.status === 'DONE').length;
-  const status = project.status;
-  const hasPendingTimelineChange = project.timelineChangeRequests && project.timelineChangeRequests.length > 0;
-
+  
   const calculateProgress = () => {
-    if (status?.name === 'Completed') {
-        return 100;
-    }
-    
     if (!project.milestones || project.milestones.length === 0) {
-        return 0;
+      return 0;
     }
-
     const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
-        const completedTaskWeightInMilestone = milestone.tasks
+      const completedTaskWeightInMilestone = milestone.tasks
         .filter((task: any) => task.status === 'DONE')
         .reduce((sum: number, task: any) => sum + task.weight, 0);
-        
-        const milestoneProgress = completedTaskWeightInMilestone / 100;
-
-        return progress + (milestoneProgress * milestone.weight);
+      const milestoneProgress = completedTaskWeightInMilestone / 100;
+      return progress + (milestoneProgress * milestone.weight);
     }, 0);
-
     return weightedProgress;
   };
 
   const progress = calculateProgress();
-  const projectLink = `/projects/${project.id}`;
-  const titleLink = href || projectLink;
+  const projectManager = users.find(u => u.id === project.projectManagerId);
+  
+  const team = project.teams?.[0]; // Assuming one team per project for this view
+  const teamMembers = team?.members.map((m: User) => m.name).join(', ');
   
   return (
+    <>
     <Card className="flex flex-col">
       <CardHeader>
-        <CardTitle className="hover:text-primary transition-colors">
-          <Link href={titleLink}>{project.name}</Link>
-        </CardTitle>
-        <CardDescription className="line-clamp-2">{project.description}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex-grow">
-        <div className="space-y-2">
-          <div className="flex justify-between items-center text-sm text-muted-foreground">
-            <span>Progress</span>
-            <span>{Math.round(progress)}%</span>
-          </div>
-          <Progress value={progress} className="h-2" />
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>Tasks</span>
-            <span>{completedTasks} / {allTasks.length}</span>
-          </div>
+        <div className="flex justify-between items-start gap-4">
+          <CardTitle className="text-2xl font-bold">{project.name}</CardTitle>
+          <Badge variant="secondary" className="text-base whitespace-nowrap">{Math.round(progress)}% Done</Badge>
         </div>
-      </CardContent>
-      <CardFooter className="flex justify-between items-center">
-        <div className="flex items-center gap-2">
-            {status ? (
-              <Badge variant='outline'>{status.name}</Badge>
-            ) : <div />}
-            {hasPendingTimelineChange && (
-                <Badge variant="secondary" className="bg-amber-500/80 text-white">
-                    <Clock className="w-3 h-3 mr-1" />
-                    Pending Approval
-                </Badge>
+        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground pt-2">
+            <div className="flex items-center gap-2">
+                <Crown className="w-4 h-4" />
+                <span>Lead: {projectManager?.name ?? 'N/A'}</span>
+            </div>
+            <div className="flex items-center gap-2">
+                <Calendar className="w-4 h-4" />
+                <span>{format(parseISO(project.startDate), "MMM d, yyyy")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
+            </div>
+            {teamMembers && (
+                <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4" />
+                    <span>{teamMembers}</span>
+                </div>
             )}
         </div>
-        <Button asChild variant="ghost" size="sm">
-          <Link href={projectLink}>View Project</Link>
-        </Button>
-      </CardFooter>
+      </CardHeader>
+      <CardContent className="flex-grow space-y-4">
+        <div className="flex justify-between items-center">
+            <h4 className="font-semibold text-card-foreground">Tasks</h4>
+            {canManageTasks && (
+                <Button variant="ghost" size="sm" onClick={() => onAddTask(project)}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Task
+                </Button>
+            )}
+        </div>
+        <div className="space-y-4">
+            {allTasks.length > 0 ? allTasks.map((task: any) => (
+                <div key={task.id} className="space-y-1 group">
+                    <div className="flex justify-between items-center">
+                        <span className="text-sm font-medium">{task.title}</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
+                            {canManageTasks && (
+                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                        <Pencil className="h-3 w-3" />
+                                    </Button>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
+                                        <Trash2 className="h-3 w-3" />
+                                    </Button>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                    <Progress value={task.progress || 0} className="h-2" />
+                </div>
+            )) : (
+                 <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
+                    No tasks yet for this project.
+                </div>
+            )}
+        </div>
+      </CardContent>
     </Card>
+     <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the task: <span className="font-semibold">{taskToDelete?.title}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Task
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
