@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -6,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2 } from 'lucide-react';
+import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import type { Task, User } from '@/lib/types';
@@ -20,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Tooltip, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 type ProjectListItemProps = {
   project: any;
@@ -43,11 +45,17 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       return 0;
     }
     const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
+      if (!milestone.tasks || milestone.tasks.length === 0) return progress;
       const completedTaskWeightInMilestone = milestone.tasks
         .filter((task: any) => task.status === 'DONE')
         .reduce((sum: number, task: any) => sum + task.weight, 0);
-      const milestoneProgress = completedTaskWeightInMilestone / 100;
-      return progress + (milestoneProgress * milestone.weight);
+      
+      const milestoneProgress = completedTaskWeightInMilestone / 100; // This is task weight within milestone, not milestone progress
+
+      const totalMilestoneTaskWeight = milestone.tasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+      const milestoneTaskProgress = totalMilestoneTaskWeight > 0 ? completedTaskWeightInMilestone / totalMilestoneTaskWeight : 0;
+      
+      return progress + (milestoneTaskProgress * milestone.weight);
     }, 0);
     return weightedProgress;
   };
@@ -63,22 +71,24 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
     <Card className="flex flex-col">
       <CardHeader>
         <div className="flex justify-between items-start gap-4">
-          <CardTitle className="text-2xl font-bold">{project.name}</CardTitle>
+          <Link href={`/projects/${project.id}`}>
+            <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
+          </Link>
           <Badge variant="secondary" className="text-base whitespace-nowrap">{Math.round(progress)}% Done</Badge>
         </div>
-        <div className="flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground pt-2">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground pt-2">
             <div className="flex items-center gap-2">
                 <Crown className="w-4 h-4" />
                 <span>Lead: {projectManager?.name ?? 'N/A'}</span>
             </div>
             <div className="flex items-center gap-2">
                 <Calendar className="w-4 h-4" />
-                <span>{format(parseISO(project.startDate), "MMM d, yyyy")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
+                <span>{format(parseISO(project.startDate), "MMM d")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
             </div>
             {teamMembers && (
                 <div className="flex items-center gap-2">
                     <Users className="w-4 h-4" />
-                    <span>{teamMembers}</span>
+                    <span className="truncate max-w-xs">{teamMembers}</span>
                 </div>
             )}
         </div>
@@ -121,6 +131,23 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             )}
         </div>
       </CardContent>
+      {project.timelineChangeRequests?.length > 0 && (
+          <CardFooter>
+                <TooltipProvider>
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <Badge variant="outline" className="gap-1.5 items-center bg-amber-100 border-amber-300 text-amber-900">
+                                <ShieldAlert className="w-3.5 h-3.5"/>
+                                Pending Timeline Approval
+                            </Badge>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>A deadline change for this project is awaiting approval.</p>
+                        </TooltipContent>
+                    </Tooltip>
+                </TooltipProvider>
+          </CardFooter>
+      )}
     </Card>
      <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
         <AlertDialogContent>
@@ -140,4 +167,55 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       </AlertDialog>
     </>
   );
+}
+
+export function ProjectCard({ project, href }: { project: any, href?: string }) {
+
+    const calculateProgress = () => {
+        if (!project.milestones || project.milestones.length === 0) {
+        return 0;
+        }
+        const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
+        if (!milestone.tasks || milestone.tasks.length === 0) return progress;
+        const completedTaskWeightInMilestone = milestone.tasks
+            .filter((task: any) => task.status === 'DONE')
+            .reduce((sum: number, task: any) => sum + task.weight, 0);
+        
+        const totalMilestoneTaskWeight = milestone.tasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+        const milestoneTaskProgress = totalMilestoneTaskWeight > 0 ? completedTaskWeightInMilestone / totalMilestoneTaskWeight : 0;
+        
+        return progress + (milestoneTaskProgress * milestone.weight);
+        }, 0);
+        return weightedProgress;
+    };
+
+    const progress = calculateProgress();
+
+    const cardContent = (
+      <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
+          <CardHeader>
+              <CardTitle className="truncate">{project.name}</CardTitle>
+              <CardDescription className="line-clamp-2">{project.description}</CardDescription>
+          </CardHeader>
+          <CardContent className="flex-grow">
+               <div className="space-y-1">
+                  <div className="flex justify-between text-sm text-muted-foreground">
+                      <span>Progress</span>
+                      <span>{Math.round(progress)}%</span>
+                  </div>
+                  <Progress value={progress} />
+              </div>
+          </CardContent>
+          <CardFooter className="flex justify-between text-xs text-muted-foreground">
+              <span>{project.status.name}</span>
+              <span>Due: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
+          </CardFooter>
+      </Card>
+    );
+
+    return (
+      <Link href={href || `/projects/${project.id}`} className="h-full">
+        {cardContent}
+      </Link>
+    )
 }

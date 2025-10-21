@@ -255,8 +255,12 @@ export async function updateProject(projectId: string, data: any) {
 
             // --- PROJECT COMPLETION LOGIC ---
             if (isCompletingProject) {
+                const projectTasks = await tx.task.findMany({
+                    where: { milestone: { projectId: projectId } },
+                    select: { id: true }
+                });
                 await tx.task.updateMany({
-                    where: { projectId: projectId },
+                    where: { id: { in: projectTasks.map(t => t.id) } },
                     data: {
                         status: 'DONE',
                         progress: 100,
@@ -322,13 +326,34 @@ export async function updateBlocker(blockerId: string, description: string, proj
     revalidatePath(`/projects/${projectId}`);
 }
 
-export async function addTask(projectId: string, data: any) {
+export async function addMilestone(projectId: string, data: any) {
+    const newMilestone = await prisma.milestone.create({
+        data: {
+            ...data,
+            projectId,
+        }
+    });
+    revalidatePath(`/projects`);
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true, milestone: newMilestone };
+}
+
+export async function updateMilestone(milestoneId: string, projectId: string, data: any) {
+    await prisma.milestone.update({
+        where: { id: milestoneId },
+        data
+    });
+    revalidatePath(`/projects`);
+    revalidatePath(`/projects/${projectId}`);
+}
+
+export async function addTask(milestoneId: string, projectId: string, data: any) {
     const { assignedUserIds, ...taskData } = data;
     await prisma.task.create({
         data: {
             ...taskData,
             status: 'TODO',
-            projectId,
+            milestoneId,
             assignees: {
                 connect: assignedUserIds.map((id:string) => ({ id }))
             }
@@ -336,6 +361,7 @@ export async function addTask(projectId: string, data: any) {
     });
     revalidatePath(`/projects`);
     revalidatePath(`/projects/${projectId}`);
+    revalidatePath(`/my-tasks`);
 }
 
 export async function updateTask(taskId: string, projectId: string, data: any) {
@@ -441,11 +467,15 @@ export async function getProjectsPageData(userId: string) {
                 }
             },
             { // Also check if they are assigned to any task in the project
-                tasks: {
+                milestones: {
                     some: {
-                        assignees: {
+                        tasks: {
                             some: {
-                                id: userId
+                                assignees: {
+                                    some: {
+                                        id: userId
+                                    }
+                                }
                             }
                         }
                     }
@@ -458,7 +488,11 @@ export async function getProjectsPageData(userId: string) {
         where: whereClause,
         include: {
             status: true,
-            tasks: true,
+            milestones: { // Correctly include tasks through milestones
+                include: {
+                    tasks: true
+                }
+            },
             timelineChangeRequests: {
                 where: {
                     status: 'PENDING'
@@ -501,10 +535,14 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
             projectManager: true,
             responsibleDepartments: true,
             blockers: true,
-            tasks: {
+            milestones: {
                 include: {
-                    assignees: true,
-                    updates: true,
+                    tasks: {
+                        include: {
+                            assignees: true,
+                            updates: true,
+                        }
+                    },
                 }
             },
             timelineChangeRequests: {
@@ -544,11 +582,15 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
                     }
                 },
                 {
-                    tasks: {
+                    milestones: {
                         some: {
-                            assignees: {
+                            tasks: {
                                 some: {
-                                    id: userId
+                                    assignees: {
+                                        some: {
+                                            id: userId
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -585,7 +627,7 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
                 OR: [
                     { projectManagerId: userId },
                     { teams: { some: { members: { some: { id: userId } } } } },
-                    { tasks: { some: { assignees: { some: { id: userId } } } } }
+                    { milestones: { some: { tasks: { some: { assignees: { some: { id: userId } } } } } } }
                 ]
             },
             select: { id: true }
@@ -598,10 +640,17 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
     const project = await prisma.project.findUnique({
         where: whereClause,
         include: {
-            tasks: {
-                orderBy: { createdAt: 'desc' },
+            milestones: {
+                orderBy: {
+                    createdAt: 'desc'
+                },
                 include: {
-                    assignees: true,
+                    tasks: {
+                        orderBy: { createdAt: 'desc' },
+                        include: {
+                            assignees: true,
+                        }
+                    }
                 }
             },
         }
@@ -625,20 +674,32 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
 export async function deleteProject(projectId: string) {
     try {
         await prisma.$transaction(async (tx) => {
-            const tasks = await tx.task.findMany({
-                where: { projectId: projectId },
+            const milestones = await tx.milestone.findMany({
+                where: { projectId },
                 select: { id: true }
             });
-            const taskIds = tasks.map(t => t.id);
-            
-            if (taskIds.length > 0) {
-                // Delete task updates
-                await tx.taskUpdate.deleteMany({
-                    where: { taskId: { in: taskIds } }
+            const milestoneIds = milestones.map(m => m.id);
+
+            if (milestoneIds.length > 0) {
+                 const tasks = await tx.task.findMany({
+                    where: { milestoneId: { in: milestoneIds } },
+                    select: { id: true }
                 });
-                 // Delete tasks
-                await tx.task.deleteMany({
-                    where: { id: { in: taskIds } }
+                const taskIds = tasks.map(t => t.id);
+                
+                if (taskIds.length > 0) {
+                    // Delete task updates
+                    await tx.taskUpdate.deleteMany({
+                        where: { taskId: { in: taskIds } }
+                    });
+                     // Delete tasks
+                    await tx.task.deleteMany({
+                        where: { id: { in: taskIds } }
+                    });
+                }
+                // Delete milestones
+                await tx.milestone.deleteMany({
+                    where: { id: { in: milestoneIds } }
                 });
             }
 
