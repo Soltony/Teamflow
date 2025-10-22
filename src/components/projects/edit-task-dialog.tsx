@@ -144,6 +144,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   });
   
   const selectedMilestoneId = form.watch('milestoneId');
+  const assignedUserIds = form.watch('assignedUserIds');
   
   const selectedMilestone = useMemo(() => {
     if (!selectedMilestoneId) return null;
@@ -175,8 +176,8 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
 
 
   const selectedUsers = useMemo(() => 
-    (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id)),
-    [users, form.watch('assignedUserIds')]
+    (users || []).filter(user => assignedUserIds?.includes(user.id)),
+    [users, assignedUserIds]
   );
   
   async function onSubmit(data: TaskFormValues) {
