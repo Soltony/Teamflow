@@ -55,7 +55,7 @@ type UserWithRoles = User & { roles: { name: string }[] };
 type EditTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project & { milestones: (Milestone & {tasks: Task[]})[], tasks?: Task[] };
+  project: Project & { milestones: (Milestone & {tasks: Task[]})[] };
   task: Task;
   users: UserWithRoles[];
   onTaskUpdate: (updatedTask: Task) => Promise<void>;
@@ -63,7 +63,7 @@ type EditTaskDialogProps = {
 
 export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onTaskUpdate }: EditTaskDialogProps) {
   const userCreatedMilestones = useMemo(() => {
-    return project.milestones?.filter(m => m.title !== "General Tasks") || [];
+    return (project.milestones || []).filter(m => m.title !== "General Tasks");
   }, [project.milestones]);
   
   const hasMilestones = userCreatedMilestones.length > 0;
@@ -92,7 +92,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
         message: "A milestone must be selected for this project.",
         code: z.ZodIssueCode.custom
       });
-      return; // Stop further validation if milestone is required but missing
+      return; 
     }
 
     const selectedMilestone = data.milestoneId
@@ -126,19 +126,6 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
           message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), "MMM d")}.`,
         });
       }
-    } else if (!hasMilestones) { // Only run project-level validation if there are no milestones at all
-        if (project.startDate && data.startDate < parseISO(project.startDate)) {
-            ctx.addIssue({
-            path: ["startDate"],
-            message: `Must be on or after project start date: ${format(parseISO(project.startDate), "MMM d")}.`,
-            });
-        }
-        if (project.endDate && data.endDate > parseISO(project.endDate)) {
-            ctx.addIssue({
-            path: ["endDate"],
-            message: `Must be on or before project end date: ${format(parseISO(project.endDate), "MMM d")}.`,
-            });
-        }
     }
   }), [project, task.id, hasMilestones]);
 
@@ -186,7 +173,6 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   
       return Math.max(0, 100 - otherTasksWeight);
     }
-    // If no milestone is selected (only possible if project has no milestones), assume full 100% is available for project-level tasks logic
     return 100;
   }, [selectedMilestone, task.id, project.milestones]);
 
@@ -196,14 +182,11 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   );
   
   async function onSubmit(data: TaskFormValues) {
-    const { milestoneId, ...taskData } = data;
-    const finalMilestoneId = milestoneId === '' ? undefined : milestoneId
     const updatedTask: Task = {
       ...task,
-      ...taskData,
+      ...data,
       startDate: data.startDate.toISOString(),
       endDate: data.endDate.toISOString(),
-      milestoneId: finalMilestoneId,
     };
     await onTaskUpdate(updatedTask);
   }
@@ -386,7 +369,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                         name="weight"
                         render={({ field }) => (
                             <FormItem>
-                                <FormLabel>Task Weight (Max: {maxWeightForThisTask}%): {field.value}%</FormLabel>
+                                <FormLabel>Task Weight (Max: {maxWeightForThisTask}%): {field.value || 0}%</FormLabel>
                                 <FormControl>
                                     <Slider
                                         value={[field.value ?? 0]}
@@ -431,3 +414,5 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
+
+    
