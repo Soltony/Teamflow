@@ -116,6 +116,14 @@ export default function ProjectsPage() {
         setTaskToDelete(null);
     };
 
+    const handleEditTask = (task: any, project: any) => {
+        const normalizedTask = {
+            ...task,
+            assignedUserIds: task.assignees?.map((a: any) => a.id) || [],
+        };
+        setEditingTaskInfo({ task: normalizedTask, project });
+    };
+
     if (isLoading || authLoading) {
         return <LoadingSkeleton />;
     }
@@ -156,7 +164,7 @@ export default function ProjectsPage() {
                             project={project}
                             users={allUsers}
                             onAddTask={(project) => setAddingTaskToProject(project)}
-                            onEditTask={(task, project) => setEditingTaskInfo({task, project})}
+                            onEditTask={handleEditTask}
                             onDeleteTask={setTaskToDelete}
                             taskToDelete={taskToDelete}
                             setTaskToDelete={setTaskToDelete}

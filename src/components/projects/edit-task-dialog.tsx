@@ -138,9 +138,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   
   useEffect(() => {
     if (isOpen && task) {
-        const assigneeIds: string[] =
-          (task as any).assignedUserIds ??
-          (Array.isArray((task as any).assignees) ? (task as any).assignees.map((u: any) => u.id) : []);
+        const assigneeIds: string[] = task.assignedUserIds ?? [];
 
         const isGeneralMilestone = project.milestones.find(m => m.id === task.milestoneId)?.title === "General Tasks";
         const initialMilestoneId = hasMilestones && !isGeneralMilestone ? task.milestoneId ?? undefined : undefined;
@@ -167,14 +165,15 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   }, [selectedMilestoneId, project.milestones]);
 
   const maxWeightForThisTask = useMemo(() => {
-    if (selectedMilestone) {
-      const otherTasksWeight = (selectedMilestone.tasks || [])
-        .filter((t) => t.id !== task.id)
-        .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
-      return Math.max(0, 100 - otherTasksWeight);
+    if (hasMilestones) {
+        if (!selectedMilestone) return 0;
+        const otherTasksWeight = (selectedMilestone.tasks || [])
+            .filter((t) => t.id !== task.id)
+            .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
+        return Math.max(0, 100 - otherTasksWeight);
     }
     
-    // Project-level task (no milestone)
+    // Project-level task (no milestones)
     const allTasks = project.milestones.flatMap(m => m.tasks);
     const otherProjectLevelTasksWeight = allTasks
         .filter((t) => t.id !== task.id)
@@ -182,7 +181,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
 
     return Math.max(0, 100 - otherProjectLevelTasksWeight);
     
-  }, [selectedMilestone, project.milestones, task.id]);
+  }, [selectedMilestone, project.milestones, task.id, hasMilestones]);
 
 
   const selectedUsers = useMemo(() => 
