@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from "react";
@@ -36,13 +37,13 @@ export default function ProjectsPage() {
     const { localUser, loading: authLoading } = useAuth();
     const { toast } = useToast();
     const [projects, setProjects] = useState<any[]>([]);
-    const [users, setUsers] = useState<User[]>([]);
+    const [allUsers, setAllUsers] = useState<User[]>([]);
     const [statuses, setStatuses] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
 
     // State for modals
-    const [addingTaskToProject, setAddingTaskToProject] = useState<Project | null>(null);
+    const [addingTaskToProject, setAddingTaskToProject] = useState<(Project & { milestones: Milestone[] }) | null>(null);
     const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: TaskType; project: Project, milestone: Milestone } | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<TaskType | null>(null);
 
@@ -53,7 +54,7 @@ export default function ProjectsPage() {
                 const data = await getProjectsPageData(localUser.id);
                 setProjects(data.projects);
                 setStatuses(data.statuses);
-                setUsers(data.users || []);
+                setAllUsers(data.users || []);
             } catch (error) {
                 console.error("Failed to fetch projects", error);
             } finally {
@@ -153,7 +154,7 @@ export default function ProjectsPage() {
                         <ProjectListItem 
                             key={project.id} 
                             project={project}
-                            users={users}
+                            users={allUsers}
                             onAddTask={(project) => setAddingTaskToProject(project)}
                             onEditTask={(task, milestone) => setEditingTaskInfo({task, project, milestone})}
                             onDeleteTask={setTaskToDelete}
@@ -175,7 +176,7 @@ export default function ProjectsPage() {
                     isOpen={!!addingTaskToProject}
                     onOpenChange={(open) => !open && setAddingTaskToProject(null)}
                     project={addingTaskToProject}
-                    users={users}
+                    users={allUsers}
                     onTaskAdd={handleTaskAdd}
                 />
             )}
@@ -184,10 +185,11 @@ export default function ProjectsPage() {
                 <EditTaskDialog
                     isOpen={!!editingTaskInfo}
                     onOpenChange={(open) => !open && setEditingTaskInfo(null)}
+                    project={editingTaskInfo.project}
                     milestone={editingTaskInfo.milestone}
                     task={editingTaskInfo.task}
-                    users={users}
-                    onTaskUpdate={(milestoneId, updatedTask) => handleTaskUpdate(editingTaskInfo.project.id, updatedTask)}
+                    users={allUsers}
+                    onTaskUpdate={(updatedTask) => handleTaskUpdate(editingTaskInfo.project.id, updatedTask)}
                 />
             )}
         </div>

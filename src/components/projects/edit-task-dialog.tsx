@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -28,7 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import type { Milestone, Task, User, TaskStatus } from "@/lib/types";
+import type { Milestone, Project, Task, User, TaskStatus } from "@/lib/types";
 import { useToast } from "@/hooks/use-toast";
 import { Slider } from "../ui/slider";
 import {
@@ -55,13 +56,14 @@ type UserWithRoles = User & { roles: { name: string }[] };
 type EditTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
+  project: Project & { milestones: Milestone[] };
   milestone: Milestone;
   task: Task;
   users: UserWithRoles[];
-  onTaskUpdate: (milestoneId: string, updatedTask: Task) => Promise<void>;
+  onTaskUpdate: (updatedTask: Task) => Promise<void>;
 };
 
-export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, onTaskUpdate }: EditTaskDialogProps) {
+export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task, users, onTaskUpdate }: EditTaskDialogProps) {
 
   const nonAdminUsers = useMemo(() => {
     if (!users) return [];
@@ -73,7 +75,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
     return milestone.tasks
       .filter(t => t.id !== task.id)
       .reduce((sum, t) => sum + t.weight, 0);
-  }, [milestone, task.id]);
+  }, [milestone?.tasks, task.id]);
   
   const maxWeightForThisTask = 100 - weightOfOtherTasks;
 
@@ -85,32 +87,53 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
     assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
     weight: z.number().min(0).max(100),
     status: z.enum(taskStatuses),
+    milestoneId: z.string().optional(),
   }).refine(data => data.endDate >= data.startDate, {
       message: "End date must be on or after start date.",
       path: ["endDate"],
-  }).refine(data => {
-      return data.weight <= maxWeightForThisTask;
-  }, {
-      message: `Total task weight for this milestone cannot exceed 100%. Max for this task: ${maxWeightForThisTask}%.`,
-      path: ["weight"],
   }).superRefine((data, ctx) => {
-    if (!milestone || !milestone.startDate || !milestone.dueDate) {
-        return; // Skip date validation if milestone dates are not available
+    const selectedMilestone = data.milestoneId ? project.milestones.find(m => m.id === data.milestoneId) : null;
+    
+    if (selectedMilestone) {
+        const milestoneTasks = selectedMilestone.tasks || [];
+        const existingTasksWeight = milestoneTasks
+            .filter(t => t.id !== task.id)
+            .reduce((sum, t) => sum + t.weight, 0);
+        const remainingWeight = 100 - existingTasksWeight;
+        
+        if (data.weight > remainingWeight) {
+            ctx.addIssue({
+                path: ['weight'],
+                message: `Weight exceeds remaining ${remainingWeight}% for milestone.`
+            });
+        }
+        if (selectedMilestone.startDate && data.startDate < parseISO(selectedMilestone.startDate)) {
+            ctx.addIssue({
+                path: ['startDate'],
+                message: `Must be on or after milestone start: ${format(parseISO(selectedMilestone.startDate), 'MMM d')}.`
+            });
+        }
+        if (selectedMilestone.dueDate && data.endDate > parseISO(selectedMilestone.dueDate)) {
+            ctx.addIssue({
+                path: ['endDate'],
+                message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), 'MMM d')}.`
+            });
+        }
+    } else { // Project-level task
+        if (project.startDate && data.startDate < parseISO(project.startDate)) {
+            ctx.addIssue({
+                path: ['startDate'],
+                message: `Must be on or after project start date: ${format(parseISO(project.startDate), 'MMM d')}.`
+            });
+        }
+        if (project.endDate && data.endDate > parseISO(project.endDate)) {
+            ctx.addIssue({
+                path: ['endDate'],
+                message: `Must be on or before project end date: ${format(parseISO(project.endDate), 'MMM d')}.`
+            });
+        }
     }
-
-    if (data.startDate < parseISO(milestone.startDate)) {
-        ctx.addIssue({
-            path: ['startDate'],
-            message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
-        });
-    }
-    if (data.endDate > parseISO(milestone.dueDate)) {
-        ctx.addIssue({
-            path: ['endDate'],
-            message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
-        });
-    }
-  }), [maxWeightForThisTask, milestone]);
+  }), [project, task.id]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
@@ -128,26 +151,27 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
         assignedUserIds: task.assignedUserIds,
         weight: task.weight,
         status: task.status,
+        milestoneId: milestone?.id
       });
     }
-  }, [isOpen, task, form]);
+  }, [isOpen, task, form, milestone?.id]);
 
 
-  const selectedUsers = users.filter(user => form.watch('assignedUserIds')?.includes(user.id));
+  const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
   
   async function onSubmit(data: TaskFormValues) {
+    const { milestoneId, ...taskData } = data;
     const updatedTask: Task = {
       ...task,
-      title: data.title,
-      description: data.description || "",
-      status: data.status,
+      ...taskData,
       startDate: data.startDate.toISOString(),
       endDate: data.endDate.toISOString(),
-      assignedUserIds: data.assignedUserIds,
-      weight: data.weight,
     };
-    await onTaskUpdate(milestone.id, updatedTask);
+    await onTaskUpdate(updatedTask);
   }
+
+  const selectedMilestoneId = form.watch('milestoneId');
+  const hasMilestones = project.milestones && project.milestones.length > 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -158,11 +182,36 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
     }}>
       <DialogContent className="sm:max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Edit Task in "{milestone.title}"</DialogTitle>
+          <DialogTitle>Edit Task in "{project.name}"</DialogTitle>
           <DialogDescription>Make changes to the task details. The total weight of all tasks in a milestone cannot exceed 100%.</DialogDescription>
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+             {hasMilestones && (
+                <FormField
+                control={form.control}
+                name="milestoneId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Assign to milestone (optional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Assign to project (no milestone)" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        <SelectItem value="">Assign to project (no milestone)</SelectItem>
+                        {project.milestones.map(m => (
+                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            )}
             <FormField
               control={form.control}
               name="title"
@@ -344,5 +393,3 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
     </Dialog>
   );
 }
-
-    
