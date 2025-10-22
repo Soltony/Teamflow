@@ -141,7 +141,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
     // If a specific milestone is selected, calculate remaining weight for it.
     const existingTasksWeight = (selectedMilestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
     return 100 - existingTasksWeight;
-  }, [selectedMilestoneId, selectedMilestone, project.milestones]);
+  }, [selectedMilestoneId, selectedMilestone]);
   
   useEffect(() => {
     if (isOpen) {
