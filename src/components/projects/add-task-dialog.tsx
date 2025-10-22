@@ -44,7 +44,7 @@ type UserWithRoles = User & { roles: { name: string }[] };
 type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project & { milestones: Milestone[] };
+  project: Project & { milestones: (Milestone & { tasks: Task[] })[] };
   users: UserWithRoles[];
   onTaskAdd: (projectId: string, milestoneId: string | null, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
@@ -63,6 +63,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   });
 
   const selectedMilestoneId = form.watch('milestoneId');
+  
   const selectedMilestone = useMemo(() => {
     if (!selectedMilestoneId) return null;
     return project.milestones.find(m => m.id === selectedMilestoneId);
@@ -70,8 +71,8 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
 
   const remainingWeight = useMemo(() => {
     if (!selectedMilestone) {
-        // This case applies if the project has no milestones,
-        // so the new "General Tasks" milestone will have 100% weight available.
+        // If no milestone is selected (which happens when a project has no milestones),
+        // the new "General Tasks" milestone will have 100% weight available.
         return 100;
     }
     const existingTasksInMilestone = selectedMilestone.tasks || [];
@@ -95,9 +96,12 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
           path: ["endDate"],
       }).superRefine((data, ctx) => {
         const milestone = data.milestoneId ? project.milestones.find(m => m.id === data.milestoneId) : null;
-        const tasksInMilestone = milestone?.tasks || [];
-        const weightOfOtherTasks = tasksInMilestone.reduce((sum, task) => sum + task.weight, 0);
-        const currentRemainingWeight = 100 - weightOfOtherTasks;
+        
+        const currentRemainingWeight = (() => {
+            if (!milestone) return 100;
+            const existingTasksWeight = (milestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
+            return 100 - existingTasksWeight;
+        })();
 
         if (data.weight > currentRemainingWeight) {
             ctx.addIssue({
