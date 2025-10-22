@@ -68,48 +68,62 @@ function createTaskSchema(project: Project & { milestones: (Milestone & {tasks: 
     startDate: z.date({ required_error: "A start date is required."}),
     endDate: z.date({ required_error: "An end date is required."}),
     assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
-    weight: z.number().min(0, "Weight must be a positive number."),
+    weight: z.number().min(0, "Weight must be a positive number.").max(100, "Weight cannot exceed 100."),
     status: z.enum(taskStatuses),
-    milestoneId: hasMilestones ? z.string({required_error: "A milestone must be selected."}) : z.string().optional(),
+    milestoneId: z.string().optional(),
   }).refine(data => data.endDate >= data.startDate, {
       message: "End date must be on or after start date.",
       path: ["endDate"],
   }).superRefine((data, ctx) => {
-    const selectedMilestone = data.milestoneId
-      ? project.milestones.find((m) => m.id === data.milestoneId) || null
-      : null;
-
-    if (hasMilestones && !selectedMilestone) {
-        ctx.addIssue({
-            path: ["milestoneId"],
-            message: "You must select a milestone for this task.",
-        });
-        return;
-    }
     
-    if (selectedMilestone) {
-        const milestoneTasks = selectedMilestone.tasks || [];
-        const otherTasksWeight = milestoneTasks
-            .filter((t) => t.id !== task.id)
-            .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
-        
-        const maxWeightForThisTask = Math.max(0, 100 - otherTasksWeight);
-
-        if (data.weight > maxWeightForThisTask + 1e-6) { 
+    if (hasMilestones) {
+        if (!data.milestoneId) {
             ctx.addIssue({
-              path: ["weight"],
-              message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
+                path: ['milestoneId'],
+                message: 'A milestone must be selected for this project.',
+                code: z.ZodIssueCode.custom
             });
+            return;
         }
-    } else { // Project-level task
-        const allTasks = project.milestones.flatMap(m => m.tasks);
-        const otherProjectLevelTasksWeight = allTasks
-            .filter((t) => t.id !== task.id && !t.milestoneId) 
+
+        const selectedMilestone = project.milestones.find(m => m.id === data.milestoneId);
+        if (selectedMilestone) {
+            const otherTasksWeight = (selectedMilestone.tasks || [])
+                .filter(t => t.id !== task.id)
+                .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
+            
+            const maxWeightForThisTask = Math.max(0, 100 - otherTasksWeight);
+
+            if (data.weight > maxWeightForThisTask + 1e-6) {
+                ctx.addIssue({
+                    path: ["weight"],
+                    message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
+                });
+            }
+
+            if (selectedMilestone.startDate && data.startDate < parseISO(selectedMilestone.startDate)) {
+                ctx.addIssue({
+                    path: ['startDate'],
+                    message: `Must be on or after milestone start: ${format(parseISO(selectedMilestone.startDate), 'MMM d')}.`
+                });
+            }
+            if (selectedMilestone.dueDate && data.endDate > parseISO(selectedMilestone.dueDate)) {
+                ctx.addIssue({
+                    path: ['endDate'],
+                    message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), 'MMM d')}.`
+                });
+            }
+        }
+    } else { // Project-level task validation
+        const projectLevelTasks = project.milestones.flatMap(m => m.tasks.filter(t => t.milestoneId === null || project.milestones.find(milestone => milestone.id === t.milestoneId)?.title === "General Tasks"));
+        const otherProjectLevelTasksWeight = projectLevelTasks
+            .filter(t => t.id !== task.id)
             .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
-        
+
         const remainingForProject = Math.max(0, 100 - otherProjectLevelTasksWeight);
+
         if (data.weight > remainingForProject + 1e-6) {
-             ctx.addIssue({
+            ctx.addIssue({
                 path: ["weight"],
                 message: `Weight for all project-level tasks cannot exceed 100%. Remaining: ${remainingForProject}%.`,
             });
@@ -132,21 +146,11 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
 
   const form = useForm<z.infer<ReturnType<typeof createTaskSchema>>>({
     resolver: zodResolver(createTaskSchema(project, task, hasMilestones)),
-    defaultValues: {
-      title: task.title,
-      description: task.description || "",
-      startDate: parseISO(task.startDate),
-      endDate: parseISO(task.endDate),
-      assignedUserIds: task.assignedUserIds || [],
-      weight: task.weight,
-      status: task.status,
-      milestoneId: task.milestoneId ?? undefined,
-    }
   });
   
   useEffect(() => {
     if (isOpen && task) {
-        const assigneeIds: string[] = task.assignedUserIds || [];
+        const assigneeIds: string[] = task.assignedUserIds || (task as any).assignees?.map((a: any) => a.id) || [];
         
         const isGeneralMilestone = project.milestones.find(m => m.id === task.milestoneId)?.title === "General Tasks";
         const initialMilestoneId = hasMilestones && !isGeneralMilestone ? task.milestoneId ?? undefined : undefined;
@@ -173,21 +177,22 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   }, [selectedMilestoneId, project.milestones]);
 
   const maxWeightForThisTask = useMemo(() => {
-    if (selectedMilestone) { // Milestone-based task
+    if (hasMilestones) {
+        if (!selectedMilestone) return 0; // Or some default, maybe 100 if no milestone is selected yet
         const otherTasksWeight = (selectedMilestone.tasks || [])
             .filter((t) => t.id !== task.id)
             .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
         return Math.max(0, 100 - otherTasksWeight);
     }
     
-    // Project-level task (no milestone selected)
-    const allTasks = project.milestones.flatMap(m => m.tasks);
-    const otherProjectLevelTasksWeight = allTasks
-        .filter((t) => t.id !== task.id && !userCreatedMilestones.some(m => m.id === t.milestoneId))
+    // Project-level task (no milestones)
+    const projectLevelTasks = project.milestones.flatMap(m => m.tasks.filter(t => t.milestoneId === null || project.milestones.find(milestone => milestone.id === t.milestoneId)?.title === "General Tasks"));
+    const otherProjectLevelTasksWeight = projectLevelTasks
+        .filter((t) => t.id !== task.id)
         .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
     return Math.max(0, 100 - otherProjectLevelTasksWeight);
     
-  }, [selectedMilestone, project.milestones, task.id, userCreatedMilestones]);
+  }, [selectedMilestone, project.milestones, task.id, hasMilestones]);
 
 
   const selectedUsers = useMemo(() => 
@@ -428,3 +433,4 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
+
