@@ -46,7 +46,7 @@ type AddTaskDialogProps = {
   onOpenChange: (open: boolean) => void;
   project: Project & { milestones: Milestone[] };
   users: UserWithRoles[];
-  onTaskAdd: (projectId: string, milestoneId: string, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
+  onTaskAdd: (projectId: string, milestoneId: string | null, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
 
 export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users }: AddTaskDialogProps) {
@@ -56,6 +56,8 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
     return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
   }, [users]);
   
+  const hasMilestones = project.milestones && project.milestones.length > 0;
+
   const taskSchema = useMemo(() => z.object({
     title: z.string().min(3, "Task title must be at least 3 characters."),
     description: z.string().optional(),
@@ -63,11 +65,18 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
     endDate: z.date({ required_error: "An end date is required."}),
     assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
     weight: z.number().min(0).max(100),
-    milestoneId: z.string().nonempty("You must select a milestone for the task."),
+    milestoneId: z.string().optional(),
   }).refine(data => data.endDate >= data.startDate, {
       message: "End date must be on or after start date.",
       path: ["endDate"],
   }).superRefine((data, ctx) => {
+    if (!data.milestoneId) {
+        // If there's no milestone ID, it means we're creating the default one.
+        // We can't validate against other tasks in the milestone yet.
+        // We'll trust the backend to handle it, or we can assume 100% remaining weight.
+        return;
+    }
+    
     const selectedMilestone = project.milestones.find(m => m.id === data.milestoneId);
     if (!selectedMilestone) return;
 
@@ -111,24 +120,24 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
         endDate: new Date(),
         assignedUserIds: [],
         weight: 10,
-        milestoneId: project.milestones?.[0]?.id || "",
+        milestoneId: hasMilestones ? project.milestones?.[0]?.id || "" : "",
       });
     }
-  }, [isOpen, project, form]);
+  }, [isOpen, project, form, hasMilestones]);
 
 
   const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
 
   async function onSubmit(data: TaskFormValues) {
     const { milestoneId, ...newTaskData } = data;
-    await onTaskAdd(project.id, milestoneId, newTaskData as any);
+    await onTaskAdd(project.id, milestoneId || null, newTaskData as any);
   }
 
   const selectedMilestoneId = form.watch('milestoneId');
   const selectedMilestone = project.milestones.find(m => m.id === selectedMilestoneId);
 
   const remainingWeight = useMemo(() => {
-    if (!selectedMilestone) return 0;
+    if (!selectedMilestone) return 100; // If no milestone, assume 100% available for the new "General" one
     const existingTasksInMilestone = selectedMilestone.tasks || [];
     const existingTasksWeight = existingTasksInMilestone.reduce((sum, task) => sum + task.weight, 0);
     return 100 - existingTasksWeight;
@@ -148,28 +157,30 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
         </DialogHeader>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            <FormField
-              control={form.control}
-              name="milestoneId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Milestone</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select a milestone" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {project.milestones.map(m => (
-                        <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {hasMilestones && (
+                <FormField
+                control={form.control}
+                name="milestoneId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Milestone</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder="Select a milestone" />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {project.milestones.map(m => (
+                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            )}
             <FormField
               control={form.control}
               name="title"
@@ -313,7 +324,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                                 onValueChange={(value) => field.onChange(value[0])}
                                 max={remainingWeight > 0 ? remainingWeight : 0}
                                 step={5}
-                                disabled={!selectedMilestone}
+                                disabled={!selectedMilestone && hasMilestones}
                             />
                         </FormControl>
                         <FormMessage />
@@ -332,3 +343,5 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
     </Dialog>
   );
 }
+
+    
