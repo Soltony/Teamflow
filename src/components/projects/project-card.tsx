@@ -7,7 +7,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert } from 'lucide-react';
+import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert, ChevronDown } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import type { Task, User, Milestone, Project } from '@/lib/types';
@@ -25,6 +25,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 type ProjectListItemProps = {
   project: any;
@@ -40,6 +41,7 @@ type ProjectListItemProps = {
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
+  const [tasksExpanded, setTasksExpanded] = useState(false);
   const { toast } = useToast();
   const canManageTasks = hasPermission('projects:update');
   
@@ -49,6 +51,8 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const filteredTasks = selectedMilestoneId === 'all' 
     ? allTasks 
     : project.milestones.find((m: any) => m.id === selectedMilestoneId)?.tasks || [];
+  
+  const visibleTasks = tasksExpanded ? filteredTasks : filteredTasks.slice(0, 3);
 
   const calculateMilestoneProgress = (milestone: any) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
@@ -154,28 +158,38 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             )}
         </div>
         <div className="space-y-4">
-            {filteredTasks.length > 0 ? filteredTasks.map((task: any) => (
-                <div key={task.id} className="space-y-1 group">
-                    <div className="flex justify-between items-center">
-                        <span className="text-sm font-medium">{task.title}</span>
-                        <div className="flex items-center gap-2">
-                            <span className="text-xs text-muted-foreground">Weight: {task.weight}%</span>
-                            <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
-                            {canManageTasks && (
-                                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                    <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
-                                        <Pencil className="h-3 w-3" />
-                                    </Button>
-                                    <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
-                                        <Trash2 className="h-3 w-3" />
-                                    </Button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                    <Progress value={task.progress || 0} className="h-2" />
-                </div>
-            )) : (
+            {filteredTasks.length > 0 ? (
+              <>
+                {visibleTasks.map((task: any) => (
+                  <div key={task.id} className="space-y-1 group">
+                      <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium">{task.title}</span>
+                          <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">Weight: {task.weight}%</span>
+                              <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
+                              {canManageTasks && (
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                          <Pencil className="h-3 w-3" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
+                                          <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                  </div>
+                              )}
+                          </div>
+                      </div>
+                      <Progress value={task.progress || 0} className="h-2" />
+                  </div>
+                ))}
+                {filteredTasks.length > 3 && (
+                  <Button variant="link" size="sm" onClick={() => setTasksExpanded(!tasksExpanded)} className="p-0 h-auto">
+                    {tasksExpanded ? 'Show less' : `Show ${filteredTasks.length - 3} more task(s)`}
+                    <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${tasksExpanded ? 'rotate-180' : ''}`} />
+                  </Button>
+                )}
+              </>
+            ) : (
                  <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
                     No tasks yet for this project.
                 </div>
