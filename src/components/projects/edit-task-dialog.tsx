@@ -67,7 +67,7 @@ function createTaskSchema(project: Project & { milestones: (Milestone & {tasks: 
     description: z.string().optional(),
     startDate: z.date({ required_error: "A start date is required."}),
     endDate: z.date({ required_error: "An end date is required."}),
-    assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
+    assignedUserIds: z.array(z.string()).min(1, { message: "At least one user must be assigned." }),
     weight: z.number().min(0, "Weight must be a positive number.").max(100, "Weight cannot exceed 100."),
     status: z.enum(taskStatuses),
     milestoneId: z.string().optional(),
@@ -150,7 +150,12 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   
   useEffect(() => {
     if (isOpen && task) {
+        console.log('EditTaskDialog - task data:', task);
+        console.log('EditTaskDialog - task.assignedUserIds:', task.assignedUserIds);
+        console.log('EditTaskDialog - task.assignees:', (task as any).assignees);
+        
         const assigneeIds: string[] = task.assignedUserIds || (task as any).assignees?.map((a: any) => a.id) || [];
+        console.log('EditTaskDialog - extracted assigneeIds:', assigneeIds);
         
         const isGeneralMilestone = project.milestones.find(m => m.id === task.milestoneId)?.title === "General Tasks";
         const initialMilestoneId = hasMilestones && !isGeneralMilestone ? task.milestoneId ?? undefined : undefined;
@@ -165,6 +170,8 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
             status: task.status,
             milestoneId: initialMilestoneId,
         });
+        
+        console.log('EditTaskDialog - form reset with assignedUserIds:', assigneeIds);
     }
   }, [isOpen, task, form, hasMilestones, project.milestones]);
   
@@ -220,7 +227,16 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
       <DialogContent className="sm:max-w-2xl p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4">
           <DialogTitle>Edit Task "{task.title}"</DialogTitle>
-          <DialogDescription>Modify details and reassign members if needed.</DialogDescription>
+          <DialogDescription>
+            Modify details and reassign members if needed.
+            {(!task.assignedUserIds || task.assignedUserIds.length === 0) && (
+              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                <p className="text-sm text-amber-800">
+                  ⚠️ This task currently has no assigned members. Please assign at least one member before saving.
+                </p>
+              </div>
+            )}
+          </DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-6">
             <Form {...form}>

@@ -419,7 +419,6 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         finalMilestoneId = generalMilestone.id;
     }
 
-
     const finalTaskData = { ...taskData };
 
     if (finalTaskData.status === 'DONE') {
@@ -436,17 +435,24 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         // finalTaskData.progress = 95; // or some other value
     }
     
+    // Prepare the update data
+    const updateData: any = {
+        ...finalTaskData,
+        assignees: assignedUserIds ? {
+            set: assignedUserIds.map((id:string) => ({ id }))
+        } : undefined,
+    };
+
+    // Only update milestone if finalMilestoneId is defined
+    if (finalMilestoneId) {
+        updateData.milestone = {
+            connect: { id: finalMilestoneId }
+        };
+    }
+    
     await prisma.task.update({
         where: { id: taskId },
-        data: {
-            ...finalTaskData,
-            milestone: {
-                connect: { id: finalMilestoneId }
-            },
-            assignees: assignedUserIds ? {
-                set: assignedUserIds.map((id:string) => ({ id }))
-            } : undefined,
-        }
+        data: updateData
     });
     revalidatePath(`/projects`);
     revalidatePath(`/projects/${projectId}`);
@@ -546,7 +552,11 @@ export async function getProjectsPageData(userId: string) {
             status: true,
             milestones: {
                 include: {
-                    tasks: true
+                    tasks: {
+                        include: {
+                            assignees: true,
+                        }
+                    }
                 }
             },
             timelineChangeRequests: {

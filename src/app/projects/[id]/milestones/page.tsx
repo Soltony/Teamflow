@@ -47,11 +47,15 @@ export default function ProjectMilestonesPage() {
                     ...data.project,
                     milestones: data.project.milestones.map((m: any) => ({
                         ...m,
-                        tasks: m.tasks.map((t: any) => ({
-                            ...t,
-                            status: t.status as TaskStatus,
-                            assignedUserIds: t.assignees.map((a: any) => a.id),
-                        }))
+                        tasks: m.tasks.map((t: any) => {
+                            const assignedUserIds = t.assignees.map((a: any) => a.id);
+                            console.log('Milestones page - normalizing task:', t.id, 'assignees:', t.assignees, 'assignedUserIds:', assignedUserIds);
+                            return {
+                                ...t,
+                                status: t.status as TaskStatus,
+                                assignedUserIds: assignedUserIds,
+                            };
+                        })
                     }))
                 };
                 setPageData({

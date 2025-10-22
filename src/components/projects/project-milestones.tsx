@@ -202,7 +202,11 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
                                   <TaskList 
                                       tasks={milestone.tasks} 
                                       users={projectUsers}
-                                      onEditTask={(task) => setEditingTaskInfo({ task, milestone })}
+                                      onEditTask={(task) => {
+                                          console.log('ProjectMilestones - task data from TaskList:', task);
+                                          console.log('ProjectMilestones - task.assignedUserIds:', task.assignedUserIds);
+                                          setEditingTaskInfo({ task, milestone });
+                                      }}
                                       onDeleteTask={(task) => setTaskToDelete(task)}
                                       canManageTasks={canManageProjectTasks}
                                   />
@@ -249,7 +253,7 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
         <EditTaskDialog
             isOpen={!!editingTaskInfo}
             onOpenChange={(open) => !open && setEditingTaskInfo(null)}
-            milestone={editingTaskInfo.milestone}
+            project={project}
             task={editingTaskInfo.task}
             onTaskUpdate={handleTaskUpdate}
             users={projectUsers}
