@@ -420,6 +420,7 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
 
 
     const finalTaskData = { ...taskData };
+    delete finalTaskData.milestoneId; // Remove milestoneId from direct data update
 
     if (finalTaskData.status === 'DONE') {
         finalTaskData.progress = 100;
@@ -439,7 +440,9 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         where: { id: taskId },
         data: {
             ...finalTaskData,
-            milestoneId: finalMilestoneId,
+            milestone: {
+                connect: { id: finalMilestoneId }
+            },
             assignees: assignedUserIds ? {
                 set: assignedUserIds.map((id:string) => ({ id }))
             } : undefined,

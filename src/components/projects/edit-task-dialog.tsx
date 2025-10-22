@@ -56,14 +56,13 @@ type UserWithRoles = User & { roles: { name: string }[] };
 type EditTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project & { milestones: Milestone[] };
-  milestone: Milestone;
+  project: Project & { milestones: (Milestone & {tasks: Task[]})[] };
   task: Task;
   users: UserWithRoles[];
   onTaskUpdate: (updatedTask: Task) => Promise<void>;
 };
 
-export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task, users, onTaskUpdate }: EditTaskDialogProps) {
+export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onTaskUpdate }: EditTaskDialogProps) {
 
   const nonAdminUsers = useMemo(() => {
     if (!users) return [];
@@ -157,10 +156,10 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task,
         assignedUserIds: task.assignedUserIds,
         weight: task.weight,
         status: task.status,
-        milestoneId: milestone?.id || 'project-level'
+        milestoneId: task.milestoneId || 'project-level'
       });
     }
-  }, [isOpen, task, form, milestone?.id]);
+  }, [isOpen, task, form]);
 
 
   const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
@@ -172,7 +171,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task,
       ...taskData,
       startDate: data.startDate.toISOString(),
       endDate: data.endDate.toISOString(),
-      milestoneId: milestoneId === 'project-level' ? null : milestoneId,
+      milestoneId: milestoneId,
     };
     await onTaskUpdate(updatedTask);
   }
