@@ -117,6 +117,7 @@ export default function ProjectsPage() {
     };
 
     const handleEditTask = (task: any, project: any) => {
+        // Normalize the task object here before passing it to the dialog
         const normalizedTask = {
             ...task,
             assignedUserIds: task.assignees?.map((a: any) => a.id) || [],
