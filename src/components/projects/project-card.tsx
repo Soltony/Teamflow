@@ -23,11 +23,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 
 type ProjectListItemProps = {
   project: any;
   users: User[];
-  onAddTask: (project: Project) => void;
+  onAddTask: (project: Project & { milestones: Milestone[] }) => void;
   onEditTask: (task: any, project: any) => void;
   onDeleteTask: (task: any) => void;
   taskToDelete: any;
@@ -37,10 +39,15 @@ type ProjectListItemProps = {
 
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
   const { toast } = useToast();
   const canManageTasks = hasPermission('projects:update');
   
   const allTasks = (project.milestones || []).flatMap((m: any) => m.tasks || []);
+
+  const filteredTasks = selectedMilestoneId === 'all' 
+    ? allTasks 
+    : project.milestones.find((m: any) => m.id === selectedMilestoneId)?.tasks || [];
 
   const calculateMilestoneProgress = (milestone: any) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
@@ -86,6 +93,14 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
 
   const handleAddTaskClick = () => {
+    if (project.milestones.length === 0) {
+        toast({
+            title: "Cannot Add Task",
+            description: "You must create at least one milestone for this project before adding tasks.",
+            variant: "destructive"
+        });
+        return;
+    }
     onAddTask(project);
   };
 
@@ -125,15 +140,28 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       <CardContent className="flex-grow space-y-4">
         <div className="flex justify-between items-center">
             <h4 className="font-semibold text-card-foreground">Tasks</h4>
+             {project.milestones && project.milestones.length > 0 && (
+                <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
+                    <SelectTrigger className="w-[180px] h-9">
+                        <SelectValue placeholder="Filter by milestone..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Tasks</SelectItem>
+                        {project.milestones.map((m: any) => (
+                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
             {canManageTasks && (
-                <Button variant="ghost" size="sm" onClick={handleAddTaskClick} disabled={project.milestones.length === 0}>
+                <Button variant="ghost" size="sm" onClick={handleAddTaskClick}>
                     <PlusCircle className="mr-2 h-4 w-4" />
                     Add Task
                 </Button>
             )}
         </div>
         <div className="space-y-4">
-            {allTasks.length > 0 ? allTasks.map((task: any) => (
+            {filteredTasks.length > 0 ? filteredTasks.map((task: any) => (
                 <div key={task.id} className="space-y-1 group">
                     <div className="flex justify-between items-center">
                         <span className="text-sm font-medium">{task.title}</span>
