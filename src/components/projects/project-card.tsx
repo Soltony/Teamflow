@@ -138,24 +138,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
           className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50"
           onClick={() => setTasksExpanded(!tasksExpanded)}
         >
-            <div className="flex items-center gap-4">
-              <h4 className="font-semibold text-card-foreground">Tasks</h4>
-              {tasksExpanded && userCreatedMilestones && userCreatedMilestones.length > 0 && (
-                  <div onClick={e => e.stopPropagation()}>
-                  <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
-                      <SelectTrigger className="w-[180px] h-9">
-                          <SelectValue placeholder="Filter by milestone..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="all">All Tasks</SelectItem>
-                          {userCreatedMilestones.map((m: any) => (
-                              <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-                  </div>
-              )}
-            </div>
+            <h4 className="font-semibold text-card-foreground">Tasks</h4>
             <div className="flex items-center gap-2">
               {canManageTasks && (
                   <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
@@ -166,9 +149,24 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
               <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${tasksExpanded ? 'rotate-180' : ''}`} />
             </div>
         </div>
-
+        
         {tasksExpanded && (
           <div className="space-y-4 pt-2">
+            {userCreatedMilestones && userCreatedMilestones.length > 0 && (
+                <div onClick={e => e.stopPropagation()}>
+                <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
+                    <SelectTrigger className="w-[180px] h-9">
+                        <SelectValue placeholder="Filter by milestone..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Tasks</SelectItem>
+                        {userCreatedMilestones.map((m: any) => (
+                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+                </div>
+            )}
               {filteredTasks.length > 0 ? (
                 <>
                   {filteredTasks.map((task: any) => (
@@ -196,7 +194,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                 </>
               ) : (
                    <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
-                      No tasks yet for this project.
+                      No tasks yet for this selection.
                   </div>
               )}
           </div>
