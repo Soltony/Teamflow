@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -144,6 +145,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                     <div className="flex justify-between items-center">
                         <span className="text-sm font-medium">{task.title}</span>
                         <div className="flex items-center gap-2">
+                            <span className="text-xs text-muted-foreground">Weight: {task.weight}%</span>
                             <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
                             {canManageTasks && (
                                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
