@@ -86,6 +86,15 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
       message: "End date must be on or after start date.",
       path: ["endDate"],
   }).superRefine((data, ctx) => {
+    if (hasMilestones && !data.milestoneId) {
+      ctx.addIssue({
+        path: ["milestoneId"],
+        message: "A milestone must be selected for this project.",
+        code: z.ZodIssueCode.custom
+      });
+      return; // Stop further validation if milestone is required but missing
+    }
+
     const selectedMilestone = data.milestoneId
       ? project.milestones.find((m) => m.id === data.milestoneId) || null
       : null;
@@ -96,13 +105,12 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
         .filter((t) => t.id !== task.id)
         .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
 
-      const allowedForMilestone = typeof selectedMilestone.weight === "number" ? selectedMilestone.weight : 100;
-      const maxWeightForThisTask = Math.max(0, allowedForMilestone - existingTasksWeight);
+      const maxWeightForThisTask = Math.max(0, 100 - existingTasksWeight);
 
       if (data.weight > maxWeightForThisTask + 1e-6) {
         ctx.addIssue({
           path: ["weight"],
-          message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone.`,
+          message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
         });
       }
 
@@ -115,37 +123,25 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
       if (selectedMilestone.dueDate && data.endDate > parseISO(selectedMilestone.dueDate)) {
         ctx.addIssue({
           path: ["endDate"],
-          message: `Must be on or before milestone end date: ${format(parseISO(selectedMilestone.dueDate), "MMM d")}.`,
+          message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), "MMM d")}.`,
         });
       }
     } else {
-      const projectLevelTasks = (project.tasks || []).filter((t: Task) => !t.milestoneId);
-      const existingProjectLevelWeight = projectLevelTasks
-        .filter((t) => t.id !== task.id)
-        .reduce((s, t) => s + (Number(t.weight) || 0), 0);
-  
-      const remainingForProjectLevel = Math.max(0, 100 - existingProjectLevelWeight);
-      if (data.weight > remainingForProjectLevel + 1e-6) {
-        ctx.addIssue({
-          path: ["weight"],
-          message: `Weight exceeds remaining ${remainingForProjectLevel}% for project-level tasks.`,
-        });
-      }
-  
-      if (project.startDate && data.startDate < parseISO(project.startDate)) {
-        ctx.addIssue({
-          path: ["startDate"],
-          message: `Must be on or after project start date: ${format(parseISO(project.startDate), "MMM d")}.`,
-        });
-      }
-      if (project.endDate && data.endDate > parseISO(project.endDate)) {
-        ctx.addIssue({
-          path: ["endDate"],
-          message: `Must be on or before project end date: ${format(parseISO(project.endDate), "MMM d")}.`,
-        });
-      }
+        // No milestone selected or project has no milestones
+        if (project.startDate && data.startDate < parseISO(project.startDate)) {
+            ctx.addIssue({
+            path: ["startDate"],
+            message: `Must be on or after project start date: ${format(parseISO(project.startDate), "MMM d")}.`,
+            });
+        }
+        if (project.endDate && data.endDate > parseISO(project.endDate)) {
+            ctx.addIssue({
+            path: ["endDate"],
+            message: `Must be on or before project end date: ${format(parseISO(project.endDate), "MMM d")}.`,
+            });
+        }
     }
-  }), [project, task.id]);
+  }), [project, task.id, hasMilestones]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
@@ -167,15 +163,10 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
         .filter((t) => t.id !== task.id)
         .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
   
-      const allowed = typeof selectedMilestone.weight === "number" ? selectedMilestone.weight : 100;
-      return Math.max(0, allowed - otherTasksWeight);
+      return Math.max(0, 100 - otherTasksWeight);
     }
-  
-    const allProjectTasks = project.milestones.flatMap(m => m.tasks);
-    const existingProjectLevel = (allProjectTasks || []).filter(t => !t.milestoneId && t.id !== task.id);
-    const existingProjectLevelWeight = existingProjectLevel.reduce((s, t) => s + (Number(t.weight) || 0), 0);
-    return Math.max(0, 100 - existingProjectLevelWeight);
-  }, [selectedMilestone, project.milestones, task.id, project.tasks]);
+    return 100;
+  }, [selectedMilestone, task.id]);
 
   useEffect(() => {
     if (isOpen && task) {
@@ -243,11 +234,10 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
-                                <SelectValue placeholder="No milestone (project-level)" />
+                                <SelectValue placeholder="Select a milestone" />
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            <SelectItem value="">No milestone (project-level)</SelectItem>
                             {userCreatedMilestones.map(m => (
                                 <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                             ))}
@@ -442,5 +432,3 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
-
-    
