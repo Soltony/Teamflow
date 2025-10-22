@@ -365,7 +365,7 @@ export async function addTask(projectId: string, milestoneId: string | null, dat
             generalMilestone = await prisma.milestone.create({
                 data: {
                     title: "General Tasks",
-                    description: "A default collection of tasks for this project.",
+                    description: "A default collection of tasks for this project that are not assigned to a specific milestone.",
                     startDate: project.startDate,
                     dueDate: project.endDate,
                     weight: 0, // General milestone has no weight towards project completion
@@ -388,7 +388,7 @@ export async function addTask(projectId: string, milestoneId: string | null, dat
     });
     revalidatePath(`/projects`);
     revalidatePath(`/projects/${projectId}`);
-    revalidatePath(`/my-tasks`);
+    revalidatePath('/my-tasks');
 }
 
 export async function updateTask(taskId: string, projectId: string, data: any) {

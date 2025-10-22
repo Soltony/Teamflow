@@ -49,6 +49,67 @@ type AddTaskDialogProps = {
   onTaskAdd: (projectId: string, milestoneId: string | null, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
 
+// By creating the schema inside the component, it can be reactive
+// to props and state like `remainingWeight` and `selectedMilestone`.
+function createTaskSchema(project: Project & { milestones: (Milestone & { tasks: Task[] })[] }) {
+    return z.object({
+      title: z.string().min(3, "Task title must be at least 3 characters."),
+      description: z.string().optional(),
+      startDate: z.date({ required_error: "A start date is required."}),
+      endDate: z.date({ required_error: "An end date is required."}),
+      assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
+      weight: z.number().min(0).max(100),
+      milestoneId: z.string().optional(),
+    }).refine(data => data.endDate >= data.startDate, {
+        message: "End date must be on or after start date.",
+        path: ["endDate"],
+    }).superRefine((data, ctx) => {
+      // Find the selected milestone (if any)
+      const milestone = data.milestoneId ? project.milestones.find(m => m.id === data.milestoneId) : null;
+      
+      // If a milestone is selected, perform milestone-specific validation
+      if (milestone) {
+          const existingTasksWeight = (milestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
+          const remainingWeight = 100 - existingTasksWeight;
+
+          if (data.weight > remainingWeight) {
+              ctx.addIssue({
+                  path: ['weight'],
+                  message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${remainingWeight}%.`,
+              });
+          }
+          
+          if (data.startDate < parseISO(milestone.startDate)) {
+              ctx.addIssue({
+                  path: ['startDate'],
+                  message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
+              });
+          }
+          if (data.endDate > parseISO(milestone.dueDate)) {
+              ctx.addIssue({
+                  path: ['endDate'],
+                  message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
+              });
+          }
+      } else {
+        // If no milestone is selected, validate against the project dates
+        if (data.startDate < parseISO(project.startDate)) {
+          ctx.addIssue({
+            path: ['startDate'],
+            message: `Must be on or after project start date: ${format(parseISO(project.startDate), 'MMM d')}.`
+          });
+        }
+        if (data.endDate > parseISO(project.endDate)) {
+          ctx.addIssue({
+            path: ['endDate'],
+            message: `Must be on or before project end date: ${format(parseISO(project.endDate), 'MMM d')}.`
+          });
+        }
+      }
+    });
+}
+
+
 export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users }: AddTaskDialogProps) {
 
   const nonAdminUsers = useMemo(() => {
@@ -57,7 +118,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   }, [users]);
   
   const hasMilestones = project.milestones && project.milestones.length > 0;
-
+  
   const form = useForm<z.infer<ReturnType<typeof createTaskSchema>>>({
     resolver: zodResolver(createTaskSchema(project)),
   });
@@ -71,62 +132,15 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
 
   const remainingWeight = useMemo(() => {
     if (!selectedMilestone) {
-        // If no milestone is selected (which happens when a project has no milestones),
-        // the new "General Tasks" milestone will have 100% weight available.
+        // If no milestone is selected, it's a project-level task.
+        // We'll treat its weight as part of a separate 100% pool.
+        // For simplicity, we allow up to 100%, but this could be more complex.
         return 100;
     }
-    const existingTasksInMilestone = selectedMilestone.tasks || [];
-    const existingTasksWeight = existingTasksInMilestone.reduce((sum, task) => sum + task.weight, 0);
+    const existingTasksWeight = (selectedMilestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
     return 100 - existingTasksWeight;
   }, [selectedMilestone]);
   
-  // By creating the schema inside the component, it can be reactive
-  // to props and state like `remainingWeight` and `selectedMilestone`.
-  function createTaskSchema(project: Project) {
-      return z.object({
-        title: z.string().min(3, "Task title must be at least 3 characters."),
-        description: z.string().optional(),
-        startDate: z.date({ required_error: "A start date is required."}),
-        endDate: z.date({ required_error: "An end date is required."}),
-        assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
-        weight: z.number().min(0).max(100),
-        milestoneId: z.string().optional(),
-      }).refine(data => data.endDate >= data.startDate, {
-          message: "End date must be on or after start date.",
-          path: ["endDate"],
-      }).superRefine((data, ctx) => {
-        const milestone = data.milestoneId ? project.milestones.find(m => m.id === data.milestoneId) : null;
-        
-        const currentRemainingWeight = (() => {
-            if (!milestone) return 100;
-            const existingTasksWeight = (milestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
-            return 100 - existingTasksWeight;
-        })();
-
-        if (data.weight > currentRemainingWeight) {
-            ctx.addIssue({
-                path: ['weight'],
-                message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${currentRemainingWeight}%.`,
-            });
-        }
-        
-        if (milestone) {
-             if (data.startDate < parseISO(milestone.startDate)) {
-                ctx.addIssue({
-                    path: ['startDate'],
-                    message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
-                });
-            }
-            if (data.endDate > parseISO(milestone.dueDate)) {
-                ctx.addIssue({
-                    path: ['endDate'],
-                    message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
-                });
-            }
-        }
-      });
-  }
-
   useEffect(() => {
     if (isOpen) {
       form.reset({
@@ -136,7 +150,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
         endDate: new Date(),
         assignedUserIds: [],
         weight: 10,
-        milestoneId: hasMilestones ? project.milestones?.[0]?.id : undefined,
+        milestoneId: "", // Default to project-level
       });
     }
   }, [isOpen, project, form, hasMilestones]);
@@ -169,14 +183,15 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                 name="milestoneId"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Milestone</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormLabel>Assign to milestone (optional)</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder="Select a milestone" />
+                            <SelectValue placeholder="Assign to project (no milestone)" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
+                        <SelectItem value="">Assign to project (no milestone)</SelectItem>
                         {project.milestones.map(m => (
                             <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                         ))}
@@ -323,14 +338,13 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                 name="weight"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Task Weight (Remaining in milestone: {remainingWeight}%): {field.value}%</FormLabel>
+                        <FormLabel>Task Weight ({selectedMilestoneId ? `Remaining in milestone: ${remainingWeight}%` : "Relative weight for project-level task"}): {field.value}%</FormLabel>
                         <FormControl>
                             <Slider
                                 value={[field.value ?? 0]}
                                 onValueChange={(value) => field.onChange(value[0])}
                                 max={remainingWeight > 0 ? remainingWeight : 0}
                                 step={5}
-                                disabled={!selectedMilestone && hasMilestones}
                             />
                         </FormControl>
                         <FormMessage />
