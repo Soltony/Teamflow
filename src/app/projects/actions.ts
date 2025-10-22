@@ -392,7 +392,32 @@ export async function addTask(projectId: string, milestoneId: string | null, dat
 }
 
 export async function updateTask(taskId: string, projectId: string, data: any) {
-    const { assignedUserIds, ...taskData } = data;
+    const { assignedUserIds, milestoneId, ...taskData } = data;
+    let finalMilestoneId = milestoneId;
+
+    if (finalMilestoneId === 'project-level') {
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            include: { milestones: true }
+        });
+        if (!project) throw new Error("Project not found");
+        
+        let generalMilestone = project.milestones.find(m => m.title === "General Tasks");
+        if (!generalMilestone) {
+            generalMilestone = await prisma.milestone.create({
+                data: {
+                    title: "General Tasks",
+                    description: "A default collection of tasks for this project that are not assigned to a specific milestone.",
+                    startDate: project.startDate,
+                    dueDate: project.endDate,
+                    weight: 0,
+                    projectId: projectId,
+                }
+            });
+        }
+        finalMilestoneId = generalMilestone.id;
+    }
+
 
     const finalTaskData = { ...taskData };
 
@@ -414,6 +439,7 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         where: { id: taskId },
         data: {
             ...finalTaskData,
+            milestoneId: finalMilestoneId,
             assignees: assignedUserIds ? {
                 set: assignedUserIds.map((id:string) => ({ id }))
             } : undefined,

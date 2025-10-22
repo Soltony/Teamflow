@@ -38,6 +38,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { useMemo, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
+import { useToast } from "@/hooks/use-toast";
 
 type UserWithRoles = User & { roles: { name: string }[] };
 
@@ -65,7 +66,7 @@ function createTaskSchema(project: Project & { milestones: (Milestone & { tasks:
         path: ["endDate"],
     }).superRefine((data, ctx) => {
       // Find the selected milestone (if any)
-      const milestone = data.milestoneId ? project.milestones.find(m => m.id === data.milestoneId) : null;
+      const milestone = data.milestoneId && data.milestoneId !== 'project-level' ? project.milestones.find(m => m.id === data.milestoneId) : null;
       
       // If a milestone is selected, perform milestone-specific validation
       if (milestone) {
@@ -85,7 +86,7 @@ function createTaskSchema(project: Project & { milestones: (Milestone & { tasks:
                   message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
               });
           }
-          if (data.endDate > parseISO(milestone.dueDate)) {
+          if (data.dueDate > parseISO(milestone.dueDate)) {
               ctx.addIssue({
                   path: ['endDate'],
                   message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
@@ -126,20 +127,23 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   const selectedMilestoneId = form.watch('milestoneId');
   
   const selectedMilestone = useMemo(() => {
-    if (!selectedMilestoneId) return null;
+    if (!selectedMilestoneId || selectedMilestoneId === 'project-level') return null;
     return project.milestones.find(m => m.id === selectedMilestoneId);
   }, [selectedMilestoneId, project.milestones]);
 
   const remainingWeight = useMemo(() => {
     if (!selectedMilestone) {
-        // If no milestone is selected, it's a project-level task.
-        // We'll treat its weight as part of a separate 100% pool.
-        // For simplicity, we allow up to 100%, but this could be more complex.
+        // Find the "General Tasks" milestone if it exists
+        const generalMilestone = project.milestones.find(m => m.title === "General Tasks");
+        if (generalMilestone) {
+            return 100 - (generalMilestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
+        }
+        // If it doesn't exist, it will be created, so 100% is available.
         return 100;
     }
     const existingTasksWeight = (selectedMilestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
     return 100 - existingTasksWeight;
-  }, [selectedMilestone]);
+  }, [selectedMilestone, project.milestones]);
   
   useEffect(() => {
     if (isOpen) {
@@ -150,7 +154,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
         endDate: new Date(),
         assignedUserIds: [],
         weight: 10,
-        milestoneId: "", // Default to project-level
+        milestoneId: hasMilestones ? "project-level" : undefined,
       });
     }
   }, [isOpen, project, form, hasMilestones]);
@@ -160,7 +164,8 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
 
   async function onSubmit(data: z.infer<ReturnType<typeof createTaskSchema>>) {
     const { milestoneId, ...newTaskData } = data;
-    await onTaskAdd(project.id, milestoneId || null, newTaskData as any);
+    const finalMilestoneId = milestoneId === 'project-level' ? null : milestoneId;
+    await onTaskAdd(project.id, finalMilestoneId || null, newTaskData as any);
   }
 
   return (
@@ -191,7 +196,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                        <SelectItem value="">Assign to project (no milestone)</SelectItem>
+                        <SelectItem value="project-level">Assign to project (no milestone)</SelectItem>
                         {project.milestones.map(m => (
                             <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                         ))}
@@ -338,7 +343,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                 name="weight"
                 render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Task Weight ({selectedMilestoneId ? `Remaining in milestone: ${remainingWeight}%` : "Relative weight for project-level task"}): {field.value}%</FormLabel>
+                        <FormLabel>Task Weight ({selectedMilestoneId && selectedMilestoneId !== 'project-level' ? `Remaining in milestone: ${remainingWeight}%` : "Relative weight for project-level task"}): {field.value}%</FormLabel>
                         <FormControl>
                             <Slider
                                 value={[field.value ?? 0]}

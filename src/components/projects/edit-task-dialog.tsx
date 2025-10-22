@@ -70,15 +70,6 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task,
     return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
   }, [users]);
 
-  const weightOfOtherTasks = useMemo(() => {
-    if (!milestone || !milestone.tasks) return 0;
-    return milestone.tasks
-      .filter(t => t.id !== task.id)
-      .reduce((sum, t) => sum + t.weight, 0);
-  }, [milestone?.tasks, task.id]);
-  
-  const maxWeightForThisTask = 100 - weightOfOtherTasks;
-
   const taskSchema = useMemo(() => z.object({
     title: z.string().min(3, "Task title must be at least 3 characters."),
     description: z.string().optional(),
@@ -92,7 +83,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task,
       message: "End date must be on or after start date.",
       path: ["endDate"],
   }).superRefine((data, ctx) => {
-    const selectedMilestone = data.milestoneId ? project.milestones.find(m => m.id === data.milestoneId) : null;
+    const selectedMilestone = data.milestoneId && data.milestoneId !== 'project-level' ? project.milestones.find(m => m.id === data.milestoneId) : null;
     
     if (selectedMilestone) {
         const milestoneTasks = selectedMilestone.tasks || [];
@@ -140,6 +131,21 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task,
   const form = useForm<TaskFormValues>({
     resolver: zodResolver(taskSchema),
   });
+  
+  const selectedMilestoneId = form.watch('milestoneId');
+  
+  const selectedMilestone = useMemo(() => {
+    if (!selectedMilestoneId || selectedMilestoneId === 'project-level') return null;
+    return project.milestones.find(m => m.id === selectedMilestoneId);
+  }, [selectedMilestoneId, project.milestones]);
+
+  const maxWeightForThisTask = useMemo(() => {
+    if (!selectedMilestone) return 100;
+    const otherTasksWeight = (selectedMilestone.tasks || [])
+      .filter(t => t.id !== task.id)
+      .reduce((sum, t) => sum + t.weight, 0);
+    return 100 - otherTasksWeight;
+  }, [selectedMilestone, task.id]);
 
   useEffect(() => {
     if (isOpen) {
@@ -151,7 +157,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task,
         assignedUserIds: task.assignedUserIds,
         weight: task.weight,
         status: task.status,
-        milestoneId: milestone?.id
+        milestoneId: milestone?.id || 'project-level'
       });
     }
   }, [isOpen, task, form, milestone?.id]);
@@ -166,11 +172,11 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task,
       ...taskData,
       startDate: data.startDate.toISOString(),
       endDate: data.endDate.toISOString(),
+      milestoneId: milestoneId === 'project-level' ? null : milestoneId,
     };
     await onTaskUpdate(updatedTask);
   }
 
-  const selectedMilestoneId = form.watch('milestoneId');
   const hasMilestones = project.milestones && project.milestones.length > 0;
 
   return (
@@ -201,7 +207,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, milestone, task,
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                        <SelectItem value="">Assign to project (no milestone)</SelectItem>
+                        <SelectItem value="project-level">Assign to project (no milestone)</SelectItem>
                         {project.milestones.map(m => (
                             <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                         ))}
