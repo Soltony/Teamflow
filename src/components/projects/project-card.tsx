@@ -132,72 +132,78 @@ const { hasPermission } = useAuth();
             )}
         </div>
       </CardHeader>
-      <CardContent className="flex-grow space-y-2">
-        <div 
-          className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50"
-          onClick={() => setTasksExpanded(!tasksExpanded)}
-        >
-            <h4 className="font-semibold text-card-foreground">Tasks</h4>
-            <div className="flex items-center gap-2">
-              {canManageTasks && (
-                  <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
-                      <PlusCircle className="mr-2 h-4 w-4" />
-                      Add Task
-                  </Button>
-              )}
-              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${tasksExpanded ? 'rotate-180' : ''}`} />
-            </div>
-        </div>
-        
-        {tasksExpanded && (
-          <div className="space-y-4 pt-2">
-            {userCreatedMilestones && userCreatedMilestones.length > 0 && (
-                <div onClick={e => e.stopPropagation()}>
-                <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
-                    <SelectTrigger className="w-[180px] h-9">
-                        <SelectValue placeholder="Filter by milestone..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Tasks</SelectItem>
-                        {userCreatedMilestones.map((m: any) => (
-                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                </div>
-            )}
-              {filteredTasks.length > 0 ? (
-                <>
-                  {filteredTasks.map((task: any) => (
-                    <div key={task.id} className="space-y-1 group">
-                        <div className="flex justify-between items-center">
-                            <span className="text-sm font-medium">{task.title}</span>
-                            <div className="flex items-center gap-2">
-                                <span className="text-xs text-muted-foreground">Weight: {task.weight}%</span>
-                                <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
-                                {canManageTasks && (
-                                    <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
-                                            <Pencil className="h-3 w-3" />
-                                        </Button>
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
-                                            <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-                        <Progress value={task.progress || 0} className="h-2" />
-                    </div>
-                  ))}
-                </>
-              ) : (
-                   <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
-                      No tasks yet for this selection.
+      <CardContent className="flex-grow flex flex-col">
+        {/* Tasks Section - Isolated and Flexible */}
+        <div className="flex-1 flex flex-col">
+          <div 
+            className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50"
+            onClick={() => setTasksExpanded(!tasksExpanded)}
+          >
+              <h4 className="font-semibold text-card-foreground">Tasks</h4>
+              <div className="flex items-center gap-2">
+                {canManageTasks && (
+                    <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Task
+                    </Button>
+                )}
+                <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${tasksExpanded ? 'rotate-180' : ''}`} />
+              </div>
+          </div>
+          
+          {/* Collapsible Tasks Content - Takes no space when collapsed */}
+          <div className={`transition-all duration-200 ease-in-out overflow-hidden ${
+            tasksExpanded ? 'max-h-[500px] opacity-100' : 'max-h-0 opacity-0'
+          }`}>
+            <div className="space-y-4 pt-2">
+              {userCreatedMilestones && userCreatedMilestones.length > 0 && (
+                  <div onClick={e => e.stopPropagation()}>
+                  <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
+                      <SelectTrigger className="w-[180px] h-9">
+                          <SelectValue placeholder="Filter by milestone..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="all">All Tasks</SelectItem>
+                          {userCreatedMilestones.map((m: any) => (
+                              <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
                   </div>
               )}
+                {filteredTasks.length > 0 ? (
+                  <>
+                    {filteredTasks.map((task: any) => (
+                      <div key={task.id} className="space-y-1 group">
+                          <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium">{task.title}</span>
+                              <div className="flex items-center gap-2">
+                                  <span className="text-xs text-muted-foreground">Weight: {task.weight}%</span>
+                                  <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
+                                  {canManageTasks && (
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                              <Pencil className="h-3 w-3" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
+                                              <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                      </div>
+                                  )}
+                              </div>
+                          </div>
+                          <Progress value={task.progress || 0} className="h-2" />
+                      </div>
+                    ))}
+                  </>
+                ) : (
+                     <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
+                        No tasks yet for this selection.
+                    </div>
+                )}
+            </div>
           </div>
-        )}
+        </div>
       </CardContent>
       {project.timelineChangeRequests?.length > 0 && (
           <CardFooter>
