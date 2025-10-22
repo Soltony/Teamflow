@@ -80,7 +80,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     startDate: z.date({ required_error: "A start date is required."}),
     endDate: z.date({ required_error: "An end date is required."}),
     assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
-    weight: z.number().min(0).max(100),
+    weight: z.number().min(0, "Number must be greater than or equal to 0"),
     status: z.enum(taskStatuses),
     milestoneId: z.string().optional(),
   }).refine(data => data.endDate >= data.startDate, {
@@ -101,12 +101,12 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
         const existingTasksWeight = milestoneTasks
             .filter(t => t.id !== task.id)
             .reduce((sum, t) => sum + t.weight, 0);
-        const remainingWeight = 100 - existingTasksWeight;
+        const maxWeightForThisTask = 100 - existingTasksWeight;
         
-        if (data.weight > remainingWeight) {
+        if (data.weight > maxWeightForThisTask) {
             ctx.addIssue({
                 path: ['weight'],
-                message: `Weight exceeds remaining ${remainingWeight}% for milestone.`
+                message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone.`
             });
         }
         if (selectedMilestone.startDate && data.startDate < parseISO(selectedMilestone.startDate)) {
@@ -155,7 +155,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     const otherTasksWeight = (selectedMilestone.tasks || [])
       .filter(t => t.id !== task.id)
       .reduce((sum, t) => sum + t.weight, 0);
-    return 100 - otherTasksWeight;
+    return Math.max(0, 100 - otherTasksWeight);
   }, [selectedMilestone, task.id]);
 
   useEffect(() => {
@@ -174,7 +174,10 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   }, [isOpen, task, form, hasMilestones]);
 
 
-  const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
+  const selectedUsers = useMemo(() => 
+    (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id)),
+    [users, form.watch('assignedUserIds')]
+  );
   
   async function onSubmit(data: TaskFormValues) {
     const { milestoneId, ...taskData } = data;
@@ -323,7 +326,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <FormControl>
-                            <Button variant="outline" className={cn("w-full justify-start text-left", !field.value?.length && "text-muted-foreground")}>
+                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-10", !field.value?.length && "text-muted-foreground")}>
                                 <span className="truncate">
                                 {selectedUsers.length > 0
                                     ? selectedUsers.map(u => u.name).join(', ')
