@@ -308,10 +308,12 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <FormControl>
-                            <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
+                            <Button variant="outline" className={cn("w-full justify-start text-left", !field.value?.length && "text-muted-foreground")}>
+                                <span className="truncate">
                                 {selectedUsers.length > 0
-                                    ? `${selectedUsers.length} member(s) selected`
+                                    ? selectedUsers.map(u => u.name).join(', ')
                                     : "Select members..."}
+                                </span>
                               <ChevronDown className="ml-auto h-4 w-4" />
                             </Button>
                           </FormControl>
@@ -375,5 +377,3 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
     </Dialog>
   );
 }
-
-    
