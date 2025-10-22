@@ -24,6 +24,7 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
+import { cn } from '@/lib/utils';
 
 type ProjectListItemProps = {
   project: any;
@@ -37,7 +38,7 @@ type ProjectListItemProps = {
 };
 
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
-const { hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
 
@@ -129,8 +130,42 @@ const { hasPermission } = useAuth();
             )}
         </div>
       </CardHeader>
-                  </div>
-              )}
+
+      <CardContent className="flex-grow flex flex-col">
+        <div className="space-y-1 flex-grow">
+            <div className="flex justify-between mb-1">
+                <span className="text-sm font-medium">Overall Progress</span>
+            </div>
+            <Progress value={progress} className="h-2.5" />
+        </div>
+        <div className="mt-4 border-t pt-4">
+            <div className="flex justify-between items-center cursor-pointer" onClick={() => setTasksExpanded(!tasksExpanded)}>
+                <h4 className="font-semibold">Tasks ({allTasks.length})</h4>
+                <div className="flex items-center gap-2">
+                    {canManageTasks && (
+                        <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Task
+                        </Button>
+                    )}
+                    <ChevronDown className={cn("h-5 w-5 transition-transform", tasksExpanded && "rotate-180")} />
+                </div>
+            </div>
+            {tasksExpanded && (
+              <div className="mt-4 space-y-3">
+                {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
+                    <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
+                        <SelectTrigger className="w-full sm:w-[240px] h-9">
+                            <SelectValue placeholder="Filter by milestone..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Milestones</SelectItem>
+                            {userCreatedMilestones.map((m: any) => (
+                                <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                )}
                 {filteredTasks.length > 0 ? (
                   <>
                     {filteredTasks.map((task: any) => (
@@ -162,7 +197,7 @@ const { hasPermission } = useAuth();
                     </div>
                 )}
             </div>
-          </div>
+            )}
         </div>
       </CardContent>
 
@@ -277,5 +312,3 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
-
-    
