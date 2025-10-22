@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -80,13 +81,13 @@ function createTaskSchema(project: Project & { milestones: (Milestone & { tasks:
               });
           }
           
-          if (data.startDate < parseISO(milestone.startDate)) {
+          if (milestone.startDate && data.startDate < parseISO(milestone.startDate)) {
               ctx.addIssue({
                   path: ['startDate'],
                   message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
               });
           }
-          if (data.dueDate > parseISO(milestone.dueDate)) {
+          if (milestone.dueDate && data.endDate > parseISO(milestone.dueDate)) {
               ctx.addIssue({
                   path: ['endDate'],
                   message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
@@ -94,13 +95,13 @@ function createTaskSchema(project: Project & { milestones: (Milestone & { tasks:
           }
       } else {
         // If no milestone is selected, validate against the project dates
-        if (data.startDate < parseISO(project.startDate)) {
+        if (project.startDate && data.startDate < parseISO(project.startDate)) {
           ctx.addIssue({
             path: ['startDate'],
             message: `Must be on or after project start date: ${format(parseISO(project.startDate), 'MMM d')}.`
           });
         }
-        if (data.endDate > parseISO(project.endDate)) {
+        if (project.endDate && data.endDate > parseISO(project.endDate)) {
           ctx.addIssue({
             path: ['endDate'],
             message: `Must be on or before project end date: ${format(parseISO(project.endDate), 'MMM d')}.`
@@ -132,18 +133,15 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   }, [selectedMilestoneId, project.milestones]);
 
   const remainingWeight = useMemo(() => {
-    if (!selectedMilestone) {
-        // Find the "General Tasks" milestone if it exists
-        const generalMilestone = project.milestones.find(m => m.title === "General Tasks");
-        if (generalMilestone) {
-            return 100 - (generalMilestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
-        }
-        // If it doesn't exist, it will be created, so 100% is available.
+    if (selectedMilestoneId === 'project-level' || !selectedMilestone) {
+        // If it's a project-level task, the concept of remaining weight doesn't apply in the same way.
+        // We can allow up to 100 for any single project-level task. The "General Tasks" milestone has 0 weight towards project completion.
         return 100;
     }
+    // If a specific milestone is selected, calculate remaining weight for it.
     const existingTasksWeight = (selectedMilestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
     return 100 - existingTasksWeight;
-  }, [selectedMilestone, project.milestones]);
+  }, [selectedMilestoneId, selectedMilestone, project.milestones]);
   
   useEffect(() => {
     if (isOpen) {
@@ -175,195 +173,197 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
             form.reset();
         }
     }}>
-      <DialogContent className="sm:max-w-2xl">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-2xl p-0 flex flex-col max-h-[90dvh]">
+        <DialogHeader className="p-6 pb-4">
           <DialogTitle>Add New Task to "{project.name}"</DialogTitle>
           <DialogDescription>Fill in the details for the new task. The total weight of all tasks in a milestone cannot exceed 100%.</DialogDescription>
         </DialogHeader>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
-            {hasMilestones && (
-                <FormField
-                control={form.control}
-                name="milestoneId"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Assign to milestone (optional)</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder="Assign to project (no milestone)" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        <SelectItem value="project-level">Assign to project (no milestone)</SelectItem>
-                        {project.milestones.map(m => (
-                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
+        <div className="flex-1 overflow-y-auto px-6">
+            <Form {...form}>
+              <form id="add-task-form" onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
+                {hasMilestones && (
+                    <FormField
+                    control={form.control}
+                    name="milestoneId"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Assign to milestone (optional)</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                            <SelectTrigger>
+                                <SelectValue placeholder="Assign to project (no milestone)" />
+                            </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                            <SelectItem value="project-level">Assign to project (no milestone)</SelectItem>
+                            {project.milestones.map(m => (
+                                <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                            ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
                 )}
-                />
-            )}
-            <FormField
-              control={form.control}
-              name="title"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Task Title</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., Setup database schema" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="description"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Description (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea placeholder="Describe the task requirements..." {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
-                    control={form.control}
-                    name="startDate"
-                    render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Start Date</FormLabel>
-                        <Popover>
-                        <PopoverTrigger asChild>
-                            <FormControl>
-                            <Button
-                                variant={"outline"}
-                                className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                                )}
-                            >
-                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                            </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                        </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="endDate"
-                    render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>End Date</FormLabel>
-                        <Popover>
-                        <PopoverTrigger asChild>
-                            <FormControl>
-                            <Button
-                                variant={"outline"}
-                                className={cn(
-                                "w-full pl-3 text-left font-normal",
-                                !field.value && "text-muted-foreground"
-                                )}
-                            >
-                                {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                            </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                        </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            </div>
-            <FormField
-              control={form.control}
-              name="assignedUserIds"
-              render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel>Select members</FormLabel>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Task Title</FormLabel>
                       <FormControl>
-                        <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
-                            {selectedUsers.length > 0
-                                ? `${selectedUsers.length} member(s) selected`
-                                : "Select members..."}
-                          <ChevronDown className="ml-auto h-4 w-4" />
-                        </Button>
+                        <Input placeholder="e.g., Setup database schema" {...field} />
                       </FormControl>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-60 overflow-y-auto">
-                      {nonAdminUsers.map((user) => (
-                        <DropdownMenuCheckboxItem
-                          key={user.id}
-                          checked={field.value?.includes(user.id)}
-                          onCheckedChange={(checked) => {
-                            const newValues = field.value ? [...field.value] : [];
-                            if (checked) {
-                              newValues.push(user.id);
-                            } else {
-                              const index = newValues.indexOf(user.id);
-                              if (index > -1) {
-                                newValues.splice(index, 1);
-                              }
-                            }
-                            field.onChange(newValues);
-                          }}
-                           onSelect={(e) => e.preventDefault()}
-                        >
-                          {user.name}
-                        </DropdownMenuCheckboxItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-             <FormField
-                control={form.control}
-                name="weight"
-                render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Task Weight ({selectedMilestoneId && selectedMilestoneId !== 'project-level' ? `Remaining in milestone: ${remainingWeight}%` : "Relative weight for project-level task"}): {field.value}%</FormLabel>
-                        <FormControl>
-                            <Slider
-                                value={[field.value ?? 0]}
-                                onValueChange={(value) => field.onChange(value[0])}
-                                max={remainingWeight > 0 ? remainingWeight : 0}
-                                step={5}
-                            />
-                        </FormControl>
-                        <FormMessage />
+                      <FormMessage />
                     </FormItem>
-                )}
-            />
-            <DialogFooter>
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-              <Button type="submit" disabled={form.formState.isSubmitting}>
-                {form.formState.isSubmitting ? "Adding..." : "Add Task"}
-              </Button>
-            </DialogFooter>
-          </form>
-        </Form>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="description"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Description (Optional)</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="Describe the task requirements..." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="startDate"
+                        render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Start Date</FormLabel>
+                            <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                    )}
+                                >
+                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                            </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="endDate"
+                        render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>End Date</FormLabel>
+                            <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                    )}
+                                >
+                                    {field.value ? format(field.value, "PPP") : <span>Pick a date</span>}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
+                            </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="assignedUserIds"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-col">
+                      <FormLabel>Select members</FormLabel>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <FormControl>
+                            <Button variant="outline" className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}>
+                                {selectedUsers.length > 0
+                                    ? `${selectedUsers.length} member(s) selected`
+                                    : "Select members..."}
+                              <ChevronDown className="ml-auto h-4 w-4" />
+                            </Button>
+                          </FormControl>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-60 overflow-y-auto">
+                          {nonAdminUsers.map((user) => (
+                            <DropdownMenuCheckboxItem
+                              key={user.id}
+                              checked={field.value?.includes(user.id)}
+                              onCheckedChange={(checked) => {
+                                const newValues = field.value ? [...field.value] : [];
+                                if (checked) {
+                                  newValues.push(user.id);
+                                } else {
+                                  const index = newValues.indexOf(user.id);
+                                  if (index > -1) {
+                                    newValues.splice(index, 1);
+                                  }
+                                }
+                                field.onChange(newValues);
+                              }}
+                               onSelect={(e) => e.preventDefault()}
+                            >
+                              {user.name}
+                            </DropdownMenuCheckboxItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="weight"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Task Weight ({selectedMilestoneId && selectedMilestoneId !== 'project-level' ? `Remaining in milestone: ${remainingWeight}%` : "Relative weight for project-level task"}): {field.value}%</FormLabel>
+                            <FormControl>
+                                <Slider
+                                    value={[field.value ?? 0]}
+                                    onValueChange={(value) => field.onChange(value[0])}
+                                    max={remainingWeight > 0 ? remainingWeight : 100}
+                                    step={5}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
+                />
+              </form>
+            </Form>
+        </div>
+        <DialogFooter className="p-6 pt-4 border-t">
+          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button type="submit" form="add-task-form" disabled={form.formState.isSubmitting}>
+            {form.formState.isSubmitting ? "Adding..." : "Add Task"}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
