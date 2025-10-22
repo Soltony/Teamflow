@@ -105,12 +105,12 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
         .filter((t) => t.id !== task.id)
         .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
       
-      const remainingForMilestone = 100 - existingTasksWeight;
+      const maxWeightForThisTask = 100 - existingTasksWeight;
 
-      if (data.weight > remainingForMilestone + 1e-6) { // Use a small epsilon for float comparison
+      if (data.weight > maxWeightForThisTask + 1e-6) { // Use a small epsilon for float comparison
         ctx.addIssue({
           path: ["weight"],
-          message: `Weight exceeds remaining ${remainingForMilestone}% for milestone tasks.`,
+          message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
         });
       }
 
@@ -126,8 +126,23 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
           message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), "MMM d")}.`,
         });
       }
+    } else {
+        // Project-level task logic (project has no milestones)
+        const allTasks = project.milestones.flatMap(m => m.tasks);
+        const projectLevelTasks = allTasks.filter(t => !userCreatedMilestones.some(m => m.id === t.milestoneId));
+        const otherProjectLevelTasksWeight = projectLevelTasks
+            .filter((t) => t.id !== task.id)
+            .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
+        
+        const remainingForProject = 100 - otherProjectLevelTasksWeight;
+        if (data.weight > remainingForProject + 1e-6) {
+             ctx.addIssue({
+                path: ["weight"],
+                message: `Weight for all project-level tasks cannot exceed 100%. Remaining: ${remainingForProject}%.`,
+            });
+        }
     }
-  }), [project, task.id, hasMilestones]);
+  }), [project, task.id, hasMilestones, userCreatedMilestones]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
@@ -139,10 +154,9 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     if (isOpen && task) {
       const assigneeIds: string[] =
         (task as any).assignedUserIds ??
-        (Array.isArray((task as any).assignees) ? (task as any).assignees.map((u: any) => u.id) : []) ??
-        [];
+        (Array.isArray((task as any).assignees) ? (task as any).assignees.map((u: any) => u.id) : []);
   
-      const initialMilestoneId = task.milestoneId ?? undefined;
+      const initialMilestoneId = hasMilestones ? task.milestoneId ?? undefined : undefined;
   
       form.reset({
         title: task.title,
@@ -155,7 +169,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
         milestoneId: initialMilestoneId,
       });
     }
-  }, [isOpen, task, form]);
+  }, [isOpen, task, form, hasMilestones]);
   
   const selectedMilestoneId = form.watch('milestoneId');
   const assignedUserIds = form.watch('assignedUserIds');
@@ -166,7 +180,6 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   }, [selectedMilestoneId, project.milestones]);
 
   const maxWeightForThisTask = useMemo(() => {
-    // If a milestone is selected, the weight is relative to 100 for that milestone.
     if (selectedMilestone) {
       const otherTasksWeight = (selectedMilestone.tasks || [])
         .filter((t) => t.id !== task.id)
@@ -174,9 +187,9 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
       return Math.max(0, 100 - otherTasksWeight);
     }
     
-    // If no milestone is selected, it's a project-level task. Find all project-level tasks.
-    const allProjectTasks = project.milestones.flatMap(m => m.tasks);
-    const projectLevelTasks = allProjectTasks.filter(t => t.milestoneId === task.milestoneId);
+    // Project-level task (no milestone)
+    const allTasks = project.milestones.flatMap(m => m.tasks);
+    const projectLevelTasks = allTasks.filter(t => !userCreatedMilestones.some(m => m.id === t.milestoneId));
     
     const otherProjectLevelTasksWeight = projectLevelTasks
         .filter((t) => t.id !== task.id)
@@ -184,7 +197,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
 
     return Math.max(0, 100 - otherProjectLevelTasksWeight);
     
-  }, [selectedMilestone, project.milestones, task.id, task.milestoneId]);
+  }, [selectedMilestone, project.milestones, task.id, userCreatedMilestones]);
 
 
   const selectedUsers = useMemo(() => 
@@ -425,3 +438,5 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
+
+    
