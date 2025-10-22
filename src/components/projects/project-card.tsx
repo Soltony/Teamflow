@@ -60,7 +60,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const selectedMilestone = project.milestones.find((m: Milestone) => m.id === selectedMilestoneId);
   
   // Ensure tasksToShow is always an array
-  const tasksToShow = selectedMilestone ? selectedMilestone.tasks || [] : project.milestones.flatMap((m:any) => m.tasks || []);
+  const tasksToShow = selectedMilestone ? selectedMilestone.tasks || [] : (project.milestones || []).flatMap((m:any) => m.tasks || []);
 
   const calculateMilestoneProgress = (milestone: any) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
