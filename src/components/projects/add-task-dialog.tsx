@@ -54,7 +54,9 @@ type AddTaskDialogProps = {
 // By creating the schema inside the component, it can be reactive
 // to props and state like `remainingWeight` and `selectedMilestone`.
 function createTaskSchema(project: Project & { milestones: (Milestone & { tasks: Task[] })[] }) {
-    const hasMilestones = project.milestones && project.milestones.length > 0;
+    const userCreatedMilestones = project.milestones?.filter(m => m.title !== "General Tasks") || [];
+    const hasMilestones = userCreatedMilestones.length > 0;
+    
     return z.object({
       title: z.string().min(3, "Task title must be at least 3 characters."),
       description: z.string().optional(),
@@ -124,7 +126,11 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
     return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
   }, [users]);
   
-  const hasMilestones = project.milestones && project.milestones.length > 0;
+  const userCreatedMilestones = useMemo(() => {
+    return project.milestones?.filter(m => m.title !== "General Tasks") || [];
+  }, [project.milestones]);
+
+  const hasMilestones = userCreatedMilestones.length > 0;
   
   const form = useForm<z.infer<ReturnType<typeof createTaskSchema>>>({
     resolver: zodResolver(createTaskSchema(project)),
@@ -197,7 +203,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            {project.milestones.map(m => (
+                            {userCreatedMilestones.map(m => (
                                 <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                             ))}
                             </SelectContent>

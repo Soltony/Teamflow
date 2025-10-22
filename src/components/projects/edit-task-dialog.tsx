@@ -63,7 +63,11 @@ type EditTaskDialogProps = {
 };
 
 export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onTaskUpdate }: EditTaskDialogProps) {
-  const hasMilestones = project.milestones && project.milestones.length > 0;
+  const userCreatedMilestones = useMemo(() => {
+    return project.milestones?.filter(m => m.title !== "General Tasks") || [];
+  }, [project.milestones]);
+  
+  const hasMilestones = userCreatedMilestones.length > 0;
 
   const nonAdminUsers = useMemo(() => {
     if (!users) return [];
@@ -214,7 +218,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            {project.milestones.map(m => (
+                            {userCreatedMilestones.map(m => (
                                 <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                             ))}
                             </SelectContent>
@@ -406,4 +410,5 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
+
 
