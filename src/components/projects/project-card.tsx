@@ -158,7 +158,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             </div>
             <div className="flex items-center gap-2">
               {canManageTasks && (
-                  <Button variant="ghost" size="sm" onClick={handleAddTaskClick}>
+                  <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
                       <PlusCircle className="mr-2 h-4 w-4" />
                       Add Task
                   </Button>

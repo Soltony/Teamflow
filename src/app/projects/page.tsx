@@ -23,8 +23,7 @@ function LoadingSkeleton() {
                 <Skeleton className="h-8 w-48" />
                 <Skeleton className="h-10 w-36" />
             </div>
-            <div className="grid gap-6 md:grid-cols-2">
-                <Skeleton className="h-64" />
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                 <Skeleton className="h-64" />
                 <Skeleton className="h-64" />
                 <Skeleton className="h-64" />
@@ -158,7 +157,7 @@ export default function ProjectsPage() {
             </div>
             
             {filteredProjects.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2">
+                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
                     {filteredProjects.map((project: any) => (
                         <ProjectListItem 
                             key={project.id} 
