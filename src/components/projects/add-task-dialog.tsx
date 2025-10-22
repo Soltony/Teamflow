@@ -152,10 +152,10 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
         endDate: new Date(),
         assignedUserIds: [],
         weight: 10,
-        milestoneId: hasMilestones ? "project-level" : undefined,
+        milestoneId: "project-level",
       });
     }
-  }, [isOpen, project, form, hasMilestones]);
+  }, [isOpen, project, form]);
 
 
   const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
@@ -368,3 +368,5 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
     </Dialog>
   );
 }
+
+    
