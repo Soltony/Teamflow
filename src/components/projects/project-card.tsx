@@ -22,8 +22,6 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 type ProjectListItemProps = {
@@ -42,25 +40,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const { toast } = useToast();
   const canManageTasks = hasPermission('projects:update');
   
-  // Initialize state with the first milestone ID, or undefined if no milestones exist.
-  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | undefined>(project.milestones?.[0]?.id);
-
-  // Effect to update the selected milestone if the project's milestones change (e.g., first one is added)
-  useEffect(() => {
-    // If there was no selected milestone but now there are milestones, select the first one.
-    if (!selectedMilestoneId && project.milestones?.length > 0) {
-      setSelectedMilestoneId(project.milestones[0].id);
-    }
-    // If a milestone was selected but it no longer exists in the project, reset.
-    else if (selectedMilestoneId && !project.milestones.some((m: Milestone) => m.id === selectedMilestoneId)) {
-        setSelectedMilestoneId(project.milestones?.[0]?.id);
-    }
-  }, [project.milestones, selectedMilestoneId]);
-
-  const selectedMilestone = project.milestones.find((m: Milestone) => m.id === selectedMilestoneId);
-  
-  // Ensure tasksToShow is always an array
-  const tasksToShow = selectedMilestone ? selectedMilestone.tasks || [] : (project.milestones || []).flatMap((m:any) => m.tasks || []);
+  const allTasks = (project.milestones || []).flatMap((m: any) => m.tasks || []);
 
   const calculateMilestoneProgress = (milestone: any) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
@@ -146,28 +126,14 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
         <div className="flex justify-between items-center">
             <h4 className="font-semibold text-card-foreground">Tasks</h4>
             {canManageTasks && (
-                <div className="flex items-center gap-2">
-                    {project.milestones.length > 1 && (
-                      <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
-                        <SelectTrigger className="w-[150px] h-9 text-xs">
-                          <SelectValue placeholder="Select Milestone" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {project.milestones.map((m: Milestone) => (
-                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    <Button variant="ghost" size="sm" onClick={handleAddTaskClick}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Task
-                    </Button>
-                </div>
+                <Button variant="ghost" size="sm" onClick={handleAddTaskClick} disabled={project.milestones.length === 0}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Task
+                </Button>
             )}
         </div>
         <div className="space-y-4">
-            {tasksToShow.length > 0 ? tasksToShow.map((task: any) => (
+            {allTasks.length > 0 ? allTasks.map((task: any) => (
                 <div key={task.id} className="space-y-1 group">
                     <div className="flex justify-between items-center">
                         <span className="text-sm font-medium">{task.title}</span>
