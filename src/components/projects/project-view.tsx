@@ -124,26 +124,21 @@ export function ProjectView({
   const searchParams = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'milestones';
   
-  const weightedProgress = (!project.milestones || project.milestones.length === 0) ? 0 : project.milestones.reduce((progress: number, milestone: any) => {
-    const completedTaskWeightInMilestone = milestone.tasks
-      .filter((task: any) => task.status === 'DONE')
-      .reduce((sum: number, task: any) => sum + task.weight, 0);
-    
-    const milestoneProgress = completedTaskWeightInMilestone / 100;
-
-    return progress + (milestoneProgress * milestone.weight);
+  const calculateMilestoneProgress = (milestone: any) => {
+    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
+      return acc + ((task.progress || 0) * (task.weight / 100));
+    }, 0);
+    return totalProgress;
+  };
+  
+  const weightedProgress = (!project.milestones || project.milestones.length === 0) ? 0 : project.milestones.reduce((acc: number, milestone: any) => {
+    const milestoneProgress = calculateMilestoneProgress(milestone);
+    return acc + (milestoneProgress * (milestone.weight / 100));
   }, 0);
 
-  const allResponsibleDepartments = project.responsibleDepartments?.map((d: any) => d.name) || [];
 
-  const calculateMilestoneProgress = (milestone: any) => {
-    if (!milestone.tasks || milestone.tasks.length === 0) {
-      return 0;
-    }
-    return milestone.tasks
-      .filter((t: any) => t.status === 'DONE')
-      .reduce((sum: number, task: any) => sum + task.weight, 0);
-  };
+  const allResponsibleDepartments = project.responsibleDepartments?.map((d: any) => d.name) || [];
 
   const renderTimelineStatus = () => {
     const isProjectComplete = project.status.name === 'Completed' || project.status.name === 'On Handover';

@@ -60,29 +60,31 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const selectedMilestone = project.milestones.find((m: Milestone) => m.id === selectedMilestoneId);
   const tasksToShow = selectedMilestone ? selectedMilestone.tasks : [];
   
-  const calculateProgress = () => {
+  const calculateProjectProgress = (project: any) => {
     if (!project.milestones || project.milestones.length === 0) {
       return 0;
     }
-    const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
-      if (!milestone.tasks || milestone.tasks.length === 0) return progress;
-      const completedTaskWeightInMilestone = milestone.tasks
-        .filter((task: any) => task.status === 'DONE')
-        .reduce((sum: number, task: any) => sum + task.weight, 0);
-      
-      const totalMilestoneTaskWeight = milestone.tasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-      const milestoneTaskProgress = totalMilestoneTaskWeight > 0 ? completedTaskWeightInMilestone / totalMilestoneTaskWeight : 0;
-      
-      return progress + (milestoneTaskProgress * milestone.weight);
+    const totalWeightedProgress = project.milestones.reduce((acc: number, milestone: any) => {
+      const milestoneProgress = calculateMilestoneProgress(milestone);
+      return acc + (milestoneProgress * (milestone.weight / 100));
     }, 0);
-    return weightedProgress;
+    return totalWeightedProgress;
   };
+  
+  const calculateMilestoneProgress = (milestone: any) => {
+    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
+      return acc + ((task.progress || 0) * (task.weight / 100));
+    }, 0);
+    return totalProgress;
+  };
+
 
   const handleAddTaskClick = () => {
     onAddTask(project);
   };
 
-  const progress = calculateProgress();
+  const progress = calculateProjectProgress(project);
   const projectManager = users.find(u => u.id === project.projectManagerId);
   
   const team = project.teams?.[0]; // Assuming one team per project for this view
@@ -210,25 +212,27 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
 export function ProjectCard({ project, href }: { project: any, href?: string }) {
 
-    const calculateProgress = () => {
+    const calculateProjectProgress = (project: any) => {
         if (!project.milestones || project.milestones.length === 0) {
-        return 0;
+            return 0;
         }
-        const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
-        if (!milestone.tasks || milestone.tasks.length === 0) return progress;
-        const completedTaskWeightInMilestone = milestone.tasks
-            .filter((task: any) => task.status === 'DONE')
-            .reduce((sum: number, task: any) => sum + task.weight, 0);
-        
-        const totalMilestoneTaskWeight = milestone.tasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-        const milestoneTaskProgress = totalMilestoneTaskWeight > 0 ? completedTaskWeightInMilestone / totalMilestoneTaskWeight : 0;
-        
-        return progress + (milestoneTaskProgress * milestone.weight);
+        const totalWeightedProgress = project.milestones.reduce((acc: number, milestone: any) => {
+            const milestoneProgress = calculateMilestoneProgress(milestone);
+            return acc + (milestoneProgress * (milestone.weight / 100));
         }, 0);
-        return weightedProgress;
+        return totalWeightedProgress;
+    };
+  
+    const calculateMilestoneProgress = (milestone: any) => {
+        if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+        const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
+            return acc + ((task.progress || 0) * (task.weight / 100));
+        }, 0);
+        return totalProgress;
     };
 
-    const progress = calculateProgress();
+
+    const progress = calculateProjectProgress(project);
 
     const cardContent = (
       <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
