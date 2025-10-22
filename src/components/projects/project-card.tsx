@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -25,7 +24,6 @@ import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
 
 type ProjectListItemProps = {
   project: any;
@@ -40,8 +38,9 @@ type ProjectListItemProps = {
 
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
-  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
   const [tasksExpanded, setTasksExpanded] = useState(false);
+  const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
+
   const { toast } = useToast();
   const canManageTasks = hasPermission('projects:update');
   
