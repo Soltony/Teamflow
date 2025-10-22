@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,10 +21,10 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
-import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '@/lib/utils';
+import { Separator } from '../ui/separator';
 
 type ProjectListItemProps = {
   project: any;
@@ -42,7 +42,6 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
 
-  const { toast } = useToast();
   const canManageTasks = hasPermission('projects:update');
   
   const userCreatedMilestones = (project.milestones || []).filter((m: any) => m.title !== 'General Tasks');
@@ -79,6 +78,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
       const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
       if (totalTaskWeight === 0) {
+          if (allTasks.length === 0) return 0;
           const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
           return totalProgress / allTasks.length;
       }
@@ -99,13 +99,10 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
   const progress = calculateProjectProgress(project);
   const projectManager = users.find(u => u.id === project.projectManagerId);
-  
-  const team = project.teams?.[0];
-  const teamMembers = team?.members.map((m: User) => m.name).join(', ');
-  
+    
   return (
     <>
-    <Card className="flex flex-col">
+    <Card className="flex flex-col h-full">
       <CardHeader>
         <div className="flex justify-between items-start gap-4">
           <Link href={`/projects/${project.id}`}>
@@ -113,7 +110,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
           </Link>
           <Badge variant="secondary" className="text-base whitespace-nowrap">{Math.round(progress)}% Done</Badge>
         </div>
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground pt-2">
+        <div className="flex flex-col gap-1 text-sm text-muted-foreground pt-2">
             <div className="flex items-center gap-2">
                 <Crown className="w-4 h-4" />
                 <span>Lead: {projectManager?.name ?? 'N/A'}</span>
@@ -122,23 +119,18 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                 <Calendar className="w-4 h-4" />
                 <span>{format(parseISO(project.startDate), "MMM d")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
             </div>
-            {teamMembers && (
-                <div className="flex items-center gap-2">
-                    <Users className="w-4 h-4" />
-                    <span className="truncate max-w-xs">{teamMembers}</span>
-                </div>
-            )}
         </div>
       </CardHeader>
 
-      <CardContent className="flex-grow flex flex-col">
-        <div className="space-y-1 flex-grow">
-            <div className="flex justify-between mb-1">
-                <span className="text-sm font-medium">Overall Progress</span>
-            </div>
+      <CardContent className="flex-grow flex flex-col justify-end">
+        <div className="space-y-1 mb-6">
+            <span className="text-sm font-medium">Overall Progress</span>
             <Progress value={progress} className="h-2.5" />
         </div>
-        <div className="mt-4 border-t pt-4">
+        
+        <Separator />
+
+        <div className="mt-4">
             <div className="flex justify-between items-center cursor-pointer" onClick={() => setTasksExpanded(!tasksExpanded)}>
                 <h4 className="font-semibold">Tasks ({allTasks.length})</h4>
                 <div className="flex items-center gap-2">
@@ -151,6 +143,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                     <ChevronDown className={cn("h-5 w-5 transition-transform", tasksExpanded && "rotate-180")} />
                 </div>
             </div>
+            
             {tasksExpanded && (
               <div className="mt-4 space-y-3">
                 {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
@@ -202,7 +195,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       </CardContent>
 
       {project.timelineChangeRequests?.length > 0 && (
-          <CardFooter>
+          <div className="p-6 pt-0">
                 <TooltipProvider>
                     <Tooltip>
                         <TooltipTrigger asChild>
@@ -218,7 +211,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                         </TooltipContent>
                     </Tooltip>
                 </TooltipProvider>
-          </CardFooter>
+          </div>
       )}
     </Card>
      <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
@@ -270,6 +263,7 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
 
         const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
         if (totalTaskWeight === 0) {
+            if (allTasks.length === 0) return 0;
             const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
             return totalProgress / allTasks.length;
         }
@@ -299,10 +293,10 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
                   <Progress value={progress} />
               </div>
           </CardContent>
-          <CardFooter className="flex justify-between text-xs text-muted-foreground">
+          <div className="p-6 pt-0 flex justify-between text-xs text-muted-foreground">
               <span>{project.status.name}</span>
               <span>Due: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
-          </CardFooter>
+          </div>
       </Card>
     );
 
@@ -312,3 +306,5 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
+
+    
