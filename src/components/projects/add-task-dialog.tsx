@@ -58,58 +58,70 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   
   const hasMilestones = project.milestones && project.milestones.length > 0;
 
-  const taskSchema = useMemo(() => z.object({
-    title: z.string().min(3, "Task title must be at least 3 characters."),
-    description: z.string().optional(),
-    startDate: z.date({ required_error: "A start date is required."}),
-    endDate: z.date({ required_error: "An end date is required."}),
-    assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
-    weight: z.number().min(0).max(100),
-    milestoneId: z.string().optional(),
-  }).refine(data => data.endDate >= data.startDate, {
-      message: "End date must be on or after start date.",
-      path: ["endDate"],
-  }).superRefine((data, ctx) => {
-    if (!data.milestoneId) {
-        // If there's no milestone ID, it means we're creating the default one.
-        // We can't validate against other tasks in the milestone yet.
-        // We'll trust the backend to handle it, or we can assume 100% remaining weight.
-        return;
-    }
-    
-    const selectedMilestone = project.milestones.find(m => m.id === data.milestoneId);
-    if (!selectedMilestone) return;
+  const form = useForm<z.infer<ReturnType<typeof createTaskSchema>>>({
+    resolver: zodResolver(createTaskSchema(project)),
+  });
 
+  const selectedMilestoneId = form.watch('milestoneId');
+  const selectedMilestone = useMemo(() => {
+    if (!selectedMilestoneId) return null;
+    return project.milestones.find(m => m.id === selectedMilestoneId);
+  }, [selectedMilestoneId, project.milestones]);
+
+  const remainingWeight = useMemo(() => {
+    if (!selectedMilestone) {
+        // This case applies if the project has no milestones,
+        // so the new "General Tasks" milestone will have 100% weight available.
+        return 100;
+    }
     const existingTasksInMilestone = selectedMilestone.tasks || [];
     const existingTasksWeight = existingTasksInMilestone.reduce((sum, task) => sum + task.weight, 0);
-    const remainingWeight = 100 - existingTasksWeight;
+    return 100 - existingTasksWeight;
+  }, [selectedMilestone]);
+  
+  // By creating the schema inside the component, it can be reactive
+  // to props and state like `remainingWeight` and `selectedMilestone`.
+  function createTaskSchema(project: Project) {
+      return z.object({
+        title: z.string().min(3, "Task title must be at least 3 characters."),
+        description: z.string().optional(),
+        startDate: z.date({ required_error: "A start date is required."}),
+        endDate: z.date({ required_error: "An end date is required."}),
+        assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
+        weight: z.number().min(0).max(100),
+        milestoneId: z.string().optional(),
+      }).refine(data => data.endDate >= data.startDate, {
+          message: "End date must be on or after start date.",
+          path: ["endDate"],
+      }).superRefine((data, ctx) => {
+        const milestone = data.milestoneId ? project.milestones.find(m => m.id === data.milestoneId) : null;
+        const tasksInMilestone = milestone?.tasks || [];
+        const weightOfOtherTasks = tasksInMilestone.reduce((sum, task) => sum + task.weight, 0);
+        const currentRemainingWeight = 100 - weightOfOtherTasks;
 
-    if (data.weight > remainingWeight) {
-         ctx.addIssue({
-            path: ['weight'],
-            message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${remainingWeight}%.`,
-        });
-    }
-
-    if (data.startDate < parseISO(selectedMilestone.startDate)) {
-        ctx.addIssue({
-            path: ['startDate'],
-            message: `Must be on or after milestone start: ${format(parseISO(selectedMilestone.startDate), 'MMM d')}.`
-        });
-    }
-    if (data.endDate > parseISO(selectedMilestone.dueDate)) {
-        ctx.addIssue({
-            path: ['endDate'],
-            message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), 'MMM d')}.`
-        });
-    }
-  }), [project.milestones]);
-
-  type TaskFormValues = z.infer<typeof taskSchema>;
-
-  const form = useForm<TaskFormValues>({
-    resolver: zodResolver(taskSchema),
-  });
+        if (data.weight > currentRemainingWeight) {
+            ctx.addIssue({
+                path: ['weight'],
+                message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${currentRemainingWeight}%.`,
+            });
+        }
+        
+        if (milestone) {
+             if (data.startDate < parseISO(milestone.startDate)) {
+                ctx.addIssue({
+                    path: ['startDate'],
+                    message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
+                });
+            }
+            if (data.endDate > parseISO(milestone.dueDate)) {
+                ctx.addIssue({
+                    path: ['endDate'],
+                    message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
+                });
+            }
+        }
+      });
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -120,7 +132,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
         endDate: new Date(),
         assignedUserIds: [],
         weight: 10,
-        milestoneId: hasMilestones ? project.milestones?.[0]?.id || "" : "",
+        milestoneId: hasMilestones ? project.milestones?.[0]?.id : undefined,
       });
     }
   }, [isOpen, project, form, hasMilestones]);
@@ -128,20 +140,10 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
 
   const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
 
-  async function onSubmit(data: TaskFormValues) {
+  async function onSubmit(data: z.infer<ReturnType<typeof createTaskSchema>>) {
     const { milestoneId, ...newTaskData } = data;
     await onTaskAdd(project.id, milestoneId || null, newTaskData as any);
   }
-
-  const selectedMilestoneId = form.watch('milestoneId');
-  const selectedMilestone = project.milestones.find(m => m.id === selectedMilestoneId);
-
-  const remainingWeight = useMemo(() => {
-    if (!selectedMilestone) return 100; // If no milestone, assume 100% available for the new "General" one
-    const existingTasksInMilestone = selectedMilestone.tasks || [];
-    const existingTasksWeight = existingTasksInMilestone.reduce((sum, task) => sum + task.weight, 0);
-    return 100 - existingTasksWeight;
-  }, [selectedMilestone]);
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -343,5 +345,3 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
     </Dialog>
   );
 }
-
-    
