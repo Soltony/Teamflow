@@ -44,7 +44,7 @@ export default function ProjectsPage() {
 
     // State for modals
     const [addingTaskToProject, setAddingTaskToProject] = useState<(Project & { milestones: Milestone[] }) | null>(null);
-    const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: TaskType; project: Project, milestone: Milestone } | null>(null);
+    const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: TaskType; project: Project } | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<TaskType | null>(null);
 
     const fetchData = useCallback(async () => {
@@ -156,7 +156,7 @@ export default function ProjectsPage() {
                             project={project}
                             users={allUsers}
                             onAddTask={(project) => setAddingTaskToProject(project)}
-                            onEditTask={(task, milestone) => setEditingTaskInfo({task, project, milestone})}
+                            onEditTask={(task, project) => setEditingTaskInfo({task, project})}
                             onDeleteTask={setTaskToDelete}
                             taskToDelete={taskToDelete}
                             setTaskToDelete={setTaskToDelete}
@@ -185,8 +185,7 @@ export default function ProjectsPage() {
                 <EditTaskDialog
                     isOpen={!!editingTaskInfo}
                     onOpenChange={(open) => !open && setEditingTaskInfo(null)}
-                    project={editingTaskInfo.project}
-                    milestone={editingTaskInfo.milestone}
+                    project={editingTaskInfo.project as any}
                     task={editingTaskInfo.task}
                     users={allUsers}
                     onTaskUpdate={(updatedTask) => handleTaskUpdate(editingTaskInfo.project.id, updatedTask)}
