@@ -55,7 +55,7 @@ type UserWithRoles = User & { roles: { name: string }[] };
 type EditTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project & { milestones: (Milestone & {tasks: Task[]})[] };
+  project: Project & { milestones: (Milestone & {tasks: Task[]})[], tasks?: Task[] };
   task: Task;
   users: UserWithRoles[];
   onTaskUpdate: (updatedTask: Task) => Promise<void>;
@@ -104,13 +104,13 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
       const existingTasksWeight = milestoneTasks
         .filter((t) => t.id !== task.id)
         .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
+      
+      const remainingForMilestone = 100 - existingTasksWeight;
 
-      const maxWeightForThisTask = Math.max(0, 100 - existingTasksWeight);
-
-      if (data.weight > maxWeightForThisTask + 1e-6) { // Use a small epsilon for float comparison
+      if (data.weight > remainingForMilestone + 1e-6) { // Use a small epsilon for float comparison
         ctx.addIssue({
           path: ["weight"],
-          message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
+          message: `Weight exceeds remaining ${remainingForMilestone}% for milestone tasks.`,
         });
       }
 
@@ -166,15 +166,26 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   }, [selectedMilestoneId, project.milestones]);
 
   const maxWeightForThisTask = useMemo(() => {
+    // If a milestone is selected, the weight is relative to 100 for that milestone.
     if (selectedMilestone) {
       const otherTasksWeight = (selectedMilestone.tasks || [])
         .filter((t) => t.id !== task.id)
         .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
-  
       return Math.max(0, 100 - otherTasksWeight);
     }
-    return 100;
-  }, [selectedMilestone, task.id, project.milestones]);
+    
+    // If no milestone is selected, it's a project-level task. Find all project-level tasks.
+    const allProjectTasks = project.milestones.flatMap(m => m.tasks);
+    const projectLevelTasks = allProjectTasks.filter(t => t.milestoneId === task.milestoneId);
+    
+    const otherProjectLevelTasksWeight = projectLevelTasks
+        .filter((t) => t.id !== task.id)
+        .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
+
+    return Math.max(0, 100 - otherProjectLevelTasksWeight);
+    
+  }, [selectedMilestone, project.milestones, task.id, task.milestoneId]);
+
 
   const selectedUsers = useMemo(() => 
     (users || []).filter(user => assignedUserIds?.includes(user.id)),
@@ -414,5 +425,3 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
-
-    
