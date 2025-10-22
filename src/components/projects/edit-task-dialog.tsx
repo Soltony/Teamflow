@@ -147,13 +147,13 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   }, [selectedMilestone, task.id]);
 
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && task) {
       form.reset({
         title: task.title,
         description: task.description,
         startDate: parseISO(task.startDate),
         endDate: parseISO(task.endDate),
-        assignedUserIds: task.assignedUserIds,
+        assignedUserIds: task.assignedUserIds || [],
         weight: task.weight,
         status: task.status,
         milestoneId: task.milestoneId || 'project-level'
