@@ -395,6 +395,7 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
     const { assignedUserIds, milestoneId, ...taskData } = data;
     let finalMilestoneId = milestoneId;
 
+    // Handle the case where the task is moved to the project level (no milestone)
     if (finalMilestoneId === 'project-level') {
         const project = await prisma.project.findUnique({
             where: { id: projectId },

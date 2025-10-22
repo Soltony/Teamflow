@@ -63,6 +63,7 @@ type EditTaskDialogProps = {
 };
 
 export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onTaskUpdate }: EditTaskDialogProps) {
+  const hasMilestones = project.milestones && project.milestones.length > 0;
 
   const nonAdminUsers = useMemo(() => {
     if (!users) return [];
@@ -82,7 +83,14 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
       message: "End date must be on or after start date.",
       path: ["endDate"],
   }).superRefine((data, ctx) => {
-    const selectedMilestone = data.milestoneId && data.milestoneId !== 'project-level' ? project.milestones.find(m => m.id === data.milestoneId) : null;
+    if (hasMilestones && !data.milestoneId) {
+        ctx.addIssue({
+            path: ['milestoneId'],
+            message: 'A milestone must be selected for this project.',
+        });
+    }
+
+    const selectedMilestone = data.milestoneId ? project.milestones.find(m => m.id === data.milestoneId) : null;
     
     if (selectedMilestone) {
         const milestoneTasks = selectedMilestone.tasks || [];
@@ -109,7 +117,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                 message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), 'MMM d')}.`
             });
         }
-    } else { // Project-level task
+    } else if (!hasMilestones) { // Project-level task
         if (project.startDate && data.startDate < parseISO(project.startDate)) {
             ctx.addIssue({
                 path: ['startDate'],
@@ -123,7 +131,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
             });
         }
     }
-  }), [project, task.id]);
+  }), [project, task.id, hasMilestones]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
@@ -134,7 +142,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   const selectedMilestoneId = form.watch('milestoneId');
   
   const selectedMilestone = useMemo(() => {
-    if (!selectedMilestoneId || selectedMilestoneId === 'project-level') return null;
+    if (!selectedMilestoneId) return null;
     return project.milestones.find(m => m.id === selectedMilestoneId);
   }, [selectedMilestoneId, project.milestones]);
 
@@ -156,27 +164,26 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
         assignedUserIds: task.assignedUserIds || [],
         weight: task.weight,
         status: task.status,
-        milestoneId: task.milestoneId || 'project-level'
+        milestoneId: task.milestoneId || (hasMilestones ? undefined : 'project-level')
       });
     }
-  }, [isOpen, task, form]);
+  }, [isOpen, task, form, hasMilestones]);
 
 
   const selectedUsers = (users || []).filter(user => form.watch('assignedUserIds')?.includes(user.id));
   
   async function onSubmit(data: TaskFormValues) {
     const { milestoneId, ...taskData } = data;
+    const finalMilestoneId = milestoneId === 'project-level' ? undefined : milestoneId
     const updatedTask: Task = {
       ...task,
       ...taskData,
       startDate: data.startDate.toISOString(),
       endDate: data.endDate.toISOString(),
-      milestoneId: milestoneId,
+      milestoneId: finalMilestoneId,
     };
     await onTaskUpdate(updatedTask);
   }
-
-  const hasMilestones = project.milestones && project.milestones.length > 0;
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => {
@@ -199,15 +206,14 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                     name="milestoneId"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Assign to milestone (optional)</FormLabel>
+                        <FormLabel>Assign to milestone</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
-                                <SelectValue placeholder="Assign to project (no milestone)" />
+                                <SelectValue placeholder="Select a milestone" />
                             </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                            <SelectItem value="project-level">Assign to project (no milestone)</SelectItem>
                             {project.milestones.map(m => (
                                 <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                             ))}
@@ -400,3 +406,4 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
+
