@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 type ProjectListItemProps = {
@@ -40,7 +40,21 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const { hasPermission } = useAuth();
   const { toast } = useToast();
   const canManageTasks = hasPermission('projects:update');
+  
+  // Initialize state with the first milestone ID, or undefined if no milestones exist.
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | undefined>(project.milestones?.[0]?.id);
+
+  // Effect to update the selected milestone if the project's milestones change (e.g., first one is added)
+  useEffect(() => {
+    // If there was no selected milestone but now there are milestones, select the first one.
+    if (!selectedMilestoneId && project.milestones?.length > 0) {
+      setSelectedMilestoneId(project.milestones[0].id);
+    }
+    // If a milestone was selected but it no longer exists in the project, reset.
+    else if (selectedMilestoneId && !project.milestones.some((m: Milestone) => m.id === selectedMilestoneId)) {
+        setSelectedMilestoneId(project.milestones?.[0]?.id);
+    }
+  }, [project.milestones, selectedMilestoneId]);
 
   const selectedMilestone = project.milestones.find((m: Milestone) => m.id === selectedMilestoneId);
   const tasksToShow = selectedMilestone ? selectedMilestone.tasks : [];
