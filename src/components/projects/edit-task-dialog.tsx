@@ -121,7 +121,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                 message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), 'MMM d')}.`
             });
         }
-    } else if (!hasMilestones) { // Project-level task
+    } else { // Project-level task or no milestones
         if (project.startDate && data.startDate < parseISO(project.startDate)) {
             ctx.addIssue({
                 path: ['startDate'],
@@ -410,5 +410,6 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
+
 
 

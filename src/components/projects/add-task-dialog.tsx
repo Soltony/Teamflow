@@ -101,7 +101,7 @@ function createTaskSchema(project: Project & { milestones: (Milestone & { tasks:
                   message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
               });
           }
-      } else if (!hasMilestones) { // Only validate against project if there are no milestones
+      } else { // Only validate against project if there are no milestones or no milestone selected
         if (project.startDate && data.startDate < parseISO(project.startDate)) {
           ctx.addIssue({
             path: ['startDate'],
