@@ -37,7 +37,7 @@ type ProjectListItemProps = {
 };
 
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
-  const { hasPermission } = useAuth();
+const { hasPermission } = useAuth();
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
 
