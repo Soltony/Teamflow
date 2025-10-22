@@ -183,9 +183,8 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                   </div>
                 ))}
                 {filteredTasks.length > 3 && (
-                  <Button variant="link" size="sm" onClick={() => setTasksExpanded(!tasksExpanded)} className="p-0 h-auto">
-                    {tasksExpanded ? 'Show less' : `Show ${filteredTasks.length - 3} more task(s)`}
-                    <ChevronDown className={`ml-1 h-4 w-4 transition-transform ${tasksExpanded ? 'rotate-180' : ''}`} />
+                  <Button variant="ghost" size="sm" onClick={() => setTasksExpanded(!tasksExpanded)} className="w-full h-auto text-muted-foreground">
+                    <ChevronDown className={`h-4 w-4 transition-transform ${tasksExpanded ? 'rotate-180' : ''}`} />
                   </Button>
                 )}
               </>
