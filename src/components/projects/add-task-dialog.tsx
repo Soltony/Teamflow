@@ -51,11 +51,7 @@ type AddTaskDialogProps = {
   onTaskAdd: (projectId: string, milestoneId: string | null, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
 
-// By creating the schema inside the component, it can be reactive
-// to props and state like `remainingWeight` and `selectedMilestone`.
-function createTaskSchema(project: Project & { milestones: (Milestone & { tasks: Task[] })[] }) {
-    const userCreatedMilestones = project.milestones?.filter(m => m.title !== "General Tasks") || [];
-    const hasMilestones = userCreatedMilestones.length > 0;
+function createTaskSchema(project: Project & { milestones: (Milestone & { tasks: Task[] })[] }, hasMilestones: boolean) {
     
     return z.object({
       title: z.string().min(3, "Task title must be at least 3 characters."),
@@ -69,16 +65,18 @@ function createTaskSchema(project: Project & { milestones: (Milestone & { tasks:
         message: "End date must be on or after start date.",
         path: ["endDate"],
     }).superRefine((data, ctx) => {
+      // Mode 1: Project has milestones, so a milestone must be selected.
       if(hasMilestones && !data.milestoneId) {
           ctx.addIssue({
               path: ['milestoneId'],
               message: 'A milestone must be selected for this project.',
+              code: z.ZodIssueCode.custom
           });
       }
       
       const milestone = data.milestoneId ? project.milestones.find(m => m.id === data.milestoneId) : null;
       
-      if (milestone) {
+      if (milestone) { // Validation for tasks within a specific milestone
           const existingTasksWeight = (milestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
           const remainingWeight = 100 - existingTasksWeight;
 
@@ -101,7 +99,18 @@ function createTaskSchema(project: Project & { milestones: (Milestone & { tasks:
                   message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
               });
           }
-      } else { // Only validate against project if there are no milestones or no milestone selected
+      } else if (!hasMilestones) { // Mode 2: Project has no milestones. Validation for project-level tasks.
+        const allTasks = project.milestones.flatMap(m => m.tasks);
+        const existingProjectLevelWeight = allTasks.reduce((sum, task) => sum + task.weight, 0);
+        const remainingWeight = 100 - existingProjectLevelWeight;
+
+        if (data.weight > remainingWeight) {
+             ctx.addIssue({
+                  path: ['weight'],
+                  message: `Total project-level task weight cannot exceed 100%. Remaining: ${remainingWeight}%.`,
+              });
+        }
+
         if (project.startDate && data.startDate < parseISO(project.startDate)) {
           ctx.addIssue({
             path: ['startDate'],
@@ -133,7 +142,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   const hasMilestones = userCreatedMilestones.length > 0;
   
   const form = useForm<z.infer<ReturnType<typeof createTaskSchema>>>({
-    resolver: zodResolver(createTaskSchema(project)),
+    resolver: zodResolver(createTaskSchema(project, hasMilestones)),
   });
 
   const selectedMilestoneId = form.watch('milestoneId');
@@ -144,12 +153,16 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   }, [selectedMilestoneId, project.milestones]);
 
   const remainingWeight = useMemo(() => {
-    if (!selectedMilestone) {
-        return 100;
+    if (!selectedMilestone) { // If no milestone, this is project-level.
+        if (hasMilestones) return 0; // Should not happen with validation
+        const allTasks = project.milestones.flatMap(m => m.tasks);
+        const existingWeight = allTasks.reduce((sum, task) => sum + task.weight, 0);
+        return 100 - existingWeight;
     }
+    // A milestone is selected.
     const existingTasksWeight = (selectedMilestone.tasks || []).reduce((sum, task) => sum + task.weight, 0);
     return 100 - existingTasksWeight;
-  }, [selectedMilestone]);
+  }, [selectedMilestone, project, hasMilestones]);
   
   useEffect(() => {
     if (isOpen) {
@@ -170,7 +183,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
 
   async function onSubmit(data: z.infer<ReturnType<typeof createTaskSchema>>) {
     const { milestoneId, ...newTaskData } = data;
-    const finalMilestoneId = milestoneId === 'project-level' ? null : milestoneId;
+    const finalMilestoneId = hasMilestones ? milestoneId : null; // If no milestones, it's a project-level task
     await onTaskAdd(project.id, finalMilestoneId || null, newTaskData as any);
   }
 
@@ -308,7 +321,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <FormControl>
-                            <Button variant="outline" className={cn("w-full justify-start text-left", !field.value?.length && "text-muted-foreground")}>
+                            <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-10", !field.value?.length && "text-muted-foreground")}>
                                 <span className="truncate">
                                 {selectedUsers.length > 0
                                     ? selectedUsers.map(u => u.name).join(', ')
@@ -351,7 +364,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                     name="weight"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Task Weight ({selectedMilestone ? `Remaining in milestone: ${remainingWeight}%` : "Relative weight for project-level task"}): {field.value}%</FormLabel>
+                            <FormLabel>Task Weight ({selectedMilestone ? `Remaining in milestone: ${remainingWeight}%` : `Remaining for project: ${remainingWeight}%`}): {field.value ?? 0}%</FormLabel>
                             <FormControl>
                                 <Slider
                                     value={[field.value ?? 0]}

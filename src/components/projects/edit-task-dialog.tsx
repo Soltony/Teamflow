@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useForm } from "react-hook-form";
@@ -54,25 +55,14 @@ type UserWithRoles = User & { roles: { name: string }[] };
 type EditTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project & { milestones: (Milestone & {tasks: Task[]})[], tasks?: Task[] };
+  project: Project & { milestones: (Milestone & {tasks: Task[]})[] };
   task: Task;
   users: UserWithRoles[];
   onTaskUpdate: (updatedTask: Task) => Promise<void>;
 };
 
-export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onTaskUpdate }: EditTaskDialogProps) {
-  const userCreatedMilestones = useMemo(() => {
-    return (project.milestones || []).filter(m => m.title !== "General Tasks");
-  }, [project.milestones]);
-  
-  const hasMilestones = userCreatedMilestones.length > 0;
-
-  const nonAdminUsers = useMemo(() => {
-    if (!users) return [];
-    return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
-  }, [users]);
-
-  const taskSchema = useMemo(() => z.object({
+function createTaskSchema(project: Project & { milestones: (Milestone & {tasks: Task[]})[] }, task: Task, hasMilestones: boolean) {
+  return z.object({
     title: z.string().min(3, "Task title must be at least 3 characters."),
     description: z.string().optional(),
     startDate: z.date({ required_error: "A start date is required."}),
@@ -85,6 +75,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
       message: "End date must be on or after start date.",
       path: ["endDate"],
   }).superRefine((data, ctx) => {
+    // Mode 1: Project has milestones, so a milestone must be selected.
     if (hasMilestones && !data.milestoneId) {
       ctx.addIssue({
         path: ["milestoneId"],
@@ -100,22 +91,21 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
 
     if (selectedMilestone) {
         const milestoneTasks = selectedMilestone.tasks || [];
-        const existingTasksWeight = milestoneTasks
+        const otherTasksWeight = milestoneTasks
             .filter((t) => t.id !== task.id)
             .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
         
-        const maxWeightForThisTask = 100 - existingTasksWeight;
+        const maxWeightForThisTask = 100 - otherTasksWeight;
 
         if (data.weight > maxWeightForThisTask + 1e-6) { // Use a small epsilon for float comparison
             ctx.addIssue({
-            path: ["weight"],
-            message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
+              path: ["weight"],
+              message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
             });
         }
-    } else { // Project-level task logic (no user-created milestones)
+    } else if (!hasMilestones) { // Mode 2: Project has no milestones
         const allTasks = project.milestones.flatMap(m => m.tasks);
-        const projectLevelTasks = allTasks.filter(t => !userCreatedMilestones.some(m => m.id === t.milestoneId));
-        const otherProjectLevelTasksWeight = projectLevelTasks
+        const otherProjectLevelTasksWeight = allTasks
             .filter((t) => t.id !== task.id)
             .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
         
@@ -127,22 +117,33 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
             });
         }
     }
-  }), [project, task.id, hasMilestones, userCreatedMilestones]);
+  });
+}
 
-  type TaskFormValues = z.infer<typeof taskSchema>;
+export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onTaskUpdate }: EditTaskDialogProps) {
+  const userCreatedMilestones = useMemo(() => {
+    return (project.milestones || []).filter(m => m.title !== "General Tasks");
+  }, [project.milestones]);
+  
+  const hasMilestones = userCreatedMilestones.length > 0;
 
-  const form = useForm<TaskFormValues>({
-    resolver: zodResolver(taskSchema),
+  const nonAdminUsers = useMemo(() => {
+    if (!users) return [];
+    return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
+  }, [users]);
+
+  const form = useForm<z.infer<ReturnType<typeof createTaskSchema>>>({
+    resolver: zodResolver(createTaskSchema(project, task, hasMilestones)),
   });
   
   useEffect(() => {
     if (isOpen && task) {
         const assigneeIds: string[] =
-        (task as any).assignedUserIds ??
-        (Array.isArray((task as any).assignees) ? (task as any).assignees.map((u: any) => u.id) : []);
+          (task as any).assignedUserIds ??
+          (Array.isArray((task as any).assignees) ? (task as any).assignees.map((u: any) => u.id) : []);
 
         const isGeneralMilestone = project.milestones.find(m => m.id === task.milestoneId)?.title === "General Tasks";
-        const initialMilestoneId = (hasMilestones && !isGeneralMilestone) ? task.milestoneId ?? undefined : undefined;
+        const initialMilestoneId = hasMilestones && !isGeneralMilestone ? task.milestoneId ?? undefined : undefined;
       
         form.reset({
             title: task.title,
@@ -175,15 +176,13 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     
     // Project-level task (no milestone)
     const allTasks = project.milestones.flatMap(m => m.tasks);
-    const projectLevelTasks = allTasks.filter(t => !userCreatedMilestones.some(m => m.id === t.milestoneId));
-    
-    const otherProjectLevelTasksWeight = projectLevelTasks
+    const otherProjectLevelTasksWeight = allTasks
         .filter((t) => t.id !== task.id)
         .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
 
     return Math.max(0, 100 - otherProjectLevelTasksWeight);
     
-  }, [selectedMilestone, project.milestones, task.id, userCreatedMilestones]);
+  }, [selectedMilestone, project.milestones, task.id]);
 
 
   const selectedUsers = useMemo(() => 
@@ -191,12 +190,13 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     [users, assignedUserIds]
   );
   
-  async function onSubmit(data: TaskFormValues) {
+  async function onSubmit(data: z.infer<ReturnType<typeof createTaskSchema>>) {
     const updatedTask: Task = {
       ...task,
       ...data,
       startDate: data.startDate.toISOString(),
       endDate: data.endDate.toISOString(),
+      milestoneId: hasMilestones ? data.milestoneId! : task.milestoneId,
     };
     await onTaskUpdate(updatedTask);
   }
