@@ -43,6 +43,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const { toast } = useToast();
   const canManageTasks = hasPermission('projects:update');
   
+  const userCreatedMilestones = (project.milestones || []).filter((m: any) => m.title !== 'General Tasks');
   const allTasks = (project.milestones || []).flatMap((m: any) => m.tasks || []);
 
   const filteredTasks = selectedMilestoneId === 'all' 
@@ -93,7 +94,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
 
   const handleAddTaskClick = () => {
-    if (project.milestones.length === 0) {
+    if (userCreatedMilestones.length === 0) {
         toast({
             title: "Cannot Add Task",
             description: "You must create at least one milestone for this project before adding tasks.",
@@ -140,14 +141,14 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       <CardContent className="flex-grow space-y-4">
         <div className="flex justify-between items-center">
             <h4 className="font-semibold text-card-foreground">Tasks</h4>
-             {project.milestones && project.milestones.length > 0 && (
+             {userCreatedMilestones && userCreatedMilestones.length > 0 && (
                 <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
                     <SelectTrigger className="w-[180px] h-9">
                         <SelectValue placeholder="Filter by milestone..." />
                     </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Tasks</SelectItem>
-                        {project.milestones.map((m: any) => (
+                        {userCreatedMilestones.map((m: any) => (
                             <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
                         ))}
                     </SelectContent>
