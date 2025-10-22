@@ -53,8 +53,8 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const calculateMilestoneProgress = (milestone: any) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
     const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-      const taskProgress = task.progress || 0;
-      return acc + (taskProgress * (task.weight / 100));
+        const taskProgress = task.progress || 0;
+        return acc + (taskProgress * (task.weight / 100));
     }, 0);
     return totalProgress;
   };
@@ -94,14 +94,6 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
 
   const handleAddTaskClick = () => {
-    if (userCreatedMilestones.length === 0) {
-        toast({
-            title: "Cannot Add Task",
-            description: "You must create at least one milestone for this project before adding tasks.",
-            variant: "destructive"
-        });
-        return;
-    }
     onAddTask(project);
   };
 
