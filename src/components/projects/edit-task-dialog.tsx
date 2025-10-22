@@ -29,7 +29,6 @@ import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
 import type { Milestone, Project, Task, User, TaskStatus } from "@/lib/types";
-import { useToast } from "@/hooks/use-toast";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -100,34 +99,20 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
       : null;
 
     if (selectedMilestone) {
-      const milestoneTasks = selectedMilestone.tasks || [];
-      const existingTasksWeight = milestoneTasks
-        .filter((t) => t.id !== task.id)
-        .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
-      
-      const maxWeightForThisTask = 100 - existingTasksWeight;
+        const milestoneTasks = selectedMilestone.tasks || [];
+        const existingTasksWeight = milestoneTasks
+            .filter((t) => t.id !== task.id)
+            .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
+        
+        const maxWeightForThisTask = 100 - existingTasksWeight;
 
-      if (data.weight > maxWeightForThisTask + 1e-6) { // Use a small epsilon for float comparison
-        ctx.addIssue({
-          path: ["weight"],
-          message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
-        });
-      }
-
-      if (selectedMilestone.startDate && data.startDate < parseISO(selectedMilestone.startDate)) {
-        ctx.addIssue({
-          path: ["startDate"],
-          message: `Must be on or after milestone start: ${format(parseISO(selectedMilestone.startDate), "MMM d")}.`,
-        });
-      }
-      if (selectedMilestone.dueDate && data.endDate > parseISO(selectedMilestone.dueDate)) {
-        ctx.addIssue({
-          path: ["endDate"],
-          message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), "MMM d")}.`,
-        });
-      }
-    } else {
-        // Project-level task logic (project has no milestones)
+        if (data.weight > maxWeightForThisTask + 1e-6) { // Use a small epsilon for float comparison
+            ctx.addIssue({
+            path: ["weight"],
+            message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
+            });
+        }
+    } else { // Project-level task logic (no user-created milestones)
         const allTasks = project.milestones.flatMap(m => m.tasks);
         const projectLevelTasks = allTasks.filter(t => !userCreatedMilestones.some(m => m.id === t.milestoneId));
         const otherProjectLevelTasksWeight = projectLevelTasks
@@ -152,24 +137,25 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   
   useEffect(() => {
     if (isOpen && task) {
-      const assigneeIds: string[] =
+        const assigneeIds: string[] =
         (task as any).assignedUserIds ??
         (Array.isArray((task as any).assignees) ? (task as any).assignees.map((u: any) => u.id) : []);
-  
-      const initialMilestoneId = hasMilestones ? task.milestoneId ?? undefined : undefined;
-  
-      form.reset({
-        title: task.title,
-        description: task.description || "",
-        startDate: parseISO(task.startDate),
-        endDate: parseISO(task.endDate),
-        assignedUserIds: assigneeIds,
-        weight: task.weight,
-        status: task.status,
-        milestoneId: initialMilestoneId,
-      });
+
+        const isGeneralMilestone = project.milestones.find(m => m.id === task.milestoneId)?.title === "General Tasks";
+        const initialMilestoneId = (hasMilestones && !isGeneralMilestone) ? task.milestoneId ?? undefined : undefined;
+      
+        form.reset({
+            title: task.title,
+            description: task.description || "",
+            startDate: parseISO(task.startDate),
+            endDate: parseISO(task.endDate),
+            assignedUserIds: assigneeIds,
+            weight: task.weight,
+            status: task.status,
+            milestoneId: initialMilestoneId,
+        });
     }
-  }, [isOpen, task, form, hasMilestones]);
+  }, [isOpen, task, form, hasMilestones, project.milestones]);
   
   const selectedMilestoneId = form.watch('milestoneId');
   const assignedUserIds = form.watch('assignedUserIds');
@@ -438,5 +424,3 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
-
-    
