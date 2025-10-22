@@ -70,46 +70,44 @@ function createTaskSchema(project: Project & { milestones: (Milestone & {tasks: 
     assignedUserIds: z.array(z.string()).nonempty({ message: "At least one user must be assigned." }),
     weight: z.number().min(0, "Weight must be a positive number."),
     status: z.enum(taskStatuses),
-    milestoneId: z.string().optional(),
+    milestoneId: hasMilestones ? z.string({required_error: "A milestone must be selected."}) : z.string().optional(),
   }).refine(data => data.endDate >= data.startDate, {
       message: "End date must be on or after start date.",
       path: ["endDate"],
   }).superRefine((data, ctx) => {
-    // Mode 1: Project has milestones, so a milestone must be selected.
-    if (hasMilestones && !data.milestoneId) {
-      ctx.addIssue({
-        path: ["milestoneId"],
-        message: "A milestone must be selected for this project.",
-        code: z.ZodIssueCode.custom
-      });
-      return; 
-    }
-
     const selectedMilestone = data.milestoneId
       ? project.milestones.find((m) => m.id === data.milestoneId) || null
       : null;
 
+    if (hasMilestones && !selectedMilestone) {
+        ctx.addIssue({
+            path: ["milestoneId"],
+            message: "You must select a milestone for this task.",
+        });
+        return;
+    }
+    
     if (selectedMilestone) {
         const milestoneTasks = selectedMilestone.tasks || [];
         const otherTasksWeight = milestoneTasks
             .filter((t) => t.id !== task.id)
             .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
         
-        const maxWeightForThisTask = 100 - otherTasksWeight;
+        const maxWeightForThisTask = Math.max(0, 100 - otherTasksWeight);
 
-        if (data.weight > maxWeightForThisTask + 1e-6) { // Use a small epsilon for float comparison
+        if (data.weight > maxWeightForThisTask + 1e-6) { 
             ctx.addIssue({
               path: ["weight"],
               message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
             });
         }
-    } else if (!hasMilestones) { // Mode 2: Project has no milestones
+    } else { // Project-level task
         const allTasks = project.milestones.flatMap(m => m.tasks);
         const otherProjectLevelTasksWeight = allTasks
-            .filter((t) => t.id !== task.id)
+            .filter((t) => t.id !== task.id && !t.milestoneId) 
             .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
         
-        const remainingForProject = 100 - otherProjectLevelTasksWeight;
+        const remainingForProject = Math.max(0, 100 - otherProjectLevelTasksWeight);
         if (data.weight > remainingForProject + 1e-6) {
              ctx.addIssue({
                 path: ["weight"],
@@ -134,12 +132,22 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
 
   const form = useForm<z.infer<ReturnType<typeof createTaskSchema>>>({
     resolver: zodResolver(createTaskSchema(project, task, hasMilestones)),
+    defaultValues: {
+      title: task.title,
+      description: task.description || "",
+      startDate: parseISO(task.startDate),
+      endDate: parseISO(task.endDate),
+      assignedUserIds: task.assignedUserIds || [],
+      weight: task.weight,
+      status: task.status,
+      milestoneId: task.milestoneId ?? undefined,
+    }
   });
   
   useEffect(() => {
     if (isOpen && task) {
-        const assigneeIds: string[] = task.assignedUserIds ?? [];
-
+        const assigneeIds: string[] = task.assignedUserIds || [];
+        
         const isGeneralMilestone = project.milestones.find(m => m.id === task.milestoneId)?.title === "General Tasks";
         const initialMilestoneId = hasMilestones && !isGeneralMilestone ? task.milestoneId ?? undefined : undefined;
       
@@ -165,23 +173,21 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   }, [selectedMilestoneId, project.milestones]);
 
   const maxWeightForThisTask = useMemo(() => {
-    if (hasMilestones) {
-        if (!selectedMilestone) return 0;
+    if (selectedMilestone) { // Milestone-based task
         const otherTasksWeight = (selectedMilestone.tasks || [])
             .filter((t) => t.id !== task.id)
             .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
         return Math.max(0, 100 - otherTasksWeight);
     }
     
-    // Project-level task (no milestones)
+    // Project-level task (no milestone selected)
     const allTasks = project.milestones.flatMap(m => m.tasks);
     const otherProjectLevelTasksWeight = allTasks
-        .filter((t) => t.id !== task.id)
+        .filter((t) => t.id !== task.id && !userCreatedMilestones.some(m => m.id === t.milestoneId))
         .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
-
     return Math.max(0, 100 - otherProjectLevelTasksWeight);
     
-  }, [selectedMilestone, project.milestones, task.id, hasMilestones]);
+  }, [selectedMilestone, project.milestones, task.id, userCreatedMilestones]);
 
 
   const selectedUsers = useMemo(() => 
@@ -195,7 +201,6 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
       ...data,
       startDate: data.startDate.toISOString(),
       endDate: data.endDate.toISOString(),
-      milestoneId: hasMilestones ? data.milestoneId! : task.milestoneId,
     };
     await onTaskUpdate(updatedTask);
   }
@@ -209,8 +214,8 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     }}>
       <DialogContent className="sm:max-w-2xl p-0 flex flex-col max-h-[90dvh]">
         <DialogHeader className="p-6 pb-4">
-          <DialogTitle>Edit Task in "{project.name}"</DialogTitle>
-          <DialogDescription>Make changes to the task details. The total weight of all tasks in a milestone cannot exceed 100%.</DialogDescription>
+          <DialogTitle>Edit Task "{task.title}"</DialogTitle>
+          <DialogDescription>Modify details and reassign members if needed.</DialogDescription>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-6">
             <Form {...form}>
@@ -330,7 +335,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                   name="assignedUserIds"
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
-                      <FormLabel>Select members</FormLabel>
+                      <FormLabel>Assigned Members</FormLabel>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <FormControl>
