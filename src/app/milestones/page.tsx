@@ -70,7 +70,8 @@ export default function AllMilestonesPage() {
   const calculateMilestoneProgress = (milestone: Milestone & { tasks: Task[] }) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
     const totalProgress = milestone.tasks.reduce((acc, task) => {
-        return acc + ((task.progress || 0) * (task.weight / 100));
+        const taskProgress = task.progress || 0;
+        return acc + (taskProgress * (task.weight / 100));
     }, 0);
     return totalProgress;
   };
@@ -79,12 +80,34 @@ export default function AllMilestonesPage() {
     if (!project.milestones || project.milestones.length === 0) {
       return 0;
     }
-    const totalWeightedProgress = project.milestones.reduce((acc, milestone) => {
+    
+    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
+
+    if (weightedMilestones.length > 0) {
+      // Standard weighted calculation if there are weighted milestones
+      return weightedMilestones.reduce((acc: number, milestone: any) => {
         const milestoneProgress = calculateMilestoneProgress(milestone);
         return acc + (milestoneProgress * (milestone.weight / 100));
-    }, 0);
-    return totalWeightedProgress;
-  }
+      }, 0);
+    } else {
+      // If no weighted milestones, calculate based on task weights directly
+      const allTasks = project.milestones.flatMap((m: any) => m.tasks);
+      if (allTasks.length === 0) return 0;
+
+      const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+      if (totalTaskWeight === 0) {
+          // If tasks have no weight, calculate simple average of progress
+          const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
+          return totalProgress / allTasks.length;
+      }
+      
+      const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
+        return acc + ((task.progress || 0) * task.weight);
+      }, 0);
+
+      return totalWeightedTaskProgress / totalTaskWeight;
+    }
+  };
 
   const isMemberOnly = localUser && !localUser.roles.some((r: Role) => r.name === 'Admin' || r.name === 'Project Manager');
 

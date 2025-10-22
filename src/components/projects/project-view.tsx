@@ -127,16 +127,46 @@ export function ProjectView({
   const calculateMilestoneProgress = (milestone: any) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
     const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-      return acc + ((task.progress || 0) * (task.weight / 100));
+      const taskProgress = task.progress || 0;
+      return acc + (taskProgress * (task.weight / 100));
     }, 0);
     return totalProgress;
   };
   
-  const weightedProgress = (!project.milestones || project.milestones.length === 0) ? 0 : project.milestones.reduce((acc: number, milestone: any) => {
-    const milestoneProgress = calculateMilestoneProgress(milestone);
-    return acc + (milestoneProgress * (milestone.weight / 100));
-  }, 0);
+  const calculateProjectProgress = (project: any) => {
+    if (!project.milestones || project.milestones.length === 0) {
+      return 0;
+    }
+    
+    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
 
+    if (weightedMilestones.length > 0) {
+      // Standard weighted calculation if there are weighted milestones
+      return weightedMilestones.reduce((acc: number, milestone: any) => {
+        const milestoneProgress = calculateMilestoneProgress(milestone);
+        return acc + (milestoneProgress * (milestone.weight / 100));
+      }, 0);
+    } else {
+      // If no weighted milestones, calculate based on task weights directly
+      const allTasks = project.milestones.flatMap((m: any) => m.tasks);
+      if (allTasks.length === 0) return 0;
+
+      const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+      if (totalTaskWeight === 0) {
+          // If tasks have no weight, calculate simple average of progress
+          const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
+          return totalProgress / allTasks.length;
+      }
+      
+      const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
+        return acc + ((task.progress || 0) * task.weight);
+      }, 0);
+
+      return totalWeightedTaskProgress / totalTaskWeight;
+    }
+  };
+
+  const weightedProgress = calculateProjectProgress(project);
 
   const allResponsibleDepartments = project.responsibleDepartments?.map((d: any) => d.name) || [];
 
