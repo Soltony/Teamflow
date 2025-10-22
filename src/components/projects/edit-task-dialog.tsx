@@ -64,7 +64,8 @@ type EditTaskDialogProps = {
 export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, onTaskUpdate }: EditTaskDialogProps) {
 
   const nonAdminUsers = useMemo(() => {
-    return users.filter(user => !user.roles.some(role => role.name === 'Admin'));
+    if (!users) return [];
+    return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
   }, [users]);
 
   const weightOfOtherTasks = useMemo(() => {
@@ -93,6 +94,10 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
       message: `Total task weight for this milestone cannot exceed 100%. Max for this task: ${maxWeightForThisTask}%.`,
       path: ["weight"],
   }).superRefine((data, ctx) => {
+    if (!milestone || !milestone.startDate || !milestone.dueDate) {
+        return; // Skip date validation if milestone dates are not available
+    }
+
     if (data.startDate < parseISO(milestone.startDate)) {
         ctx.addIssue({
             path: ['startDate'],
@@ -105,7 +110,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
             message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
         });
     }
-  }), [maxWeightForThisTask, milestone.startDate, milestone.dueDate]);
+  }), [maxWeightForThisTask, milestone]);
 
   type TaskFormValues = z.infer<typeof taskSchema>;
 
@@ -339,3 +344,5 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
     </Dialog>
   );
 }
+
+    
