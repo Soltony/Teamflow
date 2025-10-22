@@ -68,10 +68,12 @@ export function EditTaskDialog({ isOpen, onOpenChange, milestone, task, users, o
   }, [users]);
 
   const weightOfOtherTasks = useMemo(() => {
+    if (!milestone || !milestone.tasks) return 0;
     return milestone.tasks
       .filter(t => t.id !== task.id)
       .reduce((sum, t) => sum + t.weight, 0);
-  }, [milestone.tasks, task.id]);
+  }, [milestone, task.id]);
+  
   const maxWeightForThisTask = 100 - weightOfOtherTasks;
 
   const taskSchema = useMemo(() => z.object({
