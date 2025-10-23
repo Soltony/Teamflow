@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -148,6 +149,10 @@ export default function TaskDetailsPage() {
 
     const assignees = task.assignedUserIds.map(id => userMap.get(id)).filter(Boolean);
 
+    const isPendingReview = task.status === 'PENDING_REVIEW';
+    const canReview = isPendingReview && isTeamLeadOrManager;
+    const canUpdate = task.status !== 'DONE' && !canReview;
+
     return (
         <>
             <div className="p-4 sm:p-6 space-y-6">
@@ -253,7 +258,7 @@ export default function TaskDetailsPage() {
                             </CardContent>
                         </Card>
 
-                        {task.status !== 'DONE' && (
+                        {canUpdate && (
                             <Card>
                                 <CardHeader><CardTitle>Post an Update</CardTitle></CardHeader>
                                 <CardContent>
@@ -280,7 +285,7 @@ export default function TaskDetailsPage() {
                             </Card>
                         )}
                         
-                        {task.status === 'PENDING_REVIEW' && isTeamLeadOrManager && (
+                        {canReview && (
                              <Card>
                                 <CardHeader><CardTitle>Review Task</CardTitle></CardHeader>
                                 <CardContent className="flex justify-end gap-2">
@@ -307,4 +312,3 @@ export default function TaskDetailsPage() {
         </>
     );
 }
-
