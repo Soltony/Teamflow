@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import Link from 'next/link';
@@ -204,9 +203,9 @@ export function ProjectView({
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
+      <Link href="/projects" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
         <ArrowLeft className="w-4 h-4" />
-        Back to Dashboard
+        Back to Projects
       </Link>
       
       <Card>
