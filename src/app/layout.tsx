@@ -15,7 +15,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
-    apple: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/NIB_International_Bank_logo.png/480px-NIB_International_Bank_logo.png",
+    apple: "https://img.logoipsum.com/288.svg",
   },
 };
 
@@ -43,3 +43,5 @@ export default function RootLayout({
     </html>
   );
 }
+
+    
