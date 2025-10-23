@@ -91,7 +91,6 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
     }
   };
 
-
   const handleAddTaskClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     onAddTask(project);
@@ -137,83 +136,77 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       </CardHeader>
 
       <CardContent className="flex-grow flex flex-col justify-end">
-        <Separator />
-        
-        <div className="mt-4">
-            <div 
-                className="flex justify-between items-center cursor-pointer p-2 -m-2" 
-                onClick={(e) => {
-                    e.stopPropagation();
-                    setTasksExpanded(!tasksExpanded);
-                }}
-            >
-                <h4 className="font-semibold">Tasks ({allTasks.length})</h4>
-                <div className="flex items-center gap-2">
-                    {canManageTasks && (
-                        <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Task
-                        </Button>
-                    )}
-                    <div className="cursor-pointer p-1">
-                        <ChevronDown className={cn("h-5 w-5 transition-transform", tasksExpanded && "rotate-180")} />
-                    </div>
+        <div 
+            className="flex justify-between items-center cursor-pointer p-2 -m-2" 
+            onClick={(e) => {
+                e.stopPropagation();
+                setTasksExpanded(!tasksExpanded);
+            }}
+        >
+            <h4 className="font-semibold">Tasks ({allTasks.length})</h4>
+            <div className="flex items-center gap-2">
+                {canManageTasks && (
+                    <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Task
+                    </Button>
+                )}
+                <div className="cursor-pointer p-1">
+                    <ChevronDown className={cn("h-5 w-5 transition-transform", tasksExpanded && "rotate-180")} />
                 </div>
             </div>
-            
-            {tasksExpanded && (
-              <div className="mt-2 space-y-3">
-                {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
-                    <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
-                        <SelectTrigger className="w-full sm:w-[240px] h-9">
-                            <SelectValue placeholder="Filter by milestone..." />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Milestones</SelectItem>
-                            {userCreatedMilestones.map((m: any) => (
-                                <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                )}
-                {filteredTasks.length > 0 ? (
-                  <>
-                    {filteredTasks.map((task: any) => (
-                      <div key={task.id} className="space-y-1 group">
-                          <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium truncate flex-1 pr-2">{task.title}</span>
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                  <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
-                                  <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
-                                  {canManageTasks && (
-                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                          <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
-                                              <Link href={`/projects/${project.id}?tab=milestones`}>
-                                                <Eye className="h-3 w-3" />
-                                              </Link>
-                                          </Button>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
-                                              <Pencil className="h-3 w-3" />
-                                          </Button>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
-                                              <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                      </div>
-                                  )}
-                              </div>
+        </div>
+        
+        {tasksExpanded && (
+          <div className="mt-2 space-y-3">
+            {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
+                <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
+                    <SelectTrigger className="w-full sm:w-[240px] h-9">
+                        <SelectValue placeholder="Filter by milestone..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                        <SelectItem value="all">All Milestones</SelectItem>
+                        {userCreatedMilestones.map((m: any) => (
+                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            )}
+            {filteredTasks.length > 0 ? (
+              <>
+                {filteredTasks.map((task: any) => (
+                  <div key={task.id} className="space-y-1 group">
+                      <div className="flex justify-between items-center">
+                          <span className="text-sm font-medium truncate flex-1 pr-2">{task.title}</span>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                              <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
+                              <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
+                              {canManageTasks && (
+                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                        <Eye className="h-3 w-3" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                          <Pencil className="h-3 w-3" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
+                                          <Trash2 className="h-3 w-3" />
+                                      </Button>
+                                  </div>
+                              )}
                           </div>
-                          <Progress value={task.progress || 0} className="h-1.5" />
                       </div>
-                    ))}
-                  </>
-                ) : (
-                     <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
-                        No tasks yet for this selection.
-                    </div>
-                )}
-            </div>
+                      <Progress value={task.progress || 0} className="h-1.5" />
+                  </div>
+                ))}
+              </>
+            ) : (
+                 <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
+                    No tasks yet for this selection.
+                </div>
             )}
         </div>
+        )}
       </CardContent>
 
       {project.timelineChangeRequests?.length > 0 && (
