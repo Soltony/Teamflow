@@ -14,6 +14,8 @@ import type { Task as TaskType, User, Project, Milestone } from "@/lib/types";
 import { AddTaskDialog } from "@/components/projects/add-task-dialog";
 import { EditTaskDialog } from "@/components/projects/edit-task-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { CardFooter } from "@/components/ui/card";
 
 
 function LoadingSkeleton() {
@@ -40,6 +42,8 @@ export default function ProjectsPage() {
     const [statuses, setStatuses] = useState<any[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const projectsPerPage = 9;
 
     // State for modals
     const [addingTaskToProject, setAddingTaskToProject] = useState<(Project & { milestones: Milestone[] }) | null>(null);
@@ -77,6 +81,17 @@ export default function ProjectsPage() {
         }
         return filtered;
     }, [projects, searchQuery]);
+
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchQuery]);
+
+    const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
+    const paginatedProjects = useMemo(() => {
+        const startIndex = (currentPage - 1) * projectsPerPage;
+        const endIndex = startIndex + projectsPerPage;
+        return filteredProjects.slice(startIndex, endIndex);
+    }, [filteredProjects, currentPage, projectsPerPage]);
 
     const handleTaskAdd = async (projectId: string, milestoneId: string | null, newTask: any) => {
         if (!projectId) {
@@ -156,9 +171,9 @@ export default function ProjectsPage() {
                 </div>
             </div>
             
-            {filteredProjects.length > 0 ? (
+            {paginatedProjects.length > 0 ? (
                 <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                    {filteredProjects.map((project: any) => (
+                    {paginatedProjects.map((project: any) => (
                         <ProjectListItem 
                             key={project.id} 
                             project={project}
@@ -179,6 +194,28 @@ export default function ProjectsPage() {
                 </div>
             )}
             
+            {totalPages > 1 && (
+                <CardFooter className="flex justify-center items-center gap-4 mt-6">
+                    <Button
+                        variant="outline"
+                        onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                        disabled={currentPage === 1}
+                    >
+                        Previous
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                        Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                        variant="outline"
+                        onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                        disabled={currentPage === totalPages}
+                    >
+                        Next
+                    </Button>
+                </CardFooter>
+            )}
+
             {addingTaskToProject && (
                 <AddTaskDialog
                     isOpen={!!addingTaskToProject}
