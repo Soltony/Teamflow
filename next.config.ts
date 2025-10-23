@@ -24,7 +24,7 @@ const nextConfig: NextConfig = {
       },
       {
         protocol: 'https',
-        hostname: 'play-lh.googleusercontent.com',
+        hostname: 'upload.wikimedia.org',
         port: '',
         pathname: '/**',
       },

@@ -18,7 +18,7 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.ico",
-    apple: "https://play-lh.googleusercontent.com/bXqMt9ROsGd0H9vPhib5hG-0NB-EJcAwZy6UUDhvlP-ykE595IMQtzr14R6IRWtJiGTh",
+    apple: "https://upload.wikimedia.org/wikipedia/commons/thumb/3/36/NIB_International_Bank_logo.png/480px-NIB_International_Bank_logo.png",
   },
 };
 
