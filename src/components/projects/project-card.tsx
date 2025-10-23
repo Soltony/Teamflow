@@ -183,8 +183,10 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                               <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
                               {canManageTasks && (
                                   <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
-                                        <Eye className="h-3 w-3" />
+                                      <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                                        <Link href={`/tasks/${task.id}`}>
+                                            <Eye className="h-3 w-3" />
+                                        </Link>
                                       </Button>
                                       <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
                                           <Pencil className="h-3 w-3" />
