@@ -36,7 +36,8 @@ type ProjectListItemProps = {
 };
 
 
-const ProgressBadge = ({ progress, isOverdue, isComplete }: { progress: number, isOverdue: boolean, isComplete: boolean }) => {
+const ProgressBadge = ({ progress, isOverdue }: { progress: number, isOverdue: boolean }) => {
+    const isComplete = progress >= 100;
     const badgeColor = isComplete ? 'bg-green-600' : isOverdue ? 'bg-red-600' : 'bg-primary';
     const textColor = 'text-primary-foreground';
   
@@ -115,7 +116,6 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const progress = calculateProjectProgress(project);
   const projectManager = users.find(u => u.id === project.projectManagerId);
   
-  const isProjectComplete = allTasks.length > 0 && allTasks.every((task: any) => task.status === 'DONE');
   const isProjectOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && project.status.name === 'Active';
     
   return (
@@ -127,7 +127,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
               <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
             </Link>
             <div className='flex items-center gap-2'>
-              <ProgressBadge progress={progress} isOverdue={isProjectOverdue} isComplete={isProjectComplete} />
+              <ProgressBadge progress={progress} isOverdue={isProjectOverdue} />
             </div>
         </div>
         <div className="flex flex-col gap-1 text-sm text-muted-foreground pt-2">
