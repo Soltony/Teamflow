@@ -2,10 +2,10 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert, ChevronDown, Eye } from 'lucide-react';
+import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye } from 'lucide-react';
 import { format, parseISO, isAfter, endOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import type { Task, User, Milestone, Project } from '@/lib/types';
@@ -19,11 +19,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Tooltip, TooltipProvider, TooltipContent, TooltipTrigger } from '../ui/tooltip';
 import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { Badge } from '../ui/badge';
 
 type ProjectListItemProps = {
   project: any;
@@ -35,6 +35,25 @@ type ProjectListItemProps = {
   setTaskToDelete: (task: any) => void;
   handleDeleteTask: () => void;
 };
+
+
+const ProgressBadge = ({ progress, isOverdue }: { progress: number, isOverdue: boolean }) => {
+    const isComplete = progress === 100;
+    const badgeColor = isComplete ? 'bg-green-600' : isOverdue ? 'bg-red-600' : 'bg-primary';
+    const textColor = 'text-primary-foreground';
+  
+    return (
+      <div className={cn(
+        "relative inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        badgeColor,
+        textColor
+      )}>
+        <div className="absolute left-0 top-0 h-full rounded-full bg-white/20" style={{ width: `${progress}%` }}/>
+        <span className="relative">{Math.round(progress)}% Done</span>
+      </div>
+    );
+};
+
 
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
@@ -97,23 +116,22 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
   const progress = calculateProjectProgress(project);
   const projectManager = users.find(u => u.id === project.projectManagerId);
+  const isOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && progress < 100;
     
   return (
     <>
     <Card className="flex flex-col h-full">
       <CardHeader>
-        <div className="flex justify-between items-start gap-4">
-          <div className='flex items-center gap-4'>
-            <Link href={`/projects/${project.id}`}>
+        <div className="flex justify-between items-center gap-4">
+            <Link href={`/projects/${project.id}`} className="flex-1 truncate">
               <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
             </Link>
-            <Badge variant="outline" className="text-primary border-primary">{Math.round(progress)}%</Badge>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href={`/projects/${project.id}`} className="text-muted-foreground hover:text-primary">
-              <Eye className="w-5 h-5" />
-            </Link>
-          </div>
+            <div className='flex items-center gap-2'>
+              <Link href={`/projects/${project.id}`} className="text-muted-foreground hover:text-primary">
+                <Eye className="w-5 h-5" />
+              </Link>
+              <ProgressBadge progress={progress} isOverdue={isOverdue} />
+            </div>
         </div>
         <div className="flex flex-col gap-1 text-sm text-muted-foreground pt-2">
             <div className="flex items-center gap-2">
@@ -124,21 +142,12 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                 <Calendar className="w-4 h-4" />
                 <span>{format(parseISO(project.startDate), "MMM d")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
             </div>
-             <div className="flex items-center gap-2">
-                <Users className="w-4 h-4" />
-                <span>{project.teams?.length || 0} Team(s)</span>
-            </div>
-        </div>
-        <div className="space-y-1 pt-4">
-            <h4 className="font-medium text-muted-foreground text-sm">Overall Progress</h4>
-            <Progress value={progress} />
         </div>
       </CardHeader>
 
-      <CardContent className="flex-grow flex flex-col justify-end">
-        <Separator className="mb-4" />
+      <CardContent className="flex-grow flex flex-col justify-end pt-0">
         <div 
-            className="flex justify-between items-center cursor-pointer" 
+            className="flex justify-between items-center cursor-pointer mt-4" 
             onClick={(e) => {
                 e.stopPropagation();
                 setTasksExpanded(!tasksExpanded);
@@ -177,7 +186,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
               <>
                 {filteredTasks.map((task: any) => {
                    const isDone = task.progress === 100;
-                   const indicatorClassName = isDone ? "bg-green-500" : "bg-[#8B4513]";
+                   const indicatorClassName = isDone ? "bg-green-500" : "bg-primary";
 
                    return (
                       <div key={task.id} className="space-y-1 group">
@@ -216,26 +225,6 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
         </div>
         )}
       </CardContent>
-
-      {project.timelineChangeRequests?.length > 0 && (
-          <div className="p-6 pt-0">
-                <TooltipProvider>
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                           <Link href={`/projects/${project.id}?tab=timeline`}>
-                            <Badge variant="outline" className="gap-1.5 items-center bg-amber-100 border-amber-300 text-amber-900 cursor-pointer">
-                                <ShieldAlert className="w-3.5 h-3.5"/>
-                                Pending Timeline Approval
-                            </Badge>
-                           </Link>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>A deadline change for this project is awaiting approval.</p>
-                        </TooltipContent>
-                    </Tooltip>
-                </TooltipProvider>
-          </div>
-      )}
     </Card>
      <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
         <AlertDialogContent>
