@@ -141,7 +141,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
         
         <div className="mt-4">
             <div 
-                className="flex justify-between items-center cursor-pointer" 
+                className="flex justify-between items-center cursor-pointer p-2 -m-2" 
                 onClick={(e) => {
                     e.stopPropagation();
                     setTasksExpanded(!tasksExpanded);
@@ -162,7 +162,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             </div>
             
             {tasksExpanded && (
-              <div className="mt-4 space-y-3">
+              <div className="mt-2 space-y-3">
                 {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
                     <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
                         <SelectTrigger className="w-full sm:w-[240px] h-9">
@@ -182,11 +182,16 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                       <div key={task.id} className="space-y-1 group">
                           <div className="flex justify-between items-center">
                               <span className="text-sm font-medium truncate flex-1 pr-2">{task.title}</span>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                  <span className="text-xs text-muted-foreground">Weight: {task.weight}%</span>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
                                   <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
                                   {canManageTasks && (
-                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
+                                              <Link href={`/projects/${project.id}?tab=milestones`}>
+                                                <Eye className="h-3 w-3" />
+                                              </Link>
+                                          </Button>
                                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
                                               <Pencil className="h-3 w-3" />
                                           </Button>
@@ -197,7 +202,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                                   )}
                               </div>
                           </div>
-                          <Progress value={task.progress || 0} className="h-2" />
+                          <Progress value={task.progress || 0} className="h-1.5" />
                       </div>
                     ))}
                   </>
