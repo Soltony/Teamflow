@@ -116,8 +116,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const projectManager = users.find(u => u.id === project.projectManagerId);
   
   const isProjectComplete = allTasks.length > 0 && allTasks.every((task: any) => task.status === 'DONE');
-  
-  const isOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && !isProjectComplete;
+  const isProjectOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && !isProjectComplete;
     
   return (
     <>
@@ -131,7 +130,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
               <Link href={`/projects/${project.id}`} className="text-muted-foreground hover:text-primary">
                 <Eye className="w-5 h-5" />
               </Link>
-              <ProgressBadge progress={progress} isOverdue={isOverdue} isComplete={isProjectComplete} />
+              <ProgressBadge progress={progress} isOverdue={isProjectOverdue} isComplete={isProjectComplete} />
             </div>
         </div>
         <div className="flex flex-col gap-1 text-sm text-muted-foreground pt-2">
@@ -187,7 +186,9 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
               <>
                 {filteredTasks.map((task: any) => {
                    const isTaskDone = task.status === 'DONE';
-                   const indicatorClassName = isTaskDone ? 'bg-green-600' : 'bg-primary';
+                   const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
+                   
+                   const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-red-600' : 'bg-primary';
 
                    return (
                       <div key={task.id} className="space-y-1.5 group">
