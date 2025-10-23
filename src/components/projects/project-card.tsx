@@ -111,16 +111,6 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             <Link href={`/projects/${project.id}`} className="text-muted-foreground hover:text-primary">
               <Eye className="w-5 h-5" />
             </Link>
-            <Badge variant="secondary" className="text-base whitespace-nowrap relative overflow-hidden border-2 border-gray-300">
-              <div 
-                className="absolute inset-0 bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 transition-all duration-500 ease-out"
-                style={{ 
-                  width: `${Math.round(progress)}%`,
-                  background: progress < 25 ? '#ef4444' : progress < 50 ? '#f59e0b' : progress < 75 ? '#eab308' : '#22c55e'
-                }}
-              />
-              <span className="relative z-10 font-semibold">{Math.round(progress)}% Done</span>
-            </Badge>
           </div>
         </div>
         <div className="flex flex-col gap-1 text-sm text-muted-foreground pt-2">
@@ -132,12 +122,24 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                 <Calendar className="w-4 h-4" />
                 <span>{format(parseISO(project.startDate), "MMM d")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
             </div>
+             <div className="flex items-center gap-2">
+                <Users className="w-4 h-4" />
+                <span>{project.teams?.length || 0} Team(s)</span>
+            </div>
+        </div>
+         <div className="space-y-1 pt-2">
+            <div className="flex justify-between items-center text-sm">
+                <h4 className="font-medium text-muted-foreground">Overall Progress</h4>
+                <span className="font-semibold text-primary">{Math.round(progress)}%</span>
+            </div>
+            <Progress value={progress} />
         </div>
       </CardHeader>
 
       <CardContent className="flex-grow flex flex-col justify-end">
+        <Separator className="mb-4" />
         <div 
-            className="flex justify-between items-center cursor-pointer p-2 -m-2" 
+            className="flex justify-between items-center cursor-pointer" 
             onClick={(e) => {
                 e.stopPropagation();
                 setTasksExpanded(!tasksExpanded);
@@ -158,7 +160,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
         </div>
         
         {tasksExpanded && (
-          <div className="mt-2 space-y-3">
+          <div className="mt-4 space-y-3">
             {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
                 <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
                     <SelectTrigger className="w-full sm:w-[240px] h-9">
@@ -193,9 +195,11 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                                   <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
                                   {canManageTasks && (
                                       <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
-                                            <Eye className="h-3 w-3" />
-                                          </Button>
+                                          <Link href={`/tasks/${task.id}`}>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                <Eye className="h-3 w-3" />
+                                            </Button>
+                                          </Link>
                                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
                                               <Pencil className="h-3 w-3" />
                                           </Button>
@@ -332,3 +336,5 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
+
+    
