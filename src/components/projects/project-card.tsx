@@ -114,8 +114,13 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
   const progress = calculateProjectProgress(project);
   const projectManager = users.find(u => u.id === project.projectManagerId);
+  
   const isProjectComplete = allTasks.length > 0 && allTasks.every((task: any) => task.status === 'DONE');
-  const isOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && !isProjectComplete;
+  
+  const hasOverdueTasks = allTasks.some((task: any) => isAfter(new Date(), endOfDay(parseISO(task.endDate))) && task.status !== 'DONE');
+  const isProjectOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && !isProjectComplete;
+
+  const isOverdue = (isProjectOverdue || hasOverdueTasks) && !isProjectComplete;
     
   return (
     <>
@@ -188,7 +193,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                    const indicatorClassName = isTaskDone ? 'bg-green-600' : 'bg-primary';
 
                    return (
-                      <div key={task.id} className="space-y-1 group">
+                      <div key={task.id} className="space-y-1.5 group">
                           <div className="flex justify-between items-center">
                               <span className="text-sm font-medium truncate flex-1 pr-2">{task.title}</span>
                               <div className="flex items-center gap-1 flex-shrink-0">
