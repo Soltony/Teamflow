@@ -7,7 +7,7 @@ import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert, ChevronDown, Eye } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, isAfter, endOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import type { Task, User, Milestone, Project } from '@/lib/types';
 import {
@@ -174,33 +174,42 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             )}
             {filteredTasks.length > 0 ? (
               <>
-                {filteredTasks.map((task: any) => (
-                  <div key={task.id} className="space-y-1 group">
-                      <div className="flex justify-between items-center">
-                          <span className="text-sm font-medium truncate flex-1 pr-2">{task.title}</span>
-                          <div className="flex items-center gap-1 flex-shrink-0">
-                              <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
-                              <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
-                              {canManageTasks && (
-                                  <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                      <Button variant="ghost" size="icon" className="h-6 w-6" asChild>
-                                        <Link href={`/tasks/${task.id}`}>
+                {filteredTasks.map((task: any) => {
+                   const isOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && task.status !== 'DONE';
+                   const isDone = task.status === 'DONE';
+                   
+                   const indicatorClassName = cn({
+                       'bg-green-500': isDone,
+                       'bg-destructive': isOverdue && !isDone,
+                       'bg-sidebar': !isOverdue && !isDone,
+                   });
+
+                   return (
+                      <div key={task.id} className="space-y-1 group">
+                          <div className="flex justify-between items-center">
+                              <span className="text-sm font-medium truncate flex-1 pr-2">{task.title}</span>
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                  <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
+                                  <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
+                                  {canManageTasks && (
+                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
                                             <Eye className="h-3 w-3" />
-                                        </Link>
-                                      </Button>
-                                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
-                                          <Pencil className="h-3 w-3" />
-                                      </Button>
-                                      <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
-                                          <Trash2 className="h-3 w-3" />
-                                      </Button>
-                                  </div>
-                              )}
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                              <Pencil className="h-3 w-3" />
+                                          </Button>
+                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
+                                              <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                      </div>
+                                  )}
+                              </div>
                           </div>
+                          <Progress value={task.progress || 0} className="h-1.5" indicatorClassName={indicatorClassName} />
                       </div>
-                      <Progress value={task.progress || 0} className="h-1.5" />
-                  </div>
-                ))}
+                    )
+                })}
               </>
             ) : (
                  <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
