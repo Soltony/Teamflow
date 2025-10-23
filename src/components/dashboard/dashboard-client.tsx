@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
-import { isPast, max as dateMax, parseISO, format } from 'date-fns';
+import { isPast, max as dateMax, parseISO, format, differenceInDays } from 'date-fns';
 import { useAuth } from "@/context/auth-context";
 import { CelebrationSlider } from "./celebration-slider";
 
@@ -68,7 +68,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
   const selectedYear = searchParams.get('year') || currentWorkingYear;
   const selectedDivision = searchParams.get('division') || "all";
 
-  const { filteredProjects, filteredTeams, activeProjects, completedProjects } = React.useMemo(() => {
+  const { filteredProjects, filteredTeams, activeProjects, recentlyCompletedProjects } = React.useMemo(() => {
     let tempProjects = initialProjects;
 
     if (selectedYear !== "all") {
@@ -86,13 +86,25 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     const onHandoverStatusId = projectStatuses.find((s: any) => s.name === 'On Handover')?.id;
     
     const activeProjs = tempProjects.filter((p: any) => p.statusId !== completedStatusId && p.statusId !== onHandoverStatusId);
-    const completedProjs = tempProjects.filter((p: any) => p.statusId === completedStatusId);
+    
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    const recentCompleted = tempProjects.filter((p: any) => {
+        if (p.statusId !== completedStatusId) return false;
+        
+        const lastTaskUpdate = p.milestones.flatMap((m:any) => m.tasks.map((t:any) => t.completedAt)).filter(Boolean);
+        if(lastTaskUpdate.length === 0) return false;
+        
+        const lastCompletionDate = dateMax(lastTaskUpdate.map((d: any) => parseISO(d)));
+        return lastCompletionDate >= oneWeekAgo;
+    });
 
     return { 
       filteredProjects: tempProjects, 
       filteredTeams: tempTeams,
       activeProjects: activeProjs,
-      completedProjects: completedProjs
+      recentlyCompletedProjects: recentCompleted
     };
   }, [selectedYear, selectedDivision, initialProjects, projectStatuses, teams]);
 
@@ -192,8 +204,8 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-       {completedProjects.length > 0 && (
-        <CelebrationSlider completedProjects={completedProjects} teams={teams} />
+       {recentlyCompletedProjects.length > 0 && (
+        <CelebrationSlider completedProjects={recentlyCompletedProjects} teams={teams} />
       )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
