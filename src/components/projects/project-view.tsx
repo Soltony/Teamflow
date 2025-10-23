@@ -2,7 +2,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot, AlertTriangle, ArrowRight } from "lucide-react";
 import { format, differenceInDays, parseISO, isAfter, endOfDay } from "date-fns";
 import type { Blocker, TaskStatus, Project } from "@/lib/types";
@@ -121,6 +121,7 @@ export function ProjectView({
 }: ProjectViewProps) {
   
   const searchParams = useSearchParams();
+  const router = useRouter();
   const defaultTab = searchParams.get('tab') || 'milestones';
   
   const calculateMilestoneProgress = (milestone: any) => {
@@ -331,7 +332,11 @@ export function ProjectView({
                                                 </TableHeader>
                                                 <TableBody>
                                                     {milestone.tasks.map((task: any) => (
-                                                        <TableRow key={task.id}>
+                                                        <TableRow 
+                                                            key={task.id} 
+                                                            onClick={() => router.push(`/tasks/${task.id}`)}
+                                                            className="cursor-pointer"
+                                                        >
                                                             <TableCell className="font-medium">{task.title}</TableCell>
                                                             <TableCell>{getStatusBadge(task.status)}</TableCell>
                                                             <TableCell>
