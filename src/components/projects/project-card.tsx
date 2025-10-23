@@ -117,10 +117,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   
   const isProjectComplete = allTasks.length > 0 && allTasks.every((task: any) => task.status === 'DONE');
   
-  const hasOverdueTasks = allTasks.some((task: any) => isAfter(new Date(), endOfDay(parseISO(task.endDate))) && task.status !== 'DONE');
-  const isProjectOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && !isProjectComplete;
-
-  const isOverdue = (isProjectOverdue || hasOverdueTasks) && !isProjectComplete;
+  const isOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && !isProjectComplete;
     
   return (
     <>
