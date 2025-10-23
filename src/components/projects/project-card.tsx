@@ -4,7 +4,6 @@
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert, ChevronDown, Eye } from 'lucide-react';
 import { format, parseISO, isAfter, endOfDay } from 'date-fns';
@@ -104,9 +103,12 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
     <Card className="flex flex-col h-full">
       <CardHeader>
         <div className="flex justify-between items-start gap-4">
-          <Link href={`/projects/${project.id}`}>
-            <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
-          </Link>
+          <div className='flex items-center gap-4'>
+            <Link href={`/projects/${project.id}`}>
+              <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
+            </Link>
+            <Badge variant="outline" className="text-primary border-primary">{Math.round(progress)}%</Badge>
+          </div>
           <div className="flex items-center gap-2">
             <Link href={`/projects/${project.id}`} className="text-muted-foreground hover:text-primary">
               <Eye className="w-5 h-5" />
@@ -127,11 +129,8 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                 <span>{project.teams?.length || 0} Team(s)</span>
             </div>
         </div>
-         <div className="space-y-1 pt-2">
-            <div className="flex justify-between items-center text-sm">
-                <h4 className="font-medium text-muted-foreground">Overall Progress</h4>
-                <span className="font-semibold text-primary">{Math.round(progress)}%</span>
-            </div>
+        <div className="space-y-1 pt-4">
+            <h4 className="font-medium text-muted-foreground text-sm">Overall Progress</h4>
             <Progress value={progress} />
         </div>
       </CardHeader>
@@ -177,14 +176,8 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             {filteredTasks.length > 0 ? (
               <>
                 {filteredTasks.map((task: any) => {
-                   const isOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && task.status !== 'DONE';
-                   const isDone = task.status === 'DONE';
-                   
-                   const indicatorClassName = cn({
-                       'bg-green-500': isDone,
-                       'bg-destructive': isOverdue && !isDone,
-                       'bg-sidebar': !isOverdue && !isDone,
-                   });
+                   const isDone = task.progress === 100;
+                   const indicatorClassName = isDone ? "bg-green-500" : "bg-[#8B4513]";
 
                    return (
                       <div key={task.id} className="space-y-1 group">
@@ -336,5 +329,3 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
-
-    
