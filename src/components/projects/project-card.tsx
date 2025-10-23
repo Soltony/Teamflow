@@ -116,7 +116,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const projectManager = users.find(u => u.id === project.projectManagerId);
   
   const isProjectComplete = allTasks.length > 0 && allTasks.every((task: any) => task.status === 'DONE');
-  const isProjectOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && !isProjectComplete;
+  const isProjectOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && project.status.name === 'Active';
     
   return (
     <>
@@ -127,9 +127,6 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
               <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
             </Link>
             <div className='flex items-center gap-2'>
-              <Link href={`/projects/${project.id}`} className="text-muted-foreground hover:text-primary">
-                <Eye className="w-5 h-5" />
-              </Link>
               <ProgressBadge progress={progress} isOverdue={isProjectOverdue} isComplete={isProjectComplete} />
             </div>
         </div>
