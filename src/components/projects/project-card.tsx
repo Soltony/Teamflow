@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert, ChevronDown } from 'lucide-react';
+import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ShieldAlert, ChevronDown, Eye } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import type { Task, User, Milestone, Project } from '@/lib/types';
@@ -108,7 +108,10 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
           <Link href={`/projects/${project.id}`}>
             <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
           </Link>
-          <div className="relative">
+          <div className="flex items-center gap-2">
+            <Link href={`/projects/${project.id}`} className="text-muted-foreground hover:text-primary">
+              <Eye className="w-5 h-5" />
+            </Link>
             <Badge variant="secondary" className="text-base whitespace-nowrap relative overflow-hidden border-2 border-gray-300">
               <div 
                 className="absolute inset-0 bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 transition-all duration-500 ease-out"
@@ -135,18 +138,16 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
       <CardContent className="flex-grow flex flex-col justify-end">
         <Separator />
-
+        
         <div className="mt-4">
-            <div className="flex justify-between items-center">
-                <div 
-                    className="flex items-center cursor-pointer flex-1" 
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        setTasksExpanded(!tasksExpanded);
-                    }}
-                >
-                    <h4 className="font-semibold">Tasks ({allTasks.length})</h4>
-                </div>
+            <div 
+                className="flex justify-between items-center cursor-pointer" 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setTasksExpanded(!tasksExpanded);
+                }}
+            >
+                <h4 className="font-semibold">Tasks ({allTasks.length})</h4>
                 <div className="flex items-center gap-2">
                     {canManageTasks && (
                         <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
@@ -154,13 +155,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                             Add Task
                         </Button>
                     )}
-                    <div 
-                        className="cursor-pointer p-1" 
-                        onClick={(e) => {
-                            e.stopPropagation();
-                            setTasksExpanded(!tasksExpanded);
-                        }}
-                    >
+                    <div className="cursor-pointer p-1">
                         <ChevronDown className={cn("h-5 w-5 transition-transform", tasksExpanded && "rotate-180")} />
                     </div>
                 </div>
@@ -186,8 +181,8 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                     {filteredTasks.map((task: any) => (
                       <div key={task.id} className="space-y-1 group">
                           <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium">{task.title}</span>
-                              <div className="flex items-center gap-2">
+                              <span className="text-sm font-medium truncate flex-1 pr-2">{task.title}</span>
+                              <div className="flex items-center gap-2 flex-shrink-0">
                                   <span className="text-xs text-muted-foreground">Weight: {task.weight}%</span>
                                   <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
                                   {canManageTasks && (
@@ -328,5 +323,3 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
-
-    
