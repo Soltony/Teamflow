@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -108,7 +108,18 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
           <Link href={`/projects/${project.id}`}>
             <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
           </Link>
-          <Badge variant="secondary" className="text-base whitespace-nowrap">{Math.round(progress)}% Done</Badge>
+          <div className="relative">
+            <Badge variant="secondary" className="text-base whitespace-nowrap relative overflow-hidden border-2 border-gray-300">
+              <div 
+                className="absolute inset-0 bg-gradient-to-r from-red-400 via-yellow-400 to-green-400 transition-all duration-500 ease-out"
+                style={{ 
+                  width: `${Math.round(progress)}%`,
+                  background: progress < 25 ? '#ef4444' : progress < 50 ? '#f59e0b' : progress < 75 ? '#eab308' : '#22c55e'
+                }}
+              />
+              <span className="relative z-10 font-semibold">{Math.round(progress)}% Done</span>
+            </Badge>
+          </div>
         </div>
         <div className="flex flex-col gap-1 text-sm text-muted-foreground pt-2">
             <div className="flex items-center gap-2">
@@ -123,16 +134,19 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       </CardHeader>
 
       <CardContent className="flex-grow flex flex-col justify-end">
-        <div className="space-y-1 mb-6">
-            <span className="text-sm font-medium">Overall Progress</span>
-            <Progress value={progress} className="h-2.5" />
-        </div>
-        
         <Separator />
 
         <div className="mt-4">
-            <div className="flex justify-between items-center cursor-pointer" onClick={() => setTasksExpanded(!tasksExpanded)}>
-                <h4 className="font-semibold">Tasks ({allTasks.length})</h4>
+            <div className="flex justify-between items-center">
+                <div 
+                    className="flex items-center cursor-pointer flex-1" 
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        setTasksExpanded(!tasksExpanded);
+                    }}
+                >
+                    <h4 className="font-semibold">Tasks ({allTasks.length})</h4>
+                </div>
                 <div className="flex items-center gap-2">
                     {canManageTasks && (
                         <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
@@ -140,7 +154,15 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
                             Add Task
                         </Button>
                     )}
-                    <ChevronDown className={cn("h-5 w-5 transition-transform", tasksExpanded && "rotate-180")} />
+                    <div 
+                        className="cursor-pointer p-1" 
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            setTasksExpanded(!tasksExpanded);
+                        }}
+                    >
+                        <ChevronDown className={cn("h-5 w-5 transition-transform", tasksExpanded && "rotate-180")} />
+                    </div>
                 </div>
             </div>
             
