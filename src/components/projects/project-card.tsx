@@ -2,7 +2,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye } from 'lucide-react';
@@ -23,7 +23,6 @@ import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
-import { Badge } from '../ui/badge';
 
 type ProjectListItemProps = {
   project: any;
@@ -37,14 +36,13 @@ type ProjectListItemProps = {
 };
 
 
-const ProgressBadge = ({ progress, isOverdue }: { progress: number, isOverdue: boolean }) => {
-    const isComplete = progress === 100;
+const ProgressBadge = ({ progress, isOverdue, isComplete }: { progress: number, isOverdue: boolean, isComplete: boolean }) => {
     const badgeColor = isComplete ? 'bg-green-600' : isOverdue ? 'bg-red-600' : 'bg-primary';
     const textColor = 'text-primary-foreground';
   
     return (
       <div className={cn(
-        "relative inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2",
+        "relative inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-6",
         badgeColor,
         textColor
       )}>
@@ -116,7 +114,8 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
 
   const progress = calculateProjectProgress(project);
   const projectManager = users.find(u => u.id === project.projectManagerId);
-  const isOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && progress < 100;
+  const isProjectComplete = allTasks.length > 0 && allTasks.every((task: any) => task.status === 'DONE');
+  const isOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && !isProjectComplete;
     
   return (
     <>
@@ -130,7 +129,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
               <Link href={`/projects/${project.id}`} className="text-muted-foreground hover:text-primary">
                 <Eye className="w-5 h-5" />
               </Link>
-              <ProgressBadge progress={progress} isOverdue={isOverdue} />
+              <ProgressBadge progress={progress} isOverdue={isOverdue} isComplete={isProjectComplete} />
             </div>
         </div>
         <div className="flex flex-col gap-1 text-sm text-muted-foreground pt-2">
@@ -185,8 +184,8 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             {filteredTasks.length > 0 ? (
               <>
                 {filteredTasks.map((task: any) => {
-                   const isDone = task.progress === 100;
-                   const indicatorClassName = isDone ? "bg-green-500" : "bg-primary";
+                   const isTaskDone = task.status === 'DONE';
+                   const indicatorClassName = isTaskDone ? 'bg-green-600' : 'bg-primary';
 
                    return (
                       <div key={task.id} className="space-y-1 group">
