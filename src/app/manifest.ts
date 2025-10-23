@@ -12,17 +12,15 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#4db6ac',
     icons: [
       {
-        src: 'https://img.logoipsum.com/288.svg',
+        src: '/logo.png',
         sizes: '192x192',
-        type: 'image/svg+xml'
+        type: 'image/png'
       },
       {
-        src: 'https://img.logoipsum.com/288.svg',
+        src: '/logo.png',
         sizes: '512x512',
-        type: 'image/svg+xml'
+        type: 'image/png'
       }
     ],
   }
 }
-
-    

@@ -14,8 +14,8 @@ export const metadata: Metadata = {
   description: "A project management solution to assign tasks and manage activity online.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
-    apple: "https://img.logoipsum.com/288.svg",
+    icon: "/logo.png",
+    apple: "/logo.png",
   },
 };
 
@@ -43,5 +43,3 @@ export default function RootLayout({
     </html>
   );
 }
-
-    
