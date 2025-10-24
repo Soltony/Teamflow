@@ -9,13 +9,14 @@ import { CreateProjectButton } from "@/components/projects/create-project-button
 import { getProjectsPageData, addTask, updateTask, deleteTask } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
-import { Search } from "lucide-react";
-import type { Task as TaskType, User, Project, Milestone } from "@/lib/types";
+import { Search, X } from "lucide-react";
+import type { Task as TaskType, User, Project, Milestone, ProjectStatus, PmoDivision } from "@/lib/types";
 import { AddTaskDialog } from "@/components/projects/add-task-dialog";
 import { EditTaskDialog } from "@/components/projects/edit-task-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { CardFooter } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 
 function LoadingSkeleton() {
@@ -39,11 +40,16 @@ export default function ProjectsPage() {
     const { toast } = useToast();
     const [projects, setProjects] = useState<any[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
-    const [statuses, setStatuses] = useState<any[]>([]);
+    const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
+    const [pmoDivisions, setPmoDivisions] = useState<PmoDivision[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const projectsPerPage = 9;
+    
+    const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
+    const [selectedPmoDivision, setSelectedPmoDivision] = useState<string | null>(null);
+
 
     // State for modals
     const [addingTaskToProject, setAddingTaskToProject] = useState<(Project & { milestones: Milestone[] }) | null>(null);
@@ -54,17 +60,21 @@ export default function ProjectsPage() {
         if (localUser?.id) {
             setIsLoading(true);
             try {
-                const data = await getProjectsPageData(localUser.id);
+                const data = await getProjectsPageData(localUser.id, {
+                    status: selectedStatus,
+                    pmoDivisionId: selectedPmoDivision,
+                });
                 setProjects(data.projects);
                 setStatuses(data.statuses);
                 setAllUsers(data.users || []);
+                setPmoDivisions(data.pmoDivisions || []);
             } catch (error) {
                 console.error("Failed to fetch projects", error);
             } finally {
                 setIsLoading(false);
             }
         }
-    }, [localUser?.id]);
+    }, [localUser?.id, selectedStatus, selectedPmoDivision]);
 
     useEffect(() => {
         if (localUser?.id) {
@@ -84,7 +94,7 @@ export default function ProjectsPage() {
 
     useEffect(() => {
         setCurrentPage(1);
-    }, [searchQuery]);
+    }, [searchQuery, selectedStatus, selectedPmoDivision]);
 
     const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
     const paginatedProjects = useMemo(() => {
@@ -167,6 +177,32 @@ export default function ProjectsPage() {
                             onChange={(e) => setSearchQuery(e.target.value)}
                         />
                     </div>
+                    <Select onValueChange={(value) => setSelectedStatus(value === 'all' ? null : value)} value={selectedStatus || 'all'}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Filter by status" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All Statuses</SelectItem>
+                            {statuses.map(status => (
+                                <SelectItem key={status.id} value={status.id}>
+                                    {status.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                    <Select onValueChange={(value) => setSelectedPmoDivision(value === 'all' ? null : value)} value={selectedPmoDivision || 'all'}>
+                        <SelectTrigger className="w-full sm:w-[180px]">
+                            <SelectValue placeholder="Filter by division" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            <SelectItem value="all">All EPMO Divisions</SelectItem>
+                            {pmoDivisions.map(division => (
+                                <SelectItem key={division.id} value={division.id}>
+                                    {division.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                     <CreateProjectButton />
                 </div>
             </div>

@@ -481,7 +481,7 @@ export async function deleteTask(taskId: string, projectId: string) {
     }
 }
 
-export async function getProjectsPageData(userId: string) {
+export async function getProjectsPageData(userId: string, filters: { status?: string | null; pmoDivisionId?: string | null; }) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: { roles: true },
@@ -492,31 +492,30 @@ export async function getProjectsPageData(userId: string) {
             projects: [],
             statuses: [],
             users: [],
+            pmoDivisions: [],
         };
     }
     
-    const statuses = await prisma.projectStatus.findMany({
-        orderBy: {
-            name: 'asc'
-        }
-    });
-
-    const users = await prisma.user.findMany({ include: { roles: true }});
+    const [statuses, users, pmoDivisions] = await Promise.all([
+        prisma.projectStatus.findMany({ orderBy: { name: 'asc' } }),
+        prisma.user.findMany({ include: { roles: true } }),
+        prisma.pmoDivision.findMany({ orderBy: { name: 'asc' } }),
+    ]);
     
     const archivedStatusNames = ['Completed', 'On Handover'];
     const archivedStatusIds = statuses.filter(s => archivedStatusNames.includes(s.name)).map(s => s.id);
-
 
     const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
 
     let whereClause: Prisma.ProjectWhereInput = {
         statusId: {
             notIn: archivedStatusIds,
-        }
+        },
+        ...(filters.status && { statusId: filters.status }),
+        ...(filters.pmoDivisionId && { pmoDivisionId: filters.pmoDivisionId }),
     };
 
     if (!isManagerOrAdmin) {
-        // User is a member, so filter projects to only ones they are involved in
         whereClause.OR = [
             { projectManagerId: userId },
             {
@@ -528,7 +527,7 @@ export async function getProjectsPageData(userId: string) {
                     }
                 }
             },
-            { // Also check if they are assigned to any task in the project
+            {
                 milestones: {
                     some: {
                         tasks: {
@@ -579,6 +578,7 @@ export async function getProjectsPageData(userId: string) {
         projects: JSON.parse(JSON.stringify(projects)),
         statuses: JSON.parse(JSON.stringify(statuses.filter(s => !archivedStatusNames.includes(s.name)))),
         users: JSON.parse(JSON.stringify(users)),
+        pmoDivisions: JSON.parse(JSON.stringify(pmoDivisions)),
     };
 }
 
