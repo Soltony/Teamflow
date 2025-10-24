@@ -1,11 +1,12 @@
 
+
 'use client';
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye } from 'lucide-react';
+import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye, ShieldAlert } from 'lucide-react';
 import { format, parseISO, isAfter, endOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import type { Task, User, Milestone, Project } from '@/lib/types';
@@ -23,6 +24,7 @@ import { useState } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
+import { Badge } from '../ui/badge';
 
 type ProjectListItemProps = {
   project: any;
@@ -117,16 +119,22 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const projectManager = users.find(u => u.id === project.projectManagerId);
   
   const isProjectOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && project.status.name === 'Active';
+  const hasOpenBlockers = project.blockers && project.blockers.length > 0;
     
   return (
     <>
     <Card className="flex flex-col h-full">
       <CardHeader>
-        <div className="flex justify-between items-center gap-4">
+        <div className="flex justify-between items-start gap-4">
             <Link href={`/projects/${project.id}`} className="flex-1 truncate">
               <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
             </Link>
             <div className='flex items-center gap-2'>
+              {hasOpenBlockers && (
+                <Badge variant="destructive" className="flex items-center gap-1">
+                  <ShieldAlert className="w-3 h-3"/> Blocker
+                </Badge>
+              )}
               <ProgressBadge progress={progress} isOverdue={isProjectOverdue} />
             </div>
         </div>
@@ -288,11 +296,19 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
     };
 
     const progress = calculateProjectProgress(project);
+    const hasOpenBlockers = project.blockers && project.blockers.some((b: any) => b.status === 'OPEN');
 
     const cardContent = (
       <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
           <CardHeader>
-              <CardTitle className="truncate">{project.name}</CardTitle>
+              <div className="flex justify-between items-start">
+                <CardTitle className="truncate">{project.name}</CardTitle>
+                {hasOpenBlockers && (
+                  <Badge variant="destructive" className="flex items-center gap-1">
+                    <ShieldAlert className="w-3 h-3"/> Blocker
+                  </Badge>
+                )}
+              </div>
               <CardDescription className="line-clamp-2">{project.description}</CardDescription>
           </CardHeader>
           <CardContent className="flex-grow">

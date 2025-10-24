@@ -567,6 +567,11 @@ export async function getProjectsPageData(userId: string, filters: { status?: st
                 include: {
                     members: true
                 }
+            },
+            blockers: {
+                where: {
+                    status: 'OPEN'
+                }
             }
         },
         orderBy: {
