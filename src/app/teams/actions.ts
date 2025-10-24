@@ -17,6 +17,7 @@ export async function createTeam(data: { name: string; projectId: string; teamLe
                 }
             }
         });
+        revalidatePath('/projects');
         revalidatePath('/teams');
         revalidatePath('/dashboard');
         return { success: true };
@@ -39,6 +40,7 @@ export async function updateTeam(teamId: string, data: { name: string; projectId
                 }
             }
         });
+        revalidatePath('/projects');
         revalidatePath('/teams');
         revalidatePath('/dashboard');
         return { success: true };
@@ -53,6 +55,7 @@ export async function deleteTeam(teamId: string) {
         await prisma.team.delete({
             where: { id: teamId }
         });
+        revalidatePath('/projects');
         revalidatePath('/teams');
         revalidatePath('/dashboard');
         return { success: true };

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye, ShieldAlert, Edit } from 'lucide-react';
 import { format, parseISO, isAfter, endOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
-import type { Task, User, Milestone, Project } from '@/lib/types';
+import type { Task, User, Milestone, Project, Team } from '@/lib/types';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,7 +26,6 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
-import { useRouter } from 'next/navigation';
 
 type ProjectListItemProps = {
   project: any;
@@ -37,6 +36,13 @@ type ProjectListItemProps = {
   taskToDelete: any;
   setTaskToDelete: (task: any) => void;
   handleDeleteTask: () => void;
+  onAddTeam: (project: Project) => void;
+  onEditTeam: (team: Team, project: Project) => void;
+  onDeleteTeam: (team: Team) => void;
+  canManageTeams: { create: boolean; update: boolean; delete: boolean };
+  teamToDelete: Team | null;
+  setTeamToDelete: (team: Team | null) => void;
+  handleDeleteTeam: () => void;
 };
 
 
@@ -58,9 +64,24 @@ const ProgressBadge = ({ progress, isOverdue }: { progress: number, isOverdue: b
 };
 
 
-export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
+export function ProjectListItem({ 
+    project, 
+    users, 
+    onAddTask, 
+    onEditTask, 
+    onDeleteTask, 
+    taskToDelete, 
+    setTaskToDelete, 
+    handleDeleteTask,
+    onAddTeam,
+    onEditTeam,
+    onDeleteTeam,
+    canManageTeams,
+    teamToDelete,
+    setTeamToDelete,
+    handleDeleteTeam
+}: ProjectListItemProps) {
   const { hasPermission } = useAuth();
-  const router = useRouter();
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
 
@@ -117,6 +138,21 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
     e.stopPropagation();
     onAddTask(project);
   };
+  
+  const handleAddTeamClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onAddTeam(project);
+  };
+  
+  const handleEditTeamClick = (e: React.MouseEvent, team: Team) => {
+    e.stopPropagation();
+    onEditTeam(team, project);
+  };
+  
+  const handleDeleteTeamClick = (e: React.MouseEvent, team: Team) => {
+    e.stopPropagation();
+    onDeleteTeam(team);
+  };
 
   const progress = calculateProjectProgress(project);
   const projectManager = users.find(u => u.id === project.projectManagerId);
@@ -156,34 +192,49 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       </CardHeader>
 
       <CardContent className="flex-grow flex flex-col justify-end pt-0">
-        {(project.teams && project.teams.length > 0) && (
-            <>
-                <Separator className="my-4" />
-                <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                        <h4 className="font-semibold">Teams</h4>
-                        <Button variant="outline" size="sm" onClick={() => router.push('/teams')}>
-                            Manage Teams
-                        </Button>
-                    </div>
-                    {project.teams.map((team: any) => {
-                       const teamLead = team.teamLead;
-                       const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
+        <Separator className="mb-4" />
+        <div className="flex justify-between items-center">
+            <h4 className="font-semibold">Teams</h4>
+            {canManageTeams.create && (
+                <Button variant="secondary" size="sm" onClick={handleAddTeamClick}>
+                    <PlusCircle className="mr-2 h-4 w-4" />
+                    Add Team
+                </Button>
+            )}
+        </div>
+        {(project.teams && project.teams.length > 0) ? (
+            <div className="space-y-3 mt-2">
+                {project.teams.map((team: any) => {
+                    const teamLead = team.teamLead;
+                    const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
 
-                       return (
-                          <div key={team.id}>
-                              <div className="flex items-center gap-2">
-                                <h4 className="font-semibold text-sm">{team.name}</h4>
-                              </div>
-                              <div className="text-sm text-muted-foreground mt-1 space-y-1">
-                                  {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
-                                  {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
-                              </div>
-                          </div>
-                       )
-                    })}
-                </div>
-            </>
+                    return (
+                        <div key={team.id} className="text-sm p-3 rounded-md bg-muted/50 group">
+                            <div className="flex justify-between items-start">
+                                <h5 className="font-semibold">{team.name}</h5>
+                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                    {canManageTeams.update && (
+                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleEditTeamClick(e, team)}>
+                                            <Edit className="h-3 w-3" />
+                                        </Button>
+                                    )}
+                                    {canManageTeams.delete && (
+                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeleteTeamClick(e, team)}>
+                                            <Trash2 className="h-3 w-3" />
+                                        </Button>
+                                    )}
+                                </div>
+                            </div>
+                            <div className="text-muted-foreground mt-1 space-y-1">
+                                {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
+                                {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
+                            </div>
+                        </div>
+                    )
+                })}
+            </div>
+        ) : (
+            <p className="text-sm text-muted-foreground mt-2">No teams assigned.</p>
         )}
         <div 
             className="flex justify-between items-center cursor-pointer mt-4" 
@@ -279,6 +330,22 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Delete Task
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={!!teamToDelete} onOpenChange={() => setTeamToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the team: <span className="font-semibold">{teamToDelete?.name}</span>.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteTeam} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Team
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

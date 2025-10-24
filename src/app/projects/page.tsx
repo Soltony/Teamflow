@@ -10,13 +10,15 @@ import { getProjectsPageData, addTask, updateTask, deleteTask } from "./actions"
 import { Skeleton } from "@/components/ui/skeleton";
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
-import type { Task as TaskType, User, Project, Milestone, ProjectStatus, PmoDivision } from "@/lib/types";
+import type { Task as TaskType, User, Project, Milestone, ProjectStatus, PmoDivision, Team } from "@/lib/types";
 import { AddTaskDialog } from "@/components/projects/add-task-dialog";
 import { EditTaskDialog } from "@/components/projects/edit-task-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { CardFooter } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { TeamDialog } from "@/components/teams/team-dialog";
+import { createTeam, updateTeam, deleteTeam } from "@/app/teams/actions";
 
 
 function LoadingSkeleton() {
@@ -36,7 +38,7 @@ function LoadingSkeleton() {
 }
 
 export default function ProjectsPage() {
-    const { localUser, loading: authLoading } = useAuth();
+    const { localUser, loading: authLoading, hasPermission } = useAuth();
     const { toast } = useToast();
     const [projects, setProjects] = useState<any[]>([]);
     const [allUsers, setAllUsers] = useState<User[]>([]);
@@ -55,6 +57,17 @@ export default function ProjectsPage() {
     const [addingTaskToProject, setAddingTaskToProject] = useState<(Project & { milestones: Milestone[] }) | null>(null);
     const [editingTaskInfo, setEditingTaskInfo] = useState<{ task: TaskType; project: Project } | null>(null);
     const [taskToDelete, setTaskToDelete] = useState<TaskType | null>(null);
+
+    // State for team modals
+    const [isTeamDialogOpen, setIsTeamDialogOpen] = useState(false);
+    const [editingTeam, setEditingTeam] = useState<{ team: Team, project: Project } | null>(null);
+    const [addingTeamToProject, setAddingTeamToProject] = useState<Project | null>(null);
+    const [teamToDelete, setTeamToDelete] = useState<Team | null>(null);
+
+    const canCreateTeams = hasPermission('teams:create');
+    const canUpdateTeams = hasPermission('teams:update');
+    const canDeleteTeams = hasPermission('teams:delete');
+
 
     const fetchData = useCallback(async () => {
         if (localUser?.id) {
@@ -140,13 +153,67 @@ export default function ProjectsPage() {
         setTaskToDelete(null);
     };
 
+    const handleTeamSubmit = async (data: any) => {
+        const result = editingTeam 
+            ? await updateTeam(editingTeam.team.id, data)
+            : await createTeam(data);
+
+        if (result.success) {
+            toast({
+                title: editingTeam ? "Team Updated" : "Team Created",
+                description: `The team "${data.name}" has been saved.`
+            });
+            setIsTeamDialogOpen(false);
+            setEditingTeam(null);
+            setAddingTeamToProject(null);
+            fetchData();
+        } else {
+            toast({
+                title: "Error",
+                description: result.error,
+                variant: "destructive"
+            });
+        }
+    };
+    
+    const handleTeamDelete = async () => {
+        if (!teamToDelete) return;
+        const result = await deleteTeam(teamToDelete.id);
+        if (result.success) {
+            toast({
+                title: "Team Deleted",
+                description: `Team "${teamToDelete.name}" has been removed.`
+            });
+            fetchData();
+        } else {
+            toast({
+                title: "Error",
+                description: result.error,
+                variant: "destructive"
+            });
+        }
+        setTeamToDelete(null);
+    };
+
+
     const handleEditTask = (task: any, project: any) => {
-        // Normalize the task object here before passing it to the dialog
         const normalizedTask = {
             ...task,
             assignedUserIds: task.assignees?.map((a: any) => a.id) || [],
         };
         setEditingTaskInfo({ task: normalizedTask, project });
+    };
+
+    const handleAddTeam = (project: Project) => {
+        setAddingTeamToProject(project);
+        setEditingTeam(null);
+        setIsTeamDialogOpen(true);
+    };
+    
+    const handleEditTeam = (team: Team, project: Project) => {
+        setEditingTeam({ team, project });
+        setAddingTeamToProject(null);
+        setIsTeamDialogOpen(true);
     };
 
     if (isLoading || authLoading) {
@@ -158,6 +225,8 @@ export default function ProjectsPage() {
             <div className="p-4 sm:p-6"><p>Could not load projects. Please try logging in again.</p></div>
         )
     }
+    
+    const teamDialogData = editingTeam || (addingTeamToProject ? { project: addingTeamToProject } : null);
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -220,6 +289,13 @@ export default function ProjectsPage() {
                             taskToDelete={taskToDelete}
                             setTaskToDelete={setTaskToDelete}
                             handleDeleteTask={handleTaskDelete}
+                            onAddTeam={handleAddTeam}
+                            onEditTeam={handleEditTeam}
+                            onDeleteTeam={setTeamToDelete}
+                            canManageTeams={{ create: canCreateTeams, update: canUpdateTeams, delete: canDeleteTeams }}
+                            teamToDelete={teamToDelete}
+                            setTeamToDelete={setTeamToDelete}
+                            handleDeleteTeam={handleTeamDelete}
                         />
                     ))}
                 </div>
@@ -270,6 +346,17 @@ export default function ProjectsPage() {
                     task={editingTaskInfo.task}
                     users={allUsers}
                     onTaskUpdate={(updatedTask) => handleTaskUpdate(editingTaskInfo.project.id, updatedTask)}
+                />
+            )}
+            
+            {teamDialogData && (
+                 <TeamDialog
+                    isOpen={isTeamDialogOpen}
+                    onOpenChange={setIsTeamDialogOpen}
+                    team={editingTeam?.team}
+                    project={teamDialogData.project}
+                    allUsers={allUsers}
+                    onSubmit={handleTeamSubmit}
                 />
             )}
         </div>
