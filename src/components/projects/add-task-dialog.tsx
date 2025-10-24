@@ -29,7 +29,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import type { Milestone, Project, Task, User, TaskStatus } from "@/lib/types";
+import type { Milestone, Project, Task, User, TaskStatus, Team } from "@/lib/types";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -42,16 +42,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from ".
 import { useToast } from "@/hooks/use-toast";
 
 type UserWithRoles = User & { roles: { name: string }[] };
+type ProjectWithTeamsAndMilestones = Project & { 
+    teams: (Team & { members: User[], teamLead: User })[];
+    milestones: (Milestone & { tasks: Task[] })[]; 
+};
 
 type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project & { milestones: (Milestone & { tasks: Task[] })[] };
+  project: ProjectWithTeamsAndMilestones;
   users: UserWithRoles[];
   onTaskAdd: (projectId: string, milestoneId: string | null, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
 };
 
-function createTaskSchema(project: Project & { milestones: (Milestone & { tasks: Task[] })[] }, hasMilestones: boolean) {
+function createTaskSchema(project: ProjectWithTeamsAndMilestones, hasMilestones: boolean) {
     
     return z.object({
       title: z.string().min(3, "Task title must be at least 3 characters."),
@@ -130,10 +134,22 @@ function createTaskSchema(project: Project & { milestones: (Milestone & { tasks:
 
 export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users }: AddTaskDialogProps) {
 
-  const nonAdminUsers = useMemo(() => {
-    if (!users) return [];
-    return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
-  }, [users]);
+  const { assignableUsers, hasProjectTeams } = useMemo(() => {
+    const projectHasTeams = project.teams && project.teams.length > 0;
+    
+    if (projectHasTeams) {
+        const teamMemberAndLeadIds = new Set<string>();
+        project.teams.forEach(team => {
+            teamMemberAndLeadIds.add(team.teamLeadId);
+            team.members.forEach(member => teamMemberAndLeadIds.add(member.id));
+        });
+        const teamUsers = users.filter(user => teamMemberAndLeadIds.has(user.id));
+        return { assignableUsers: teamUsers, hasProjectTeams: true };
+    }
+
+    const nonAdminUsers = users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
+    return { assignableUsers: nonAdminUsers, hasProjectTeams: false };
+  }, [project, users]);
   
   const userCreatedMilestones = useMemo(() => {
     return project.milestones?.filter(m => m.title !== "General Tasks") || [];
@@ -181,8 +197,8 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
 
 
   const selectedUsers = useMemo(() => 
-    (users || []).filter(user => assignedUserIds?.includes(user.id)),
-    [users, assignedUserIds]
+    (assignableUsers || []).filter(user => assignedUserIds?.includes(user.id)),
+    [assignableUsers, assignedUserIds]
   );
 
   async function onSubmit(data: z.infer<ReturnType<typeof createTaskSchema>>) {
@@ -322,6 +338,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Select members</FormLabel>
+                      {hasProjectTeams && <FormDescription>Showing only members from this project's teams.</FormDescription>}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <FormControl>
@@ -336,7 +353,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                           </FormControl>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-60 overflow-y-auto">
-                          {nonAdminUsers.map((user) => (
+                          {assignableUsers.map((user) => (
                             <DropdownMenuCheckboxItem
                               key={user.id}
                               checked={field.value?.includes(user.id)}

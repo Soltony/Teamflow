@@ -21,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -29,7 +30,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import type { Milestone, Project, Task, User, TaskStatus } from "@/lib/types";
+import type { Milestone, Project, Task, User, TaskStatus, Team } from "@/lib/types";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -51,17 +52,22 @@ const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const formatStatus = (s: string) => capitalize(s.replace(/_/g, ' ').toLowerCase());
 
 type UserWithRoles = User & { roles: { name: string }[] };
+type ProjectWithTeamsAndMilestones = Project & { 
+    teams: (Team & { members: User[], teamLead: User })[];
+    milestones: (Milestone & {tasks: Task[]})[]; 
+};
+
 
 type EditTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
-  project: Project & { milestones: (Milestone & {tasks: Task[]})[] };
+  project: ProjectWithTeamsAndMilestones;
   task: Task;
   users: UserWithRoles[];
   onTaskUpdate: (updatedTask: Task) => Promise<void>;
 };
 
-function createTaskSchema(project: Project & { milestones: (Milestone & {tasks: Task[]})[] }, task: Task, hasMilestones: boolean) {
+function createTaskSchema(project: ProjectWithTeamsAndMilestones, task: Task, hasMilestones: boolean) {
   return z.object({
     title: z.string().min(3, "Task title must be at least 3 characters."),
     description: z.string().optional(),
@@ -138,11 +144,23 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   }, [project.milestones]);
   
   const hasMilestones = userCreatedMilestones.length > 0;
+  
+  const { assignableUsers, hasProjectTeams } = useMemo(() => {
+    const projectHasTeams = project.teams && project.teams.length > 0;
+    
+    if (projectHasTeams) {
+        const teamMemberAndLeadIds = new Set<string>();
+        project.teams.forEach(team => {
+            teamMemberAndLeadIds.add(team.teamLeadId);
+            team.members.forEach(member => teamMemberAndLeadIds.add(member.id));
+        });
+        const teamUsers = users.filter(user => teamMemberAndLeadIds.has(user.id));
+        return { assignableUsers: teamUsers, hasProjectTeams: true };
+    }
 
-  const nonAdminUsers = useMemo(() => {
-    if (!users) return [];
-    return users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
-  }, [users]);
+    const nonAdminUsers = users.filter(user => user.roles && !user.roles.some(role => role.name === 'Admin'));
+    return { assignableUsers: nonAdminUsers, hasProjectTeams: false };
+  }, [project, users]);
 
   const form = useForm<z.infer<ReturnType<typeof createTaskSchema>>>({
     resolver: zodResolver(createTaskSchema(project, task, hasMilestones)),
@@ -150,12 +168,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   
   useEffect(() => {
     if (isOpen && task) {
-        console.log('EditTaskDialog - task data:', task);
-        console.log('EditTaskDialog - task.assignedUserIds:', task.assignedUserIds);
-        console.log('EditTaskDialog - task.assignees:', (task as any).assignees);
-        
         const assigneeIds: string[] = task.assignedUserIds || (task as any).assignees?.map((a: any) => a.id) || [];
-        console.log('EditTaskDialog - extracted assigneeIds:', assigneeIds);
         
         const isGeneralMilestone = project.milestones.find(m => m.id === task.milestoneId)?.title === "General Tasks";
         const initialMilestoneId = hasMilestones && !isGeneralMilestone ? task.milestoneId ?? undefined : undefined;
@@ -171,7 +184,6 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
             milestoneId: initialMilestoneId,
         });
         
-        console.log('EditTaskDialog - form reset with assignedUserIds:', assigneeIds);
     }
   }, [isOpen, task, form, hasMilestones, project.milestones]);
   
@@ -185,14 +197,13 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
 
   const maxWeightForThisTask = useMemo(() => {
     if (hasMilestones) {
-        if (!selectedMilestone) return 0; // Or some default, maybe 100 if no milestone is selected yet
+        if (!selectedMilestone) return 0;
         const otherTasksWeight = (selectedMilestone.tasks || [])
             .filter((t) => t.id !== task.id)
             .reduce((sum, t) => sum + (Number(t.weight) || 0), 0);
         return Math.max(0, 100 - otherTasksWeight);
     }
     
-    // Project-level task (no milestones)
     const projectLevelTasks = project.milestones.flatMap(m => m.tasks.filter(t => t.milestoneId === null || project.milestones.find(milestone => milestone.id === t.milestoneId)?.title === "General Tasks"));
     const otherProjectLevelTasksWeight = projectLevelTasks
         .filter((t) => t.id !== task.id)
@@ -203,8 +214,8 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
 
 
   const selectedUsers = useMemo(() => 
-    (users || []).filter(user => assignedUserIds?.includes(user.id)),
-    [users, assignedUserIds]
+    (assignableUsers || []).filter(user => assignedUserIds?.includes(user.id)),
+    [assignableUsers, assignedUserIds]
   );
   
   async function onSubmit(data: z.infer<ReturnType<typeof createTaskSchema>>) {
@@ -357,6 +368,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                   render={({ field }) => (
                     <FormItem className="flex flex-col">
                       <FormLabel>Assigned Members</FormLabel>
+                      {hasProjectTeams && <FormDescription>Showing only members from this project's teams.</FormDescription>}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <FormControl>
@@ -371,7 +383,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
                           </FormControl>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-60 overflow-y-auto">
-                          {nonAdminUsers.map((user) => (
+                          {assignableUsers.map((user) => (
                             <DropdownMenuCheckboxItem
                               key={user.id}
                               checked={field.value?.includes(user.id)}
@@ -449,4 +461,3 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
     </Dialog>
   );
 }
-
