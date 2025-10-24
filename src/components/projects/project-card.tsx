@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye, ShieldAlert } from 'lucide-react';
+import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye, ShieldAlert, Edit } from 'lucide-react';
 import { format, parseISO, isAfter, endOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import type { Task, User, Milestone, Project } from '@/lib/types';
@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { useRouter } from 'next/navigation';
 
 type ProjectListItemProps = {
   project: any;
@@ -59,6 +60,7 @@ const ProgressBadge = ({ progress, isOverdue }: { progress: number, isOverdue: b
 
 export function ProjectListItem({ project, users, onAddTask, onEditTask, onDeleteTask, taskToDelete, setTaskToDelete, handleDeleteTask }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
+  const router = useRouter();
   const [tasksExpanded, setTasksExpanded] = useState(false);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
 
@@ -158,22 +160,25 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             <>
                 <Separator className="my-4" />
                 <div className="space-y-3">
-                    {project.teams.map((team: any) => (
-                        <div key={team.id}>
-                            <h4 className="font-semibold text-sm">{team.name}</h4>
-                            <div className="flex flex-wrap gap-2 mt-2">
-                                {team.members.map((member: any) => (
-                                    <div key={member.id} className="flex items-center gap-1.5 p-1 pr-2 bg-muted rounded-full">
-                                        <Avatar className="w-6 h-6">
-                                            <AvatarImage src={member.avatar} alt={member.name} />
-                                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <span className="text-xs font-medium">{member.name}</span>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-                    ))}
+                    {project.teams.map((team: any) => {
+                       const teamLead = users.find(u => u.id === team.teamLeadId);
+                       const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
+
+                       return (
+                          <div key={team.id}>
+                              <div className="flex items-center gap-2">
+                                <h4 className="font-semibold text-sm">{team.name}</h4>
+                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => router.push('/teams')}>
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              </div>
+                              <div className="text-sm text-muted-foreground mt-1 space-y-1">
+                                  {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
+                                  {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
+                              </div>
+                          </div>
+                       )
+                    })}
                 </div>
             </>
         )}
