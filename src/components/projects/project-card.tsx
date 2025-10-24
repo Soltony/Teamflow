@@ -3,7 +3,7 @@
 'use client';
 
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye, ShieldAlert } from 'lucide-react';
@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
+import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 
 type ProjectListItemProps = {
   project: any;
@@ -153,6 +154,29 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
       </CardHeader>
 
       <CardContent className="flex-grow flex flex-col justify-end pt-0">
+        {(project.teams && project.teams.length > 0) && (
+            <>
+                <Separator className="my-4" />
+                <div className="space-y-3">
+                    {project.teams.map((team: any) => (
+                        <div key={team.id}>
+                            <h4 className="font-semibold text-sm">{team.name}</h4>
+                            <div className="flex flex-wrap gap-2 mt-2">
+                                {team.members.map((member: any) => (
+                                    <div key={member.id} className="flex items-center gap-1.5 p-1 pr-2 bg-muted rounded-full">
+                                        <Avatar className="w-6 h-6">
+                                            <AvatarImage src={member.avatar} alt={member.name} />
+                                            <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <span className="text-xs font-medium">{member.name}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    ))}
+                </div>
+            </>
+        )}
         <div 
             className="flex justify-between items-center cursor-pointer mt-4" 
             onClick={(e) => {
@@ -322,10 +346,10 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
                   <Progress value={progress} />
               </div>
           </CardContent>
-          <div className="p-6 pt-0 flex justify-between text-xs text-muted-foreground">
+          <CardFooter className="flex justify-between text-xs text-muted-foreground">
               <span>{project.status.name}</span>
               <span>Due: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
-          </div>
+          </CardFooter>
       </Card>
     );
 
