@@ -83,6 +83,7 @@ export function ProjectListItem({
 }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
   const [tasksExpanded, setTasksExpanded] = useState(false);
+  const [teamsExpanded, setTeamsExpanded] = useState(false);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
 
   const canManageTasks = hasPermission('projects:update');
@@ -193,49 +194,66 @@ export function ProjectListItem({
 
       <CardContent className="flex-grow flex flex-col justify-end pt-0">
         <Separator className="mb-4" />
-        <div className="flex justify-between items-center">
-            <h4 className="font-semibold">Teams</h4>
-            {canManageTeams.create && (
-                <Button variant="secondary" size="sm" onClick={handleAddTeamClick}>
-                    <PlusCircle className="mr-2 h-4 w-4" />
-                    Add Team
-                </Button>
-            )}
+        <div 
+            className="flex justify-between items-center cursor-pointer"
+            onClick={(e) => {
+                e.stopPropagation();
+                setTeamsExpanded(!teamsExpanded);
+            }}
+        >
+            <h4 className="font-semibold">Teams ({project.teams?.length || 0})</h4>
+            <div className="flex items-center gap-2">
+                {canManageTeams.create && (
+                    <Button variant="secondary" size="sm" onClick={handleAddTeamClick}>
+                        <PlusCircle className="mr-2 h-4 w-4" />
+                        Add Team
+                    </Button>
+                )}
+                <div className="cursor-pointer p-1">
+                    <ChevronDown className={cn("h-5 w-5 transition-transform", teamsExpanded && "rotate-180")} />
+                </div>
+            </div>
         </div>
-        {(project.teams && project.teams.length > 0) ? (
-            <div className="space-y-3 mt-2">
-                {project.teams.map((team: any) => {
-                    const teamLead = team.teamLead;
-                    const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
 
-                    return (
-                        <div key={team.id} className="text-sm p-3 rounded-md bg-muted/50 group">
-                            <div className="flex justify-between items-start">
-                                <h5 className="font-semibold">{team.name}</h5>
-                                <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                    {canManageTeams.update && (
-                                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleEditTeamClick(e, team)}>
-                                            <Edit className="h-3 w-3" />
-                                        </Button>
-                                    )}
-                                    {canManageTeams.delete && (
-                                        <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeleteTeamClick(e, team)}>
-                                            <Trash2 className="h-3 w-3" />
-                                        </Button>
-                                    )}
+        {teamsExpanded && (
+          <div className="mt-2 space-y-3">
+            {(project.teams && project.teams.length > 0) ? (
+                <div className="space-y-3">
+                    {project.teams.map((team: any) => {
+                        const teamLead = team.teamLead;
+                        const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
+
+                        return (
+                            <div key={team.id} className="text-sm p-3 rounded-md bg-muted/50 group">
+                                <div className="flex justify-between items-start">
+                                    <h5 className="font-semibold">{team.name}</h5>
+                                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                        {canManageTeams.update && (
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleEditTeamClick(e, team)}>
+                                                <Edit className="h-3 w-3" />
+                                            </Button>
+                                        )}
+                                        {canManageTeams.delete && (
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeleteTeamClick(e, team)}>
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                        )}
+                                    </div>
+                                </div>
+                                <div className="text-muted-foreground mt-1 space-y-1">
+                                    {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
+                                    {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
                                 </div>
                             </div>
-                            <div className="text-muted-foreground mt-1 space-y-1">
-                                {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
-                                {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
-                            </div>
-                        </div>
-                    )
-                })}
-            </div>
-        ) : (
-            <p className="text-sm text-muted-foreground mt-2">No teams assigned.</p>
+                        )
+                    })}
+                </div>
+            ) : (
+                <p className="text-sm text-muted-foreground mt-2">No teams assigned.</p>
+            )}
+          </div>
         )}
+
         <div 
             className="flex justify-between items-center cursor-pointer mt-4" 
             onClick={(e) => {
