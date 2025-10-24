@@ -505,7 +505,12 @@ export async function getProjectsPageData(userId: string, filters: { status?: st
     const archivedStatusNames = ['Completed', 'On Handover'];
     const archivedStatusIds = statuses.filter(s => archivedStatusNames.includes(s.name)).map(s => s.id);
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
+    // Check if user has admin-level permissions (can see all projects)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
 
     let whereClause: Prisma.ProjectWhereInput = {
         statusId: {
@@ -515,7 +520,7 @@ export async function getProjectsPageData(userId: string, filters: { status?: st
         ...(filters.pmoDivisionId && { pmoDivisionId: filters.pmoDivisionId }),
     };
 
-    if (!isManagerOrAdmin) {
+    if (!hasAdminPermissions) {
         whereClause.OR = [
             { projectManagerId: userId },
             {
@@ -633,8 +638,14 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
         return null; // Project not found
     }
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
-    if (isManagerOrAdmin) {
+    // Check if user has admin-level permissions (can see all projects)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
+    
+    if (hasAdminPermissions) {
         return JSON.parse(JSON.stringify(project));
     }
 
@@ -688,11 +699,16 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
 
     if (!user) return null;
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
+    // Check if user has admin-level permissions (can see all projects)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
     
     let whereClause: Prisma.ProjectWhereUniqueInput = { id: projectId };
     
-    if (!isManagerOrAdmin) {
+    if (!hasAdminPermissions) {
         const projectAccess = await prisma.project.findFirst({
             where: {
                 id: projectId,

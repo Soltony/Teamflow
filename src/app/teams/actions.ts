@@ -76,11 +76,16 @@ export async function getTeamsPageData(userId: string) {
         return { teams: [], projects: [], users: [] };
     }
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
+    // Check if user has admin-level permissions (can see all teams)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('teams:read') && 
+        role.permissions.includes('teams:update') && 
+        role.permissions.includes('teams:delete')
+    );
     
     let whereClause: Prisma.TeamWhereInput = {};
 
-    if (!isManagerOrAdmin) {
+    if (!hasAdminPermissions) {
         whereClause = {
             OR: [
                 { teamLeadId: userId },

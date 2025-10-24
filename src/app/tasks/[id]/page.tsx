@@ -106,7 +106,11 @@ export default function TaskDetailsPage() {
         defaultValues: { text: "", progressPercentage: currentProgress },
     });
 
-    const isTeamLeadOrManager = localUser?.roles.some(r => ['Team Lead', 'Project Manager', 'Admin'].includes(r.name));
+    const isTeamLeadOrManager = localUser?.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
 
     const handleUpdateSubmit = async (formData: TaskUpdateFormValues) => {
         if (!task || !localUser) return;

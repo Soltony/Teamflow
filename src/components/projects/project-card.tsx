@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
-import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye, ShieldAlert, Edit } from 'lucide-react';
+import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye, ShieldAlert, Edit, CheckSquare } from 'lucide-react';
 import { format, parseISO, isAfter, endOfDay } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import type { Task, User, Milestone, Project, Team } from '@/lib/types';
@@ -194,89 +194,104 @@ export function ProjectListItem({
 
       <CardContent className="flex-grow flex flex-col justify-end pt-0">
         <Separator className="mb-4" />
-        <div 
-            className="flex justify-between items-center cursor-pointer"
-            onClick={(e) => {
-                e.stopPropagation();
-                setTeamsExpanded(!teamsExpanded);
-            }}
-        >
-            <h4 className="font-semibold">Teams ({project.teams?.length || 0})</h4>
-            <div className="flex items-center gap-2">
-                {canManageTeams.create && (
-                    <Button variant="secondary" size="sm" onClick={handleAddTeamClick}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Team
-                    </Button>
-                )}
-                <div className="cursor-pointer p-1">
-                    <ChevronDown className={cn("h-5 w-5 transition-transform", teamsExpanded && "rotate-180")} />
-                </div>
-            </div>
-        </div>
-
-        {teamsExpanded && (
-          <div className="mt-2 space-y-3">
-            {(project.teams && project.teams.length > 0) ? (
-                <div className="space-y-3">
-                    {project.teams.map((team: any) => {
-                        const teamLead = team.teamLead;
-                        const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
-
-                        return (
-                            <div key={team.id} className="text-sm p-3 rounded-md bg-muted/50 group">
-                                <div className="flex justify-between items-start">
-                                    <h5 className="font-semibold">{team.name}</h5>
-                                    <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                        {canManageTeams.update && (
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleEditTeamClick(e, team)}>
-                                                <Edit className="h-3 w-3" />
-                                            </Button>
-                                        )}
-                                        {canManageTeams.delete && (
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeleteTeamClick(e, team)}>
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        )}
-                                    </div>
-                                </div>
-                                <div className="text-muted-foreground mt-1 space-y-1">
-                                    {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
-                                    {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
-                                </div>
-                            </div>
-                        )
-                    })}
-                </div>
-            ) : (
-                <p className="text-sm text-muted-foreground mt-2">No teams assigned.</p>
-            )}
+        
+        {/* Teams Section */}
+        <div className="space-y-3">
+          <div 
+              className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors"
+              onClick={(e) => {
+                  e.stopPropagation();
+                  setTeamsExpanded(!teamsExpanded);
+              }}
+          >
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-blue-600" />
+                <h4 className="font-semibold text-blue-700">Teams ({project.teams?.length || 0})</h4>
+              </div>
+              <div className="flex items-center gap-2">
+                  {canManageTeams.create && (
+                      <Button variant="secondary" size="sm" onClick={handleAddTeamClick}>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add Team
+                      </Button>
+                  )}
+                  <div className="cursor-pointer p-1">
+                      <ChevronDown className={cn("h-5 w-5 transition-transform text-blue-600", teamsExpanded && "rotate-180")} />
+                  </div>
+              </div>
           </div>
-        )}
 
-        <div 
-            className="flex justify-between items-center cursor-pointer mt-4" 
-            onClick={(e) => {
-                e.stopPropagation();
-                setTasksExpanded(!tasksExpanded);
-            }}
-        >
-            <h4 className="font-semibold">Tasks ({allTasks.length})</h4>
-            <div className="flex items-center gap-2">
-                {canManageTasks && (
-                    <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
-                        <PlusCircle className="mr-2 h-4 w-4" />
-                        Add Task
-                    </Button>
-                )}
-                <div className="cursor-pointer p-1">
-                    <ChevronDown className={cn("h-5 w-5 transition-transform", tasksExpanded && "rotate-180")} />
-                </div>
+          {teamsExpanded && (
+            <div className="ml-6 space-y-3 border-l-2 border-blue-200 pl-4">
+              {(project.teams && project.teams.length > 0) ? (
+                  <div className="space-y-3">
+                      {project.teams.map((team: any) => {
+                          const teamLead = team.teamLead;
+                          const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
+
+                          return (
+                              <div key={team.id} className="text-sm p-3 rounded-md bg-blue-50 border border-blue-200 group">
+                                  <div className="flex justify-between items-start">
+                                      <h5 className="font-semibold text-blue-800">{team.name}</h5>
+                                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                          {canManageTeams.update && (
+                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleEditTeamClick(e, team)}>
+                                                  <Edit className="h-3 w-3" />
+                                              </Button>
+                                          )}
+                                          {canManageTeams.delete && (
+                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeleteTeamClick(e, team)}>
+                                                  <Trash2 className="h-3 w-3" />
+                                              </Button>
+                                          )}
+                                      </div>
+                                  </div>
+                                  <div className="text-blue-600 mt-1 space-y-1">
+                                      {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
+                                      {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
+                                  </div>
+                              </div>
+                          )
+                      })}
+                  </div>
+              ) : (
+                  <p className="text-sm text-blue-600 mt-2">No teams assigned.</p>
+              )}
             </div>
+          )}
         </div>
+
+        {/* Visual Separator */}
+        <Separator className="my-6" />
+
+        {/* Tasks Section */}
+        <div className="space-y-3">
+          <div 
+              className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors" 
+              onClick={(e) => {
+                  e.stopPropagation();
+                  setTasksExpanded(!tasksExpanded);
+              }}
+          >
+              <div className="flex items-center gap-2">
+                <CheckSquare className="h-4 w-4 text-green-600" />
+                <h4 className="font-semibold text-green-700">Tasks ({allTasks.length})</h4>
+              </div>
+              <div className="flex items-center gap-2">
+                  {canManageTasks && (
+                      <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
+                          <PlusCircle className="mr-2 h-4 w-4" />
+                          Add Task
+                      </Button>
+                  )}
+                  <div className="cursor-pointer p-1">
+                      <ChevronDown className={cn("h-5 w-5 transition-transform text-green-600", tasksExpanded && "rotate-180")} />
+                  </div>
+              </div>
+          </div>
         
         {tasksExpanded && (
-          <div className="mt-4 space-y-3">
+          <div className="ml-6 space-y-3 border-l-2 border-green-200 pl-4">
             {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
                 <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
                     <SelectTrigger className="w-full sm:w-[240px] h-9">
@@ -328,12 +343,13 @@ export function ProjectListItem({
                 })}
               </>
             ) : (
-                 <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
+                 <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
                     No tasks yet for this selection.
                 </div>
             )}
-        </div>
+          </div>
         )}
+        </div>
       </CardContent>
     </Card>
      <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>

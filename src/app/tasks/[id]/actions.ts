@@ -44,10 +44,13 @@ export async function getTaskDetails(taskId: string, userId: string) {
     // Basic authorization: ensure user is an assignee
     const isAssignee = task.assignees.some(assignee => assignee.id === userId);
     
-    // More complex auth: is team lead, project manager, or admin?
-    // This is a simplified check. A real app would have more robust permission checks.
+    // Permission-based authorization: check if user has project management permissions
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { roles: true }});
-    const canManage = user?.roles.some(r => ['Admin', 'Project Manager', 'Team Lead'].includes(r.name));
+    const canManage = user?.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
 
     if (!isAssignee && !canManage) {
         return null;
