@@ -119,7 +119,7 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
   const projectManager = users.find(u => u.id === project.projectManagerId);
   
   const isProjectOverdue = isAfter(new Date(), endOfDay(parseISO(project.endDate))) && project.status.name === 'Active';
-  const hasOpenBlockers = project.blockers && project.blockers.length > 0;
+  const openBlockersCount = project.blockers?.length || 0;
     
   return (
     <>
@@ -130,10 +130,12 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
               <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
             </Link>
             <div className='flex items-center gap-2'>
-              {hasOpenBlockers && (
-                <Badge variant="destructive" className="flex items-center gap-1">
-                  <ShieldAlert className="w-3 h-3"/> Blocker
-                </Badge>
+              {openBlockersCount > 0 && (
+                <Link href={`/projects/${project.id}?tab=blockers`}>
+                    <Badge variant="destructive" className="flex items-center gap-1 cursor-pointer">
+                        <ShieldAlert className="w-3 h-3"/> {openBlockersCount} Blocker{openBlockersCount > 1 ? 's' : ''}
+                    </Badge>
+                </Link>
               )}
               <ProgressBadge progress={progress} isOverdue={isProjectOverdue} />
             </div>
