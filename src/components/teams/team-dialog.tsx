@@ -82,7 +82,7 @@ export function TeamDialog({ isOpen, onOpenChange, team, project, allUsers, onSu
                 name: team.name,
                 projectId: project.id,
                 teamLeadId: team.teamLeadId,
-                memberIds: team.memberIds || [],
+                memberIds: (team as any).members?.map((m: User) => m.id) || team.memberIds || [],
             });
         } else {
             form.reset({
