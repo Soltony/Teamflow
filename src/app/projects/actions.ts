@@ -565,7 +565,8 @@ export async function getProjectsPageData(userId: string, filters: { status?: st
             },
             teams: {
                 include: {
-                    members: true
+                    members: true,
+                    teamLead: true,
                 }
             },
             blockers: {

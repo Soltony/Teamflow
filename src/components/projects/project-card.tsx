@@ -160,17 +160,20 @@ export function ProjectListItem({ project, users, onAddTask, onEditTask, onDelet
             <>
                 <Separator className="my-4" />
                 <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                        <h4 className="font-semibold">Teams</h4>
+                        <Button variant="outline" size="sm" onClick={() => router.push('/teams')}>
+                            Manage Teams
+                        </Button>
+                    </div>
                     {project.teams.map((team: any) => {
-                       const teamLead = users.find(u => u.id === team.teamLeadId);
+                       const teamLead = team.teamLead;
                        const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
 
                        return (
                           <div key={team.id}>
                               <div className="flex items-center gap-2">
                                 <h4 className="font-semibold text-sm">{team.name}</h4>
-                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => router.push('/teams')}>
-                                  <Edit className="h-3 w-3" />
-                                </Button>
                               </div>
                               <div className="text-sm text-muted-foreground mt-1 space-y-1">
                                   {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
