@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -26,6 +27,7 @@ import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 
 type ProjectListItemProps = {
   project: any;
@@ -162,233 +164,240 @@ export function ProjectListItem({
   const openBlockersCount = project.blockers?.length || 0;
     
   return (
-    <>
-    <Card className="flex flex-col h-full">
-      <CardHeader>
-        <div className="flex justify-between items-start gap-4">
-          <div className="flex-1 min-w-0">
-            <Link href={`/projects/${project.id}`} className="truncate">
-              <CardTitle className="text-xl font-bold hover:underline truncate">{project.name}</CardTitle>
-            </Link>
+    <TooltipProvider>
+      <Card className="flex flex-col h-full">
+        <CardHeader>
+          <div className="flex justify-between items-start gap-4">
+            <div className="flex-1 min-w-0">
+              <Link href={`/projects/${project.id}`} className="truncate">
+                <CardTitle className="text-xl font-bold hover:underline truncate">{project.name}</CardTitle>
+              </Link>
+            </div>
+            <div className='flex items-center gap-2 flex-shrink-0'>
+                {openBlockersCount > 0 && (
+                  <Link href={`/projects/${project.id}?tab=blockers`}>
+                      <Badge variant="destructive" className="flex items-center gap-1 cursor-pointer">
+                          <ShieldAlert className="w-3 h-3"/> {openBlockersCount} Blocker{openBlockersCount > 1 ? 's' : ''}
+                      </Badge>
+                  </Link>
+                )}
+                <ProgressBadge progress={progress} isOverdue={isProjectOverdue} />
+              </div>
           </div>
-          <div className='flex items-center gap-2 flex-shrink-0'>
-              {openBlockersCount > 0 && (
-                <Link href={`/projects/${project.id}?tab=blockers`}>
-                    <Badge variant="destructive" className="flex items-center gap-1 cursor-pointer">
-                        <ShieldAlert className="w-3 h-3"/> {openBlockersCount} Blocker{openBlockersCount > 1 ? 's' : ''}
-                    </Badge>
-                </Link>
+          <div className="flex flex-col gap-1 text-sm text-muted-foreground pt-2">
+              <div className="flex items-center gap-2">
+                  <Crown className="w-4 h-4" />
+                  <span>Lead: {projectManager?.name ?? 'N/A'}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                  <Calendar className="w-4 h-4" />
+                  <span>{format(parseISO(project.startDate), "MMM d")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
+              </div>
+          </div>
+        </CardHeader>
+
+        <CardContent className="flex-grow flex flex-col justify-end pt-0">
+          <Separator className="mb-4" />
+          
+          {/* Teams Section */}
+          <div className="space-y-3">
+            <div 
+                className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors"
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setTeamsExpanded(!teamsExpanded);
+                }}
+            >
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-blue-600" />
+                  <h4 className="font-semibold text-blue-700">Teams ({project.teams?.length || 0})</h4>
+                </div>
+                <div className="flex items-center gap-2">
+                    {canManageTeams.create && (
+                        <Button variant="secondary" size="sm" onClick={handleAddTeamClick}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Team
+                        </Button>
+                    )}
+                    <div className="cursor-pointer p-1">
+                        <ChevronDown className={cn("h-5 w-5 transition-transform text-blue-600", teamsExpanded && "rotate-180")} />
+                    </div>
+                </div>
+            </div>
+
+            {teamsExpanded && (
+              <div className="ml-6 space-y-3 border-l-2 border-blue-200 pl-4">
+                {(project.teams && project.teams.length > 0) ? (
+                    <div className="space-y-3">
+                        {project.teams.map((team: any) => {
+                            const teamLead = team.teamLead;
+                            const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
+
+                            return (
+                                <div key={team.id} className="text-sm p-3 rounded-md bg-blue-50 border border-blue-200 group">
+                                    <div className="flex justify-between items-start">
+                                        <h5 className="font-semibold text-blue-800">{team.name}</h5>
+                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                            {canManageTeams.update && (
+                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleEditTeamClick(e, team)}>
+                                                    <Edit className="h-3 w-3" />
+                                                </Button>
+                                            )}
+                                            {canManageTeams.delete && (
+                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeleteTeamClick(e, team)}>
+                                                    <Trash2 className="h-3 w-3" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <div className="text-blue-600 mt-1 space-y-1">
+                                        {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
+                                        {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
+                                    </div>
+                                </div>
+                            )
+                        })}
+                    </div>
+                ) : (
+                    <p className="text-sm text-blue-600 mt-2">No teams assigned.</p>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Visual Separator */}
+          <Separator className="my-6" />
+
+          {/* Tasks Section */}
+          <div className="space-y-3">
+            <div 
+                className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors" 
+                onClick={(e) => {
+                    e.stopPropagation();
+                    setTasksExpanded(!tasksExpanded);
+                }}
+            >
+                <div className="flex items-center gap-2">
+                  <CheckSquare className="h-4 w-4 text-green-600" />
+                  <h4 className="font-semibold text-green-700">Tasks ({allTasks.length})</h4>
+                </div>
+                <div className="flex items-center gap-2">
+                    {canManageTasks && (
+                        <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
+                            <PlusCircle className="mr-2 h-4 w-4" />
+                            Add Task
+                        </Button>
+                    )}
+                    <div className="cursor-pointer p-1">
+                        <ChevronDown className={cn("h-5 w-5 transition-transform text-green-600", tasksExpanded && "rotate-180")} />
+                    </div>
+                </div>
+            </div>
+          
+          {tasksExpanded && (
+            <div className="ml-6 space-y-3 border-l-2 border-green-200 pl-4">
+              {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
+                  <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
+                      <SelectTrigger className="w-full sm:w-[240px] h-9">
+                          <SelectValue placeholder="Filter by milestone..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                          <SelectItem value="all">All Milestones</SelectItem>
+                          {userCreatedMilestones.map((m: any) => (
+                              <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                          ))}
+                      </SelectContent>
+                  </Select>
               )}
-              <ProgressBadge progress={progress} isOverdue={isProjectOverdue} />
-            </div>
-        </div>
-        <div className="flex flex-col gap-1 text-sm text-muted-foreground pt-2">
-            <div className="flex items-center gap-2">
-                <Crown className="w-4 h-4" />
-                <span>Lead: {projectManager?.name ?? 'N/A'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-                <Calendar className="w-4 h-4" />
-                <span>{format(parseISO(project.startDate), "MMM d")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
-            </div>
-        </div>
-      </CardHeader>
+              {filteredTasks.length > 0 ? (
+                <ScrollArea className="h-48 pr-3">
+                  <div className="space-y-1.5">
+                    {filteredTasks.map((task: any) => {
+                       const isTaskDone = task.status === 'DONE';
+                       const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
+                       
+                       const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-red-600' : 'bg-primary';
 
-      <CardContent className="flex-grow flex flex-col justify-end pt-0">
-        <Separator className="mb-4" />
-        
-        {/* Teams Section */}
-        <div className="space-y-3">
-          <div 
-              className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors"
-              onClick={(e) => {
-                  e.stopPropagation();
-                  setTeamsExpanded(!teamsExpanded);
-              }}
-          >
-              <div className="flex items-center gap-2">
-                <Users className="h-4 w-4 text-blue-600" />
-                <h4 className="font-semibold text-blue-700">Teams ({project.teams?.length || 0})</h4>
-              </div>
-              <div className="flex items-center gap-2">
-                  {canManageTeams.create && (
-                      <Button variant="secondary" size="sm" onClick={handleAddTeamClick}>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Add Team
-                      </Button>
-                  )}
-                  <div className="cursor-pointer p-1">
-                      <ChevronDown className={cn("h-5 w-5 transition-transform text-blue-600", teamsExpanded && "rotate-180")} />
-                  </div>
-              </div>
-          </div>
-
-          {teamsExpanded && (
-            <div className="ml-6 space-y-3 border-l-2 border-blue-200 pl-4">
-              {(project.teams && project.teams.length > 0) ? (
-                  <div className="space-y-3">
-                      {project.teams.map((team: any) => {
-                          const teamLead = team.teamLead;
-                          const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
-
-                          return (
-                              <div key={team.id} className="text-sm p-3 rounded-md bg-blue-50 border border-blue-200 group">
-                                  <div className="flex justify-between items-start">
-                                      <h5 className="font-semibold text-blue-800">{team.name}</h5>
-                                      <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                          {canManageTeams.update && (
-                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleEditTeamClick(e, team)}>
-                                                  <Edit className="h-3 w-3" />
+                       return (
+                          <div key={task.id} className="space-y-1.5 group">
+                              <div className="flex justify-between items-center gap-2">
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-sm font-medium pr-2 truncate">{task.title}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{task.title}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                                      <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
+                                      <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
+                                      {canManageTasks && (
+                                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
+                                              <Link href={`/tasks/${task.id}`}>
+                                                <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                    <Eye className="h-3 w-3" />
+                                                </Button>
+                                              </Link>
+                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                                  <Pencil className="h-3 w-3" />
                                               </Button>
-                                          )}
-                                          {canManageTeams.delete && (
-                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeleteTeamClick(e, team)}>
+                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
                                                   <Trash2 className="h-3 w-3" />
                                               </Button>
-                                          )}
-                                      </div>
-                                  </div>
-                                  <div className="text-blue-600 mt-1 space-y-1">
-                                      {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
-                                      {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
+                                          </div>
+                                      )}
                                   </div>
                               </div>
-                          )
-                      })}
+                              <Progress value={task.progress || 0} className="h-1.5" indicatorClassName={indicatorClassName} />
+                          </div>
+                        )
+                    })}
                   </div>
+                </ScrollArea>
               ) : (
-                  <p className="text-sm text-blue-600 mt-2">No teams assigned.</p>
+                   <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
+                      No tasks yet for this selection.
+                  </div>
               )}
             </div>
           )}
-        </div>
-
-        {/* Visual Separator */}
-        <Separator className="my-6" />
-
-        {/* Tasks Section */}
-        <div className="space-y-3">
-          <div 
-              className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors" 
-              onClick={(e) => {
-                  e.stopPropagation();
-                  setTasksExpanded(!tasksExpanded);
-              }}
-          >
-              <div className="flex items-center gap-2">
-                <CheckSquare className="h-4 w-4 text-green-600" />
-                <h4 className="font-semibold text-green-700">Tasks ({allTasks.length})</h4>
-              </div>
-              <div className="flex items-center gap-2">
-                  {canManageTasks && (
-                      <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
-                          <PlusCircle className="mr-2 h-4 w-4" />
-                          Add Task
-                      </Button>
-                  )}
-                  <div className="cursor-pointer p-1">
-                      <ChevronDown className={cn("h-5 w-5 transition-transform text-green-600", tasksExpanded && "rotate-180")} />
-                  </div>
-              </div>
           </div>
-        
-        {tasksExpanded && (
-          <div className="ml-6 space-y-3 border-l-2 border-green-200 pl-4">
-            {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
-                <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
-                    <SelectTrigger className="w-full sm:w-[240px] h-9">
-                        <SelectValue placeholder="Filter by milestone..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value="all">All Milestones</SelectItem>
-                        {userCreatedMilestones.map((m: any) => (
-                            <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            )}
-            {filteredTasks.length > 0 ? (
-              <ScrollArea className="h-48 pr-3">
-                <div className="space-y-1.5">
-                  {filteredTasks.map((task: any) => {
-                     const isTaskDone = task.status === 'DONE';
-                     const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
-                     
-                     const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-red-600' : 'bg-primary';
-
-                     return (
-                        <div key={task.id} className="space-y-1.5 group">
-                            <div className="flex justify-between items-center gap-2">
-                                <span className="text-sm font-medium pr-2">{task.title}</span>
-                                <div className="flex items-center gap-1.5 flex-shrink-0">
-                                    <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
-                                    <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
-                                    {canManageTasks && (
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                            <Link href={`/tasks/${task.id}`}>
-                                              <Button variant="ghost" size="icon" className="h-6 w-6">
-                                                  <Eye className="h-3 w-3" />
-                                              </Button>
-                                            </Link>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
-                                                <Pencil className="h-3 w-3" />
-                                            </Button>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
-                                                <Trash2 className="h-3 w-3" />
-                                            </Button>
-                                        </div>
-                                    )}
-                                </div>
-                            </div>
-                            <Progress value={task.progress || 0} className="h-1.5" indicatorClassName={indicatorClassName} />
-                        </div>
-                      )
-                  })}
-                </div>
-              </ScrollArea>
-            ) : (
-                 <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
-                    No tasks yet for this selection.
-                </div>
-            )}
-          </div>
-        )}
-        </div>
-      </CardContent>
-    </Card>
-     <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the task: <span className="font-semibold">{taskToDelete?.title}</span>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete Task
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-      <AlertDialog open={!!teamToDelete} onOpenChange={() => setTeamToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will permanently delete the team: <span className="font-semibold">{teamToDelete?.name}</span>.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDeleteTeam} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Delete Team
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+        </CardContent>
+      </Card>
+      <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the task: <span className="font-semibold">{taskToDelete?.title}</span>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteTask} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete Task
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+        <AlertDialog open={!!teamToDelete} onOpenChange={() => setTeamToDelete(null)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will permanently delete the team: <span className="font-semibold">{teamToDelete?.name}</span>.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDeleteTeam} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Delete Team
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+    </TooltipProvider>
   );
 }
 
