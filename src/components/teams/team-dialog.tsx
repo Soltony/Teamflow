@@ -101,10 +101,10 @@ export function TeamDialog({ isOpen, onOpenChange, team, project, allUsers, onSu
     });
   };
 
-  const selectedMemberNames = useMemo(() => {
+  const selectedMemberCount = useMemo(() => {
     const selectedIds = form.watch('memberIds') || [];
-    return allUsers.filter(u => selectedIds.includes(u.id)).map(u => u.name).join(', ');
-  }, [form.watch('memberIds'), allUsers]);
+    return selectedIds.length;
+  }, [form.watch('memberIds')]);
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -157,9 +157,9 @@ export function TeamDialog({ isOpen, onOpenChange, team, project, allUsers, onSu
                     <DropdownMenu>
                     <DropdownMenuTrigger asChild>
                         <FormControl>
-                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-auto min-h-10 whitespace-normal", !field.value?.length && "text-muted-foreground")}>
+                        <Button variant="outline" className={cn("w-full justify-start text-left font-normal h-10", !field.value?.length && "text-muted-foreground")}>
                             <span className="truncate">
-                                {selectedMemberNames || "Select members..."}
+                                {selectedMemberCount > 0 ? `${selectedMemberCount} member${selectedMemberCount > 1 ? 's' : ''} selected` : "Select members..."}
                             </span>
                             <ChevronDown className="ml-auto h-4 w-4" />
                         </Button>
