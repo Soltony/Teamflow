@@ -66,13 +66,12 @@ export async function getTodaysTasks(userId?: string) {
                 },
                 {
                     OR: [
-                        // Tasks that are currently active and not done
+                        // Tasks that are due today
                         {
-                            AND: [
-                                { startDate: { lte: todayEnd } },
-                                { endDate: { gte: todayStart } },
-                                { status: { not: 'DONE' } }
-                            ]
+                            endDate: {
+                                gte: todayStart,
+                                lte: todayEnd
+                            }
                         },
                         // Tasks that were completed today
                         {

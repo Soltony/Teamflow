@@ -12,8 +12,8 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
-import { isToday, parseISO, startOfDay, format } from 'date-fns';
-import { Calendar, Clock, Edit3, CheckCircle, Crown, Search, Filter, ChevronDown } from 'lucide-react';
+import { isToday, parseISO, format } from 'date-fns';
+import { Clock, Edit3, CheckCircle, Crown, Search, ChevronDown, ListTodo } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -66,7 +66,6 @@ function LoadingSkeleton() {
 }
 
 const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
-    const isScheduledToday = isToday(parseISO(task.startDate as unknown as string));
     const isDueToday = isToday(parseISO(task.endDate as unknown as string));
     const wasCompletedToday = task.completedAt && isToday(parseISO(task.completedAt as unknown as string));
     
@@ -80,7 +79,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
     const wasUpdatedToday = !wasCompletedToday && todaysUpdates.length > 0;
 
     const progressText = useMemo(() => {
-        if (wasCompletedToday) {
+        if (wasCompletedToday && task.completedAt) {
             const lastUpdateBeforeCompletion = (task.updates || [])
                 .map(u => ({...u, createdAt: parseISO(u.createdAt)}))
                 .filter(u => u.createdAt < parseISO(task.completedAt as string))
@@ -134,24 +133,19 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                 <span className="text-xs font-semibold">{progressText}</span>
             </div>
             <div className="flex flex-wrap gap-1">
-                {isScheduledToday && (
-                    <Badge className="flex items-center gap-1 text-xs bg-green-100 text-green-800 border-green-200 hover:bg-green-200">
-                        <Calendar className="w-3 h-3" /> Scheduled
-                    </Badge>
-                )}
-                {isDueToday && (
+                {isDueToday && !wasCompletedToday && (
                     <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
                         <Clock className="w-3 h-3" /> Due Today
                     </Badge>
                 )}
                 {wasUpdatedToday && (
                      <Badge className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
-                        <Edit3 className="w-3 h-3" /> Updated
+                        <Edit3 className="w-3 h-3" /> Updated Today
                     </Badge>
                 )}
                 {wasCompletedToday && (
                      <Badge className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
-                        <CheckCircle className="w-3 h-3" /> Completed
+                        <CheckCircle className="w-3 h-3" /> Completed Today
                     </Badge>
                 )}
             </div>
@@ -160,11 +154,9 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
 };
 
 const ProjectCard = ({ project }: { project: ProjectWithTasks }) => {
-    const [tasksExpanded, setTasksExpanded] = useState(false);
+    const [tasksExpanded, setTasksExpanded] = useState(true);
     const totalTasks = project.tasks.length;
-    const completedTasks = project.tasks.filter(task => task.status === 'DONE').length;
-    const progress = totalTasks > 0 ? (completedTasks / totalTasks) * 100 : 0;
-
+    
     return (
         <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
             <CardHeader>
@@ -182,10 +174,6 @@ const ProjectCard = ({ project }: { project: ProjectWithTasks }) => {
                         <Crown className="w-3 h-3" />
                         <span>Lead: {project.projectManager.name}</span>
                     </div>
-                    <div className="flex items-center gap-2">
-                        <Calendar className="w-3 h-3" />
-                        <span>{format(parseISO(project.startDate), "MMM d")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
-                    </div>
                     <div className="text-xs text-muted-foreground">
                         PMO: {project.pmoDivision.name}
                     </div>
@@ -194,13 +182,6 @@ const ProjectCard = ({ project }: { project: ProjectWithTasks }) => {
 
             <CardContent className="flex-grow flex flex-col justify-end pt-0">
                 <div className="space-y-3">
-                    <div className="flex justify-between items-center">
-                        <div className="text-xs text-muted-foreground">
-                            {completedTasks}/{totalTasks} completed
-                        </div>
-                    </div>
-                    <Progress value={progress} className="h-2" />
-                    
                     <div 
                         className="flex justify-between items-center cursor-pointer"
                         onClick={() => setTasksExpanded(!tasksExpanded)}
@@ -274,7 +255,7 @@ export default function TodayPage() {
         p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.tasks.some(task => 
           task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          task.description.toLowerCase().includes(searchQuery.toLowerCase())
+          (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
         )
       );
     }
@@ -320,9 +301,9 @@ export default function TodayPage() {
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
-            <h1 className="text-2xl font-bold">Today's Activity</h1>
+            <h1 className="text-2xl font-bold flex items-center gap-2"><ListTodo className="w-6 h-6"/> Today's Activity</h1>
             <p className="text-sm text-muted-foreground max-w-2xl">
-              A snapshot of all activity happening today across all projects. This includes tasks that are scheduled, due, or have been updated today.
+              A real-time picture of your team’s daily progress — showing what’s due and what’s getting done.
             </p>
           </div>
         </div>
@@ -403,7 +384,7 @@ export default function TodayPage() {
           <p className="text-muted-foreground text-sm">
             {searchQuery || selectedStatus || selectedPmoDivision 
               ? "Try adjusting your filters to see more results." 
-              : "No tasks are scheduled, due, or have been updated today."}
+              : "No tasks are due, have been completed, or updated today."}
           </p>
         </div>
       )}
