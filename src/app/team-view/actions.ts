@@ -128,26 +128,41 @@ export async function getTeamViewData(userId: string) {
 
 export async function approveTaskAction(taskId: string, teamLeadId: string, teamLeadName: string) {
     try {
-        const updateText = `Task approved by ${teamLeadName}. Status changed to Done.`;
+        const task = await prisma.task.findUnique({ where: { id: taskId } });
+        if (!task) {
+            return { success: false, error: "Task not found." };
+        }
+
+        const isComplete = task.progress === 100;
+        let updateText = '';
+        let newStatus: TaskStatusType;
+
+        if (isComplete) {
+            newStatus = 'DONE';
+            updateText = `Task approved by ${teamLeadName}. Status changed to Done.`;
+        } else {
+            newStatus = task.progress > 0 ? 'IN_PROGRESS' : 'TODO';
+            updateText = `Progress update approved by ${teamLeadName}. Status changed to ${newStatus.replace(/_/g, ' ')}.`;
+        }
         
         await prisma.task.update({
             where: { id: taskId },
             data: {
-                status: 'DONE',
-                completedAt: new Date(),
-                progress: 100,
+                status: newStatus,
+                completedAt: isComplete ? new Date() : null,
                 updates: {
                     create: {
                         text: updateText,
                         authorId: teamLeadId,
                         type: 'STATUS_CHANGE',
-                        progressPercentage: 100,
+                        progressPercentage: task.progress,
                     }
                 }
             }
         });
 
         revalidatePath('/team-view');
+        revalidatePath('/my-tasks');
         return { success: true };
 
     } catch (error) {
