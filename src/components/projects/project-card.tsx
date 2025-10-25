@@ -167,10 +167,12 @@ export function ProjectListItem({
     <Card className="flex flex-col h-full">
       <CardHeader>
         <div className="flex justify-between items-start gap-4">
-            <Link href={`/projects/${project.id}`} className="flex-1 truncate">
-              <CardTitle className="text-xl font-bold hover:underline">{project.name}</CardTitle>
+          <div className="flex-1 min-w-0">
+            <Link href={`/projects/${project.id}`} className="truncate">
+              <CardTitle className="text-xl font-bold hover:underline truncate">{project.name}</CardTitle>
             </Link>
-            <div className='flex items-center gap-2'>
+          </div>
+          <div className='flex items-center gap-2 flex-shrink-0'>
               {openBlockersCount > 0 && (
                 <Link href={`/projects/${project.id}?tab=blockers`}>
                     <Badge variant="destructive" className="flex items-center gap-1 cursor-pointer">
