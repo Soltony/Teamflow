@@ -38,24 +38,40 @@ export async function approveTimelineChange(requestId: string, reviewerId: strin
             return { success: false, error: "Request not found." };
         }
 
-        await prisma.$transaction([
-            prisma.timelineChangeRequest.update({
+        await prisma.$transaction(async (tx) => {
+            // Update the request status
+            await tx.timelineChangeRequest.update({
                 where: { id: requestId },
                 data: {
                     status: 'APPROVED',
                     reviewedById: reviewerId,
                 }
-            }),
-            prisma.project.update({
+            });
+
+            // Update the project's end date
+            await tx.project.update({
                 where: { id: request.projectId },
                 data: {
                     endDate: request.newEndDate,
                 }
-            })
-        ]);
+            });
+
+            // Also update the "General Tasks" milestone if it exists
+            await tx.milestone.updateMany({
+                where: {
+                    projectId: request.projectId,
+                    title: 'General Tasks'
+                },
+                data: {
+                    dueDate: request.newEndDate,
+                }
+            });
+        });
 
         revalidatePath('/timeline-approvals');
         revalidatePath(`/projects/${request.projectId}`);
+        revalidatePath(`/projects/${request.projectId}/milestones`);
+        revalidatePath('/milestones');
         return { success: true };
     } catch (error) {
         console.error("Failed to approve timeline change:", error);
