@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -319,9 +318,9 @@ export function ProjectListItem({
 
                      return (
                         <div key={task.id} className="space-y-1.5 group">
-                            <div className="flex justify-between items-center">
-                                <span className="text-sm font-medium flex-1 pr-2">{task.title}</span>
-                                <div className="flex items-center gap-1 flex-shrink-0">
+                            <div className="flex justify-between items-center gap-2">
+                                <span className="text-sm font-medium pr-2">{task.title}</span>
+                                <div className="flex items-center gap-1.5 flex-shrink-0">
                                     <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
                                     <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
                                     {canManageTasks && (
