@@ -52,8 +52,8 @@ type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   project: ProjectWithTeamsAndMilestones;
-  users: UserWithRoles[];
   onTaskAdd: (projectId: string, milestoneId: string | null, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
+  users: UserWithRoles[];
 };
 
 function createTaskSchema(project: ProjectWithTeamsAndMilestones, hasMilestones: boolean) {
@@ -136,6 +136,7 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, hasMilestones:
 export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users }: AddTaskDialogProps) {
 
   const { assignableUsers, hasProjectTeams } = useMemo(() => {
+    if (!project) return { assignableUsers: [], hasProjectTeams: false };
     const projectHasTeams = project.teams && project.teams.length > 0;
     
     if (projectHasTeams) {
@@ -153,8 +154,8 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   }, [project, users]);
   
   const userCreatedMilestones = useMemo(() => {
-    return project.milestones?.filter(m => m.title !== "General Tasks") || [];
-  }, [project.milestones]);
+    return project?.milestones?.filter(m => m.title !== "General Tasks") || [];
+  }, [project?.milestones]);
 
   const hasMilestones = userCreatedMilestones.length > 0;
   

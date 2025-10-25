@@ -87,8 +87,8 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
     await fetchData();
   };
 
-  const handleTaskAdd = async (milestoneId: string, newTask: any) => {
-    await addTask(milestoneId, project.id, newTask);
+  const handleTaskAdd = async (projectId: string, milestoneId: string | null, newTask: any) => {
+    await addTask(project.id, milestoneId, newTask);
     toast({
       title: "Task Added!",
       description: `The task "${newTask.title}" has been successfully added.`,
@@ -97,7 +97,7 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
     await fetchData();
   };
 
-  const handleTaskUpdate = async (milestoneId: string, updatedTask: Task) => {
+  const handleTaskUpdate = async (updatedTask: Task) => {
     const { id, ...dataToUpdate } = updatedTask;
     await updateTask(id, project.id, dataToUpdate);
     toast({
@@ -243,9 +243,9 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
         <AddTaskDialog
             isOpen={!!addingTaskToMilestone}
             onOpenChange={(open) => !open && setAddingTaskToMilestone(null)}
-            milestone={addingTaskToMilestone}
-            onTaskAdd={handleTaskAdd}
-            users={projectUsers}
+            project={project}
+            onTaskAdd={(projectId, milestoneId, newTask) => handleTaskAdd(addingTaskToMilestone.id, newTask)}
+            users={users}
         />
       )}
       
@@ -256,7 +256,7 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
             project={project}
             task={editingTaskInfo.task}
             onTaskUpdate={handleTaskUpdate}
-            users={projectUsers}
+            users={users}
         />
       )}
 
