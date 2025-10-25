@@ -318,15 +318,17 @@ export function ProjectListItem({
                        
                        const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-red-600' : 'bg-primary';
 
+                       const truncatedTitle = task.title.length > 7 ? task.title.substring(0, 7) + '...' : task.title;
+
                        return (
                           <div key={task.id} className="space-y-1.5 group">
                               <div className="flex justify-between items-center gap-2">
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="flex-1 min-w-0">
-                                      <span className="text-sm font-medium pr-2 truncate">
-                                          {task.title}
-                                      </span>
+                                        <span className="text-sm font-medium pr-2 block">
+                                            {truncatedTitle}
+                                        </span>
                                     </div>
                                   </TooltipTrigger>
                                   <TooltipContent>
@@ -485,5 +487,3 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
-
-    
