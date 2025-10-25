@@ -321,16 +321,14 @@ export function ProjectListItem({
                        return (
                           <div key={task.id} className="space-y-1.5 group">
                               <div className="flex justify-between items-center gap-2">
-                                  <div className="flex-1 min-w-0">
-                                      <Tooltip>
-                                        <TooltipTrigger asChild>
-                                          <span className="text-sm font-medium pr-2 truncate block">{task.title}</span>
-                                        </TooltipTrigger>
-                                        <TooltipContent>
-                                          <p>{task.title}</p>
-                                        </TooltipContent>
-                                      </Tooltip>
-                                  </div>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span className="text-sm font-medium pr-2 truncate">{task.title}</span>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                      <p>{task.title}</p>
+                                    </TooltipContent>
+                                  </Tooltip>
                                   <div className="flex items-center gap-1.5 flex-shrink-0">
                                       <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
                                       <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
