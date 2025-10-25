@@ -73,7 +73,11 @@ export async function getProjectForEdit(projectId: string) {
         prisma.project.findUnique({
             where: { id: projectId },
             include: {
-                milestones: true,
+                milestones: {
+                  include: {
+                    tasks: true,
+                  }
+                },
                 responsibleDepartments: {
                     select: { id: true }
                 },
@@ -88,10 +92,35 @@ export async function getProjectForEdit(projectId: string) {
 
     if (!project) return null;
 
+    const userCreatedMilestones = project.milestones.filter(m => m.title !== "General Tasks");
+    
+    // If there are no user-created milestones, ensure a "General Tasks" milestone exists with weight 100
+    if (userCreatedMilestones.length === 0) {
+        let generalMilestone = project.milestones.find(m => m.title === "General Tasks");
+        if (!generalMilestone) {
+            generalMilestone = {
+                id: `temp-${new Date().getTime()}`, // Temporary ID for the form
+                projectId: project.id,
+                title: 'General Tasks',
+                description: 'A default collection of tasks for this project that are not assigned to a specific milestone.',
+                startDate: project.startDate,
+                dueDate: project.endDate,
+                weight: 100,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                tasks: [],
+            };
+            project.milestones.push(generalMilestone);
+        } else if (generalMilestone.weight !== 100) {
+            generalMilestone.weight = 100;
+        }
+    }
+
+
     const normalizedProject = {
         ...project,
         hasCost: project.totalCost !== null,
-        hasMilestones: project.milestones.some(m => m.title !== "General Tasks"),
+        hasMilestones: userCreatedMilestones.length > 0,
         responsibleDepartmentIds: project.responsibleDepartments.map(d => d.id),
     };
 
@@ -199,7 +228,7 @@ export async function updateProject(projectId: string, data: any) {
                         weight: milestoneData.weight,
                     };
 
-                    if (id) {
+                    if (id && !id.startsWith('temp-')) {
                         await tx.milestone.update({
                             where: { id: id },
                             data: dataForUpsert
