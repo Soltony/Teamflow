@@ -118,7 +118,7 @@ const TaskItem = ({
                                 <h4 className="font-semibold mb-2">Updates</h4>
                                 <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
                                     {task.updates && task.updates.length > 0 ? (
-                                        task.updates.slice().reverse().map(update => {
+                                        task.updates.map(update => {
                                             const author = userMap.get(update.authorId);
                                             
                                             if (update.type === 'STATUS_CHANGE') {
@@ -318,10 +318,8 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
     let toastDescription = "Your progress update has been recorded.";
 
     if (result.success) {
-        if (data.progressPercentage === 100) {
-            toastDescription = "Your update has been posted and the task is now pending review.";
-        } else if (task.status === 'TODO' && data.progressPercentage > 0) {
-             toastDescription = "Your update has been posted and task status is now In Progress.";
+        if (task.status === 'TODO' || task.status === 'IN_PROGRESS') {
+             toastDescription = "Your update has been posted and the task is now pending review.";
         }
         toast({
             title: "Update Added",

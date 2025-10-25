@@ -56,7 +56,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const handleApprove = async (task: TeamViewTask) => {
     const result = await approveTaskAction(task.id, currentUser.id, currentUser.name);
     if (result.success) {
-      toast({ title: "Task Approved", description: `"${task.title}" has been marked as Done.` });
+      toast({ title: "Task Approved", description: `"${task.title}" has been reviewed.` });
       onDataChange();
     } else {
       toast({ title: "Error", description: result.error, variant: "destructive" });
@@ -183,7 +183,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         <div>
                                             <h4 className="font-semibold mb-2 text-sm">Updates</h4>
                                             <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                                                {task.updates.slice().reverse().map(update => {
+                                                {task.updates.map(update => {
                                                     const author = userMap.get(update.authorId);
                                                     
                                                     if (update.type === 'STATUS_CHANGE') {
