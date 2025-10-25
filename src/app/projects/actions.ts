@@ -91,7 +91,7 @@ export async function getProjectForEdit(projectId: string) {
     const normalizedProject = {
         ...project,
         hasCost: project.totalCost !== null,
-        hasMilestones: project.milestones.length > 0,
+        hasMilestones: project.milestones.some(m => m.title !== "General Tasks"),
         responsibleDepartmentIds: project.responsibleDepartments.map(d => d.id),
     };
 
@@ -213,9 +213,13 @@ export async function updateProject(projectId: string, data: any) {
                         });
                     }
                 }
-            } else if (!hasMilestones) { // if hasMilestones is false, delete all existing milestones
+            } else if (!hasMilestones) {
+                // If hasMilestones is false, delete user-created milestones, but preserve "General Tasks"
                 const milestonesToDelete = await tx.milestone.findMany({
-                    where: { projectId },
+                    where: {
+                        projectId,
+                        title: { not: "General Tasks" }
+                    },
                     select: { id: true },
                 });
                 const milestoneIdsToDelete = milestonesToDelete.map(m => m.id);
