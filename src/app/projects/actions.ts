@@ -214,9 +214,35 @@ export async function updateProject(projectId: string, data: any) {
                     }
                 }
             } else if (!hasMilestones) { // if hasMilestones is false, delete all existing milestones
-                await tx.milestone.deleteMany({
-                    where: { projectId }
+                const milestonesToDelete = await tx.milestone.findMany({
+                    where: { projectId },
+                    select: { id: true },
                 });
+                const milestoneIdsToDelete = milestonesToDelete.map(m => m.id);
+
+                if (milestoneIdsToDelete.length > 0) {
+                    // Find all tasks related to these milestones
+                    const tasksToDelete = await tx.task.findMany({
+                        where: { milestoneId: { in: milestoneIdsToDelete } },
+                        select: { id: true },
+                    });
+                    const taskIdsToDelete = tasksToDelete.map(t => t.id);
+
+                    if (taskIdsToDelete.length > 0) {
+                        // Delete task updates first
+                        await tx.taskUpdate.deleteMany({
+                            where: { taskId: { in: taskIdsToDelete } },
+                        });
+                        // Then delete tasks
+                        await tx.task.deleteMany({
+                            where: { id: { in: taskIdsToDelete } },
+                        });
+                    }
+                    // Finally, delete the milestones
+                    await tx.milestone.deleteMany({
+                        where: { id: { in: milestoneIdsToDelete } },
+                    });
+                }
             }
             
             // --- PAYMENT UPSERT ---
