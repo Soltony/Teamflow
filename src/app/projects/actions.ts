@@ -398,7 +398,7 @@ export async function addTask(projectId: string, milestoneId: string | null, dat
                     description: "A default collection of tasks for this project that are not assigned to a specific milestone.",
                     startDate: project.startDate,
                     dueDate: project.endDate,
-                    weight: 0, // General milestone has no weight towards project completion
+                    weight: 100, // General milestone has a weight of 100
                     projectId: projectId,
                 }
             });
@@ -441,7 +441,7 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
                     description: "A default collection of tasks for this project that are not assigned to a specific milestone.",
                     startDate: project.startDate,
                     dueDate: project.endDate,
-                    weight: 0,
+                    weight: 100,
                     projectId: projectId,
                 }
             });
