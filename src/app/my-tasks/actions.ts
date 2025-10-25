@@ -125,7 +125,7 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
             };
             
             if (task.status === 'TODO' || task.status === 'IN_PROGRESS') {
-                if (progressPercentage === 100) {
+                if (progressPercentage > (task.progress ?? 0)) {
                     updates.status = 'PENDING_REVIEW';
                 } else if (progressPercentage > 0 && task.status === 'TODO') {
                     updates.status = 'IN_PROGRESS';
