@@ -154,7 +154,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
 };
 
 const ProjectCard = ({ project }: { project: ProjectWithTasks }) => {
-    const [tasksExpanded, setTasksExpanded] = useState(true);
+    const [tasksExpanded, setTasksExpanded] = useState(false);
     const totalTasks = project.tasks.length;
     
     return (
