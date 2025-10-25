@@ -324,8 +324,8 @@ export function ProjectListItem({
                                 <Tooltip>
                                   <TooltipTrigger asChild>
                                     <div className="flex-1 min-w-0">
-                                      <span className="text-sm font-medium pr-2">
-                                          {task.title.length > 5 ? `${task.title.substring(0, 5)}...` : task.title}
+                                      <span className="text-sm font-medium pr-2 truncate">
+                                          {task.title}
                                       </span>
                                     </div>
                                   </TooltipTrigger>
@@ -485,3 +485,5 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
+
+    
