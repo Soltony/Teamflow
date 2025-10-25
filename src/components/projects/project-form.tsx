@@ -55,7 +55,7 @@ const milestoneSchema = z.object({
   description: z.string().min(10, "Description must be at least 10 characters."),
   startDate: z.date(),
   dueDate: z.date(),
-  weight: z.coerce.number().min(1, "Weight must be between 1 and 100.").max(100, "Weight must be between 1 and 100."),
+  weight: z.coerce.number().min(0, "Weight must be a positive number.").max(100, "Weight must be between 0 and 100."),
 }).refine(data => data.dueDate >= data.startDate, {
     message: "Due date must be on or after the start date.",
     path: ["dueDate"],
