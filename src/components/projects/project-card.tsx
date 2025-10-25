@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
 import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
+import { ScrollArea } from '../ui/scroll-area';
 
 type ProjectListItemProps = {
   project: any;
@@ -306,42 +307,44 @@ export function ProjectListItem({
                 </Select>
             )}
             {filteredTasks.length > 0 ? (
-              <>
-                {filteredTasks.map((task: any) => {
-                   const isTaskDone = task.status === 'DONE';
-                   const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
-                   
-                   const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-red-600' : 'bg-primary';
+              <ScrollArea className="h-48 pr-3">
+                <div className="space-y-1.5">
+                  {filteredTasks.map((task: any) => {
+                     const isTaskDone = task.status === 'DONE';
+                     const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
+                     
+                     const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-red-600' : 'bg-primary';
 
-                   return (
-                      <div key={task.id} className="space-y-1.5 group">
-                          <div className="flex justify-between items-center">
-                              <span className="text-sm font-medium flex-1 pr-2">{task.title}</span>
-                              <div className="flex items-center gap-1 flex-shrink-0">
-                                  <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
-                                  <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
-                                  {canManageTasks && (
-                                      <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                          <Link href={`/tasks/${task.id}`}>
-                                            <Button variant="ghost" size="icon" className="h-6 w-6">
-                                                <Eye className="h-3 w-3" />
+                     return (
+                        <div key={task.id} className="space-y-1.5 group">
+                            <div className="flex justify-between items-center">
+                                <span className="text-sm font-medium flex-1 pr-2">{task.title}</span>
+                                <div className="flex items-center gap-1 flex-shrink-0">
+                                    <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
+                                    <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
+                                    {canManageTasks && (
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
+                                            <Link href={`/tasks/${task.id}`}>
+                                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                                                  <Eye className="h-3 w-3" />
+                                              </Button>
+                                            </Link>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                                <Pencil className="h-3 w-3" />
                                             </Button>
-                                          </Link>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
-                                              <Pencil className="h-3 w-3" />
-                                          </Button>
-                                          <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
-                                              <Trash2 className="h-3 w-3" />
-                                          </Button>
-                                      </div>
-                                  )}
-                              </div>
-                          </div>
-                          <Progress value={task.progress || 0} className="h-1.5" indicatorClassName={indicatorClassName} />
-                      </div>
-                    )
-                })}
-              </>
+                                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
+                                                <Trash2 className="h-3 w-3" />
+                                            </Button>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                            <Progress value={task.progress || 0} className="h-1.5" indicatorClassName={indicatorClassName} />
+                        </div>
+                      )
+                  })}
+                </div>
+              </ScrollArea>
             ) : (
                  <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
                     No tasks yet for this selection.
