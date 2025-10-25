@@ -88,7 +88,7 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
   };
 
   const handleTaskAdd = async (projectId: string, milestoneId: string | null, newTask: any) => {
-    await addTask(project.id, milestoneId, newTask);
+    await addTask(projectId, milestoneId, newTask);
     toast({
       title: "Task Added!",
       description: `The task "${newTask.title}" has been successfully added.`,
@@ -244,7 +244,7 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
             isOpen={!!addingTaskToMilestone}
             onOpenChange={(open) => !open && setAddingTaskToMilestone(null)}
             project={project}
-            onTaskAdd={(projectId, milestoneId, newTask) => handleTaskAdd(addingTaskToMilestone.id, newTask)}
+            onTaskAdd={(projectId, milestoneId, newTask) => handleTaskAdd(projectId, addingTaskToMilestone.id, newTask)}
             users={users}
         />
       )}
