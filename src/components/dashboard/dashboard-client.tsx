@@ -123,10 +123,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     
     const lateProjectsCount = completedProjects.length - onTimeProjectsCount;
 
-    const totalBlockersCount = projectsWithOpenBlockers.reduce((acc: number, p: any) => {
-        const openBlockers = p.blockers?.filter((b: any) => b.status === 'OPEN') || [];
-        return acc + openBlockers.length;
-    }, 0);
+    const totalBlockersCount = projectsWithOpenBlockers.reduce((acc: number, p: any) => acc + p.blockers.length, 0);
     
     return {
         stats: {
@@ -534,3 +531,4 @@ Let’s keep projects on track—together.
   );
 }
 
+    
