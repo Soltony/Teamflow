@@ -23,6 +23,7 @@ import {
   ListTodo,
   Archive,
   Clock,
+  ThumbsUp,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -59,6 +60,7 @@ const menuItems = [
   { href: "/archive", label: "Archive", icon: Archive, permission: 'projects:read' },
   { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
   { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
+  { href: "/task-approvals", label: "Task Approvals", icon: ThumbsUp, permission: 'tasks:approve' },
   { href: "/pmo-divisions", label: "EPMO Divisions", icon: Library, permission: 'pmo-divisions:view' },
   { href: "/departments", label: "Departments", icon: Building2, permission: 'departments:read' },
   { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },

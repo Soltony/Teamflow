@@ -9,6 +9,7 @@ export const availablePermissions: Record<string, string[]> = {
     'My Tasks': ['my-tasks:view'],
     'Team View': ['team-view:view', 'team-view:manage', 'team-view:manage-all'],
     'Projects': ['projects:create', 'projects:read', 'projects:update', 'projects:delete', 'timeline:request'],
+    'Tasks': ['tasks:approve'],
     'Milestones': ['milestones:view'],
     'Gantt': ['gantt:view'],
     'Timeline Approvals': ['timeline:approve'],
