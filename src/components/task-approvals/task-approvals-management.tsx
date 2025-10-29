@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
@@ -94,6 +94,16 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
     });
   }
 
+  const getProgressText = (task: TaskWithRelations) => {
+    const lastUpdate = task.updates?.find((u: any) => u.progressPercentage !== null && u.progressPercentage !== task.progress);
+    const previousProgress = lastUpdate?.progressPercentage ?? 0;
+
+    if (previousProgress !== task.progress) {
+      return `${previousProgress}% → ${task.progress}%`;
+    }
+    return `${task.progress}%`;
+  };
+
   return (
     <>
       <TooltipProvider>
@@ -135,7 +145,7 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
                     <TableCell>
                       <div className="flex items-center gap-2">
                         <Progress value={task.progress} className="h-2 w-20" />
-                        <span>{task.progress}%</span>
+                        <span className="text-sm font-medium">{getProgressText(task)}</span>
                       </div>
                     </TableCell>
                     <TableCell>{format(new Date(task.endDate), 'MMM dd, yyyy')}</TableCell>

@@ -44,6 +44,11 @@ export async function getPendingReviewTasks(userId: string) {
                 include: {
                     project: true
                 }
+            },
+            updates: {
+                orderBy: {
+                    createdAt: 'desc'
+                }
             }
         },
         orderBy: {
