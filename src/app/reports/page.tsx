@@ -80,6 +80,8 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
         description = "A list of all projects.";
         filteredProjects = allProjects;
     }
+    
+    const serializableProjects = JSON.parse(JSON.stringify(filteredProjects));
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -93,9 +95,9 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
                     <CardDescription>{description}</CardDescription>
                 </CardHeader>
                 <CardContent>
-                    {filteredProjects.length > 0 ? (
+                    {serializableProjects.length > 0 ? (
                         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {filteredProjects.map((project) => (
+                            {serializableProjects.map((project: any) => (
                                 <ProjectCard 
                                     key={project.id} 
                                     project={project}
