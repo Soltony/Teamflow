@@ -160,7 +160,8 @@ export function ProjectListItem({
   const progress = calculateProjectProgress(project);
   const projectManager = users.find(u => u.id === project.projectManagerId);
   
-  const isProjectOverdue = project.status.name === 'Active' && isAfter(new Date(), endOfDay(parseISO(project.endDate)));
+  const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
+  const isProjectOverdue = nonArchivedStatusNames.includes(project.status.name) && isAfter(new Date(), endOfDay(parseISO(project.endDate)));
   const openBlockersCount = project.blockers?.length || 0;
     
   return (
