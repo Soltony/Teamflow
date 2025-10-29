@@ -10,7 +10,8 @@ import prisma from '@/lib/db';
 import { redirect } from 'next/navigation';
 
 async function ReportsContent({ searchParams }: { searchParams: { type?: string, year?: string } }) {
-    const { type, year } = searchParams;
+    const type = searchParams.type;
+    const year = searchParams.year;
 
     let title = "Projects Report";
     let description = "A list of projects based on the selected filter.";
