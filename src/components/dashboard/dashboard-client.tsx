@@ -111,7 +111,10 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
   const { stats, projectsWithBlockers } = React.useMemo(() => {
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
     const completedProjects = filteredProjects.filter((p: any) => p.statusId === completedStatusId);
-    const overdueProjects = filteredProjects.filter((p: any) => p.status.name === 'Active' && isPast(parseISO(p.endDate)));
+    
+    const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
+    const overdueProjects = filteredProjects.filter((p: any) => nonArchivedStatusNames.includes(p.status.name) && isPast(parseISO(p.endDate)));
+    
     const projectsWithOpenBlockers = filteredProjects.filter((p: any) => p.blockers?.some((b: any) => b.status === 'OPEN'));
     
     const onTimeProjectsCount = completedProjects.filter((project: any) => {
@@ -123,7 +126,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     
     const lateProjectsCount = completedProjects.length - onTimeProjectsCount;
 
-    const totalBlockersCount = filteredProjects.reduce((acc: number, p: any) => acc + (p.blockers?.length || 0), 0);
+    const totalBlockersCount = projectsWithOpenBlockers.reduce((acc: number, p: any) => acc + (p.blockers?.length || 0), 0);
     
     return {
         stats: {
