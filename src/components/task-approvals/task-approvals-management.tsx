@@ -31,11 +31,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 import { useToast } from "@/hooks/use-toast";
 import { approveTask, rejectTask } from "@/app/task-approvals/actions";
 import { useAuth } from "@/context/auth-context";
 import { format } from "date-fns";
 import Link from 'next/link';
+import { Progress } from "../ui/progress";
 
 type TaskWithRelations = any;
 
@@ -89,54 +96,74 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
 
   return (
     <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Task</TableHead>
-            <TableHead>Project</TableHead>
-            <TableHead>Assignees</TableHead>
-            <TableHead>Due Date</TableHead>
-            <TableHead className="text-right">Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {initialTasks.length > 0 ? (
-            initialTasks.map(task => {
-              const assigneeNames = task.assignees.map((a: any) => a.name).join(', ');
-              return (
-                <TableRow key={task.id}>
-                  <TableCell className="font-medium">{task.title}</TableCell>
-                  <TableCell>
-                    <Link href={`/projects/${task.milestone.project.id}`} className="hover:underline text-primary">
-                        {task.milestone.project.name}
-                    </Link>
-                  </TableCell>
-                  <TableCell>{assigneeNames}</TableCell>
-                  <TableCell>{format(new Date(task.endDate), 'MMM dd, yyyy')}</TableCell>
-                  <TableCell className="text-right">
-                    {canManage && (
-                      <div className="flex gap-2 justify-end">
-                        <Button size="sm" variant="outline" onClick={() => handleOpenRejectDialog(task)} disabled={isPending}>
-                          Reject
-                        </Button>
-                        <Button size="sm" onClick={() => handleApprove(task.id)} disabled={isPending}>
-                          Approve
-                        </Button>
-                      </div>
-                    )}
-                  </TableCell>
-                </TableRow>
-              )
-            })
-          ) : (
+      <TooltipProvider>
+        <Table>
+          <TableHeader>
             <TableRow>
-              <TableCell colSpan={5} className="h-24 text-center">
-                No tasks are currently pending review.
-              </TableCell>
+              <TableHead>Task</TableHead>
+              <TableHead>Description</TableHead>
+              <TableHead>Project</TableHead>
+              <TableHead>Assignees</TableHead>
+              <TableHead>Progress</TableHead>
+              <TableHead>Due Date</TableHead>
+              <TableHead className="text-right">Actions</TableHead>
             </TableRow>
-          )}
-        </TableBody>
-      </Table>
+          </TableHeader>
+          <TableBody>
+            {initialTasks.length > 0 ? (
+              initialTasks.map(task => {
+                const assigneeNames = task.assignees.map((a: any) => a.name).join(', ');
+                return (
+                  <TableRow key={task.id}>
+                    <TableCell className="font-medium">{task.title}</TableCell>
+                    <TableCell>
+                      <Tooltip>
+                        <TooltipTrigger>
+                           <p className="max-w-xs truncate">{task.description}</p>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="max-w-md">{task.description}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TableCell>
+                    <TableCell>
+                      <Link href={`/projects/${task.milestone.project.id}`} className="hover:underline text-primary">
+                          {task.milestone.project.name}
+                      </Link>
+                    </TableCell>
+                    <TableCell>{assigneeNames}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <Progress value={task.progress} className="h-2 w-20" />
+                        <span>{task.progress}%</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{format(new Date(task.endDate), 'MMM dd, yyyy')}</TableCell>
+                    <TableCell className="text-right">
+                      {canManage && (
+                        <div className="flex gap-2 justify-end">
+                          <Button size="sm" variant="outline" onClick={() => handleOpenRejectDialog(task)} disabled={isPending}>
+                            Reject
+                          </Button>
+                          <Button size="sm" onClick={() => handleApprove(task.id)} disabled={isPending}>
+                            Approve
+                          </Button>
+                        </div>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              })
+            ) : (
+              <TableRow>
+                <TableCell colSpan={7} className="h-24 text-center">
+                  No tasks are currently pending review.
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </TooltipProvider>
       
       <Dialog open={!!taskToReject} onOpenChange={() => setTaskToReject(null)}>
         <DialogContent>
