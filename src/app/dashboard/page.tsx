@@ -31,7 +31,7 @@ function generateWorkingYears() {
     return Array.from(years);
 }
 
-export default async function DashboardPage({ searchParams }: { searchParams: { year?: string } }) {
+export default async function DashboardPage() {
     const activeYear = await getCurrentWorkingYear();
 
     const [allProjects, projectStatuses, pmoDivisions, departments, teams, distinctYears] = await Promise.all([
