@@ -124,12 +124,9 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
                 progress: progressPercentage
             };
             
+            // Any update from a user moves the task to PENDING_REVIEW
             if (task.status === 'TODO' || task.status === 'IN_PROGRESS') {
-                if (progressPercentage > (task.progress ?? 0)) {
-                    updates.status = 'PENDING_REVIEW';
-                } else if (progressPercentage > 0 && task.status === 'TODO') {
-                    updates.status = 'IN_PROGRESS';
-                }
+                updates.status = 'PENDING_REVIEW';
             }
 
             await tx.task.update({
