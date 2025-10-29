@@ -1,17 +1,17 @@
+
 import Link from 'next/link';
 import { ArrowLeft } from 'lucide-react';
 import { ProjectCard } from "@/components/projects/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { isPast, parseISO, max as dateMax } from 'date-fns';
+import { isPast, parseISO, max as dateMax, endOfDay, isAfter } from 'date-fns';
 import type { Project } from '@prisma/client';
 import { Suspense } from 'react';
 import prisma from '@/lib/db';
 import { redirect } from 'next/navigation';
 
-async function ReportsContent({ searchParams }: { searchParams: Promise<{ type?: string, year?: string }> }) {
-    const resolvedSearchParams = await searchParams;
-    const type = resolvedSearchParams?.type;
-    const year = resolvedSearchParams?.year;
+async function ReportsContent({ searchParams }: { searchParams: { type?: string, year?: string } }) {
+    const type = searchParams?.type;
+    const year = searchParams?.year;
 
     let title = "Projects Report";
     let description = "A list of projects based on the selected filter.";
@@ -64,7 +64,7 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<{ type?:
             case 'overdue':
                 title = "Overdue Projects";
                 description = "Active projects that are past their deadline.";
-                filteredProjects = allProjects.filter(p => nonArchivedStatusNames.includes(p.status.name) && isPast(p.endDate));
+                filteredProjects = allProjects.filter(p => nonArchivedStatusNames.includes(p.status.name) && isAfter(new Date(), endOfDay(p.endDate)));
                 break;
             case 'active-blockers':
                 title = "Projects with Active Blockers";
@@ -81,7 +81,7 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<{ type?:
         description = "A list of all projects.";
         filteredProjects = allProjects;
     }
-
+    
     const serializableProjects = JSON.parse(JSON.stringify(filteredProjects));
 
     return (
@@ -117,7 +117,7 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<{ type?:
     );
 }
 
-export default async function ReportsPage({ searchParams }: { searchParams: Promise<{ type?: string, year?: string }> }) {
+export default async function ReportsPage({ searchParams }: { searchParams: { type?: string, year?: string } }) {
     return (
         <Suspense fallback={<div>Loading...</div>}>
             <ReportsContent searchParams={searchParams} />

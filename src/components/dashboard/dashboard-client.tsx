@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
-import { isPast, max as dateMax, parseISO, format, differenceInDays } from 'date-fns';
+import { isPast, max as dateMax, parseISO, format, differenceInDays, endOfDay, isAfter } from 'date-fns';
 import { useAuth } from "@/context/auth-context";
 import { CelebrationSlider } from "./celebration-slider";
 
@@ -113,7 +113,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     const completedProjects = filteredProjects.filter((p: any) => p.statusId === completedStatusId);
     
     const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
-    const overdueProjects = filteredProjects.filter((p: any) => nonArchivedStatusNames.includes(p.status.name) && isPast(parseISO(p.endDate)));
+    const overdueProjects = filteredProjects.filter((p: any) => nonArchivedStatusNames.includes(p.status.name) && isAfter(new Date(), endOfDay(parseISO(p.endDate))));
     
     const projectsWithOpenBlockers = filteredProjects.filter((p: any) => p.blockers?.some((b: any) => b.status === 'OPEN'));
     
