@@ -13,29 +13,43 @@ export async function getPendingReviewTasks(userId: string) {
     });
 
     if (!user) return [];
+    
+    const canApprove = user.roles.some(role => role.permissions.includes('tasks:approve'));
+    if (!canApprove) return [];
 
-    const canManageAll = user.roles.some(role => role.name === 'Admin');
+    const isAdmin = user.roles.some(role => role.name === 'Admin');
 
     let whereClause: Prisma.TaskWhereInput = {
         status: 'PENDING_REVIEW'
     };
 
-    if (!canManageAll) {
-        // If not an admin, only show tasks from teams the user leads
-        const ledTeams = await prisma.team.findMany({
-            where: { teamLeadId: userId },
-            include: { members: { select: { id: true } } }
-        });
-        const memberIds = Array.from(new Set(ledTeams.flatMap(team => team.members.map(m => m.id))));
+    if (!isAdmin) {
+        // If not an admin but has approve permission, it could be a director or team lead
+        if (user.pmoDivisionId) {
+            // If the user is associated with a PMO division (like a director), show all tasks from that division.
+             whereClause.milestone = {
+                project: {
+                    pmoDivisionId: user.pmoDivisionId,
+                }
+            };
+        } else {
+            // Fallback for users who are team leads but not part of a division structure
+            const ledTeams = await prisma.team.findMany({
+                where: { teamLeadId: userId },
+                include: { members: { select: { id: true } } }
+            });
+            const memberIds = Array.from(new Set(ledTeams.flatMap(team => team.members.map(m => m.id))));
 
-        if (memberIds.length === 0) return []; // Not a team lead of any team
+            if (memberIds.length === 0) return []; // Not a lead of any team with members
 
-        whereClause.assignees = {
-            some: {
-                id: { in: memberIds }
-            }
-        };
+            whereClause.assignees = {
+                some: {
+                    id: { in: memberIds }
+                }
+            };
+        }
     }
+    // If user is Admin, the whereClause is not modified, so they see all pending tasks.
 
     const tasks = await prisma.task.findMany({
         where: whereClause,
