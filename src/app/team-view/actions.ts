@@ -142,7 +142,7 @@ export async function approveTaskAction(taskId: string, teamLeadId: string, team
             updateText = `Task approved by ${teamLeadName}. Status changed to Done.`;
         } else {
             newStatus = task.progress > 0 ? 'IN_PROGRESS' : 'TODO';
-            updateText = `Progress update approved by ${teamLeadName}. Status changed to ${newStatus.replace(/_/g, ' ')}.`;
+            updateText = `Progress update of ${task.progress}% was approved by ${teamLeadName}. Status is now ${newStatus.replace(/_/g, ' ')}.`;
         }
         
         await prisma.task.update({
@@ -163,6 +163,7 @@ export async function approveTaskAction(taskId: string, teamLeadId: string, team
 
         revalidatePath('/team-view');
         revalidatePath('/my-tasks');
+        revalidatePath('/task-approvals');
         return { success: true };
 
     } catch (error) {
@@ -191,6 +192,8 @@ export async function declineTaskAction(taskId: string, teamLeadId: string, team
         });
 
         revalidatePath('/team-view');
+        revalidatePath('/my-tasks');
+        revalidatePath('/task-approvals');
         return { success: true };
 
     } catch (error) {

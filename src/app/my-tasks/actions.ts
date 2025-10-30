@@ -137,6 +137,7 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
         
         revalidatePath('/my-tasks');
         revalidatePath('/team-view');
+        revalidatePath('/task-approvals');
         return { success: true };
     } catch (error) {
         console.error("Failed to add task update:", error);
