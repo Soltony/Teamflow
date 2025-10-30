@@ -81,25 +81,29 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
 
     const progressText = useMemo(() => {
         if (wasCompletedToday && task.completedAt) {
-            // Find the last update that had a progress value and occurred before completion
-            const lastUpdateBeforeCompletion = (task.updates || [])
-                .map(u => ({...u, createdAt: parseISO(u.createdAt)}))
-                .filter(u => u.progressPercentage !== null && u.createdAt < parseISO(task.completedAt as string))
-                .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+            const updatesBeforeCompletion = (task.updates || [])
+                .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
+                .filter(u => u.createdAt < parseISO(task.completedAt as string));
             
+            const lastUpdateBeforeCompletion = updatesBeforeCompletion
+                .filter(u => u.progressPercentage !== null)
+                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+
             const previousProgress = lastUpdateBeforeCompletion?.progressPercentage ?? 0;
             return `Progress: ${previousProgress}% → 100%`;
         }
+
         if (wasUpdatedToday) {
             const firstUpdateToday = todaysUpdates[0];
             const updatesBeforeToday = (task.updates || [])
-                .map(u => ({...u, createdAt: parseISO(u.createdAt)}))
-                .filter(u => u.createdAt < firstUpdateToday.createdAt)
-                .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
+                .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
+                .filter(u => u.createdAt < firstUpdateToday.createdAt && u.progressPercentage !== null)
+                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
             
             const previousProgress = updatesBeforeToday[0]?.progressPercentage ?? 0;
             return `Progress: ${previousProgress}% → ${task.progress || 0}%`;
         }
+
         return `${task.progress || 0}%`;
     }, [task, wasCompletedToday, wasUpdatedToday, todaysUpdates]);
 
@@ -415,3 +419,4 @@ export default function TodayPage() {
     </div>
   );
 }
+
