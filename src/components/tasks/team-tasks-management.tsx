@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Accordion,
