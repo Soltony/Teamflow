@@ -74,7 +74,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
         (task.updates || [])
             .map(u => ({...u, createdAt: parseISO(u.createdAt)}))
             .filter(update => isToday(update.createdAt))
-            .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())
+            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     , [task.updates]);
 
     const wasUpdatedToday = !wasCompletedToday && todaysUpdates.length > 0;
@@ -85,14 +85,14 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
         }
         
         if (wasUpdatedToday) {
-            const allUpdates = (task.updates || [])
-                .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
-                .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
-
-            const mostRecentUpdateToday = allUpdates.find(u => isToday(u.createdAt) && u.progressPercentage !== null);
+            const mostRecentUpdateToday = todaysUpdates[0];
             
-            if (mostRecentUpdateToday) {
-                 const updateBeforeThat = allUpdates.find(u => u.createdAt.getTime() < mostRecentUpdateToday.createdAt.getTime() && u.progressPercentage !== null);
+            if (mostRecentUpdateToday?.progressPercentage !== null) {
+                 const allUpdatesSorted = (task.updates || [])
+                    .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
+                    .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
+                 
+                 const updateBeforeThat = allUpdatesSorted.find(u => u.createdAt.getTime() < mostRecentUpdateToday.createdAt.getTime() && u.progressPercentage !== null);
                  const previousProgress = updateBeforeThat?.progressPercentage ?? 0;
                  const currentProgress = mostRecentUpdateToday.progressPercentage;
 
@@ -103,7 +103,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
         }
         
         return `${task.progress || 0}%`;
-    }, [task, wasCompletedToday, wasUpdatedToday]);
+    }, [task, wasCompletedToday, wasUpdatedToday, todaysUpdates]);
 
 
     return (
@@ -120,11 +120,11 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                             </TooltipContent>
                         </Tooltip>
                     </div>
-                    <div className="flex -space-x-1 flex-shrink-0">
+                    <div className="flex -space-x-2 flex-shrink-0">
                         {task.assignees.slice(0, 3).map(assignee => (
                             <Tooltip key={assignee.id}>
                                 <TooltipTrigger>
-                                    <Avatar className="h-6 w-6 border-2 border-background">
+                                    <Avatar className="h-5 w-5 border-2 border-background">
                                         <AvatarImage src={assignee.avatar || undefined} />
                                         <AvatarFallback className="text-xs">{assignee.name.charAt(0)}</AvatarFallback>
                                     </Avatar>
@@ -135,8 +135,8 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                             </Tooltip>
                         ))}
                         {task.assignees.length > 3 && (
-                            <div className="h-6 w-6 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                                <span className="text-xs font-semibold">+{task.assignees.length - 3}</span>
+                            <div className="h-5 w-5 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                                <span className="text-[10px] font-semibold">+{task.assignees.length - 3}</span>
                             </div>
                         )}
                     </div>
@@ -154,7 +154,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                 
                 {!wasCompletedToday && (
                     <div className="flex items-center gap-2 mb-2">
-                        <Progress value={task.progress || 0} className="flex-1 h-1.5" />
+                        <Progress value={task.progress || 0} className="flex-1 h-2" />
                         <span className="text-xs font-semibold">{progressText}</span>
                     </div>
                 )}
@@ -436,6 +436,7 @@ export default function TodayPage() {
     </div>
   );
 }
+
 
 
 
