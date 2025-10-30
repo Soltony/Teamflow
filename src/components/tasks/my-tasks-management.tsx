@@ -314,6 +314,14 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
   };
 
   const handleUpdateSubmit = async (task: UserTask, data: TaskUpdateFormValues) => {
+    if (data.progressPercentage === task.progress) {
+      toast({
+        title: "No Progress Change",
+        description: "Please update the progress slider before posting an update.",
+        variant: "destructive",
+      });
+      return;
+    }
     const result = await addTaskUpdateAction(task.id, data.text, currentUser.id, data.progressPercentage);
     let toastDescription = "Your progress update has been recorded.";
 
