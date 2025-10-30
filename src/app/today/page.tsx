@@ -88,12 +88,15 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
             const allUpdates = (task.updates || []).map(u => ({ ...u, createdAt: parseISO(u.createdAt) }));
             const lastUpdateToday = todaysUpdates[todaysUpdates.length - 1];
 
-            const updatesBeforeThisOne = allUpdates
-                .filter(u => u.createdAt < lastUpdateToday.createdAt && u.progressPercentage !== null)
+            const updatesBeforeThisOneToday = allUpdates
+                .filter(u => u.createdAt.getTime() < lastUpdateToday.createdAt.getTime() && u.progressPercentage !== null)
                 .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
             
-            const previousProgress = updatesBeforeThisOne[0]?.progressPercentage ?? 0;
-            return `${previousProgress}% → ${task.progress || 0}%`;
+            const previousProgress = updatesBeforeThisOneToday[0]?.progressPercentage ?? 0;
+
+            if (task.progress !== previousProgress) {
+                return `${previousProgress}% → ${task.progress || 0}%`;
+            }
         }
 
         return `${task.progress || 0}%`;
@@ -106,7 +109,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                 <div className="flex justify-between items-start mb-2">
                     <Tooltip>
                         <TooltipTrigger asChild>
-                            <h4 className="font-semibold text-sm truncate flex-1">{task.title}</h4>
+                            <h4 className="font-semibold text-sm truncate flex-1 pr-2">{task.title}</h4>
                         </TooltipTrigger>
                         <TooltipContent>
                             <p>{task.title}</p>
@@ -143,10 +146,14 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                         </TooltipContent>
                     </Tooltip>
                 )}
-                <div className="flex items-center gap-2 mb-2">
-                    <Progress value={task.progress || 0} className="flex-1 h-1.5" />
-                    <span className="text-xs font-semibold">{progressText}</span>
-                </div>
+                
+                {!wasCompletedToday && (
+                    <div className="flex items-center gap-2 mb-2">
+                        <Progress value={task.progress || 0} className="flex-1 h-1.5" />
+                        <span className="text-xs font-semibold">{progressText}</span>
+                    </div>
+                )}
+                
                 <div className="flex flex-wrap gap-1">
                     {isDueToday && !wasCompletedToday && (
                         <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
@@ -424,6 +431,7 @@ export default function TodayPage() {
     </div>
   );
 }
+
 
 
 
