@@ -114,6 +114,10 @@ export function ProjectListItem({
         others.push(task);
       }
     });
+
+    todays.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    others.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
     return { todaysTasks: todays, otherTasks: others };
   }, [allTasks]);
 
@@ -127,7 +131,7 @@ export function ProjectListItem({
 
   const filteredTasks = selectedMilestoneId === 'all' 
     ? otherTasks 
-    : project.milestones.find((m: any) => m.id === selectedMilestoneId)?.tasks.filter((t: any) => !todaysTasks.some(tt => tt.id === t.id)) || [];
+    : project.milestones.find((m: any) => m.id === selectedMilestoneId)?.tasks.filter((t: any) => !todaysTasks.some(tt => tt.id === t.id)).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
   
   const calculateMilestoneProgress = (milestone: any) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
