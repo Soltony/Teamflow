@@ -117,6 +117,13 @@ export function ProjectListItem({
     return { todaysTasks: todays, otherTasks: others };
   }, [allTasks]);
 
+  const completedTodaysTasksCount = useMemo(() =>
+    todaysTasks.filter((task: any) => task.status === 'DONE').length
+  , [todaysTasks]);
+
+  const completedOtherTasksCount = useMemo(() =>
+    otherTasks.filter((task: any) => task.status === 'DONE').length
+  , [otherTasks]);
 
   const filteredTasks = selectedMilestoneId === 'all' 
     ? otherTasks 
@@ -377,8 +384,8 @@ export function ProjectListItem({
               {allTasks.length > 0 ? (
                 <Tabs defaultValue="today" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="today">Today's Tasks ({todaysTasks.length})</TabsTrigger>
-                        <TabsTrigger value="other">Other Tasks ({otherTasks.length})</TabsTrigger>
+                        <TabsTrigger value="today">Today's Tasks ({completedTodaysTasksCount}/{todaysTasks.length})</TabsTrigger>
+                        <TabsTrigger value="other">Other Tasks ({completedOtherTasksCount}/{otherTasks.length})</TabsTrigger>
                     </TabsList>
                     <TabsContent value="today">
                       {todaysTasks.length > 0 ? (
