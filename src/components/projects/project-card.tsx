@@ -100,7 +100,6 @@ export function ProjectListItem({
     const others: any[] = [];
 
     allTasks.forEach((task: any) => {
-      // The task.createdAt field might not exist on old data, so guard it
       if (task.createdAt && isToday(parseISO(task.createdAt))) {
         todays.push(task);
       } else {
