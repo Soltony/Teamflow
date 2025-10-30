@@ -8,6 +8,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { isPast, max as dateMax, parseISO, isAfter } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 type ProjectWithRelations = Project & {
     status: ProjectStatus;
@@ -77,6 +79,7 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                 <CardDescription>A breakdown of key metrics for each EPMO division.</CardDescription>
             </CardHeader>
             <CardContent>
+              <TooltipProvider>
                 <div className="border rounded-md">
                     {/* Header Row */}
                     <div className="flex p-4 bg-muted/50 border-b font-semibold text-sm text-muted-foreground">
@@ -103,9 +106,16 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                                                     <h4 className="font-semibold text-muted-foreground mb-2">{status} ({projectList.length})</h4>
                                                     <div className="pl-4 border-l-2 space-y-2">
                                                         {projectList.map(p => (
-                                                            <Link href={`/reports?type=${status.toLowerCase()}`} key={p.id} className="block text-sm text-primary hover:underline">
-                                                                {p.name}
-                                                            </Link>
+                                                            <Tooltip key={p.id}>
+                                                              <TooltipTrigger asChild>
+                                                                  <Link href={`/projects/${p.id}`} className="block text-sm text-primary hover:underline truncate">
+                                                                      {p.name}
+                                                                  </Link>
+                                                              </TooltipTrigger>
+                                                              <TooltipContent>
+                                                                  <p>{p.name}</p>
+                                                              </TooltipContent>
+                                                            </Tooltip>
                                                         ))}
                                                     </div>
                                                 </div>
@@ -123,6 +133,7 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                         </div>
                     )}
                 </div>
+              </TooltipProvider>
             </CardContent>
         </Card>
     );
