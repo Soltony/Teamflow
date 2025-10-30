@@ -100,14 +100,8 @@ export function ProjectListItem({
     const others: any[] = [];
 
     allTasks.forEach((task: any) => {
-      const endDate = parseISO(task.endDate);
-      const completedAt = task.completedAt ? parseISO(task.completedAt) : null;
-      
-      const isDueToday = isToday(endDate);
-      const wasCompletedToday = completedAt && isToday(completedAt);
-      const wasUpdatedToday = (task.updates || []).some((update: any) => isToday(parseISO(update.createdAt)));
-      
-      if (isDueToday || wasCompletedToday || wasUpdatedToday) {
+      // The task.createdAt field might not exist on old data, so guard it
+      if (task.createdAt && isToday(parseISO(task.createdAt))) {
         todays.push(task);
       } else {
         others.push(task);
@@ -118,8 +112,8 @@ export function ProjectListItem({
 
 
   const filteredTasks = selectedMilestoneId === 'all' 
-    ? allTasks 
-    : project.milestones.find((m: any) => m.id === selectedMilestoneId)?.tasks || [];
+    ? otherTasks 
+    : project.milestones.find((m: any) => m.id === selectedMilestoneId)?.tasks.filter((t: any) => !todaysTasks.some(tt => tt.id === t.id)) || [];
   
   const calculateMilestoneProgress = (milestone: any) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
@@ -369,8 +363,8 @@ export function ProjectListItem({
               {allTasks.length > 0 ? (
                 <Tabs defaultValue="today" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="today">Today's Activity ({todaysTasks.length})</TabsTrigger>
-                        <TabsTrigger value="all">All Tasks ({allTasks.length})</TabsTrigger>
+                        <TabsTrigger value="today">Today's Tasks ({todaysTasks.length})</TabsTrigger>
+                        <TabsTrigger value="all">Other Tasks ({otherTasks.length})</TabsTrigger>
                     </TabsList>
                     <TabsContent value="today">
                       {todaysTasks.length > 0 ? (
@@ -381,7 +375,7 @@ export function ProjectListItem({
                         </ScrollArea>
                       ) : (
                          <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
-                            No tasks with activity today.
+                            No tasks were created today.
                          </div>
                       )}
                     </TabsContent>
