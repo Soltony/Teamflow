@@ -16,7 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { ProjectStatus, User, Team, TaskUpdate } from "@/lib/types";
-import { format, formatDistanceToNow } from "date-fns";
+import { format, formatDistanceToNow, parseISO } from "date-fns";
 import { CheckCircle, XCircle, User as UserIcon } from "lucide-react";
 import { type ProjectWithTasksAndStats, type TeamViewTask } from "@/app/team-view/page";
 import { approveTaskAction, declineTaskAction } from "@/app/team-view/actions";
@@ -258,7 +258,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <AccordionContent className="p-4 pt-0">
                    {tasks.length > 0 ? (
                      <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || undefined} onValueChange={setExpandedTaskId}>
-                      {tasks.sort((a, b) => a.title.localeCompare(b.title)).map(task => (
+                      {tasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(task => (
                         <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-background">
                             <AccordionTrigger className="hover:no-underline">
                                 <div className="flex items-center justify-between w-full">
