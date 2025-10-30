@@ -81,8 +81,8 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
             <CardContent>
               <TooltipProvider>
                 <div className="border rounded-md">
-                    {/* Header Row */}
-                    <div className="flex p-4 bg-muted/50 border-b font-semibold text-sm text-muted-foreground">
+                    {/* Header Row - visible on medium screens and up */}
+                    <div className="hidden md:flex p-4 bg-muted/50 border-b font-semibold text-sm text-muted-foreground">
                         <div className="flex-1">EPMO Division</div>
                         <div className="w-32 text-center">Total Projects</div>
                         <div className="w-32 text-center">Completion Rate</div>
@@ -93,11 +93,22 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                         <Accordion type="multiple" defaultValue={defaultOpenAccordionItems} className="w-full">
                             {pmoDivisionPerformance.map(div => (
                                 <AccordionItem value={div.id} key={div.id} className="border-b">
-                                    <AccordionTrigger className="flex p-4 hover:bg-muted/30 hover:no-underline">
-                                        <div className="flex-1 text-left font-semibold text-base">{div.name}</div>
-                                        <div className="w-32 text-center text-lg font-bold">{div.totalProjects}</div>
-                                        <div className="w-32 text-center text-lg font-bold">{div.completionRate.toFixed(0)}%</div>
-                                        <div className="w-32 text-center text-lg font-bold">{div.overdueCount}</div>
+                                    <AccordionTrigger className="flex flex-col md:flex-row p-4 hover:bg-muted/30 hover:no-underline text-left">
+                                        <div className="flex-1 font-semibold text-base mb-2 md:mb-0">{div.name}</div>
+                                        <div className="flex w-full md:w-auto justify-between items-center text-lg font-bold">
+                                            <div className="md:w-32 text-center">
+                                                <span className="md:hidden text-sm font-medium text-muted-foreground">Total: </span>
+                                                {div.totalProjects}
+                                            </div>
+                                            <div className="md:w-32 text-center">
+                                                <span className="md:hidden text-sm font-medium text-muted-foreground">Completion: </span>
+                                                {div.completionRate.toFixed(0)}%
+                                            </div>
+                                            <div className="md:w-32 text-center">
+                                                <span className="md:hidden text-sm font-medium text-muted-foreground">Overdue: </span>
+                                                {div.overdueCount}
+                                            </div>
+                                        </div>
                                     </AccordionTrigger>
                                     <AccordionContent>
                                         <div className="p-4 bg-muted/20 space-y-4">
@@ -138,4 +149,4 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
         </Card>
     );
 }
-    
+
