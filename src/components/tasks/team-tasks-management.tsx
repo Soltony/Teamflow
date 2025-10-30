@@ -23,22 +23,124 @@ import { approveTaskAction, declineTaskAction } from "@/app/team-view/actions";
 import { Progress } from "../ui/progress";
 import { DeclineTaskDialog } from "./decline-task-dialog";
 
-type TeamTasksManagementProps = {
-  allUsers: User[];
-  ledTeams: Team[];
-  currentUser: User;
-  initialTasksByProject: ProjectWithTasksAndStats[];
-  projectStatuses: ProjectStatus[];
-  onDataChange: () => void;
-};
-
 const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
+
+const TaskCollapsible = ({
+  task,
+  userMap,
+  onApprove,
+  onDecline
+}: {
+  task: TeamViewTask,
+  userMap: Map<string, User>,
+  onApprove: (task: TeamViewTask) => void,
+  onDecline: (task: TeamViewTask) => void,
+}) => {
+  const assignees = task.assignedUserIds.map(id => userMap.get(id)).filter(Boolean) as User[];
+  
+  return (
+    <Card key={task.id} className={task.status === 'PENDING_REVIEW' ? 'border-primary' : ''}>
+      <CardContent className="p-4 space-y-4">
+        <p className="text-sm text-muted-foreground">{task.description}</p>
+          <div className="space-y-2">
+              <div className="flex justify-between text-sm">
+                  <span>Progress</span>
+                  <span className="font-semibold">{task.progress || 0}%</span>
+              </div>
+              <Progress value={task.progress || 0} />
+          </div>
+        <div className="flex flex-wrap items-center gap-4 text-sm">
+            <div className="flex items-center gap-2">
+                <UserIcon className="w-4 h-4 text-muted-foreground" />
+                <span className="font-medium">Assignees:</span>
+                <span>{assignees.map(a => a.name).join(', ')}</span>
+            </div>
+            <Badge variant="outline">Due: {format(new Date(task.endDate), 'MMM dd, yyyy')}</Badge>
+        </div>
+        
+        {task.updates && task.updates.length > 0 && (
+          <>
+            <Separator />
+            <div>
+                <h4 className="font-semibold mb-2 text-sm">Updates</h4>
+                <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
+                    {task.updates.map(update => {
+                        const author = userMap.get(update.authorId);
+                        
+                        if (update.type === 'STATUS_CHANGE') {
+                            const isApproval = update.text.includes('approved');
+                            return (
+                                <div key={update.id} className="flex items-start gap-3">
+                                    <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
+                                        {isApproval ? (
+                                            <CheckCircle className="w-6 h-6 text-green-500" />
+                                        ) : (
+                                            <XCircle className="w-6 h-6 text-destructive" />
+                                        )}
+                                    </div>
+                                    <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
+                                        <div className="flex justify-between items-center mb-1">
+                                            <span className="font-semibold">{isApproval ? 'Task Approved' : 'Task Declined'}</span>
+                                            <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</span>
+                                        </div>
+                                        <p className="text-muted-foreground italic">{update.text}</p>
+                                    </div>
+                                </div>
+                            );
+                        }
+
+                        return (
+                            <div key={update.id} className="flex items-start gap-3">
+                                <Avatar className="w-8 h-8 border">
+                                    <AvatarImage src={author?.avatar} alt={author?.name} />
+                                    <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
+                                </Avatar>
+                                <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
+                                    <div className="flex justify-between items-center mb-1">
+                                        <span className="font-semibold">{author?.name}</span>
+                                        <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</span>
+                                    </div>
+                                    <p>{update.text}</p>
+                                    {update.progressPercentage !== null && (
+                                      <div className="mt-2 text-xs text-muted-foreground">
+                                        Progress reported: <span className="font-bold">{update.progressPercentage}%</span>
+                                      </div>
+                                    )}
+                                </div>
+                            </div>
+                        )
+                    })}
+                </div>
+            </div>
+          </>
+        )}
+        
+        {task.status === 'PENDING_REVIEW' && (
+            <>
+                <Separator />
+                <div className="flex justify-end gap-2">
+                    <Button variant="outline" size="sm" onClick={() => onDecline(task)}>
+                        <XCircle className="mr-2 h-4 w-4" />
+                        Decline
+                    </Button>
+                    <Button size="sm" onClick={() => onApprove(task)}>
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        Approve
+                    </Button>
+                </div>
+            </>
+        )}
+      </CardContent>
+    </Card>
+  )
+}
 
 export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTasksByProject, projectStatuses, onDataChange }: TeamTasksManagementProps) {
   const { toast } = useToast();
   const router = useRouter();
   const [taskToDecline, setTaskToDecline] = useState<TeamViewTask | null>(null);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
   const sortedProjects = useMemo(() => {
@@ -125,7 +227,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || undefined} onValueChange={value => setExpandedProjectId(value)}>
+          <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || undefined} onValueChange={value => { setExpandedProjectId(value); setExpandedTaskId(null);}}>
             {sortedProjects.map(({ project, tasks, stats }) => {
                 const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
                 
@@ -154,120 +256,37 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="p-4 pt-0">
-                  <div className="space-y-4">
-                    {tasks.length > 0 ? tasks.sort((a, b) => a.title.localeCompare(b.title)).map(task => {
-                        const assignees = task.assignedUserIds.map(id => userMap.get(id)).filter(Boolean) as User[];
-                        
-                        return (
-                            <Card key={task.id} className={task.status === 'PENDING_REVIEW' ? 'border-primary' : ''}>
-                                <CardHeader>
-                                    <div className="flex justify-between items-start gap-4">
-                                        <div>
-                                            <CardTitle className="text-xl">{task.title}</CardTitle>
-                                            <CardDescription>In Milestone: {task.milestoneTitle}</CardDescription>
-                                        </div>
-                                        <Badge variant={task.status === 'DONE' ? 'default' : 'secondary'}>
-                                            {formatStatus(task.status)}
+                   {tasks.length > 0 ? (
+                     <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || undefined} onValueChange={setExpandedTaskId}>
+                      {tasks.sort((a, b) => a.title.localeCompare(b.title)).map(task => (
+                        <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-background">
+                            <AccordionTrigger className="hover:no-underline">
+                                <div className="flex items-center justify-between w-full">
+                                    <div className="flex-1 text-left">
+                                        <p className="font-semibold">{task.title}</p>
+                                        <p className="text-sm text-muted-foreground">{formatStatus(task.status)}</p>
+                                    </div>
+                                    <div className="flex items-center gap-2 mr-4">
+                                        <Badge variant="secondary" className={task.status === 'PENDING_REVIEW' ? 'bg-primary text-primary-foreground' : ''}>
+                                            {task.status === 'PENDING_REVIEW' ? 'Action Required' : `${task.progress || 0}%`}
                                         </Badge>
                                     </div>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <p className="text-sm text-muted-foreground">{task.description}</p>
-                                     <div className="space-y-2">
-                                          <div className="flex justify-between text-sm">
-                                              <span>Progress</span>
-                                              <span className="font-semibold">{task.progress || 0}%</span>
-                                          </div>
-                                          <Progress value={task.progress || 0} />
-                                     </div>
-                                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                                        <div className="flex items-center gap-2">
-                                            <UserIcon className="w-4 h-4 text-muted-foreground" />
-                                            <span className="font-medium">Assignees:</span>
-                                            <span>{assignees.map(a => a.name).join(', ')}</span>
-                                        </div>
-                                        <Badge variant="outline">Due: {format(new Date(task.endDate), 'MMM dd, yyyy')}</Badge>
-                                    </div>
-                                    
-                                    {task.updates && task.updates.length > 0 && (
-                                      <>
-                                        <Separator />
-                                        <div>
-                                            <h4 className="font-semibold mb-2 text-sm">Updates</h4>
-                                            <div className="space-y-4 max-h-60 overflow-y-auto pr-2">
-                                                {task.updates.map(update => {
-                                                    const author = userMap.get(update.authorId);
-                                                    
-                                                    if (update.type === 'STATUS_CHANGE') {
-                                                        const isApproval = update.text.includes('approved');
-                                                        return (
-                                                            <div key={update.id} className="flex items-start gap-3">
-                                                                <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
-                                                                    {isApproval ? (
-                                                                        <CheckCircle className="w-6 h-6 text-green-500" />
-                                                                    ) : (
-                                                                        <XCircle className="w-6 h-6 text-destructive" />
-                                                                    )}
-                                                                </div>
-                                                                <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
-                                                                    <div className="flex justify-between items-center mb-1">
-                                                                        <span className="font-semibold">{isApproval ? 'Task Approved' : 'Task Declined'}</span>
-                                                                        <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</span>
-                                                                    </div>
-                                                                    <p className="text-muted-foreground italic">{update.text}</p>
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    }
-
-                                                    return (
-                                                        <div key={update.id} className="flex items-start gap-3">
-                                                            <Avatar className="w-8 h-8 border">
-                                                                <AvatarImage src={author?.avatar} alt={author?.name} />
-                                                                <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
-                                                            </Avatar>
-                                                            <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
-                                                                <div className="flex justify-between items-center mb-1">
-                                                                    <span className="font-semibold">{author?.name}</span>
-                                                                    <span className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</span>
-                                                                </div>
-                                                                <p>{update.text}</p>
-                                                                {update.progressPercentage !== null && (
-                                                                  <div className="mt-2 text-xs text-muted-foreground">
-                                                                    Progress reported: <span className="font-bold">{update.progressPercentage}%</span>
-                                                                  </div>
-                                                                )}
-                                                            </div>
-                                                        </div>
-                                                    )
-                                                })}
-                                            </div>
-                                        </div>
-                                      </>
-                                    )}
-                                    
-                                    {task.status === 'PENDING_REVIEW' && (
-                                        <>
-                                            <Separator />
-                                            <div className="flex justify-end gap-2">
-                                                <Button variant="outline" size="sm" onClick={() => setTaskToDecline(task)}>
-                                                    <XCircle className="mr-2 h-4 w-4" />
-                                                    Decline
-                                                </Button>
-                                                <Button size="sm" onClick={() => handleApprove(task)}>
-                                                    <CheckCircle className="mr-2 h-4 w-4" />
-                                                    Approve
-                                                </Button>
-                                            </div>
-                                        </>
-                                    )}
-                                </CardContent>
-                            </Card>
-                        )
-                    }) : (
-                        <p className="text-muted-foreground text-sm pl-2">No tasks assigned to your team members for this project.</p>
-                    )}
-                  </div>
+                                </div>
+                            </AccordionTrigger>
+                            <AccordionContent className="pt-2 pb-4">
+                                <TaskCollapsible
+                                    task={task}
+                                    userMap={userMap}
+                                    onApprove={handleApprove}
+                                    onDecline={setTaskToDecline}
+                                />
+                            </AccordionContent>
+                        </AccordionItem>
+                      ))}
+                    </Accordion>
+                  ) : (
+                      <p className="text-muted-foreground text-sm pl-2">No tasks assigned to your team members for this project.</p>
+                  )}
                 </AccordionContent>
               </AccordionItem>
               )
