@@ -4,6 +4,7 @@
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
+import type { TaskStatus } from "@/lib/types";
 
 export async function getPendingReviewTasks(userId: string) {
     const user = await prisma.user.findUnique({
@@ -48,6 +49,9 @@ export async function getPendingReviewTasks(userId: string) {
             updates: {
                 orderBy: {
                     createdAt: 'desc'
+                },
+                include: {
+                    author: true
                 }
             }
         },
@@ -60,20 +64,36 @@ export async function getPendingReviewTasks(userId: string) {
 }
 
 export async function approveTask(taskId: string, reviewerId: string) {
+    const task = await prisma.task.findUnique({ where: { id: taskId } });
+    if (!task) {
+        throw new Error("Task not found");
+    }
+
+    const isComplete = task.progress === 100;
+    let newStatus: TaskStatus = 'IN_PROGRESS';
+    let updateText = `Progress update of ${task.progress}% has been reviewed and approved.`;
+
+    if (isComplete) {
+        newStatus = 'DONE';
+        updateText = 'Task has been reviewed and approved.';
+    }
+
     await prisma.task.update({
         where: { id: taskId },
         data: {
-            status: 'DONE',
-            completedAt: new Date(),
+            status: newStatus,
+            completedAt: isComplete ? new Date() : null,
             updates: {
                 create: {
-                    text: 'Task has been reviewed and approved.',
+                    text: updateText,
                     authorId: reviewerId,
                     type: 'STATUS_CHANGE',
+                    progressPercentage: task.progress,
                 }
             }
         }
     });
+
     revalidatePath('/task-approvals');
     revalidatePath('/team-view');
     revalidatePath('/my-tasks');
