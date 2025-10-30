@@ -81,8 +81,8 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
 
     const progressText = useMemo(() => {
         if (wasCompletedToday && task.completedAt) {
-            const updatesBeforeCompletion = (task.updates || [])
-                .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
+            const allUpdates = (task.updates || []).map(u => ({ ...u, createdAt: parseISO(u.createdAt) }));
+            const updatesBeforeCompletion = allUpdates
                 .filter(u => u.createdAt < parseISO(task.completedAt as string));
             
             const lastUpdateBeforeCompletion = updatesBeforeCompletion
@@ -94,18 +94,21 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
         }
 
         if (wasUpdatedToday) {
-            const firstUpdateToday = todaysUpdates[0];
-            const updatesBeforeToday = (task.updates || [])
-                .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
-                .filter(u => u.createdAt < firstUpdateToday.createdAt && u.progressPercentage !== null)
+            const allUpdates = (task.updates || []).map(u => ({ ...u, createdAt: parseISO(u.createdAt) }));
+            const lastUpdateToday = todaysUpdates[todaysUpdates.length - 1];
+
+            // Find the last update that occurred *before* the most recent one today
+            const updatesBeforeThisOne = allUpdates
+                .filter(u => u.createdAt < lastUpdateToday.createdAt && u.progressPercentage !== null)
                 .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
             
-            const previousProgress = updatesBeforeToday[0]?.progressPercentage ?? 0;
+            const previousProgress = updatesBeforeThisOne[0]?.progressPercentage ?? 0;
             return `Progress: ${previousProgress}% → ${task.progress || 0}%`;
         }
 
         return `${task.progress || 0}%`;
     }, [task, wasCompletedToday, wasUpdatedToday, todaysUpdates]);
+
 
     return (
         <TooltipProvider>
@@ -297,6 +300,12 @@ export default function TodayPage() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedStatus, selectedPmoDivision]);
+  
+   useEffect(() => {
+    if (filteredProjects.length > 0) {
+      setExpandedProjectId(filteredProjects[0].id);
+    }
+  }, [filteredProjects]);
 
   const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
   const paginatedProjects = useMemo(() => {
@@ -419,4 +428,5 @@ export default function TodayPage() {
     </div>
   );
 }
+
 
