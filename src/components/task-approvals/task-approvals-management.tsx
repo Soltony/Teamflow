@@ -73,9 +73,13 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
   function handleApprove(taskId: string) {
     startTransition(async () => {
         if (!localUser) return;
-        await approveTask(taskId, localUser.id);
-        toast({ title: "Task Approved!", description: "The task has been successfully reviewed." });
-        onDataChange();
+        const result = await approveTask(taskId, localUser.id);
+        if (result.success) {
+            toast({ title: "Task Approved!", description: result.message });
+            onDataChange();
+        } else {
+            toast({ title: "Error", description: result.error, variant: "destructive" });
+        }
     });
   }
   
@@ -87,10 +91,14 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
   function handleRejectSubmit(data: RejectionFormValues) {
     if (!taskToReject || !localUser) return;
     startTransition(async () => {
-      await rejectTask(taskToReject.id, localUser.id, data.notes);
-      toast({ title: "Task Rejected", description: "The task has been sent back to 'In Progress'.", variant: "destructive" });
-      setTaskToReject(null);
-      onDataChange();
+      const result = await rejectTask(taskToReject.id, localUser.id, data.notes);
+      if (result.success) {
+        toast({ title: "Task Rejected", description: "The task has been sent back to 'In Progress'.", variant: "destructive" });
+        setTaskToReject(null);
+        onDataChange();
+      } else {
+        toast({ title: "Error", description: result.error, variant: "destructive" });
+      }
     });
   }
 
@@ -117,7 +125,6 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
           <TableHeader>
             <TableRow>
               <TableHead>Task</TableHead>
-              <TableHead>Description</TableHead>
               <TableHead>Project</TableHead>
               <TableHead>Assignees</TableHead>
               <TableHead>Progress</TableHead>
@@ -132,24 +139,9 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
                 return (
                   <TableRow key={task.id}>
                     <TableCell className="font-medium">
-                        <Tooltip>
-                            <TooltipTrigger>
-                                <p className="max-w-[150px] truncate">{task.title}</p>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{task.title}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TableCell>
-                    <TableCell>
-                      <Tooltip>
-                        <TooltipTrigger>
-                           <p className="max-w-[200px] truncate">{task.description}</p>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                          <p className="max-w-md">{task.description}</p>
-                        </TooltipContent>
-                      </Tooltip>
+                        <Link href={`/tasks/${task.id}`} className="hover:underline text-primary max-w-[200px] truncate block">
+                            {task.title}
+                        </Link>
                     </TableCell>
                     <TableCell>
                         <Tooltip>
@@ -188,7 +180,7 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
               })
             ) : (
               <TableRow>
-                <TableCell colSpan={7} className="h-24 text-center">
+                <TableCell colSpan={6} className="h-24 text-center">
                   No tasks are currently pending review.
                 </TableCell>
               </TableRow>

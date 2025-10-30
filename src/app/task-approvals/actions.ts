@@ -91,59 +91,71 @@ export async function getPendingReviewTasks(userId: string) {
 }
 
 export async function approveTask(taskId: string, reviewerId: string) {
-    const task = await prisma.task.findUnique({ where: { id: taskId } });
-    if (!task) {
-        throw new Error("Task not found");
-    }
+    try {
+        const task = await prisma.task.findUnique({ where: { id: taskId } });
+        if (!task) {
+            return { success: false, error: "Task not found." };
+        }
 
-    const isComplete = task.progress === 100;
-    let newStatus: TaskStatus = 'IN_PROGRESS';
-    let updateText: string;
+        const isComplete = task.progress === 100;
+        let newStatus: TaskStatus = 'IN_PROGRESS';
+        let updateText: string;
 
-    if (isComplete) {
-        newStatus = 'DONE';
-        updateText = 'Task has been reviewed and approved. Status changed to Done.';
-    } else {
-        newStatus = task.progress > 0 ? 'IN_PROGRESS' : 'TODO';
-        updateText = `Progress update of ${task.progress}% was approved. Status is now ${newStatus.replace(/_/g, ' ')}.`;
-    }
+        if (isComplete) {
+            newStatus = 'DONE';
+            updateText = 'Task has been reviewed and approved. Status changed to Done.';
+        } else {
+            newStatus = task.progress > 0 ? 'IN_PROGRESS' : 'TODO';
+            updateText = `Progress update of ${task.progress}% was approved. Status is now ${newStatus.replace(/_/g, ' ')}.`;
+        }
 
-    await prisma.task.update({
-        where: { id: taskId },
-        data: {
-            status: newStatus,
-            completedAt: isComplete ? new Date() : null,
-            updates: {
-                create: {
-                    text: updateText,
-                    authorId: reviewerId,
-                    type: 'STATUS_CHANGE',
-                    progressPercentage: task.progress,
+        await prisma.task.update({
+            where: { id: taskId },
+            data: {
+                status: newStatus,
+                completedAt: isComplete ? new Date() : null,
+                updates: {
+                    create: {
+                        text: updateText,
+                        authorId: reviewerId,
+                        type: 'STATUS_CHANGE',
+                        progressPercentage: task.progress,
+                    }
                 }
             }
-        }
-    });
+        });
 
-    revalidatePath('/task-approvals');
-    revalidatePath('/team-view');
-    revalidatePath('/my-tasks');
+        revalidatePath('/task-approvals');
+        revalidatePath('/team-view');
+        revalidatePath('/my-tasks');
+        return { success: true, message: updateText };
+    } catch(e) {
+        console.error("Failed to approve task", e);
+        return { success: false, error: "An unexpected error occurred."}
+    }
 }
 
 export async function rejectTask(taskId: string, reviewerId: string, reason: string) {
-    await prisma.task.update({
-        where: { id: taskId },
-        data: {
-            status: 'IN_PROGRESS',
-            updates: {
-                create: {
-                    text: `Task declined. Reason: ${reason}`,
-                    authorId: reviewerId,
-                    type: 'STATUS_CHANGE',
+    try {
+        await prisma.task.update({
+            where: { id: taskId },
+            data: {
+                status: 'IN_PROGRESS',
+                updates: {
+                    create: {
+                        text: `Task declined. Reason: ${reason}`,
+                        authorId: reviewerId,
+                        type: 'STATUS_CHANGE',
+                    }
                 }
             }
-        }
-    });
-    revalidatePath('/task-approvals');
-    revalidatePath('/team-view');
-    revalidatePath('/my-tasks');
+        });
+        revalidatePath('/task-approvals');
+        revalidatePath('/team-view');
+        revalidatePath('/my-tasks');
+        return { success: true };
+    } catch(e) {
+        console.error("Failed to reject task", e);
+        return { success: false, error: "An unexpected error occurred."}
+    }
 }
