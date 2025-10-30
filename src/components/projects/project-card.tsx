@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Progress } from '@/components/ui/progress';
 import { Button } from '@/components/ui/button';
 import { Crown, Calendar, Users, PlusCircle, Pencil, Trash2, ChevronDown, Eye, ShieldAlert, Edit, CheckSquare } from 'lucide-react';
-import { format, parseISO, isAfter, endOfDay } from 'date-fns';
+import { format, parseISO, isAfter, endOfDay, isToday } from 'date-fns';
 import { useAuth } from '@/context/auth-context';
 import type { Task, User, Milestone, Project, Team } from '@/lib/types';
 import {
@@ -20,7 +20,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../ui/select';
 import { cn } from '@/lib/utils';
 import { Separator } from '../ui/separator';
@@ -28,6 +28,8 @@ import { Badge } from '../ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+
 
 type ProjectListItemProps = {
   project: any;
@@ -92,6 +94,28 @@ export function ProjectListItem({
   
   const userCreatedMilestones = (project.milestones || []).filter((m: any) => m.title !== 'General Tasks');
   const allTasks = (project.milestones || []).flatMap((m: any) => m.tasks || []);
+
+  const { todaysTasks, otherTasks } = useMemo(() => {
+    const todays: any[] = [];
+    const others: any[] = [];
+
+    allTasks.forEach((task: any) => {
+      const endDate = parseISO(task.endDate);
+      const completedAt = task.completedAt ? parseISO(task.completedAt) : null;
+      
+      const isDueToday = isToday(endDate);
+      const wasCompletedToday = completedAt && isToday(completedAt);
+      const wasUpdatedToday = (task.updates || []).some((update: any) => isToday(parseISO(update.createdAt)));
+      
+      if (isDueToday || wasCompletedToday || wasUpdatedToday) {
+        todays.push(task);
+      } else {
+        others.push(task);
+      }
+    });
+    return { todaysTasks: todays, otherTasks: others };
+  }, [allTasks]);
+
 
   const filteredTasks = selectedMilestoneId === 'all' 
     ? allTasks 
@@ -163,6 +187,51 @@ export function ProjectListItem({
   const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
   const isProjectOverdue = nonArchivedStatusNames.includes(project.status.name) && isAfter(new Date(), endOfDay(parseISO(project.endDate)));
   const openBlockersCount = project.blockers?.length || 0;
+  
+  const TaskRow = ({task}: {task: any}) => {
+    const isTaskDone = task.status === 'DONE';
+    const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
+    const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-red-600' : 'bg-primary';
+
+    return (
+        <div key={task.id} className="space-y-1.5 group">
+            <div className="flex justify-between items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex-1 min-w-0">
+                      <span className="text-sm font-medium pr-2 block truncate">
+                          {task.title}
+                      </span>
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>{task.title}</p>
+                </TooltipContent>
+              </Tooltip>
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                    <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
+                    <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
+                    {canManageTasks && (
+                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
+                            <Link href={`/tasks/${task.id}`}>
+                              <Button variant="ghost" size="icon" className="h-6 w-6">
+                                  <Eye className="h-3 w-3" />
+                              </Button>
+                            </Link>
+                            <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
+                                <Pencil className="h-3 w-3" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
+                                <Trash2 className="h-3 w-3" />
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </div>
+            <Progress value={task.progress || 0} className="h-1.5" indicatorClassName={indicatorClassName} />
+        </div>
+      )
+  }
     
   return (
     <TooltipProvider>
@@ -297,74 +366,49 @@ export function ProjectListItem({
           
           {tasksExpanded && (
             <div className="ml-6 space-y-3 border-l-2 border-green-200 pl-4">
-              {allTasks.length > 0 && userCreatedMilestones.length > 0 && (
-                  <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
-                      <SelectTrigger className="w-full sm:w-[240px] h-9">
-                          <SelectValue placeholder="Filter by milestone..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                          <SelectItem value="all">All Milestones</SelectItem>
-                          {userCreatedMilestones.map((m: any) => (
-                              <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                          ))}
-                      </SelectContent>
-                  </Select>
-              )}
-              {filteredTasks.length > 0 ? (
-                <ScrollArea className="h-48 pr-3">
-                  <div className="space-y-1.5">
-                    {filteredTasks.map((task: any) => {
-                       const isTaskDone = task.status === 'DONE';
-                       const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
-                       
-                       const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-red-600' : 'bg-primary';
-
-                       const truncatedTitle = task.title.length > 7 ? task.title.substring(0, 7) + '...' : task.title;
-
-                       return (
-                          <div key={task.id} className="space-y-1.5 group">
-                              <div className="flex justify-between items-center gap-2">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <div className="flex-1 min-w-0">
-                                        <span className="text-sm font-medium pr-2 block">
-                                            {truncatedTitle}
-                                        </span>
-                                    </div>
-                                  </TooltipTrigger>
-                                  <TooltipContent>
-                                    <p>{task.title}</p>
-                                  </TooltipContent>
-                                </Tooltip>
-                                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                                      <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
-                                      <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
-                                      {canManageTasks && (
-                                          <div className="opacity-0 group-hover:opacity-100 transition-opacity flex">
-                                              <Link href={`/tasks/${task.id}`}>
-                                                <Button variant="ghost" size="icon" className="h-6 w-6">
-                                                    <Eye className="h-3 w-3" />
-                                                </Button>
-                                              </Link>
-                                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => onEditTask(task, project)}>
-                                                  <Pencil className="h-3 w-3" />
-                                              </Button>
-                                              <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={() => onDeleteTask(task)}>
-                                                  <Trash2 className="h-3 w-3" />
-                                              </Button>
-                                          </div>
-                                      )}
-                                  </div>
-                              </div>
-                              <Progress value={task.progress || 0} className="h-1.5" indicatorClassName={indicatorClassName} />
+              {allTasks.length > 0 ? (
+                <Tabs defaultValue="today" className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="today">Today's Activity ({todaysTasks.length})</TabsTrigger>
+                        <TabsTrigger value="all">All Tasks ({allTasks.length})</TabsTrigger>
+                    </TabsList>
+                    <TabsContent value="today">
+                      {todaysTasks.length > 0 ? (
+                        <ScrollArea className="h-48 pr-3">
+                          <div className="space-y-1.5">
+                            {todaysTasks.map((task: any) => <TaskRow key={task.id} task={task} />)}
                           </div>
-                        )
-                    })}
-                  </div>
-                </ScrollArea>
+                        </ScrollArea>
+                      ) : (
+                         <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
+                            No tasks with activity today.
+                         </div>
+                      )}
+                    </TabsContent>
+                    <TabsContent value="all">
+                        {userCreatedMilestones.length > 0 && (
+                            <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
+                                <SelectTrigger className="w-full sm:w-[240px] h-9 mb-4">
+                                    <SelectValue placeholder="Filter by milestone..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="all">All Milestones</SelectItem>
+                                    {userCreatedMilestones.map((m: any) => (
+                                        <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        )}
+                        <ScrollArea className="h-48 pr-3">
+                          <div className="space-y-1.5">
+                            {filteredTasks.map((task: any) => <TaskRow key={task.id} task={task} />)}
+                          </div>
+                        </ScrollArea>
+                    </TabsContent>
+                </Tabs>
               ) : (
                    <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
-                      No tasks yet for this selection.
+                      No tasks yet for this project.
                   </div>
               )}
             </div>
