@@ -81,10 +81,12 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
 
     const progressText = useMemo(() => {
         if (wasCompletedToday && task.completedAt) {
+            // Find the last update that had a progress value and occurred before completion
             const lastUpdateBeforeCompletion = (task.updates || [])
                 .map(u => ({...u, createdAt: parseISO(u.createdAt)}))
-                .filter(u => u.createdAt < parseISO(task.completedAt as string))
+                .filter(u => u.progressPercentage !== null && u.createdAt < parseISO(task.completedAt as string))
                 .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
+            
             const previousProgress = lastUpdateBeforeCompletion?.progressPercentage ?? 0;
             return `Progress: ${previousProgress}% → 100%`;
         }
