@@ -71,11 +71,14 @@ export async function approveTask(taskId: string, reviewerId: string) {
 
     const isComplete = task.progress === 100;
     let newStatus: TaskStatus = 'IN_PROGRESS';
-    let updateText = `Progress update of ${task.progress}% has been reviewed and approved.`;
+    let updateText: string;
 
     if (isComplete) {
         newStatus = 'DONE';
-        updateText = 'Task has been reviewed and approved.';
+        updateText = 'Task has been reviewed and approved. Status changed to Done.';
+    } else {
+        newStatus = task.progress > 0 ? 'IN_PROGRESS' : 'TODO';
+        updateText = `Progress update of ${task.progress}% was approved. Status is now ${newStatus.replace(/_/g, ' ')}.`;
     }
 
     await prisma.task.update({
