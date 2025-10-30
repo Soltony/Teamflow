@@ -96,8 +96,9 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
 
   const getProgressText = (task: TaskWithRelations) => {
     if (task.updates && task.updates.length > 0) {
+      // Find the most recent update that was a 'COMMENT' and had a progress percentage
       const lastMeaningfulUpdate = task.updates
-        .filter((u: any) => u.progressPercentage !== null && u.progressPercentage !== task.progress)
+        .filter((u: any) => u.type === 'COMMENT' && u.progressPercentage !== null)
         .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
       
       const previousProgress = lastMeaningfulUpdate?.progressPercentage ?? 0;
