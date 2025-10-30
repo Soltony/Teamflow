@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import Link from 'next/link';
@@ -189,18 +188,18 @@ export function ProjectListItem({
     return (
         <div key={task.id} className="space-y-1.5 group">
             <div className="flex justify-between items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium pr-2 block truncate">
-                          {task.title}
-                      </p>
-                  </div>
-                </TooltipTrigger>
-                <TooltipContent>
-                  <p>{task.title}</p>
-                </TooltipContent>
-              </Tooltip>
+              <div className="flex-1 min-w-0">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <p className="text-sm font-medium pr-2 block truncate">
+                        {task.title}
+                    </p>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{task.title}</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
                     <span className="text-xs text-muted-foreground">W: {task.weight}%</span>
                     <span className="text-xs font-semibold text-muted-foreground">{task.progress || 0}%</span>
@@ -532,3 +531,5 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
+
+    
