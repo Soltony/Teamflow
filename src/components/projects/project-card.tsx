@@ -98,6 +98,10 @@ export function ProjectListItem({
     (project.milestones || []).flatMap((m: any) => m.tasks || [])
   , [project.milestones]);
 
+  const completedTasksCount = useMemo(() =>
+    allTasks.filter((task: any) => task.status === 'DONE').length
+  , [allTasks]);
+
 
   const { todaysTasks, otherTasks } = useMemo(() => {
     const todays: any[] = [];
@@ -353,7 +357,7 @@ export function ProjectListItem({
             >
                 <div className="flex items-center gap-2">
                   <CheckSquare className="h-4 w-4 text-green-600" />
-                  <h4 className="font-semibold text-green-700">Tasks ({allTasks.length})</h4>
+                  <h4 className="font-semibold text-green-700">Tasks ({completedTasksCount}/{allTasks.length})</h4>
                 </div>
                 <div className="flex items-center gap-2">
                     {canManageTasks && (
