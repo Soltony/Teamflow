@@ -119,7 +119,7 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
 
 export default async function ReportsPage({ searchParams }: { searchParams: { type?: string, year?: string } }) {
     return (
-        <Suspense fallback={<div>Loading...</div>}>
+        <Suspense fallback={<div className="p-4 sm:p-6">Loading...</div>}>
             <ReportsContent searchParams={searchParams} />
         </Suspense>
     );

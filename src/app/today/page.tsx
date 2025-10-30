@@ -88,7 +88,6 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
             const allUpdates = (task.updates || []).map(u => ({ ...u, createdAt: parseISO(u.createdAt) }));
             const lastUpdateToday = todaysUpdates[todaysUpdates.length - 1];
 
-            // Find the last update that occurred *before* the most recent one today
             const updatesBeforeThisOne = allUpdates
                 .filter(u => u.createdAt < lastUpdateToday.createdAt && u.progressPercentage !== null)
                 .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
@@ -299,8 +298,10 @@ export default function TodayPage() {
    useEffect(() => {
     if (filteredProjects.length > 0) {
       setExpandedProjectId(filteredProjects[0].id);
+    } else {
+      setExpandedProjectId(null);
     }
-  }, [filteredProjects]);
+   }, [filteredProjects]);
 
   const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
   const paginatedProjects = useMemo(() => {
@@ -336,7 +337,7 @@ export default function TodayPage() {
         </div>
         
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1 sm:max-w-sm">
+          <div className="relative flex-1 sm:max-w-xs">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input
               type="search"
@@ -423,6 +424,7 @@ export default function TodayPage() {
     </div>
   );
 }
+
 
 
 
