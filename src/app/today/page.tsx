@@ -83,38 +83,43 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
         if (wasCompletedToday) {
             return `100%`;
         }
-
+        
         if (wasUpdatedToday) {
-            const allUpdates = (task.updates || []).map(u => ({ ...u, createdAt: parseISO(u.createdAt) }));
-            const lastUpdateToday = todaysUpdates[todaysUpdates.length - 1];
+            const allUpdates = (task.updates || [])
+                .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
+                .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
 
-            const updatesBeforeThisOneToday = allUpdates
-                .filter(u => u.createdAt.getTime() < lastUpdateToday.createdAt.getTime() && u.progressPercentage !== null)
-                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+            const mostRecentUpdateToday = allUpdates.find(u => isToday(u.createdAt) && u.progressPercentage !== null);
             
-            const previousProgress = updatesBeforeThisOneToday[0]?.progressPercentage ?? 0;
+            if (mostRecentUpdateToday) {
+                 const updateBeforeThat = allUpdates.find(u => u.createdAt.getTime() < mostRecentUpdateToday.createdAt.getTime() && u.progressPercentage !== null);
+                 const previousProgress = updateBeforeThat?.progressPercentage ?? 0;
+                 const currentProgress = mostRecentUpdateToday.progressPercentage;
 
-            if (task.progress !== previousProgress) {
-                return `${previousProgress}% → ${task.progress || 0}%`;
+                 if (currentProgress !== previousProgress) {
+                    return `${previousProgress}% → ${currentProgress || 0}%`;
+                }
             }
         }
-
+        
         return `${task.progress || 0}%`;
-    }, [task, wasCompletedToday, wasUpdatedToday, todaysUpdates]);
+    }, [task, wasCompletedToday, wasUpdatedToday]);
 
 
     return (
         <TooltipProvider>
             <div className="p-3 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-                <div className="flex justify-between items-start mb-2">
-                    <Tooltip>
-                        <TooltipTrigger asChild>
-                            <h4 className="font-semibold text-sm truncate flex-1 pr-2">{task.title}</h4>
-                        </TooltipTrigger>
-                        <TooltipContent>
-                            <p>{task.title}</p>
-                        </TooltipContent>
-                    </Tooltip>
+                <div className="flex justify-between items-start mb-2 gap-2">
+                    <div className="flex-1 min-w-0">
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <h4 className="font-semibold text-sm truncate">{task.title}</h4>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{task.title}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </div>
                     <div className="flex -space-x-1 flex-shrink-0">
                         {task.assignees.slice(0, 3).map(assignee => (
                             <Tooltip key={assignee.id}>
@@ -431,6 +436,7 @@ export default function TodayPage() {
     </div>
   );
 }
+
 
 
 
