@@ -233,7 +233,14 @@ export function ProjectListItem({
           <div className="flex justify-between items-start gap-4">
             <div className="flex-1 min-w-0">
               <Link href={`/projects/${project.id}`} className="truncate">
-                <CardTitle className="text-xl font-bold hover:underline truncate">{project.name}</CardTitle>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <CardTitle className="text-xl font-bold hover:underline truncate">{project.name}</CardTitle>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>{project.name}</p>
+                  </TooltipContent>
+                </Tooltip>
               </Link>
             </div>
             <div className='flex items-center gap-2 flex-shrink-0'>
