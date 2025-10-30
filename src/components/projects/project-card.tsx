@@ -47,6 +47,9 @@ type ProjectListItemProps = {
   teamToDelete: Team | null;
   setTeamToDelete: (team: Team | null) => void;
   handleDeleteTeam: () => void;
+  isTasksExpanded: boolean;
+  isTeamsExpanded: boolean;
+  onExpandToggle: (projectId: string, section: 'tasks' | 'teams') => void;
 };
 
 
@@ -83,11 +86,12 @@ export function ProjectListItem({
     canManageTeams,
     teamToDelete,
     setTeamToDelete,
-    handleDeleteTeam
+    handleDeleteTeam,
+    isTasksExpanded,
+    isTeamsExpanded,
+    onExpandToggle,
 }: ProjectListItemProps) {
   const { hasPermission } = useAuth();
-  const [tasksExpanded, setTasksExpanded] = useState(false);
-  const [teamsExpanded, setTeamsExpanded] = useState(false);
   const [selectedMilestoneId, setSelectedMilestoneId] = useState<string | 'all'>('all');
 
   const canManageTasks = hasPermission('projects:update');
@@ -294,7 +298,7 @@ export function ProjectListItem({
                 className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors"
                 onClick={(e) => {
                     e.stopPropagation();
-                    setTeamsExpanded(!teamsExpanded);
+                    onExpandToggle(project.id, 'teams');
                 }}
             >
                 <div className="flex items-center gap-2">
@@ -309,12 +313,12 @@ export function ProjectListItem({
                         </Button>
                     )}
                     <div className="cursor-pointer p-1">
-                        <ChevronDown className={cn("h-5 w-5 transition-transform text-blue-600", teamsExpanded && "rotate-180")} />
+                        <ChevronDown className={cn("h-5 w-5 transition-transform text-blue-600", isTeamsExpanded && "rotate-180")} />
                     </div>
                 </div>
             </div>
 
-            {teamsExpanded && (
+            {isTeamsExpanded && (
               <div className="ml-6 space-y-3 border-l-2 border-blue-200 pl-4">
                 {(project.teams && project.teams.length > 0) ? (
                     <div className="space-y-3">
@@ -363,7 +367,7 @@ export function ProjectListItem({
                 className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors" 
                 onClick={(e) => {
                     e.stopPropagation();
-                    setTasksExpanded(!tasksExpanded);
+                    onExpandToggle(project.id, 'tasks');
                 }}
             >
                 <div className="flex items-center gap-2">
@@ -378,12 +382,12 @@ export function ProjectListItem({
                         </Button>
                     )}
                     <div className="cursor-pointer p-1">
-                        <ChevronDown className={cn("h-5 w-5 transition-transform text-green-600", tasksExpanded && "rotate-180")} />
+                        <ChevronDown className={cn("h-5 w-5 transition-transform text-green-600", isTasksExpanded && "rotate-180")} />
                     </div>
                 </div>
             </div>
           
-          {tasksExpanded && (
+          {isTasksExpanded && (
             <div className="ml-6 space-y-3 border-l-2 border-green-200 pl-4">
               {allTasks.length > 0 ? (
                 <Tabs defaultValue="today" className="w-full">

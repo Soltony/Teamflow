@@ -52,6 +52,7 @@ export default function ProjectsPage() {
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
     const [selectedPmoDivision, setSelectedPmoDivision] = useState<string | null>(null);
 
+    const [expandedItem, setExpandedItem] = useState<{ projectId: string; section: 'tasks' | 'teams' } | null>(null);
 
     // State for modals
     const [addingTaskToProject, setAddingTaskToProject] = useState<(Project & { milestones: Milestone[] }) | null>(null);
@@ -195,6 +196,13 @@ export default function ProjectsPage() {
         setTeamToDelete(null);
     };
 
+    const handleExpandToggle = (projectId: string, section: 'tasks' | 'teams') => {
+        if (expandedItem?.projectId === projectId && expandedItem?.section === section) {
+            setExpandedItem(null); // Collapse if the same section is clicked again
+        } else {
+            setExpandedItem({ projectId, section });
+        }
+    };
 
     const handleEditTask = (task: any, project: any) => {
         const normalizedTask = {
@@ -296,6 +304,9 @@ export default function ProjectsPage() {
                             teamToDelete={teamToDelete}
                             setTeamToDelete={setTeamToDelete}
                             handleDeleteTeam={handleTeamDelete}
+                            isTasksExpanded={expandedItem?.projectId === project.id && expandedItem?.section === 'tasks'}
+                            isTeamsExpanded={expandedItem?.projectId === project.id && expandedItem?.section === 'teams'}
+                            onExpandToggle={handleExpandToggle}
                         />
                     ))}
                 </div>
