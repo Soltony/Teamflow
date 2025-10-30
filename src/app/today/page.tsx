@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -101,11 +102,18 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
     }, [task, wasCompletedToday, wasUpdatedToday, todaysUpdates]);
 
     return (
-        <div className="p-3 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-            <div className="flex justify-between items-start mb-2">
-                <h4 className="font-semibold text-sm">{task.title}</h4>
-                <div className="flex -space-x-1">
-                    <TooltipProvider>
+        <TooltipProvider>
+            <div className="p-3 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
+                <div className="flex justify-between items-start mb-2">
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <h4 className="font-semibold text-sm truncate flex-1">{task.title}</h4>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p>{task.title}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                    <div className="flex -space-x-1 flex-shrink-0">
                         {task.assignees.slice(0, 3).map(assignee => (
                             <Tooltip key={assignee.id}>
                                 <TooltipTrigger>
@@ -124,32 +132,41 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                                 <span className="text-xs font-semibold">+{task.assignees.length - 3}</span>
                             </div>
                         )}
-                    </TooltipProvider>
+                    </div>
+                </div>
+                {task.description && (
+                    <Tooltip>
+                        <TooltipTrigger asChild>
+                            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                            <p className="max-w-xs">{task.description}</p>
+                        </TooltipContent>
+                    </Tooltip>
+                )}
+                <div className="flex items-center gap-2 mb-2">
+                    <Progress value={task.progress || 0} className="flex-1 h-1.5" />
+                    <span className="text-xs font-semibold">{progressText}</span>
+                </div>
+                <div className="flex flex-wrap gap-1">
+                    {isDueToday && !wasCompletedToday && (
+                        <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
+                            <Clock className="w-3 h-3" /> Due Today
+                        </Badge>
+                    )}
+                    {wasUpdatedToday && (
+                        <Badge className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
+                            <Edit3 className="w-3 h-3" /> Updated Today
+                        </Badge>
+                    )}
+                    {wasCompletedToday && (
+                        <Badge className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
+                            <CheckCircle className="w-3 h-3" /> Completed Today
+                        </Badge>
+                    )}
                 </div>
             </div>
-            <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{task.description}</p>
-            <div className="flex items-center gap-2 mb-2">
-                <Progress value={task.progress || 0} className="flex-1 h-1.5" />
-                <span className="text-xs font-semibold">{progressText}</span>
-            </div>
-            <div className="flex flex-wrap gap-1">
-                {isDueToday && !wasCompletedToday && (
-                    <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
-                        <Clock className="w-3 h-3" /> Due Today
-                    </Badge>
-                )}
-                {wasUpdatedToday && (
-                     <Badge className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
-                        <Edit3 className="w-3 h-3" /> Updated Today
-                    </Badge>
-                )}
-                {wasCompletedToday && (
-                     <Badge className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
-                        <CheckCircle className="w-3 h-3" /> Completed Today
-                    </Badge>
-                )}
-            </div>
-        </div>
+        </TooltipProvider>
     );
 };
 
