@@ -93,7 +93,11 @@ export function ProjectListItem({
   const canManageTasks = hasPermission('projects:update');
   
   const userCreatedMilestones = (project.milestones || []).filter((m: any) => m.title !== 'General Tasks');
-  const allTasks = (project.milestones || []).flatMap((m: any) => m.tasks || []);
+  
+  const allTasks = useMemo(() => 
+    (project.milestones || []).flatMap((m: any) => m.tasks || [])
+  , [project.milestones]);
+
 
   const { todaysTasks, otherTasks } = useMemo(() => {
     const todays: any[] = [];
@@ -184,7 +188,7 @@ export function ProjectListItem({
   const TaskRow = ({task}: {task: any}) => {
     const isTaskDone = task.status === 'DONE';
     const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
-    const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-red-600' : 'bg-primary';
+    const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-destructive' : 'bg-primary';
 
     return (
         <div key={task.id} className="space-y-1.5 group">
@@ -192,7 +196,7 @@ export function ProjectListItem({
               <div className="flex-1 min-w-0">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <p className="text-sm font-medium pr-2 block truncate max-w-[14ch] sm:max-w-[20ch]">
+                    <p className="text-sm font-medium pr-2 block truncate">
                         {task.title}
                     </p>
                   </TooltipTrigger>
@@ -336,7 +340,7 @@ export function ProjectListItem({
           </div>
 
           {/* Visual Separator */}
-          <Separator className="my-6" />
+          <Separator className="my-4" />
 
           {/* Tasks Section */}
           <div className="space-y-3">
@@ -370,7 +374,7 @@ export function ProjectListItem({
                 <Tabs defaultValue="today" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
                         <TabsTrigger value="today">Today's Tasks ({todaysTasks.length})</TabsTrigger>
-                        <TabsTrigger value="all">Other Tasks ({otherTasks.length})</TabsTrigger>
+                        <TabsTrigger value="other">Other Tasks ({otherTasks.length})</TabsTrigger>
                     </TabsList>
                     <TabsContent value="today">
                       {todaysTasks.length > 0 ? (
@@ -385,7 +389,7 @@ export function ProjectListItem({
                          </div>
                       )}
                     </TabsContent>
-                    <TabsContent value="all">
+                    <TabsContent value="other">
                         {userCreatedMilestones.length > 0 && (
                             <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
                                 <SelectTrigger className="w-full sm:w-[240px] h-9 mb-4">
@@ -532,7 +536,3 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
-
-    
-
-    
