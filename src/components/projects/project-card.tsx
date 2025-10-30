@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import Link from 'next/link';
@@ -191,7 +192,7 @@ export function ProjectListItem({
               <div className="flex-1 min-w-0">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <p className="text-sm font-medium pr-2 block truncate">
+                    <p className="text-sm font-medium pr-2 block truncate max-w-[14ch] sm:max-w-[20ch]">
                         {task.title}
                     </p>
                   </TooltipTrigger>
@@ -531,5 +532,7 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
       </Link>
     )
 }
+
+    
 
     
