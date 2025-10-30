@@ -192,9 +192,9 @@ export function ProjectListItem({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <div className="flex-1 min-w-0">
-                      <span className="text-sm font-medium pr-2 block truncate">
+                      <p className="text-sm font-medium pr-2 block truncate">
                           {task.title}
-                      </span>
+                      </p>
                   </div>
                 </TooltipTrigger>
                 <TooltipContent>
