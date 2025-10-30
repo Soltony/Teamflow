@@ -114,6 +114,15 @@ export default function TaskDetailsPage() {
 
     const handleUpdateSubmit = async (formData: TaskUpdateFormValues) => {
         if (!task || !localUser) return;
+        if (formData.progressPercentage === currentProgress) {
+            toast({
+                title: "Progress Not Changed",
+                description: "You must change the progress slider to post an update.",
+                variant: "destructive",
+            });
+            return;
+        }
+
         const result = await addTaskUpdateAction(task.id, formData.text, localUser.id, formData.progressPercentage);
         if (result.success) {
             toast({ title: "Update Added", description: "Your progress update has been recorded." });
