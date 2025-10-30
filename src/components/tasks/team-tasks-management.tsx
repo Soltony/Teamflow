@@ -1,7 +1,7 @@
 
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
   Accordion,
@@ -146,12 +146,24 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const sortedProjects = useMemo(() => {
     if (!projectStatuses || !initialTasksByProject) return [];
     
-    const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
+    const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
+    const statusIdToName = new Map(projectStatuses.map(s => [s.id, s.name]));
+
     return [...initialTasksByProject].sort((a, b) => {
-        const aIsCompleted = a.project.statusId === completedStatusId;
-        const bIsCompleted = b.project.statusId === completedStatusId;
-        if (aIsCompleted && !bIsCompleted) return 1;
-        if (!aIsCompleted && bIsCompleted) return -1;
+        const statusNameA = statusIdToName.get(a.project.statusId || '') || 'Z';
+        const statusNameB = statusIdToName.get(b.project.statusId || '') || 'Z';
+        const indexA = statusOrder.indexOf(statusNameA);
+        const indexB = statusOrder.indexOf(statusNameB);
+
+        // If a status is not in our defined order, push it to the back.
+        const orderA = indexA === -1 ? 99 : indexA;
+        const orderB = indexB === -1 ? 99 : indexB;
+
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+
+        // If statuses are the same, sort by project name
         return a.project.name.localeCompare(b.project.name);
     });
   }, [initialTasksByProject, projectStatuses]);
