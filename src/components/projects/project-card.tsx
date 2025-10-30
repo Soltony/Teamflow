@@ -196,7 +196,7 @@ export function ProjectListItem({
               <div className="flex-1 min-w-0">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <p className="text-sm font-medium pr-2 block truncate">
+                    <p className="text-sm font-medium pr-2 block truncate max-w-14">
                         {task.title}
                     </p>
                   </TooltipTrigger>
