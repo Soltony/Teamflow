@@ -170,8 +170,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
     );
 };
 
-const ProjectCard = ({ project }: { project: ProjectWithTasks }) => {
-    const [tasksExpanded, setTasksExpanded] = useState(false);
+const ProjectCard = ({ project, isExpanded, onToggleExpand }: { project: ProjectWithTasks, isExpanded: boolean, onToggleExpand: () => void }) => {
     const totalTasks = project.tasks.length;
     
     return (
@@ -201,15 +200,15 @@ const ProjectCard = ({ project }: { project: ProjectWithTasks }) => {
                 <div className="space-y-3">
                     <div 
                         className="flex justify-between items-center cursor-pointer"
-                        onClick={() => setTasksExpanded(!tasksExpanded)}
+                        onClick={onToggleExpand}
                     >
                         <h4 className="font-semibold text-sm">Today's Activity ({totalTasks})</h4>
                         <div className="cursor-pointer p-1">
-                            <ChevronDown className={`h-4 w-4 transition-transform ${tasksExpanded ? 'rotate-180' : ''}`} />
+                            <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
                         </div>
                     </div>
                     
-                    {tasksExpanded && (
+                    {isExpanded && (
                         <div className="space-y-2">
                             {project.tasks.length > 0 ? (
                                 project.tasks.map(task => (
@@ -237,6 +236,7 @@ export default function TodayPage() {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedPmoDivision, setSelectedPmoDivision] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const projectsPerPage = 9;
 
   const fetchData = useCallback(async () => {
@@ -369,7 +369,12 @@ export default function TodayPage() {
         <>
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {paginatedProjects.map((project: ProjectWithTasks) => (
-              <ProjectCard key={project.id} project={project} />
+              <ProjectCard 
+                key={project.id} 
+                project={project}
+                isExpanded={expandedProjectId === project.id}
+                onToggleExpand={() => setExpandedProjectId(prevId => prevId === project.id ? null : project.id)}
+              />
             ))}
           </div>
           

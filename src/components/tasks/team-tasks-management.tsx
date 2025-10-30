@@ -38,6 +38,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const { toast } = useToast();
   const router = useRouter();
   const [taskToDecline, setTaskToDecline] = useState<TeamViewTask | null>(null);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
 
   const sortedProjects = useMemo(() => {
@@ -52,6 +53,17 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
         return a.project.name.localeCompare(b.project.name);
     });
   }, [initialTasksByProject, projectStatuses]);
+  
+  useEffect(() => {
+      // Set the first project with pending tasks as default open
+      const firstProjectWithPending = sortedProjects.find(p => p.stats.pending > 0);
+      if (firstProjectWithPending) {
+        setExpandedProjectId(firstProjectWithPending.project.id);
+      } else if (sortedProjects.length > 0) {
+        setExpandedProjectId(sortedProjects[0].project.id);
+      }
+  }, [sortedProjects]);
+
 
   const handleApprove = async (task: TeamViewTask) => {
     const result = await approveTaskAction(task.id, currentUser.id, currentUser.name);
@@ -113,7 +125,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <Accordion type="multiple" className="w-full space-y-4">
+          <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || undefined} onValueChange={value => setExpandedProjectId(value)}>
             {sortedProjects.map(({ project, tasks, stats }) => {
                 const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
                 
