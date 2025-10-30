@@ -39,19 +39,46 @@ export async function getPendingReviewTasks(userId: string) {
 
     const tasks = await prisma.task.findMany({
         where: whereClause,
-        include: {
-            assignees: true,
+        select: {
+            id: true,
+            title: true,
+            description: true,
+            status: true,
+            progress: true,
+            endDate: true,
+            assignees: {
+                select: {
+                    id: true,
+                    name: true,
+                }
+            },
             milestone: {
-                include: {
-                    project: true
+                select: {
+                    project: {
+                        select: {
+                            id: true,
+                            name: true,
+                        }
+                    }
                 }
             },
             updates: {
                 orderBy: {
                     createdAt: 'desc'
                 },
-                include: {
-                    author: true
+                select: {
+                    id: true,
+                    text: true,
+                    createdAt: true,
+                    type: true,
+                    progressPercentage: true,
+                    author: {
+                        select: {
+                            id: true,
+                            name: true,
+                            avatar: true,
+                        }
+                    }
                 }
             }
         },
