@@ -30,7 +30,7 @@ export async function getTaskDetails(taskId: string, userId: string) {
                     author: true
                 },
                 orderBy: {
-                    createdAt: 'asc'
+                    createdAt: 'desc'
                 }
             },
             assignees: true

@@ -71,7 +71,7 @@ export async function getTeamViewData(userId: string) {
                         author: true
                     },
                     orderBy: {
-                        createdAt: 'asc'
+                        createdAt: 'desc'
                     }
                 },
                 assignees: true

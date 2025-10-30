@@ -41,13 +41,13 @@ export async function getMyTasks(userId: string) {
           author: true,
         },
         orderBy: {
-          createdAt: 'asc',
+          createdAt: 'desc',
         },
       },
       assignees: true,
     },
     orderBy: {
-        endDate: 'asc'
+        createdAt: 'desc'
     }
   });
 
