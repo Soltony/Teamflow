@@ -85,16 +85,17 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
         }
         
         if (wasUpdatedToday) {
-            const mostRecentUpdateToday = todaysUpdates[0];
+            const allUpdatesSorted = (task.updates || [])
+                .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
+                .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
+            
+            const mostRecentUpdateToday = allUpdatesSorted[0];
             
             if (mostRecentUpdateToday?.progressPercentage !== null) {
-                 const allUpdatesSorted = (task.updates || [])
-                    .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
-                    .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
-                 
-                 const updateBeforeThat = allUpdatesSorted.find(u => u.createdAt.getTime() < mostRecentUpdateToday.createdAt.getTime() && u.progressPercentage !== null);
-                 const previousProgress = updateBeforeThat?.progressPercentage ?? 0;
-                 const currentProgress = mostRecentUpdateToday.progressPercentage;
+                const updateBeforeThat = allUpdatesSorted.find(u => u.createdAt.getTime() < mostRecentUpdateToday.createdAt.getTime() && u.progressPercentage !== null);
+                
+                const previousProgress = updateBeforeThat?.progressPercentage ?? 0;
+                const currentProgress = mostRecentUpdateToday.progressPercentage;
 
                  if (currentProgress !== previousProgress) {
                     return `${previousProgress}% → ${currentProgress || 0}%`;
@@ -103,8 +104,11 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
         }
         
         return `${task.progress || 0}%`;
-    }, [task, wasCompletedToday, wasUpdatedToday, todaysUpdates]);
+    }, [task, wasCompletedToday, wasUpdatedToday]);
 
+    const shortTitle = task.title.length > 15
+        ? `${task.title.substring(0, 15)}...`
+        : task.title;
 
     return (
         <TooltipProvider>
@@ -113,7 +117,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                     <div className="flex-1 min-w-0">
                         <Tooltip>
                             <TooltipTrigger asChild>
-                                <h4 className="font-semibold text-sm truncate">{task.title}</h4>
+                                <h4 className="font-semibold text-sm truncate">{shortTitle}</h4>
                             </TooltipTrigger>
                             <TooltipContent>
                                 <p>{task.title}</p>
@@ -436,10 +440,4 @@ export default function TodayPage() {
     </div>
   );
 }
-
-
-
-
-
-
 
