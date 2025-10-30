@@ -80,17 +80,8 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
     const wasUpdatedToday = !wasCompletedToday && todaysUpdates.length > 0;
 
     const progressText = useMemo(() => {
-        if (wasCompletedToday && task.completedAt) {
-            const allUpdates = (task.updates || []).map(u => ({ ...u, createdAt: parseISO(u.createdAt) }));
-            const updatesBeforeCompletion = allUpdates
-                .filter(u => u.createdAt < parseISO(task.completedAt as string));
-            
-            const lastUpdateBeforeCompletion = updatesBeforeCompletion
-                .filter(u => u.progressPercentage !== null)
-                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())[0];
-
-            const previousProgress = lastUpdateBeforeCompletion?.progressPercentage ?? 0;
-            return `Progress: ${previousProgress}% → 100%`;
+        if (wasCompletedToday) {
+            return `100%`;
         }
 
         if (wasUpdatedToday) {
@@ -103,7 +94,7 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                 .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
             
             const previousProgress = updatesBeforeThisOne[0]?.progressPercentage ?? 0;
-            return `Progress: ${previousProgress}% → ${task.progress || 0}%`;
+            return `${previousProgress}% → ${task.progress || 0}%`;
         }
 
         return `${task.progress || 0}%`;
@@ -297,6 +288,10 @@ export default function TodayPage() {
     return filtered;
   }, [projects, searchQuery, selectedStatus, selectedPmoDivision]);
 
+  const handleToggleExpand = (projectId: string) => {
+    setExpandedProjectId(prevId => (prevId === projectId ? null : projectId));
+  };
+  
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, selectedStatus, selectedPmoDivision]);
@@ -388,7 +383,7 @@ export default function TodayPage() {
                 key={project.id} 
                 project={project}
                 isExpanded={expandedProjectId === project.id}
-                onToggleExpand={() => setExpandedProjectId(prevId => prevId === project.id ? null : project.id)}
+                onToggleExpand={() => handleToggleExpand(project.id)}
               />
             ))}
           </div>
@@ -428,5 +423,6 @@ export default function TodayPage() {
     </div>
   );
 }
+
 
 
