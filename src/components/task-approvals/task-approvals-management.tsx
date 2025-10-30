@@ -74,7 +74,7 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
     startTransition(async () => {
         if (!localUser) return;
         await approveTask(taskId, localUser.id);
-        toast({ title: "Task Approved!", description: "The task has been marked as Done." });
+        toast({ title: "Task Approved!", description: "The task has been successfully reviewed." });
         onDataChange();
     });
   }
@@ -95,11 +95,16 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
   }
 
   const getProgressText = (task: TaskWithRelations) => {
-    const lastUpdate = task.updates?.find((u: any) => u.progressPercentage !== null && u.progressPercentage !== task.progress);
-    const previousProgress = lastUpdate?.progressPercentage ?? 0;
+    if (task.updates && task.updates.length > 0) {
+      const lastMeaningfulUpdate = task.updates
+        .filter((u: any) => u.progressPercentage !== null && u.progressPercentage !== task.progress)
+        .sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0];
+      
+      const previousProgress = lastMeaningfulUpdate?.progressPercentage ?? 0;
 
-    if (previousProgress !== task.progress) {
-      return `${previousProgress}% → ${task.progress}%`;
+      if (previousProgress !== task.progress) {
+        return `${previousProgress}% → ${task.progress}%`;
+      }
     }
     return `${task.progress}%`;
   };
@@ -125,11 +130,20 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
                 const assigneeNames = task.assignees.map((a: any) => a.name).join(', ');
                 return (
                   <TableRow key={task.id}>
-                    <TableCell className="font-medium">{task.title}</TableCell>
+                    <TableCell className="font-medium">
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <p className="max-w-[150px] truncate">{task.title}</p>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{task.title}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TableCell>
                     <TableCell>
                       <Tooltip>
                         <TooltipTrigger>
-                           <p className="max-w-xs truncate">{task.description}</p>
+                           <p className="max-w-[200px] truncate">{task.description}</p>
                         </TooltipTrigger>
                         <TooltipContent>
                           <p className="max-w-md">{task.description}</p>
@@ -137,9 +151,16 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
                       </Tooltip>
                     </TableCell>
                     <TableCell>
-                      <Link href={`/projects/${task.milestone.project.id}`} className="hover:underline text-primary">
-                          {task.milestone.project.name}
-                      </Link>
+                        <Tooltip>
+                            <TooltipTrigger>
+                                <Link href={`/projects/${task.milestone.project.id}`} className="hover:underline text-primary max-w-[150px] truncate block">
+                                    {task.milestone.project.name}
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{task.milestone.project.name}</p>
+                            </TooltipContent>
+                        </Tooltip>
                     </TableCell>
                     <TableCell>{assigneeNames}</TableCell>
                     <TableCell>
