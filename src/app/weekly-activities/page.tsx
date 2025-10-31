@@ -12,7 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
-import { isWithinInterval, parseISO, format, startOfWeek, endOfWeek, addDays, subDays } from 'date-fns';
+import { isWithinInterval, parseISO, format, startOfWeek, endOfWeek, addDays, subDays, isSameDay } from 'date-fns';
 import { Clock, Edit3, CheckCircle, Crown, Search, ChevronDown, ListTodo, CalendarDays, ChevronLeft, ChevronRight, CalendarIcon, Briefcase } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -79,7 +79,7 @@ const TaskItem = ({ task, weekInterval }: { task: TaskWithAssigneesAndUpdates, w
     , [task.updates, weekInterval]);
 
     const wasUpdatedThisWeek = !wasCompletedThisWeek && weeklyUpdates.length > 0;
-
+    
     const progressText = useMemo(() => {
         if (wasCompletedThisWeek) {
             return `100%`;
@@ -331,6 +331,11 @@ export default function WeeklyActivitiesPage() {
                         </Popover>
                         <Button variant="outline" size="icon" onClick={() => handleDateChange(addDays(date, 7))}><ChevronRight className="h-4 w-4" /></Button>
                     </div>
+                     <div className="flex items-center gap-2">
+                        <Button variant="ghost" size="sm" onClick={() => handleDateChange(subDays(new Date(), 7))}>Last Week</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDateChange(new Date())} disabled={isSameDay(date, new Date())}>This Week</Button>
+                        <Button variant="ghost" size="sm" onClick={() => handleDateChange(addDays(new Date(), 7))}>Next Week</Button>
+                    </div>
                      <div className="relative flex-1 sm:max-w-xs w-full">
                         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input
@@ -410,6 +415,3 @@ export default function WeeklyActivitiesPage() {
         </div>
     );
 }
-
-
-    
