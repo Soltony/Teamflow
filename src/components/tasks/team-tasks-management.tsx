@@ -182,42 +182,36 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
 
-  const projectsByStatus = useMemo(() => {
-    if (!projectStatuses || !initialTasksByProject) return {};
-  
-    const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
-  
-    // Initialize an object with all possible statuses from the ordered list
+  const { projectsByStatus, orderedStatuses } = useMemo(() => {
+    if (!projectStatuses || !initialTasksByProject) return { projectsByStatus: {}, orderedStatuses: [] };
+
     const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
+    const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
+
     const grouped = statusOrder.reduce((acc, statusName) => {
         acc[statusName] = [];
         return acc;
     }, {} as Record<string, ProjectWithTasksAndStats[]>);
 
-    // Group projects into the pre-defined status buckets
     initialTasksByProject.forEach((projectData: any) => {
         const statusName = statusIdToName.get(projectData.project.statusId || '') || 'Unknown';
         if (grouped[statusName]) {
             grouped[statusName].push(projectData);
         } else {
-            // Fallback for any unknown statuses, though ideally this shouldn't happen
             if (!grouped['Unknown']) grouped['Unknown'] = [];
             grouped['Unknown'].push(projectData);
         }
     });
 
-    // Sort projects within each group
     for (const status in grouped) {
       grouped[status].sort((a: any, b: any) => new Date(b.project.createdAt).getTime() - new Date(a.project.createdAt).getTime());
     }
-  
-    return grouped;
+
+    const finalOrderedStatuses = statusOrder.filter(status => grouped[status] && grouped[status].length > 0);
+
+    return { projectsByStatus: grouped, orderedStatuses: finalOrderedStatuses };
   }, [initialTasksByProject, projectStatuses]);
   
-  const orderedStatuses = useMemo(() => {
-    return ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'].filter(status => projectsByStatus[status]);
-  }, [projectsByStatus]);
-
   const handleApprove = async (task: TeamViewTask) => {
     const result = await approveTaskAction(task.id, currentUser.id, currentUser.name);
     if (result.success) {
@@ -277,7 +271,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <Accordion type="multiple" className="w-full space-y-4" defaultValue={['Active']}>
+          <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="Active">
             {orderedStatuses.map(statusName => {
                 const projects = projectsByStatus[statusName];
                 if (!projects || projects.length === 0) {
