@@ -196,7 +196,6 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
       return acc;
     }, {} as Record<string, ProjectWithTasksAndStats[]>);
     
-    // Sort projects within each group by creation date
     for (const status in grouped) {
         grouped[status].sort((a: any, b: any) => new Date(b.project.createdAt).getTime() - new Date(a.project.createdAt).getTime());
     }
@@ -295,20 +294,18 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                               return (
                               <AccordionItem value={project.id} key={project.id} className="border rounded-lg bg-background">
                                 <AccordionTrigger className="p-4 text-lg hover:no-underline">
-                                    <div className="flex justify-between items-center w-full">
-                                        <div className="flex-1 text-left space-y-1">
-                                          <p className="font-semibold">{project.name}</p>
-                                          <p className="text-xs text-muted-foreground">Due: {format(parseISO(project.endDate as unknown as string), 'MMM dd, yyyy')}</p>
-                                        </div>
-                                        <div className="flex items-center gap-2 mr-4">
-                                            <div className="flex items-center gap-2 w-32">
-                                                <Progress value={projectProgress} className="h-2 flex-1" />
-                                                <span className="text-xs font-semibold">{Math.round(projectProgress)}%</span>
-                                            </div>
-                                            {statusBadge}
-                                            <Badge variant="outline">Team Tasks: {stats.total}</Badge>
-                                        </div>
-                                    </div>
+                                  <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
+                                      <div className="flex-1 text-left space-y-1">
+                                        <p className="font-semibold">{project.name}</p>
+                                        <p className="text-xs text-muted-foreground">Due: {format(parseISO(project.endDate as unknown as string), 'MMM dd, yyyy')}</p>
+                                      </div>
+                                      <div className="flex items-center gap-3 w-full md:w-auto md:min-w-[300px]">
+                                          <Progress value={projectProgress} className="h-2 flex-1" />
+                                          <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
+                                          {statusBadge}
+                                          <Badge variant="outline">Tasks: {stats.total}</Badge>
+                                      </div>
+                                  </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="p-4 pt-0">
                                    {tasks.length > 0 ? (
