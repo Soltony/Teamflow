@@ -24,6 +24,7 @@ import {
   Archive,
   Clock,
   ThumbsUp,
+  CalendarDays,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -54,6 +55,7 @@ import { NibLogo } from "./logo";
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home, permission: 'dashboard:view' },
   { href: "/today", label: "Today", icon: ListTodo, permission: 'dashboard:view' },
+  { href: "/weekly-activities", label: "Weekly", icon: CalendarDays, permission: 'dashboard:view' },
   { href: "/my-tasks", label: "My Tasks", icon: ClipboardCheck, permission: 'my-tasks:view' },
   { href: "/team-view", label: "Team View", icon: ClipboardList, permission: 'team-view:view' },
   { href: "/projects", label: "Projects", icon: FolderKanban, permission: 'projects:read' },
