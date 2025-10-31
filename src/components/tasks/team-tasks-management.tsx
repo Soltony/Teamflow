@@ -249,7 +249,6 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   }
 
   return (
-    <>
       <div className="p-4 sm:p-6 space-y-6">
         <Card>
           <CardHeader>
@@ -351,18 +350,15 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
             ))}
           </Accordion>
         )}
+        
+        {taskToDecline && (
+          <DeclineTaskDialog
+            isOpen={!!taskToDecline}
+            onOpenChange={(open) => !open && setTaskToDecline(null)}
+            task={taskToDecline}
+            onDeclineConfirm={(reason) => handleDeclineConfirm(taskToDecline, reason)}
+          />
+        )}
       </div>
-
-      {taskToDecline && (
-        <DeclineTaskDialog
-          isOpen={!!taskToDecline}
-          onOpenChange={(open) => !open && setTaskToDecline(null)}
-          task={taskToDecline}
-          onDeclineConfirm={(reason) => handleDeclineConfirm(taskToDecline, reason)}
-        />
-      )}
-    </>
   );
 }
-
-    
