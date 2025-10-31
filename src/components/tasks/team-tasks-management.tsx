@@ -266,13 +266,14 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <div className="space-y-6">
+          <Accordion type="multiple" className="w-full space-y-4" defaultValue={['Active']}>
             {orderedStatuses.map(statusName => (
-                 <Card key={statusName}>
-                    <CardHeader>
-                        <CardTitle>{statusName} Projects</CardTitle>
-                    </CardHeader>
-                    <CardContent>
+                 <AccordionItem value={statusName} key={statusName} className="border-none">
+                   <Card>
+                      <AccordionTrigger className="p-4 text-lg hover:no-underline font-semibold">
+                          {statusName} Projects ({projectsByStatus[statusName].length})
+                      </AccordionTrigger>
+                      <AccordionContent className="px-4 pb-4">
                         <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || ""} onValueChange={value => { setExpandedProjectId(value); setExpandedTaskId(null);}}>
                             {projectsByStatus[statusName].map(({ project, tasks, stats }: ProjectWithTasksAndStats) => {
                                 const projectProgress = calculateProjectProgress(project);
@@ -293,7 +294,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                               
                               return (
                               <AccordionItem value={project.id} key={project.id} className="border rounded-lg bg-background">
-                                <AccordionTrigger className="p-4 text-lg hover:no-underline">
+                                <AccordionTrigger className="p-4 hover:no-underline">
                                   <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
                                       <div className="flex-1 text-left space-y-1">
                                         <p className="font-semibold">{project.name}</p>
@@ -344,10 +345,11 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                               )
                             })}
                         </Accordion>
-                    </CardContent>
-                 </Card>
+                      </AccordionContent>
+                   </Card>
+                 </AccordionItem>
             ))}
-          </div>
+          </Accordion>
         )}
       </div>
 
@@ -362,3 +364,5 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     </>
   );
 }
+
+    
