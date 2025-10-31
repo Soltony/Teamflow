@@ -92,6 +92,7 @@ export async function getTeamViewData(userId: string) {
                         name: project.name,
                         statusId: project.status?.id ?? null,
                         endDate: project.endDate,
+                        createdAt: project.createdAt,
                         milestones: project.milestones,
                     },
                     tasks: [],

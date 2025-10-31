@@ -205,8 +205,8 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
             return orderA - orderB;
         }
 
-        // If statuses are the same, sort by project name
-        return a.project.name.localeCompare(b.project.name);
+        // If statuses are the same, sort by project creation date (newest first)
+        return new Date(b.project.createdAt).getTime() - new Date(a.project.createdAt).getTime();
     });
   }, [initialTasksByProject, projectStatuses]);
 
@@ -309,7 +309,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <AccordionContent className="p-4 pt-0">
                    {tasks.length > 0 ? (
                      <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || undefined} onValueChange={setExpandedTaskId}>
-                      {tasks.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map(task => (
+                      {tasks.sort((a: TeamViewTask, b: TeamViewTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((task: TeamViewTask) => (
                         <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-background">
                             <AccordionTrigger className="hover:no-underline">
                                 <div className="flex items-center justify-between w-full">

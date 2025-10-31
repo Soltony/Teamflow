@@ -21,6 +21,7 @@ export type TeamViewTask = Task & {
 export type ProjectWithTasksAndStats = {
     project: Project & {
         statusId: string | null;
+        createdAt: Date;
     };
     tasks: TeamViewTask[];
     stats: {
