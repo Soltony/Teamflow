@@ -209,17 +209,6 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
         return a.project.name.localeCompare(b.project.name);
     });
   }, [initialTasksByProject, projectStatuses]);
-  
-  useEffect(() => {
-      // Set the first project with pending tasks as default open
-      const firstProjectWithPending = sortedProjects.find(p => p.stats.pending > 0);
-      if (firstProjectWithPending) {
-        setExpandedProjectId(firstProjectWithPending.project.id);
-      } else if (sortedProjects.length > 0) {
-        setExpandedProjectId(sortedProjects[0].project.id);
-      }
-  }, [sortedProjects]);
-
 
   const handleApprove = async (task: TeamViewTask) => {
     const result = await approveTaskAction(task.id, currentUser.id, currentUser.name);
