@@ -108,6 +108,7 @@ export default function ProjectsPage() {
 
     useEffect(() => {
         setCurrentPage(1);
+        setExpandedItem(null);
     }, [searchQuery, selectedStatus, selectedPmoDivision]);
 
     const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);

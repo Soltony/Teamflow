@@ -87,13 +87,13 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
         if (wasUpdatedToday) {
             const allUpdatesSorted = (task.updates || [])
                 .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
-                .sort((a,b) => b.createdAt.getTime() - a.createdAt.getTime());
-            
+                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+    
             const mostRecentUpdateToday = allUpdatesSorted[0];
             
             if (mostRecentUpdateToday?.progressPercentage !== null) {
                 const updateBeforeThat = allUpdatesSorted.find(u => u.createdAt.getTime() < mostRecentUpdateToday.createdAt.getTime() && u.progressPercentage !== null);
-                
+
                 const previousProgress = updateBeforeThat?.progressPercentage ?? 0;
                 const currentProgress = mostRecentUpdateToday.progressPercentage;
 
@@ -156,10 +156,10 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                     </Tooltip>
                 )}
                 
-                {!wasCompletedToday && (
+                 {!wasCompletedToday && (
                     <div className="flex items-center gap-2 mb-2">
-                        <Progress value={task.progress || 0} className="flex-1 h-2" />
-                        <span className="text-xs font-semibold">{progressText}</span>
+                        <Progress value={task.progress || 0} className="flex-1 h-1.5" />
+                        <span className="text-[10px] font-semibold">{progressText}</span>
                     </div>
                 )}
                 
@@ -309,15 +309,8 @@ export default function TodayPage() {
   
   useEffect(() => {
     setCurrentPage(1);
+    setExpandedProjectId(null);
   }, [searchQuery, selectedStatus, selectedPmoDivision]);
-  
-   useEffect(() => {
-    if (filteredProjects.length > 0) {
-      setExpandedProjectId(filteredProjects[0].id);
-    } else {
-      setExpandedProjectId(null);
-    }
-   }, [filteredProjects]);
 
   const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
   const paginatedProjects = useMemo(() => {
@@ -440,4 +433,3 @@ export default function TodayPage() {
     </div>
   );
 }
-

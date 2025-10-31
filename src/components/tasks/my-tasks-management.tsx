@@ -231,7 +231,7 @@ const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubm
             <CardTitle>{title} ({tasks.length})</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-             <Accordion type="single" collapsible className="w-full" value={expandedTaskId || undefined} onValueChange={(value) => setExpandedTaskId(value || null)}>
+             <Accordion type="single" collapsible className="w-full" value={expandedTaskId || ""} onValueChange={(value) => setExpandedTaskId(value || null)}>
                 {tasks.length > 0 ? (
                     tasks.map(task => (
                         <AccordionItem value={task.id} key={task.id} className="border-b-0">
