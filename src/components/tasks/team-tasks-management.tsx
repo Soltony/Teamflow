@@ -270,7 +270,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || undefined} onValueChange={value => { setExpandedProjectId(value); setExpandedTaskId(null);}}>
+          <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || ""} onValueChange={value => { setExpandedProjectId(value); setExpandedTaskId(null);}}>
             {sortedProjects.map(({ project, tasks, stats }) => {
                 const projectProgress = calculateProjectProgress(project);
                 const completedStatusId = projectStatuses.find((s:any) => s.name === 'Completed')?.id;
@@ -308,7 +308,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 </AccordionTrigger>
                 <AccordionContent className="p-4 pt-0">
                    {tasks.length > 0 ? (
-                     <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || undefined} onValueChange={setExpandedTaskId}>
+                     <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
                       {tasks.sort((a: TeamViewTask, b: TeamViewTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((task: TeamViewTask) => (
                         <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-background">
                             <AccordionTrigger className="hover:no-underline">
