@@ -32,7 +32,7 @@ const calculateMilestoneProgress = (milestone: any) => {
         return acc + (taskProgress * (task.weight / 100));
     }, 0);
     return totalProgress;
-  };
+};
 
 const calculateProjectProgress = (project: any) => {
 if (!project.milestones || project.milestones.length === 0) {
@@ -42,21 +42,18 @@ if (!project.milestones || project.milestones.length === 0) {
 const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
 
 if (weightedMilestones.length > 0) {
-    // Standard weighted calculation if there are weighted milestones
     return weightedMilestones.reduce((acc: number, milestone: any) => {
     const milestoneProgress = calculateMilestoneProgress(milestone);
     return acc + (milestoneProgress * (milestone.weight / 100));
     }, 0);
 } else {
-    // If no weighted milestones, calculate based on task weights directly
     const allTasks = project.milestones.flatMap((m: any) => m.tasks);
     if (allTasks.length === 0) return 0;
 
     const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
     if (totalTaskWeight === 0) {
-        // If tasks have no weight, calculate simple average of progress
         const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
-        return totalProgress / allTasks.length;
+        return allTasks.length > 0 ? totalProgress / allTasks.length : 0;
     }
     
     const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
@@ -185,30 +182,30 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
 
-  const sortedProjects = useMemo(() => {
-    if (!projectStatuses || !initialTasksByProject) return [];
-    
-    const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
+  const projectsByStatus = useMemo(() => {
+    if (!projectStatuses || !initialTasksByProject) return {};
+
     const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
 
-    return [...initialTasksByProject].sort((a: any, b: any) => {
-        const statusNameA = statusIdToName.get(a.project.statusId || '') || 'Z';
-        const statusNameB = statusIdToName.get(b.project.statusId || '') || 'Z';
-        const indexA = statusOrder.indexOf(statusNameA);
-        const indexB = statusOrder.indexOf(statusNameB);
+    const grouped = initialTasksByProject.reduce((acc: any, projectData: any) => {
+      const statusName = statusIdToName.get(projectData.project.statusId || '') || 'Unknown';
+      if (!acc[statusName]) {
+        acc[statusName] = [];
+      }
+      acc[statusName].push(projectData);
+      return acc;
+    }, {} as Record<string, ProjectWithTasksAndStats[]>);
+    
+    // Sort projects within each group by creation date
+    for (const status in grouped) {
+        grouped[status].sort((a: any, b: any) => new Date(b.project.createdAt).getTime() - new Date(a.project.createdAt).getTime());
+    }
 
-        // If a status is not in our defined order, push it to the back.
-        const orderA = indexA === -1 ? 99 : indexA;
-        const orderB = indexB === -1 ? 99 : indexB;
-
-        if (orderA !== orderB) {
-            return orderA - orderB;
-        }
-
-        // If statuses are the same, sort by project creation date (newest first)
-        return new Date(b.project.createdAt).getTime() - new Date(a.project.createdAt).getTime();
-    });
+    return grouped;
   }, [initialTasksByProject, projectStatuses]);
+  
+  const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
+  const orderedStatuses = statusOrder.filter(status => projectsByStatus[status]);
 
   const handleApprove = async (task: TeamViewTask) => {
     const result = await approveTaskAction(task.id, currentUser.id, currentUser.name);
@@ -270,79 +267,90 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || ""} onValueChange={value => { setExpandedProjectId(value); setExpandedTaskId(null);}}>
-            {sortedProjects.map(({ project, tasks, stats }) => {
-                const projectProgress = calculateProjectProgress(project);
-                const completedStatusId = projectStatuses.find((s:any) => s.name === 'Completed')?.id;
-                
-                let statusBadge;
-                if (project.statusId === completedStatusId) {
-                    statusBadge = <Badge className="bg-zinc-500 hover:bg-zinc-500/90 text-primary-foreground">Closed</Badge>;
-                } else if (stats.pending > 0) {
-                    statusBadge = <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending Review</Badge>;
-                } else if (stats.inProgress > 0 || stats.todo > 0) {
-                    statusBadge = <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">Active</Badge>;
-                } else if (stats.total > 0) {
-                    statusBadge = <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Completed</Badge>;
-                } else {
-                    statusBadge = <Badge variant="secondary">No Team Tasks</Badge>;
-                }
-              
-              return (
-              <AccordionItem value={project.id} key={project.id} className="border rounded-lg bg-card">
-                <AccordionTrigger className="p-4 text-lg hover:no-underline">
-                    <div className="flex justify-between items-center w-full">
-                        <div className="flex-1 text-left space-y-1">
-                          <p className="font-semibold">{project.name}</p>
-                          <p className="text-xs text-muted-foreground">Due: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</p>
-                        </div>
-                        <div className="flex items-center gap-2 mr-4">
-                            <div className="flex items-center gap-2 w-32">
-                                <Progress value={projectProgress} className="h-2 flex-1" />
-                                <span className="text-xs font-semibold">{Math.round(projectProgress)}%</span>
-                            </div>
-                            {statusBadge}
-                            <Badge variant="outline">Team Tasks: {stats.total}</Badge>
-                        </div>
-                    </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 pt-0">
-                   {tasks.length > 0 ? (
-                     <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
-                      {tasks.sort((a: TeamViewTask, b: TeamViewTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((task: TeamViewTask) => (
-                        <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-background">
-                            <AccordionTrigger className="hover:no-underline">
-                                <div className="flex items-center justify-between w-full">
-                                    <div className="flex-1 text-left">
-                                        <p className="font-semibold">{task.title}</p>
-                                        <p className="text-sm text-muted-foreground">{formatStatus(task.status)}</p>
+          <div className="space-y-6">
+            {orderedStatuses.map(statusName => (
+                 <Card key={statusName}>
+                    <CardHeader>
+                        <CardTitle>{statusName} Projects</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || ""} onValueChange={value => { setExpandedProjectId(value); setExpandedTaskId(null);}}>
+                            {projectsByStatus[statusName].map(({ project, tasks, stats }: ProjectWithTasksAndStats) => {
+                                const projectProgress = calculateProjectProgress(project);
+                                const completedStatusId = projectStatuses.find((s:any) => s.name === 'Completed')?.id;
+                                
+                                let statusBadge;
+                                if (project.statusId === completedStatusId) {
+                                    statusBadge = <Badge className="bg-zinc-500 hover:bg-zinc-500/90 text-primary-foreground">Closed</Badge>;
+                                } else if (stats.pending > 0) {
+                                    statusBadge = <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending Review</Badge>;
+                                } else if (stats.inProgress > 0 || stats.todo > 0) {
+                                    statusBadge = <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">Active</Badge>;
+                                } else if (stats.total > 0) {
+                                    statusBadge = <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Completed</Badge>;
+                                } else {
+                                    statusBadge = <Badge variant="secondary">No Team Tasks</Badge>;
+                                }
+                              
+                              return (
+                              <AccordionItem value={project.id} key={project.id} className="border rounded-lg bg-background">
+                                <AccordionTrigger className="p-4 text-lg hover:no-underline">
+                                    <div className="flex justify-between items-center w-full">
+                                        <div className="flex-1 text-left space-y-1">
+                                          <p className="font-semibold">{project.name}</p>
+                                          <p className="text-xs text-muted-foreground">Due: {format(parseISO(project.endDate as unknown as string), 'MMM dd, yyyy')}</p>
+                                        </div>
+                                        <div className="flex items-center gap-2 mr-4">
+                                            <div className="flex items-center gap-2 w-32">
+                                                <Progress value={projectProgress} className="h-2 flex-1" />
+                                                <span className="text-xs font-semibold">{Math.round(projectProgress)}%</span>
+                                            </div>
+                                            {statusBadge}
+                                            <Badge variant="outline">Team Tasks: {stats.total}</Badge>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-2 mr-4">
-                                        <Badge variant="secondary" className={task.status === 'PENDING_REVIEW' ? 'bg-primary text-primary-foreground' : ''}>
-                                            {task.status === 'PENDING_REVIEW' ? 'Action Required' : `${task.progress || 0}%`}
-                                        </Badge>
-                                    </div>
-                                </div>
-                            </AccordionTrigger>
-                            <AccordionContent className="pt-2 pb-4">
-                                <TaskCollapsible
-                                    task={task}
-                                    userMap={userMap}
-                                    onApprove={handleApprove}
-                                    onDecline={setTaskToDecline}
-                                />
-                            </AccordionContent>
-                        </AccordionItem>
-                      ))}
-                    </Accordion>
-                  ) : (
-                      <p className="text-muted-foreground text-sm pl-2">No tasks assigned to your team members for this project.</p>
-                  )}
-                </AccordionContent>
-              </AccordionItem>
-              )
-            })}
-          </Accordion>
+                                </AccordionTrigger>
+                                <AccordionContent className="p-4 pt-0">
+                                   {tasks.length > 0 ? (
+                                     <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
+                                      {tasks.sort((a: TeamViewTask, b: TeamViewTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((task: TeamViewTask) => (
+                                        <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-muted/50">
+                                            <AccordionTrigger className="hover:no-underline">
+                                                <div className="flex items-center justify-between w-full">
+                                                    <div className="flex-1 text-left">
+                                                        <p className="font-semibold">{task.title}</p>
+                                                        <p className="text-sm text-muted-foreground">{formatStatus(task.status)}</p>
+                                                    </div>
+                                                    <div className="flex items-center gap-2 mr-4">
+                                                        <Badge variant="secondary" className={task.status === 'PENDING_REVIEW' ? 'bg-primary text-primary-foreground' : ''}>
+                                                            {task.status === 'PENDING_REVIEW' ? 'Action Required' : `${task.progress || 0}%`}
+                                                        </Badge>
+                                                    </div>
+                                                </div>
+                                            </AccordionTrigger>
+                                            <AccordionContent className="pt-2 pb-4">
+                                                <TaskCollapsible
+                                                    task={task}
+                                                    userMap={userMap}
+                                                    onApprove={handleApprove}
+                                                    onDecline={setTaskToDecline}
+                                                />
+                                            </AccordionContent>
+                                        </AccordionItem>
+                                      ))}
+                                    </Accordion>
+                                  ) : (
+                                      <p className="text-muted-foreground text-sm pl-2">No tasks assigned to your team members for this project.</p>
+                                  )}
+                                </AccordionContent>
+                              </AccordionItem>
+                              )
+                            })}
+                        </Accordion>
+                    </CardContent>
+                 </Card>
+            ))}
+          </div>
         )}
       </div>
 
