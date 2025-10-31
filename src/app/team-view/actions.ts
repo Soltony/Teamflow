@@ -58,11 +58,14 @@ export async function getTeamViewData(userId: string) {
                         id: true,
                         title: true,
                         project: {
-                            select: {
-                                id: true,
-                                name: true,
-                                status: true
-                            }
+                           include: {
+                             status: true,
+                             milestones: {
+                                include: {
+                                    tasks: true,
+                                }
+                             }
+                           }
                         }
                     }
                 },
@@ -79,13 +82,17 @@ export async function getTeamViewData(userId: string) {
         });
 
         tasksByProject = teamMemberTasks.reduce((acc, task) => {
-            const projectId = task.milestone.project.id;
+            const project = task.milestone.project;
+            const projectId = project.id;
+
             if (!acc[projectId]) {
                 acc[projectId] = {
                     project: {
                         id: projectId,
-                        name: task.milestone.project.name,
-                        statusId: task.milestone.project.status?.id ?? null,
+                        name: project.name,
+                        statusId: project.status?.id ?? null,
+                        endDate: project.endDate,
+                        milestones: project.milestones,
                     },
                     tasks: [],
                     stats: { pending: 0, inProgress: 0, done: 0, todo: 0, total: 0 }

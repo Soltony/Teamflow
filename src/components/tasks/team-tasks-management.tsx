@@ -25,6 +25,48 @@ import { DeclineTaskDialog } from "./decline-task-dialog";
 
 const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
 
+const calculateMilestoneProgress = (milestone: any) => {
+    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
+        const taskProgress = task.progress || 0;
+        return acc + (taskProgress * (task.weight / 100));
+    }, 0);
+    return totalProgress;
+  };
+
+const calculateProjectProgress = (project: any) => {
+if (!project.milestones || project.milestones.length === 0) {
+    return 0;
+}
+
+const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
+
+if (weightedMilestones.length > 0) {
+    // Standard weighted calculation if there are weighted milestones
+    return weightedMilestones.reduce((acc: number, milestone: any) => {
+    const milestoneProgress = calculateMilestoneProgress(milestone);
+    return acc + (milestoneProgress * (milestone.weight / 100));
+    }, 0);
+} else {
+    // If no weighted milestones, calculate based on task weights directly
+    const allTasks = project.milestones.flatMap((m: any) => m.tasks);
+    if (allTasks.length === 0) return 0;
+
+    const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+    if (totalTaskWeight === 0) {
+        // If tasks have no weight, calculate simple average of progress
+        const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
+        return totalProgress / allTasks.length;
+    }
+    
+    const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
+    return acc + ((task.progress || 0) * task.weight);
+    }, 0);
+
+    return totalWeightedTaskProgress / totalTaskWeight;
+}
+};
+
 const TaskCollapsible = ({
   task,
   userMap,
@@ -135,21 +177,21 @@ const TaskCollapsible = ({
   )
 }
 
-export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTasksByProject, projectStatuses, onDataChange }: TeamTasksManagementProps) {
+export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTasksByProject, projectStatuses, onDataChange }: any) {
   const { toast } = useToast();
   const router = useRouter();
   const [taskToDecline, setTaskToDecline] = useState<TeamViewTask | null>(null);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
-  const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
+  const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
 
   const sortedProjects = useMemo(() => {
     if (!projectStatuses || !initialTasksByProject) return [];
     
     const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
-    const statusIdToName = new Map(projectStatuses.map(s => [s.id, s.name]));
+    const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
 
-    return [...initialTasksByProject].sort((a, b) => {
+    return [...initialTasksByProject].sort((a: any, b: any) => {
         const statusNameA = statusIdToName.get(a.project.statusId || '') || 'Z';
         const statusNameB = statusIdToName.get(b.project.statusId || '') || 'Z';
         const indexA = statusOrder.indexOf(statusNameA);
@@ -241,7 +283,8 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
         ) : (
           <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || undefined} onValueChange={value => { setExpandedProjectId(value); setExpandedTaskId(null);}}>
             {sortedProjects.map(({ project, tasks, stats }) => {
-                const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
+                const projectProgress = calculateProjectProgress(project);
+                const completedStatusId = projectStatuses.find((s:any) => s.name === 'Completed')?.id;
                 
                 let statusBadge;
                 if (project.statusId === completedStatusId) {
@@ -260,8 +303,15 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
               <AccordionItem value={project.id} key={project.id} className="border rounded-lg bg-card">
                 <AccordionTrigger className="p-4 text-lg hover:no-underline">
                     <div className="flex justify-between items-center w-full">
-                        <span className="font-semibold">{project.name}</span>
+                        <div className="flex-1 text-left space-y-1">
+                          <p className="font-semibold">{project.name}</p>
+                          <p className="text-xs text-muted-foreground">Due: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</p>
+                        </div>
                         <div className="flex items-center gap-2 mr-4">
+                            <div className="flex items-center gap-2 w-32">
+                                <Progress value={projectProgress} className="h-2 flex-1" />
+                                <span className="text-xs font-semibold">{Math.round(projectProgress)}%</span>
+                            </div>
                             {statusBadge}
                             <Badge variant="outline">Team Tasks: {stats.total}</Badge>
                         </div>
