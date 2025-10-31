@@ -315,7 +315,7 @@ Let’s keep projects on track—together.
         </CardHeader>
         <CardContent>
             {activeProjects.length > 0 ? (
-                <Accordion type="multiple" className="w-full space-y-2">
+                <Accordion type="single" collapsible className="w-full space-y-2">
                     {activeProjects.map((project: any) => {
                         const projectProgress = calculateProjectProgress(project);
                         return (
