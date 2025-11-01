@@ -335,6 +335,8 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         const projectProgress = calculateProjectProgress(project);
                                         const completedStatusNames = ['Completed', 'On Handover'];
                                         
+                                        const isClosingThisMonth = isSameMonth(new Date(), parseISO(project.endDate as unknown as string)) && isSameYear(new Date(), parseISO(project.endDate as unknown as string));
+
                                         let statusBadge;
                                         const isProjectClosed = completedStatusNames.includes(statusName);
                                         const allTasksDone = stats.done === stats.total && stats.total > 0;
@@ -357,7 +359,14 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                           <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
                                               <div className="flex-1 text-left space-y-1">
                                                 <p className="font-semibold">{project.name}</p>
-                                                <p className="text-xs text-muted-foreground">Closing Date: {format(parseISO(project.endDate as unknown as string), 'MMM dd, yyyy')}</p>
+                                                <div className="flex items-center gap-2">
+                                                    <p className="text-xs text-muted-foreground">Closing Date: {format(parseISO(project.endDate as unknown as string), 'MMM dd, yyyy')}</p>
+                                                    {isClosingThisMonth && (
+                                                        <Badge variant="destructive" className="flex items-center gap-1">
+                                                            <CalendarClock className="w-3 h-3" /> Closing Soon
+                                                        </Badge>
+                                                    )}
+                                                </div>
                                               </div>
                                               <div className="flex items-center gap-3 w-full md:w-auto md:min-w-[300px]">
                                                   <Progress value={projectProgress} className="h-2 flex-1" />
