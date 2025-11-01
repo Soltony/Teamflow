@@ -95,7 +95,7 @@ const TaskCollapsible = ({
                 <span className="font-medium">Assignees:</span>
                 <span>{assignees.map(a => a.name).join(', ')}</span>
             </div>
-            <Badge variant="outline">Due: {format(new Date(task.endDate), 'MMM dd, yyyy')}</Badge>
+            <Badge variant="outline">Closing Date: {format(new Date(task.endDate), 'MMM dd, yyyy')}</Badge>
         </div>
         
         {task.updates && task.updates.length > 0 && (
@@ -182,6 +182,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const [expandedProjectIds, setExpandedProjectIds] = useState<string[]>([]);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
+  const [expandedStatusIds, setExpandedStatusIds] = useState<string[]>([]);
 
   const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
 
@@ -258,8 +259,14 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     const newFilter = activeFilter === filterName ? null : filterName;
     setActiveFilter(newFilter);
     if (newFilter === 'closingThisMonth') {
+        const closingProjects = initialTasksByProject.filter((p: any) => projectsClosingThisMonthIds.includes(p.project.id));
+        const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
+        const relevantStatusNames = [...new Set(closingProjects.map((p: any) => statusIdToName.get(p.project.statusId)))].filter(Boolean);
+        
+        setExpandedStatusIds(relevantStatusNames as string[]);
         setExpandedProjectIds(projectsClosingThisMonthIds);
     } else {
+        setExpandedStatusIds([]);
         setExpandedProjectIds([]);
     }
   };
@@ -355,7 +362,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <Accordion type="single" collapsible className="w-full space-y-4">
+          <Accordion type="multiple" className="w-full space-y-4" value={expandedStatusIds} onValueChange={setExpandedStatusIds}>
             {orderedStatuses.map(statusName => {
                 const projects = projectsByStatus[statusName];
                 if (!projects || projects.length === 0) {
