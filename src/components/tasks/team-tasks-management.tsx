@@ -188,19 +188,14 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
     const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
 
-    const grouped = statusOrder.reduce((acc, statusName) => {
-        acc[statusName] = [];
-        return acc;
-    }, {} as Record<string, ProjectWithTasksAndStats[]>);
+    const grouped: Record<string, ProjectWithTasksAndStats[]> = {};
 
     initialTasksByProject.forEach((projectData: any) => {
         const statusName = statusIdToName.get(projectData.project.statusId || '') || 'Unknown';
-        if (grouped[statusName]) {
-            grouped[statusName].push(projectData);
-        } else {
-            if (!grouped['Unknown']) grouped['Unknown'] = [];
-            grouped['Unknown'].push(projectData);
+        if (!grouped[statusName]) {
+            grouped[statusName] = [];
         }
+        grouped[statusName].push(projectData);
     });
 
     for (const status in grouped) {
@@ -208,6 +203,9 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     }
 
     const finalOrderedStatuses = statusOrder.filter(status => grouped[status] && grouped[status].length > 0);
+    if (grouped['Unknown'] && grouped['Unknown'].length > 0) {
+      finalOrderedStatuses.push('Unknown');
+    }
 
     return { projectsByStatus: grouped, orderedStatuses: finalOrderedStatuses };
   }, [initialTasksByProject, projectStatuses]);
@@ -288,19 +286,19 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                 <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || ""} onValueChange={value => { setExpandedProjectId(value); setExpandedTaskId(null);}}>
                                     {projects.map(({ project, tasks, stats }: ProjectWithTasksAndStats) => {
                                         const projectProgress = calculateProjectProgress(project);
-                                        const completedStatusId = projectStatuses.find((s:any) => s.name === 'Completed')?.id;
+                                        const completedStatusNames = ['Completed', 'On Handover'];
                                         
                                         let statusBadge;
-                                        if (project.statusId === completedStatusId) {
+                                        const isProjectClosed = completedStatusNames.includes(statusName);
+
+                                        if (isProjectClosed) {
                                             statusBadge = <Badge className="bg-zinc-500 hover:bg-zinc-500/90 text-primary-foreground">Closed</Badge>;
                                         } else if (stats.pending > 0) {
                                             statusBadge = <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending Review</Badge>;
-                                        } else if (stats.inProgress > 0 || stats.todo > 0) {
-                                            statusBadge = <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">Active</Badge>;
-                                        } else if (stats.total > 0) {
-                                            statusBadge = <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Completed</Badge>;
+                                        } else if (stats.done === stats.total && stats.total > 0) {
+                                            statusBadge = <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Ready to Close</Badge>;
                                         } else {
-                                            statusBadge = <Badge variant="secondary">No Team Tasks</Badge>;
+                                            statusBadge = <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">Active</Badge>;
                                         }
                                       
                                       return (
