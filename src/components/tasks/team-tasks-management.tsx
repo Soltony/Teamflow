@@ -179,14 +179,14 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const { toast } = useToast();
   const router = useRouter();
   const [taskToDecline, setTaskToDecline] = useState<TeamViewTask | null>(null);
-  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [expandedProjectIds, setExpandedProjectIds] = useState<string[]>([]);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
   const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
 
-  const { projectsByStatus, orderedStatuses, projectsClosingThisMonthCount } = useMemo(() => {
-    if (!projectStatuses || !initialTasksByProject) return { projectsByStatus: {}, orderedStatuses: [], projectsClosingThisMonthCount: 0 };
+  const { projectsByStatus, orderedStatuses, projectsClosingThisMonthCount, projectsClosingThisMonthIds } = useMemo(() => {
+    if (!projectStatuses || !initialTasksByProject) return { projectsByStatus: {}, orderedStatuses: [], projectsClosingThisMonthCount: 0, projectsClosingThisMonthIds: [] };
 
     const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
     const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
@@ -194,22 +194,21 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     const grouped: Record<string, ProjectWithTasksAndStats[]> = {};
     const now = new Date();
     let closingThisMonthCount = 0;
+    const closingIds: string[] = [];
     
     let projectsToDisplay = initialTasksByProject;
-    
-    if (activeFilter === 'closingThisMonth') {
-        projectsToDisplay = initialTasksByProject.filter((projectData: any) => {
-            const closingDate = parseISO(projectData.project.endDate);
-            return isSameMonth(now, closingDate) && isSameYear(now, closingDate);
-        });
-    }
     
     initialTasksByProject.forEach((projectData: any) => {
         const closingDate = parseISO(projectData.project.endDate);
         if (isSameMonth(now, closingDate) && isSameYear(now, closingDate)) {
             closingThisMonthCount++;
+            closingIds.push(projectData.project.id);
         }
     });
+
+    if (activeFilter === 'closingThisMonth') {
+        projectsToDisplay = initialTasksByProject.filter((projectData: any) => closingIds.includes(projectData.project.id));
+    }
 
     projectsToDisplay.forEach((projectData: any) => {
         const statusName = statusIdToName.get(projectData.project.statusId || '') || 'Unknown';
@@ -231,7 +230,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
         }
     });
 
-    return { projectsByStatus: grouped, orderedStatuses: finalOrderedStatuses, projectsClosingThisMonthCount: closingThisMonthCount };
+    return { projectsByStatus: grouped, orderedStatuses: finalOrderedStatuses, projectsClosingThisMonthCount: closingThisMonthCount, projectsClosingThisMonthIds: closingIds };
   }, [initialTasksByProject, projectStatuses, activeFilter]);
   
   const handleApprove = async (task: TeamViewTask) => {
@@ -256,7 +255,22 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   };
   
   const toggleFilter = (filterName: string) => {
-    setActiveFilter(prev => (prev === filterName ? null : filterName));
+    const newFilter = activeFilter === filterName ? null : filterName;
+    setActiveFilter(newFilter);
+    if (newFilter === 'closingThisMonth') {
+        setExpandedProjectIds(projectsClosingThisMonthIds);
+    } else {
+        setExpandedProjectIds([]);
+    }
+  };
+
+  const handleProjectAccordionChange = (value: string | string[]) => {
+    if (Array.isArray(value)) {
+        setExpandedProjectIds(value);
+    } else {
+        setExpandedProjectIds(value ? [value] : []);
+    }
+    setExpandedTaskId(null);
   };
   
   if (ledTeams.length === 0) {
@@ -354,7 +368,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                 {statusName} Projects ({projects.length})
                             </AccordionTrigger>
                             <AccordionContent className="px-4 pb-4">
-                                <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || ""} onValueChange={value => { setExpandedProjectId(value); setExpandedTaskId(null);}}>
+                                <Accordion type="multiple" className="w-full space-y-4" value={expandedProjectIds} onValueChange={handleProjectAccordionChange}>
                                     {projects.map(({ project, tasks, stats }: ProjectWithTasksAndStats) => {
                                         const projectProgress = calculateProjectProgress(project);
                                         const completedStatusNames = ['Completed', 'On Handover'];
