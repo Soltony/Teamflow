@@ -284,7 +284,7 @@ export function ProjectListItem({
               </div>
               <div className="flex items-center gap-2">
                   <Calendar className="w-4 h-4" />
-                  <span>{format(parseISO(project.startDate), "MMM d")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
+                  <span>Closing Date: {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
               </div>
           </div>
         </CardHeader>
@@ -544,7 +544,7 @@ export function ProjectCard({ project, href }: { project: any, href?: string }) 
           </CardContent>
           <CardFooter className="flex justify-between text-xs text-muted-foreground">
               <span>{project.status.name}</span>
-              <span>Due: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
+              <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
           </CardFooter>
       </Card>
     );
