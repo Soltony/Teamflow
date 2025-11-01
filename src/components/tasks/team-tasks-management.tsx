@@ -200,7 +200,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     let projectsToDisplay = initialTasksByProject;
     
     initialTasksByProject.forEach((projectData: any) => {
-        const closingDate = parseISO(projectData.project.endDate);
+        const closingDate = parseISO(projectData.project.endDate as unknown as string);
         if (isSameMonth(now, closingDate) && isSameYear(now, closingDate)) {
             closingThisMonthCount++;
             closingIds.push(projectData.project.id);
@@ -423,7 +423,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         </AccordionTrigger>
                                         <AccordionContent className="p-4 pt-0">
                                            {tasks.length > 0 ? (
-                                             <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
+                                             <Accordion type="single" collapsible className="w-full space-y-2">
                                               {tasks.sort((a: TeamViewTask, b: TeamViewTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((task: TeamViewTask) => (
                                                 <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-muted/50">
                                                     <AccordionTrigger className="hover:no-underline">
