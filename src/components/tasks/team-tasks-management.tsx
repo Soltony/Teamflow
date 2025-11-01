@@ -16,8 +16,8 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { ProjectStatus, User, Team, TaskUpdate } from "@/lib/types";
-import { format, formatDistanceToNow, parseISO } from "date-fns";
-import { CheckCircle, XCircle, User as UserIcon } from "lucide-react";
+import { format, formatDistanceToNow, isSameMonth, isSameYear, parseISO } from "date-fns";
+import { CheckCircle, XCircle, User as UserIcon, CalendarClock } from "lucide-react";
 import { type ProjectWithTasksAndStats, type TeamViewTask } from "@/app/team-view/page";
 import { approveTaskAction, declineTaskAction } from "@/app/team-view/actions";
 import { Progress } from "../ui/progress";
@@ -182,13 +182,15 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
 
-  const { projectsByStatus, orderedStatuses } = useMemo(() => {
-    if (!projectStatuses || !initialTasksByProject) return { projectsByStatus: {}, orderedStatuses: [] };
+  const { projectsByStatus, orderedStatuses, projectsClosingThisMonthCount } = useMemo(() => {
+    if (!projectStatuses || !initialTasksByProject) return { projectsByStatus: {}, orderedStatuses: [], projectsClosingThisMonthCount: 0 };
 
     const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
     const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
 
     const grouped: Record<string, ProjectWithTasksAndStats[]> = {};
+    const now = new Date();
+    let closingThisMonthCount = 0;
 
     initialTasksByProject.forEach((projectData: any) => {
         const statusName = statusIdToName.get(projectData.project.statusId || '') || 'Unknown';
@@ -196,6 +198,11 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
             grouped[statusName] = [];
         }
         grouped[statusName].push(projectData);
+        
+        const closingDate = parseISO(projectData.project.endDate);
+        if (isSameMonth(now, closingDate) && isSameYear(now, closingDate)) {
+            closingThisMonthCount++;
+        }
     });
 
     for (const status in grouped) {
@@ -204,14 +211,13 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
 
     const finalOrderedStatuses = statusOrder.filter(status => grouped[status] && grouped[status].length > 0);
     
-    // Add any other statuses that might not be in the predefined order but have projects
     Object.keys(grouped).forEach(statusName => {
         if (!finalOrderedStatuses.includes(statusName)) {
             finalOrderedStatuses.push(statusName);
         }
     });
 
-    return { projectsByStatus: grouped, orderedStatuses: finalOrderedStatuses };
+    return { projectsByStatus: grouped, orderedStatuses: finalOrderedStatuses, projectsClosingThisMonthCount: closingThisMonthCount };
   }, [initialTasksByProject, projectStatuses]);
   
   const handleApprove = async (task: TeamViewTask) => {
@@ -266,6 +272,43 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
               Review and manage tasks assigned to your team members. You can approve or decline work that is pending review.
             </CardDescription>
           </CardHeader>
+           <CardContent>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Your Teams</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">{ledTeams.length}</div>
+                      </CardContent>
+                  </Card>
+                  <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Projects Involved In</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">{initialTasksByProject.length}</div>
+                      </CardContent>
+                  </Card>
+                   <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">{initialTasksByProject.reduce((acc: number, p: any) => acc + p.stats.pending, 0)}</div>
+                      </CardContent>
+                  </Card>
+                  <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Closing This Month</CardTitle>
+                           <CalendarClock className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">{projectsClosingThisMonthCount}</div>
+                      </CardContent>
+                  </Card>
+              </div>
+          </CardContent>
         </Card>
         
         {initialTasksByProject.length === 0 ? (
