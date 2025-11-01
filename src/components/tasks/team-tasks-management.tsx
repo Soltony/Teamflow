@@ -203,9 +203,13 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     }
 
     const finalOrderedStatuses = statusOrder.filter(status => grouped[status] && grouped[status].length > 0);
-    if (grouped['Unknown'] && grouped['Unknown'].length > 0) {
-      finalOrderedStatuses.push('Unknown');
-    }
+    
+    // Add any other statuses that might not be in the predefined order but have projects
+    Object.keys(grouped).forEach(statusName => {
+        if (!finalOrderedStatuses.includes(statusName)) {
+            finalOrderedStatuses.push(statusName);
+        }
+    });
 
     return { projectsByStatus: grouped, orderedStatuses: finalOrderedStatuses };
   }, [initialTasksByProject, projectStatuses]);
@@ -290,13 +294,16 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         
                                         let statusBadge;
                                         const isProjectClosed = completedStatusNames.includes(statusName);
+                                        const allTasksDone = stats.done === stats.total && stats.total > 0;
 
                                         if (isProjectClosed) {
                                             statusBadge = <Badge className="bg-zinc-500 hover:bg-zinc-500/90 text-primary-foreground">Closed</Badge>;
                                         } else if (stats.pending > 0) {
                                             statusBadge = <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending Review</Badge>;
-                                        } else if (stats.done === stats.total && stats.total > 0) {
+                                        } else if (allTasksDone && Math.round(projectProgress) >= 100) {
                                             statusBadge = <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Ready to Close</Badge>;
+                                        } else if (allTasksDone) {
+                                            statusBadge = <Badge className="bg-sky-600 hover:bg-sky-600/90 text-primary-foreground">All Tasks Done</Badge>;
                                         } else {
                                             statusBadge = <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">Active</Badge>;
                                         }
