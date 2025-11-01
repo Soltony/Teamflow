@@ -1,5 +1,4 @@
 
-
 "use client";
 
 import { useMemo, useState, useEffect } from "react";
@@ -316,7 +315,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                                   <Progress value={projectProgress} className="h-2 flex-1" />
                                                   <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
                                                   {statusBadge}
-                                                  <Badge variant="outline">Tasks: {stats.total}</Badge>
+                                                  <Badge variant="outline">Tasks: ({stats.done}/{stats.total})</Badge>
                                               </div>
                                           </div>
                                         </AccordionTrigger>
