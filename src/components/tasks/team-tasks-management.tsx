@@ -255,7 +255,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   }
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
+      <div className="p-4 sm:p-6 space-y-6">
         <Card>
           <CardHeader>
             <CardTitle>Team Task View</CardTitle>
@@ -271,7 +271,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <Accordion type="single" collapsible className="w-full space-y-4" defaultValue="Active">
+          <Accordion type="single" collapsible className="w-full space-y-4">
             {orderedStatuses.map(statusName => {
                 const projects = projectsByStatus[statusName];
                 if (!projects || projects.length === 0) {
