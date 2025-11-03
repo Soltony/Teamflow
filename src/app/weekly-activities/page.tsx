@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -197,9 +198,7 @@ const ProjectAccordion = ({ project, weekInterval, userMap }: {
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
-                                        <h3 className="text-lg font-bold hover:underline truncate">{project.name}</h3>
-                                    </Link>
+                                    <h3 className="text-lg font-bold hover:underline truncate">{project.name}</h3>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <p>{project.name}</p>
