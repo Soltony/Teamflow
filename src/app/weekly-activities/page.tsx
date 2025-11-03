@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -185,7 +186,16 @@ const ProjectCard = ({ project, isExpanded, onToggleExpand, weekInterval }: { pr
             <CardHeader>
                 <div className="flex justify-between items-start gap-4">
                     <Link href={`/projects/${project.id}`} className="flex-1 truncate">
-                        <CardTitle className="text-lg font-bold hover:underline">{project.name}</CardTitle>
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <CardTitle className="text-lg font-bold hover:underline truncate">{project.name}</CardTitle>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{project.name}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
                     </Link>
                     <Badge variant="outline" className="text-xs">
                         {project.status.name}
