@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -12,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Task, User, TaskUpdate } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isToday, parseISO, format, formatDistanceToNow, addDays, subDays, isSameDay } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Search, ListTodo, CalendarIcon, ChevronLeft, ChevronRight, XCircle, Briefcase } from 'lucide-react';
+import { Clock, Edit3, CheckCircle, Search, ListTodo, CalendarIcon, ChevronLeft, ChevronRight, Briefcase, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -21,7 +22,6 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress';
 
 type TaskWithRelations = Task & { 
     assignees: User[],
@@ -187,55 +187,47 @@ const ProjectAccordion = ({ project, userMap }: {
         }
     };
     
-    const projectProgress = calculateProjectProgress(project);
-
     return (
-        <AccordionItem value={project.id} className="border-none">
-            <Card>
-                <AccordionTrigger className="p-4 hover:no-underline">
-                     <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
-                        <div className="flex-1 text-left space-y-1">
-                            <TooltipProvider>
-                                <Tooltip>
-                                    <TooltipTrigger asChild>
-                                        <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
-                                            <h3 className="text-lg font-bold hover:underline truncate">{project.name}</h3>
-                                        </Link>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>{project.name}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            </TooltipProvider>
-                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                                <div className="flex items-center gap-1.5">
-                                    <CalendarIcon className="h-4 w-4" />
-                                    <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
-                                </div>
-                                <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
+        <Card>
+            <AccordionTrigger className="p-4 hover:no-underline">
+                 <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
+                    <div className="flex-1 text-left space-y-1">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
+                                        <h3 className="text-lg font-bold hover:underline truncate">{project.name}</h3>
+                                    </Link>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{project.name}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                                <CalendarIcon className="h-4 w-4" />
+                                <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
                             </div>
-                        </div>
-                         <div className="flex items-center gap-3 w-full md:w-auto md:min-w-[200px]">
-                            <Progress value={projectProgress} className="h-2 flex-1" />
-                            <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
+                            <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
                         </div>
                     </div>
-                </AccordionTrigger>
-                <AccordionContent className="p-4 pt-0">
-                    <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
-                        {project.tasks.length > 0 ? (
-                            project.tasks.map(task => (
-                                <TaskItem key={task.id} task={task} userMap={userMap} />
-                            ))
-                        ) : (
-                            <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
-                                No activity recorded for this project today.
-                            </div>
-                        )}
-                    </Accordion>
-                </AccordionContent>
-            </Card>
-        </AccordionItem>
+                </div>
+            </AccordionTrigger>
+            <AccordionContent className="p-4 pt-0">
+                <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
+                    {project.tasks.length > 0 ? (
+                        project.tasks.map(task => (
+                            <TaskItem key={task.id} task={task} userMap={userMap} />
+                        ))
+                    ) : (
+                        <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
+                            No activity recorded for this project today.
+                        </div>
+                    )}
+                </Accordion>
+            </AccordionContent>
+        </Card>
     );
 };
 
@@ -244,7 +236,7 @@ export default function TodayPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[], stats: any}>({projects: [], users: [], stats: { projectsActive: 0, tasksUpdated: 0, tasksCompleted: 0, tasksDueTomorrow: 0 }});
+  const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[], stats: any}>({projects: [], users: [], stats: { projectsActive: 0, tasksUpdated: 0, tasksCompleted: 0 }});
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
@@ -335,7 +327,6 @@ export default function TodayPage() {
               <div className="flex items-center gap-2">
                   <Button variant="ghost" size="sm" onClick={() => handleDateChange(subDays(new Date(), 1))}>Yesterday</Button>
                   <Button variant="ghost" size="sm" onClick={() => handleDateChange(new Date())} disabled={isSameDay(date, new Date())}>Today</Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDateChange(addDays(new Date(), 1))}>Tomorrow</Button>
               </div>
               <div className="relative flex-1 sm:max-w-xs w-full">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -349,7 +340,7 @@ export default function TodayPage() {
               </div>
           </div>
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
@@ -380,16 +371,6 @@ export default function TodayPage() {
                     <p className="text-xs text-muted-foreground">Tasks marked as 'Done' today</p>
                 </CardContent>
             </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">Due Tomorrow</CardTitle>
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                    <div className="text-2xl font-bold">{data.stats.tasksDueTomorrow}</div>
-                    <p className="text-xs text-muted-foreground">Upcoming task deadlines</p>
-                </CardContent>
-            </Card>
         </div>
       </div>
       
@@ -402,11 +383,12 @@ export default function TodayPage() {
             onValueChange={setExpandedProjectId}
         >
           {filteredProjects.map((project: ProjectWithTasks) => (
-            <ProjectAccordion 
-              key={project.id} 
-              project={project}
-              userMap={userMap}
-            />
+            <AccordionItem value={project.id} key={project.id} className="border-none">
+              <ProjectAccordion 
+                project={project}
+                userMap={userMap}
+              />
+            </AccordionItem>
           ))}
         </Accordion>
       ) : (

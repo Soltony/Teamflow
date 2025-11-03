@@ -7,9 +7,6 @@ import { startOfDay, endOfDay, addDays } from 'date-fns';
 export async function getTodaysTasks(userId?: string, targetDate: Date = new Date()) {
     const dayStart = startOfDay(targetDate);
     const dayEnd = endOfDay(targetDate);
-    
-    const tomorrowStart = startOfDay(addDays(targetDate, 1));
-    const tomorrowEnd = endOfDay(addDays(targetDate, 1));
 
     // Check if user has admin-level permissions (can see all projects)
     let hasAdminPermissions = false;
@@ -134,19 +131,6 @@ export async function getTodaysTasks(userId?: string, targetDate: Date = new Dat
         },
     });
     
-    const tasksDueTomorrow = await prisma.task.count({
-        where: {
-            milestone: { project: projectWhereClause },
-            endDate: {
-                gte: tomorrowStart,
-                lte: tomorrowEnd,
-            },
-            status: {
-                not: 'DONE'
-            }
-        }
-    });
-
     const projectsMap = new Map<string, any>();
 
     tasks.forEach(task => {
@@ -174,7 +158,6 @@ export async function getTodaysTasks(userId?: string, targetDate: Date = new Dat
         projectsActive: projectsMap.size,
         tasksUpdated: tasks.filter(t => t.updates.some(u => u.createdAt >= dayStart && u.createdAt <= dayEnd)).length,
         tasksCompleted: tasks.filter(t => t.completedAt && t.completedAt >= dayStart && t.completedAt <= dayEnd).length,
-        tasksDueTomorrow: tasksDueTomorrow,
     };
 
     return {

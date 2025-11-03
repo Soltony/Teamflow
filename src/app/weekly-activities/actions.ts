@@ -7,10 +7,6 @@ import { startOfWeek, endOfWeek } from 'date-fns';
 export async function getWeeklyTasks(userId?: string, targetDate: Date = new Date()) {
     const weekStart = startOfWeek(targetDate, { weekStartsOn: 1 }); // Monday
     const weekEnd = endOfWeek(targetDate, { weekStartsOn: 1 }); // Sunday
-    
-    const nextWeekStart = startOfWeek(new Date(weekStart.getTime() + 7 * 24 * 60 * 60 * 1000), { weekStartsOn: 1 });
-    const nextWeekEnd = endOfWeek(nextWeekStart, { weekStartsOn: 1 });
-
 
     // Check if user has admin-level permissions (can see all projects)
     let hasAdminPermissions = false;
@@ -135,19 +131,6 @@ export async function getWeeklyTasks(userId?: string, targetDate: Date = new Dat
         },
     });
 
-    const nextWeekDueTasks = await prisma.task.count({
-        where: {
-            milestone: { project: projectWhereClause },
-            endDate: {
-                gte: nextWeekStart,
-                lte: nextWeekEnd,
-            },
-            status: {
-                not: 'DONE'
-            }
-        }
-    });
-
     const projectsMap = new Map<string, any>();
 
     tasks.forEach(task => {
@@ -175,7 +158,6 @@ export async function getWeeklyTasks(userId?: string, targetDate: Date = new Dat
         projectsActive: projectsMap.size,
         tasksUpdated: tasks.filter(t => t.updates.some(u => u.createdAt >= weekStart && u.createdAt <= weekEnd)).length,
         tasksCompleted: tasks.filter(t => t.completedAt && t.completedAt >= weekStart && t.completedAt <= weekEnd).length,
-        tasksDueNextWeek: nextWeekDueTasks,
     };
 
     return {
