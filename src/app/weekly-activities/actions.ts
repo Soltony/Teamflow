@@ -156,6 +156,7 @@ export async function getWeeklyTasks(userId?: string, targetDate: Date = new Dat
 
     const activityStats = {
         projectsActive: projectsMap.size,
+        tasksWithActivity: tasks.length,
         tasksUpdated: tasks.filter(t => t.updates.some(u => u.createdAt >= weekStart && u.createdAt <= weekEnd)).length,
         tasksCompleted: tasks.filter(t => t.completedAt && t.completedAt >= weekStart && t.completedAt <= weekEnd).length,
     };

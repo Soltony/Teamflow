@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -13,7 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Task, User, TaskUpdate } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isWithinInterval, parseISO, format, startOfWeek, endOfWeek, addDays, subDays, isSameDay, formatDistanceToNow } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Search, CalendarClock, ChevronLeft, ChevronRight, CalendarIcon, Briefcase, XCircle, ChevronDown } from 'lucide-react';
+import { Clock, Edit3, CheckCircle, Search, CalendarClock, ChevronLeft, ChevronRight, CalendarIcon, Briefcase, XCircle, Activity } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -243,7 +242,7 @@ export default function WeeklyActivitiesPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
 
-  const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[], stats: any}>({projects: [], users: [], stats: { projectsActive: 0, tasksUpdated: 0, tasksCompleted: 0 }});
+  const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[], stats: any}>({projects: [], users: [], stats: { projectsActive: 0, tasksWithActivity: 0, tasksUpdated: 0, tasksCompleted: 0 }});
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
@@ -351,7 +350,7 @@ export default function WeeklyActivitiesPage() {
                   </div>
               </div>
 
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
                   <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                           <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
@@ -360,6 +359,16 @@ export default function WeeklyActivitiesPage() {
                       <CardContent>
                           <div className="text-2xl font-bold">{data.stats.projectsActive}</div>
                           <p className="text-xs text-muted-foreground">Projects with activity this week</p>
+                      </CardContent>
+                  </Card>
+                   <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Tasks with Activity</CardTitle>
+                          <Activity className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">{data.stats.tasksWithActivity}</div>
+                          <p className="text-xs text-muted-foreground">Due, updated, or completed</p>
                       </CardContent>
                   </Card>
                   <Card>

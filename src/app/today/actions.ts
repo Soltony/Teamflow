@@ -156,6 +156,7 @@ export async function getTodaysTasks(userId?: string, targetDate: Date = new Dat
     
     const activityStats = {
         projectsActive: projectsMap.size,
+        tasksWithActivity: tasks.length,
         tasksUpdated: tasks.filter(t => t.updates.some(u => u.createdAt >= dayStart && u.createdAt <= dayEnd)).length,
         tasksCompleted: tasks.filter(t => t.completedAt && t.completedAt >= dayStart && t.completedAt <= dayEnd).length,
     };
