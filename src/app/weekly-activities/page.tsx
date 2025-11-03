@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Task, User, TaskUpdate } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isWithinInterval, parseISO, format, startOfWeek, endOfWeek, addDays, subDays, isSameDay, formatDistanceToNow } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Search, CalendarDays, ChevronLeft, ChevronRight, CalendarIcon, Briefcase, XCircle } from 'lucide-react';
+import { Clock, Edit3, CheckCircle, Search, CalendarClock, ChevronLeft, ChevronRight, CalendarIcon, Briefcase, XCircle, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 
 type TaskWithRelations = Task & { 
     assignees: User[],
@@ -37,6 +38,7 @@ type TaskWithRelations = Task & {
             pmoDivision: { name: string };
             startDate: string;
             endDate: string;
+            milestones: any[];
         };
     };
 };
@@ -159,6 +161,35 @@ const ProjectAccordion = ({ project, weekInterval, userMap }: {
     const totalTasks = project.tasks.length;
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
+    const calculateMilestoneProgress = (milestone: any) => {
+        if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+        const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
+            const taskProgress = task.progress || 0;
+            return acc + (taskProgress * (task.weight / 100));
+        }, 0);
+        return totalProgress;
+    };
+
+    const calculateProjectProgress = (proj: any) => {
+        if (!proj.milestones || proj.milestones.length === 0) return 0;
+        const weightedMilestones = proj.milestones.filter((m: any) => m.weight > 0);
+        if (weightedMilestones.length > 0) {
+            return weightedMilestones.reduce((acc: number, milestone: any) => acc + (calculateMilestoneProgress(milestone) * (milestone.weight / 100)), 0);
+        } else {
+            const allTasks = proj.milestones.flatMap((m: any) => m.tasks);
+            if (allTasks.length === 0) return 0;
+            const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+            if (totalTaskWeight === 0) {
+                const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
+                return totalProgress / allTasks.length;
+            }
+            const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => acc + ((task.progress || 0) * task.weight), 0);
+            return totalWeightedTaskProgress / totalTaskWeight;
+        }
+    };
+    
+    const projectProgress = calculateProjectProgress(project);
+
     return (
         <Card>
             <AccordionTrigger className="p-4 hover:no-underline">
@@ -178,11 +209,15 @@ const ProjectAccordion = ({ project, weekInterval, userMap }: {
                         </TooltipProvider>
                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1.5">
-                                <CalendarIcon className="h-4 w-4" />
+                                <CalendarClock className="h-4 w-4" />
                                 <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
                             </div>
-                            <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
                         </div>
+                    </div>
+                    <div className="flex items-center gap-3 w-full md:w-auto">
+                        <Progress value={projectProgress} className="h-2 flex-1" />
+                        <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
+                        <Badge variant="outline">Tasks: {totalTasks}</Badge>
                     </div>
                 </div>
             </AccordionTrigger>
@@ -279,7 +314,7 @@ export default function WeeklyActivitiesPage() {
       <div className="p-4 sm:p-6 space-y-6">
           <div className="space-y-4">
               <div className="space-y-1">
-                  <h1 className="text-2xl font-bold flex items-center gap-2"><CalendarDays className="w-6 h-6"/> Weekly Activities</h1>
+                  <h1 className="text-2xl font-bold flex items-center gap-2"><CalendarIcon className="w-6 h-6"/> Weekly Activities</h1>
                   <p className="text-sm text-muted-foreground max-w-2xl">
                       A weekly overview of your team's progress, completions, and upcoming deadlines.
                   </p>

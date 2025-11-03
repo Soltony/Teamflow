@@ -9,11 +9,11 @@ import { getTodaysTasks } from './actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip';
 import type { Task, User, TaskUpdate } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isToday, parseISO, format, formatDistanceToNow, addDays, subDays, isSameDay } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Search, ListTodo, CalendarIcon, ChevronLeft, ChevronRight, Briefcase, XCircle } from 'lucide-react';
+import { Clock, Edit3, CheckCircle, Search, CalendarClock, CalendarIcon, ChevronLeft, ChevronRight, Briefcase, XCircle, CalendarCheck, ChevronDown } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 
 type TaskWithRelations = Task & { 
     assignees: User[],
@@ -37,6 +38,7 @@ type TaskWithRelations = Task & {
             pmoDivision: { name: string };
             startDate: string;
             endDate: string;
+            milestones: any[];
         };
     };
 };
@@ -78,7 +80,7 @@ const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<str
                                 {task.title}
                             </Link>
                         </div>
-                        <div className="flex flex-wrap gap-1">
+                         <div className="flex flex-wrap gap-1">
                           {isToday(parseISO(task.endDate as unknown as string)) && task.status !== 'DONE' && (
                                 <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
                                     <Clock className="w-3 h-3" /> Due Today
@@ -187,6 +189,8 @@ const ProjectAccordion = ({ project, userMap }: {
         }
     };
     
+    const projectProgress = calculateProjectProgress(project);
+    
     return (
         <Card>
             <AccordionTrigger className="p-4 hover:no-underline">
@@ -204,13 +208,17 @@ const ProjectAccordion = ({ project, userMap }: {
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                         <div className="flex items-center gap-3 text-sm text-muted-foreground">
                             <div className="flex items-center gap-1.5">
-                                <CalendarIcon className="h-4 w-4" />
+                                <CalendarClock className="h-4 w-4" />
                                 <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
                             </div>
-                            <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
                         </div>
+                    </div>
+                     <div className="flex items-center gap-3 w-full md:w-auto">
+                        <Progress value={projectProgress} className="h-2 flex-1" />
+                        <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
+                        <Badge variant="outline">Tasks: {totalTasks}</Badge>
                     </div>
                 </div>
             </AccordionTrigger>
@@ -303,7 +311,7 @@ export default function TodayPage() {
     <div className="p-4 sm:p-6 space-y-6">
       <div className="space-y-4">
         <div className="space-y-1">
-            <h1 className="text-2xl font-bold flex items-center gap-2"><ListTodo className="w-6 h-6"/> Today's Activity</h1>
+            <h1 className="text-2xl font-bold flex items-center gap-2"><CalendarCheck className="w-6 h-6"/> Today's Activity</h1>
             <p className="text-sm text-muted-foreground max-w-2xl">
               A real-time picture of your team’s daily progress — showing what’s due and what’s getting done.
             </p>
