@@ -36,6 +36,7 @@ type TaskWithAssigneesAndUpdates = Task & {
             pmoDivision: { name: string };
             startDate: string;
             endDate: string;
+            milestones: any[];
         };
     };
 };
@@ -50,6 +51,7 @@ type ProjectWithTasks = {
   startDate: string;
   endDate: string;
   tasks: TaskWithAssigneesAndUpdates[];
+  milestones: any[];
 };
 
 function LoadingSkeleton() {
@@ -114,40 +116,41 @@ const TaskItem = ({ task, weekInterval }: { task: TaskWithAssigneesAndUpdates, w
     return (
         <TooltipProvider>
             <div className="p-3 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-                <div className="flex justify-between items-start mb-2 gap-2">
-                    <div className="flex-1 min-w-0">
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                 <Link href={`/tasks/${task.id}`} className="hover:underline">
-                                    <h4 className="font-semibold text-sm truncate">{shortTitle}</h4>
-                                </Link>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{task.title}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </div>
-                    <div className="flex -space-x-2 flex-shrink-0">
-                        {task.assignees.slice(0, 3).map(assignee => (
-                            <Tooltip key={assignee.id}>
-                                <TooltipTrigger>
-                                    <Avatar className="h-5 w-5 border-2 border-background">
-                                        <AvatarImage src={assignee.avatar || undefined} />
-                                        <AvatarFallback className="text-xs">{assignee.name.charAt(0)}</AvatarFallback>
-                                    </Avatar>
+                <Link href={`/tasks/${task.id}`} className="hover:underline">
+                    <div className="flex justify-between items-start mb-2 gap-2">
+                        <div className="flex-1 min-w-0">
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    
+                                        <h4 className="font-semibold text-sm truncate">{shortTitle}</h4>
                                 </TooltipTrigger>
                                 <TooltipContent>
-                                    <p>{assignee.name}</p>
+                                    <p>{task.title}</p>
                                 </TooltipContent>
                             </Tooltip>
-                        ))}
-                        {task.assignees.length > 3 && (
-                            <div className="h-5 w-5 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                                <span className="text-[10px] font-semibold">+{task.assignees.length - 3}</span>
-                            </div>
-                        )}
+                        </div>
+                        <div className="flex -space-x-2 flex-shrink-0">
+                            {task.assignees.slice(0, 3).map(assignee => (
+                                <Tooltip key={assignee.id}>
+                                    <TooltipTrigger>
+                                        <Avatar className="h-5 w-5 border-2 border-background">
+                                            <AvatarImage src={assignee.avatar || undefined} />
+                                            <AvatarFallback className="text-xs">{assignee.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{assignee.name}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            ))}
+                            {task.assignees.length > 3 && (
+                                <div className="h-5 w-5 rounded-full bg-muted border-2 border-background flex items-center justify-center">
+                                    <span className="text-[10px] font-semibold">+{task.assignees.length - 3}</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
-                </div>
+                </Link>
                 
                 {!wasCompletedThisWeek && (
                     <div className="flex items-center gap-2 mb-2">
@@ -178,14 +181,49 @@ const TaskItem = ({ task, weekInterval }: { task: TaskWithAssigneesAndUpdates, w
     );
 };
 
+const calculateMilestoneProgress = (milestone: any) => {
+    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
+        const taskProgress = task.progress || 0;
+        return acc + (taskProgress * (task.weight / 100));
+    }, 0);
+    return totalProgress;
+};
+
+const calculateProjectProgress = (project: ProjectWithTasks) => {
+    if (!project.milestones || project.milestones.length === 0) {
+        return 0;
+    }
+    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
+    if (weightedMilestones.length > 0) {
+        return weightedMilestones.reduce((acc: number, milestone: any) => {
+            const milestoneProgress = calculateMilestoneProgress(milestone);
+            return acc + (milestoneProgress * (milestone.weight / 100));
+        }, 0);
+    } else {
+        const allTasks = project.milestones.flatMap((m: any) => m.tasks);
+        if (allTasks.length === 0) return 0;
+        const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+        if (totalTaskWeight === 0) {
+            const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
+            return allTasks.length > 0 ? totalProgress / allTasks.length : 0;
+        }
+        const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
+            return acc + ((task.progress || 0) * task.weight);
+        }, 0);
+        return totalWeightedTaskProgress / totalTaskWeight;
+    }
+};
+
 const ProjectCard = ({ project, isExpanded, onToggleExpand, weekInterval }: { project: ProjectWithTasks, isExpanded: boolean, onToggleExpand: () => void, weekInterval: {start: Date, end: Date} }) => {
     const totalTasks = project.tasks.length;
+    const projectProgress = calculateProjectProgress(project);
     
     return (
         <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
-            <CardHeader>
+            <CardHeader className="cursor-pointer" onClick={onToggleExpand}>
                 <div className="flex justify-between items-start gap-4">
-                    <Link href={`/projects/${project.id}`} className="flex-1 truncate">
+                    <Link href={`/projects/${project.id}`} className="flex-1 truncate" onClick={(e) => e.stopPropagation()}>
                         <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
@@ -197,49 +235,29 @@ const ProjectCard = ({ project, isExpanded, onToggleExpand, weekInterval }: { pr
                             </Tooltip>
                         </TooltipProvider>
                     </Link>
-                    <Badge variant="outline" className="text-xs">
-                        {project.status.name}
-                    </Badge>
                 </div>
-                <CardDescription className="line-clamp-2 text-sm">{project.description}</CardDescription>
-                <div className="flex flex-col gap-1 text-xs text-muted-foreground pt-2">
-                    <div className="flex items-center gap-2">
-                        <Crown className="w-3 h-3" />
-                        <span>Lead: {project.projectManager.name}</span>
-                    </div>
-                    <div className="text-xs text-muted-foreground">
-                        PMO: {project.pmoDivision.name}
-                    </div>
+                <div className="flex items-center gap-3 pt-2">
+                    <Progress value={projectProgress} className="h-2 flex-1" />
+                    <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
+                    <Badge variant="outline">Tasks: {totalTasks}</Badge>
                 </div>
             </CardHeader>
 
-            <CardContent className="flex-grow flex flex-col justify-end pt-0">
-                <div className="space-y-3">
-                    <div 
-                        className="flex justify-between items-center cursor-pointer"
-                        onClick={onToggleExpand}
-                    >
-                        <h4 className="font-semibold text-sm">Weekly Activity ({totalTasks})</h4>
-                        <div className="cursor-pointer p-1">
-                            <ChevronDown className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                        </div>
+            {isExpanded && (
+                 <CardContent className="flex-grow flex flex-col justify-end pt-0">
+                    <div className="space-y-3">
+                        {project.tasks.length > 0 ? (
+                            project.tasks.map(task => (
+                                <TaskItem key={task.id} task={task} weekInterval={weekInterval} />
+                            ))
+                        ) : (
+                            <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
+                                No activity recorded for this project this week.
+                            </div>
+                        )}
                     </div>
-                    
-                    {isExpanded && (
-                        <div className="space-y-2">
-                            {project.tasks.length > 0 ? (
-                                project.tasks.map(task => (
-                                    <TaskItem key={task.id} task={task} weekInterval={weekInterval} />
-                                ))
-                            ) : (
-                                <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
-                                    No activity recorded for this project this week.
-                                </div>
-                            )}
-                        </div>
-                    )}
-                </div>
-            </CardContent>
+                </CardContent>
+            )}
         </Card>
     );
 };
@@ -425,5 +443,3 @@ export default function WeeklyActivitiesPage() {
         </div>
     );
 }
-
-    
