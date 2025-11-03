@@ -67,7 +67,7 @@ function LoadingSkeleton() {
   );
 }
 
-const TaskItem = ({ task, weekInterval, userMap, onToggleExpand, isExpanded }: { task: TaskWithRelations, weekInterval: {start: Date, end: Date}, userMap: Map<string, User>, onToggleExpand: () => void, isExpanded: boolean }) => {
+const TaskItem = ({ task, weekInterval, userMap }: { task: TaskWithRelations, weekInterval: {start: Date, end: Date}, userMap: Map<string, User> }) => {
     const isDueThisWeek = isWithinInterval(parseISO(task.endDate as unknown as string), weekInterval);
     const wasCompletedThisWeek = task.completedAt && isWithinInterval(parseISO(task.completedAt as unknown as string), weekInterval);
     
@@ -83,7 +83,7 @@ const TaskItem = ({ task, weekInterval, userMap, onToggleExpand, isExpanded }: {
 
     return (
         <AccordionItem value={task.id} className="border rounded-md bg-muted/30">
-            <AccordionTrigger className="p-3 hover:no-underline" onClick={onToggleExpand}>
+            <AccordionTrigger className="p-3 hover:no-underline">
                 <div className="flex justify-between items-start gap-2 w-full">
                     <div className="flex-1 text-left space-y-1">
                         <p className="font-semibold text-sm">{task.title}</p>
@@ -93,7 +93,6 @@ const TaskItem = ({ task, weekInterval, userMap, onToggleExpand, isExpanded }: {
                         <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
                             {task.progress || 0}%
                         </span>
-                        <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")} />
                     </div>
                 </div>
             </AccordionTrigger>
@@ -214,7 +213,7 @@ const ProjectCard = ({ project, weekInterval, userMap, isExpanded, onToggleExpan
                     <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={onToggleTask}>
                         {project.tasks.length > 0 ? (
                             project.tasks.map(task => (
-                                <TaskItem key={task.id} task={task} weekInterval={weekInterval} userMap={userMap} onToggleExpand={() => onToggleTask(task.id)} isExpanded={expandedTaskId === task.id}/>
+                                <TaskItem key={task.id} task={task} weekInterval={weekInterval} userMap={userMap}/>
                             ))
                         ) : (
                             <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
@@ -229,202 +228,202 @@ const ProjectCard = ({ project, weekInterval, userMap, isExpanded, onToggleExpan
 };
 
 export default function WeeklyActivitiesPage() {
-    const { localUser, hasPermission, loading: authLoading } = useAuth();
-    const router = useRouter();
-    const searchParams = useSearchParams();
+  const { localUser, hasPermission, loading: authLoading } = useAuth();
+  const router = useRouter();
+  const searchParams = useSearchParams();
 
-    const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[], stats: any}>({projects: [], users: [], stats: { projectsActive: 0, tasksUpdated: 0, tasksCompleted: 0, tasksDueNextWeek: 0 }});
-    const [isLoading, setIsLoading] = useState(true);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
-    const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
-    const [date, setDate] = useState<Date>(() => {
-        const dateParam = searchParams.get('date');
-        return dateParam ? parseISO(dateParam) : new Date();
-    });
+  const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[], stats: any}>({projects: [], users: [], stats: { projectsActive: 0, tasksUpdated: 0, tasksCompleted: 0, tasksDueNextWeek: 0 }});
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [date, setDate] = useState<Date>(() => {
+      const dateParam = searchParams.get('date');
+      return dateParam ? parseISO(dateParam) : new Date();
+  });
 
-    const weekInterval = useMemo(() => ({
-        start: startOfWeek(date, { weekStartsOn: 1 }),
-        end: endOfWeek(date, { weekStartsOn: 1 }),
-    }), [date]);
-    
-    const handleDateChange = (newDate: Date) => {
-        const newDateString = format(newDate, 'yyyy-MM-dd');
-        setDate(newDate);
-        router.push(`/weekly-activities?date=${newDateString}`);
-    };
-
-    const fetchData = useCallback(async (targetDate: Date) => {
-        if (localUser?.id) {
-            setIsLoading(true);
-            try {
-                const fetchedData = await getWeeklyTasks(localUser.id, targetDate);
-                setData(fetchedData);
-            } catch (error) {
-                console.error("Failed to fetch weekly tasks", error);
-            } finally {
-                setIsLoading(false);
-            }
-        }
-    }, [localUser?.id]);
-
-    useEffect(() => {
-        if (!authLoading) {
-            if (!hasPermission('dashboard:view')) {
-                router.replace('/dashboard');
-            } else {
-                fetchData(date);
-            }
-        }
-    }, [authLoading, hasPermission, router, fetchData, date]);
-
-    const filteredProjects = useMemo(() => {
-        if (!searchQuery) return data.projects;
-        
-        return data.projects.filter(p => 
-            p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            p.tasks.some(task => 
-                task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
-            )
-        );
-    }, [data.projects, searchQuery]);
-
-    const handleToggleExpand = (projectId: string) => {
-        if (expandedProjectId === projectId) {
-            setExpandedProjectId(null);
-            setExpandedTaskId(null);
-        } else {
-            setExpandedProjectId(projectId);
-            setExpandedTaskId(null); // Collapse task when switching project
-        }
-    };
-    
-    const handleToggleTask = (taskId: string) => {
-        setExpandedTaskId(prevId => (prevId === taskId ? null : taskId));
-    };
-    
-    useEffect(() => {
-        setExpandedProjectId(null);
-        setExpandedTaskId(null);
-    }, [searchQuery, date]);
-
-    const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
+  const weekInterval = useMemo(() => ({
+      start: startOfWeek(date, { weekStartsOn: 1 }),
+      end: endOfWeek(date, { weekStartsOn: 1 }),
+  }), [date]);
   
-    if (isLoading || authLoading) {
-        return <LoadingSkeleton />;
-    }
-  
-    return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <div className="space-y-4">
-                <div className="space-y-1">
-                    <h1 className="text-2xl font-bold flex items-center gap-2"><CalendarDays className="w-6 h-6"/> Weekly Activities</h1>
-                    <p className="text-sm text-muted-foreground max-w-2xl">
-                        A weekly overview of your team's progress, completions, and upcoming deadlines.
-                    </p>
-                </div>
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 border rounded-lg bg-card">
-                    <div className="flex items-center gap-2">
-                        <Button variant="outline" size="icon" onClick={() => handleDateChange(subDays(date, 7))}><ChevronLeft className="h-4 w-4" /></Button>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <Button variant={"outline"} className="w-[280px] justify-start text-left font-normal">
-                                    <CalendarIcon className="mr-2 h-4 w-4" />
-                                    Week of {format(weekInterval.start, 'MMM d')} – {format(weekInterval.end, 'MMM d, yyyy')}
-                                </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0">
-                                <Calendar mode="single" selected={date} onSelect={(d) => d && handleDateChange(d)} initialFocus />
-                            </PopoverContent>
-                        </Popover>
-                        <Button variant="outline" size="icon" onClick={() => handleDateChange(addDays(date, 7))}><ChevronRight className="h-4 w-4" /></Button>
-                    </div>
-                     <div className="flex items-center gap-2">
-                        <Button variant="ghost" size="sm" onClick={() => handleDateChange(subDays(new Date(), 7))}>Last Week</Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDateChange(new Date())} disabled={isSameDay(date, new Date())}>This Week</Button>
-                        <Button variant="ghost" size="sm" onClick={() => handleDateChange(addDays(new Date(), 7))}>Next Week</Button>
-                    </div>
-                     <div className="relative flex-1 sm:max-w-xs w-full">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Search projects and tasks..."
-                            className="w-full rounded-lg bg-background pl-8"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                </div>
+  const handleDateChange = (newDate: Date) => {
+      const newDateString = format(newDate, 'yyyy-MM-dd');
+      setDate(newDate);
+      router.push(`/weekly-activities?date=${newDateString}`);
+  };
 
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
-                            <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{data.stats.projectsActive}</div>
-                            <p className="text-xs text-muted-foreground">Projects with activity this week</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Tasks Updated</CardTitle>
-                            <Edit3 className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{data.stats.tasksUpdated}</div>
-                            <p className="text-xs text-muted-foreground">Tasks with new progress updates</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Tasks Completed</CardTitle>
-                            <CheckCircle className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{data.stats.tasksCompleted}</div>
-                            <p className="text-xs text-muted-foreground">Tasks marked as 'Done' this week</p>
-                        </CardContent>
-                    </Card>
-                    <Card>
-                        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Due Next Week</CardTitle>
-                            <Clock className="h-4 w-4 text-muted-foreground" />
-                        </CardHeader>
-                        <CardContent>
-                            <div className="text-2xl font-bold">{data.stats.tasksDueNextWeek}</div>
-                            <p className="text-xs text-muted-foreground">Upcoming task deadlines</p>
-                        </CardContent>
-                    </Card>
-                </div>
-            </div>
+  const fetchData = useCallback(async (targetDate: Date) => {
+      if (localUser?.id) {
+          setIsLoading(true);
+          try {
+              const fetchedData = await getWeeklyTasks(localUser.id, targetDate);
+              setData(fetchedData);
+          } catch (error) {
+              console.error("Failed to fetch weekly tasks", error);
+          } finally {
+              setIsLoading(false);
+          }
+      }
+  }, [localUser?.id]);
+
+  useEffect(() => {
+      if (!authLoading) {
+          if (!hasPermission('dashboard:view')) {
+              router.replace('/dashboard');
+          } else {
+              fetchData(date);
+          }
+      }
+  }, [authLoading, hasPermission, router, fetchData, date]);
+
+  const filteredProjects = useMemo(() => {
+      if (!searchQuery) return data.projects;
       
-            {filteredProjects.length > 0 ? (
-                <div className="grid grid-cols-1 gap-6">
-                    {filteredProjects.map((project: ProjectWithTasks) => (
-                    <ProjectCard 
-                        key={project.id} 
-                        project={project}
-                        weekInterval={weekInterval}
-                        userMap={userMap}
-                        isExpanded={expandedProjectId === project.id}
-                        onToggleExpand={() => handleToggleExpand(project.id)}
-                        expandedTaskId={expandedProjectId === project.id ? expandedTaskId : null}
-                        onToggleTask={handleToggleTask}
-                    />
-                    ))}
-                </div>
-            ) : (
-                <div className="text-center py-24 border-2 border-dashed rounded-lg">
-                <p className="text-muted-foreground font-semibold">No activity found for this week.</p>
-                <p className="text-muted-foreground text-sm">
-                    {searchQuery ? "Try adjusting your search query." : "Try selecting a different week."}
-                </p>
-                </div>
-            )}
-        </div>
-    );
+      return data.projects.filter(p => 
+          p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          p.tasks.some(task => 
+              task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+              (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
+          )
+      );
+  }, [data.projects, searchQuery]);
+
+  const handleToggleExpand = (projectId: string) => {
+      if (expandedProjectId === projectId) {
+          setExpandedProjectId(null);
+          setExpandedTaskId(null);
+      } else {
+          setExpandedProjectId(projectId);
+          setExpandedTaskId(null); // Collapse task when switching project
+      }
+  };
+  
+  const handleToggleTask = (taskId: string) => {
+      setExpandedTaskId(prevId => (prevId === taskId ? null : taskId));
+  };
+  
+  useEffect(() => {
+      setExpandedProjectId(null);
+      setExpandedTaskId(null);
+  }, [searchQuery, date]);
+
+  const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
+  
+  if (isLoading || authLoading) {
+      return <LoadingSkeleton />;
+  }
+  
+  return (
+      <div className="p-4 sm:p-6 space-y-6">
+          <div className="space-y-4">
+              <div className="space-y-1">
+                  <h1 className="text-2xl font-bold flex items-center gap-2"><CalendarDays className="w-6 h-6"/> Weekly Activities</h1>
+                  <p className="text-sm text-muted-foreground max-w-2xl">
+                      A weekly overview of your team's progress, completions, and upcoming deadlines.
+                  </p>
+              </div>
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 border rounded-lg bg-card">
+                  <div className="flex items-center gap-2">
+                      <Button variant="outline" size="icon" onClick={() => handleDateChange(subDays(date, 7))}><ChevronLeft className="h-4 w-4" /></Button>
+                      <Popover>
+                          <PopoverTrigger asChild>
+                              <Button variant={"outline"} className="w-[280px] justify-start text-left font-normal">
+                                  <CalendarIcon className="mr-2 h-4 w-4" />
+                                  Week of {format(weekInterval.start, 'MMM d')} – {format(weekInterval.end, 'MMM d, yyyy')}
+                              </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-auto p-0">
+                              <Calendar mode="single" selected={date} onSelect={(d) => d && handleDateChange(d)} initialFocus />
+                          </PopoverContent>
+                      </Popover>
+                      <Button variant="outline" size="icon" onClick={() => handleDateChange(addDays(date, 7))}><ChevronRight className="h-4 w-4" /></Button>
+                  </div>
+                   <div className="flex items-center gap-2">
+                      <Button variant="ghost" size="sm" onClick={() => handleDateChange(subDays(new Date(), 7))}>Last Week</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDateChange(new Date())} disabled={isSameDay(date, new Date())}>This Week</Button>
+                      <Button variant="ghost" size="sm" onClick={() => handleDateChange(addDays(new Date(), 7))}>Next Week</Button>
+                  </div>
+                   <div className="relative flex-1 sm:max-w-xs w-full">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                          type="search"
+                          placeholder="Search projects and tasks..."
+                          className="w-full rounded-lg bg-background pl-8"
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                  </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+                          <Briefcase className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">{data.stats.projectsActive}</div>
+                          <p className="text-xs text-muted-foreground">Projects with activity this week</p>
+                      </CardContent>
+                  </Card>
+                  <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Tasks Updated</CardTitle>
+                          <Edit3 className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">{data.stats.tasksUpdated}</div>
+                          <p className="text-xs text-muted-foreground">Tasks with new progress updates</p>
+                      </CardContent>
+                  </Card>
+                  <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Tasks Completed</CardTitle>
+                          <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">{data.stats.tasksCompleted}</div>
+                          <p className="text-xs text-muted-foreground">Tasks marked as 'Done' this week</p>
+                      </CardContent>
+                  </Card>
+                  <Card>
+                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                          <CardTitle className="text-sm font-medium">Due Next Week</CardTitle>
+                          <Clock className="h-4 w-4 text-muted-foreground" />
+                      </CardHeader>
+                      <CardContent>
+                          <div className="text-2xl font-bold">{data.stats.tasksDueNextWeek}</div>
+                          <p className="text-xs text-muted-foreground">Upcoming task deadlines</p>
+                      </CardContent>
+                  </Card>
+              </div>
+          </div>
+    
+          {filteredProjects.length > 0 ? (
+              <div className="grid grid-cols-1 gap-6">
+                  {filteredProjects.map((project: ProjectWithTasks) => (
+                  <ProjectCard 
+                      key={project.id} 
+                      project={project}
+                      weekInterval={weekInterval}
+                      userMap={userMap}
+                      isExpanded={expandedProjectId === project.id}
+                      onToggleExpand={() => handleToggleExpand(project.id)}
+                      expandedTaskId={expandedProjectId === project.id ? expandedTaskId : null}
+                      onToggleTask={handleToggleTask}
+                  />
+                  ))}
+              </div>
+          ) : (
+              <div className="text-center py-24 border-2 border-dashed rounded-lg">
+              <p className="text-muted-foreground font-semibold">No activity found for this week.</p>
+              <p className="text-muted-foreground text-sm">
+                  {searchQuery ? "Try adjusting your search query." : "Try selecting a different week."}
+              </p>
+              </div>
+          )}
+      </div>
+  );
 }

@@ -3,7 +3,7 @@
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { getTodaysTasks } from './actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -66,7 +66,7 @@ function LoadingSkeleton() {
   );
 }
 
-const TaskItem = ({ task, userMap, onToggleExpand, isExpanded }: { task: TaskWithRelations, userMap: Map<string, User>, onToggleExpand: () => void, isExpanded: boolean }) => {
+const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<string, User> }) => {
     const isDueToday = isToday(parseISO(task.endDate as unknown as string));
     const wasCompletedToday = task.completedAt && isToday(parseISO(task.completedAt as unknown as string));
     
@@ -82,7 +82,7 @@ const TaskItem = ({ task, userMap, onToggleExpand, isExpanded }: { task: TaskWit
 
     return (
         <AccordionItem value={task.id} className="border rounded-md bg-muted/30">
-            <AccordionTrigger className="p-3 hover:no-underline" onClick={onToggleExpand}>
+            <AccordionTrigger className="p-3 hover:no-underline">
                 <div className="flex justify-between items-start gap-2 w-full">
                     <div className="flex-1 text-left space-y-1">
                         <p className="font-semibold text-sm">{task.title}</p>
@@ -92,7 +92,6 @@ const TaskItem = ({ task, userMap, onToggleExpand, isExpanded }: { task: TaskWit
                         <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
                             {task.progress || 0}%
                         </span>
-                        <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")} />
                     </div>
                 </div>
             </AccordionTrigger>
@@ -212,7 +211,7 @@ const ProjectCard = ({ project, userMap, isExpanded, onToggleExpand, expandedTas
                     <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={onToggleTask}>
                         {project.tasks.length > 0 ? (
                             project.tasks.map(task => (
-                                <TaskItem key={task.id} task={task} userMap={userMap} onToggleExpand={() => onToggleTask(task.id)} isExpanded={expandedTaskId === task.id}/>
+                                <TaskItem key={task.id} task={task} userMap={userMap} />
                             ))
                         ) : (
                             <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
