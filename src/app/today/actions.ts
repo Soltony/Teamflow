@@ -2,7 +2,7 @@
 'use server';
 
 import prisma from "@/lib/db";
-import { startOfDay, endOfDay, addDays } from 'date-fns';
+import { startOfDay, endOfDay } from 'date-fns';
 
 export async function getTodaysTasks(userId?: string, targetDate: Date = new Date()) {
     const dayStart = startOfDay(targetDate);
@@ -157,7 +157,7 @@ export async function getTodaysTasks(userId?: string, targetDate: Date = new Dat
     const activityStats = {
         projectsActive: projectsMap.size,
         tasksWithActivity: tasks.length,
-        tasksUpdated: tasks.filter(t => t.updates.some(u => u.createdAt >= dayStart && u.createdAt <= dayEnd)).length,
+        tasksRemaining: tasks.filter(t => t.status !== 'DONE').length,
         tasksCompleted: tasks.filter(t => t.completedAt && t.completedAt >= dayStart && t.completedAt <= dayEnd).length,
     };
 
