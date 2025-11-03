@@ -17,7 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { ProjectStatus, User, Team, TaskUpdate } from "@/lib/types";
 import { format, formatDistanceToNow, isSameMonth, isSameYear, parseISO } from "date-fns";
-import { CheckCircle, XCircle, User as UserIcon, CalendarClock } from "lucide-react";
+import { CheckCircle, XCircle, User as UserIcon, CalendarClock, AlertTriangle } from "lucide-react";
 import { type ProjectWithTasksAndStats, type TeamViewTask } from "@/app/team-view/page";
 import { approveTaskAction, declineTaskAction } from "@/app/team-view/actions";
 import { Progress } from "../ui/progress";
@@ -186,31 +186,39 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
 
   const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
 
-  const { projectsByStatus, orderedStatuses, projectsClosingThisMonthCount, projectsClosingThisMonthIds } = useMemo(() => {
-    if (!projectStatuses || !initialTasksByProject) return { projectsByStatus: {}, orderedStatuses: [], projectsClosingThisMonthCount: 0, projectsClosingThisMonthIds: [] };
+  const { projectsByStatus, orderedStatuses, projectsClosingThisMonthCount, projectsWithPendingApprovalsCount, projectsClosingThisMonthIds, projectsWithPendingApprovalsIds } = useMemo(() => {
+    if (!projectStatuses || !initialTasksByProject) return { projectsByStatus: {}, orderedStatuses: [], projectsClosingThisMonthCount: 0, projectsWithPendingApprovalsCount: 0, projectsClosingThisMonthIds: [], projectsWithPendingApprovalsIds: [] };
 
     const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
     const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
 
-    const grouped: Record<string, ProjectWithTasksAndStats[]> = {};
-    const now = new Date();
     let closingThisMonthCount = 0;
     const closingIds: string[] = [];
+    let pendingApprovalsCount = 0;
+    const pendingIds: string[] = [];
     
     let projectsToDisplay = initialTasksByProject;
     
     initialTasksByProject.forEach((projectData: any) => {
         const closingDate = parseISO(projectData.project.endDate as unknown as string);
+        const now = new Date();
         if (isSameMonth(now, closingDate) && isSameYear(now, closingDate)) {
             closingThisMonthCount++;
             closingIds.push(projectData.project.id);
+        }
+        if (projectData.stats.pending > 0) {
+            pendingApprovalsCount++;
+            pendingIds.push(projectData.project.id);
         }
     });
 
     if (activeFilter === 'closingThisMonth') {
         projectsToDisplay = initialTasksByProject.filter((projectData: any) => closingIds.includes(projectData.project.id));
+    } else if (activeFilter === 'pendingApprovals') {
+        projectsToDisplay = initialTasksByProject.filter((projectData: any) => pendingIds.includes(projectData.project.id));
     }
-
+    
+    const grouped: Record<string, ProjectWithTasksAndStats[]> = {};
     projectsToDisplay.forEach((projectData: any) => {
         const statusName = statusIdToName.get(projectData.project.statusId || '') || 'Unknown';
         if (!grouped[statusName]) {
@@ -231,7 +239,14 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
         }
     });
 
-    return { projectsByStatus: grouped, orderedStatuses: finalOrderedStatuses, projectsClosingThisMonthCount: closingThisMonthCount, projectsClosingThisMonthIds: closingIds };
+    return { 
+        projectsByStatus: grouped, 
+        orderedStatuses: finalOrderedStatuses, 
+        projectsClosingThisMonthCount: closingThisMonthCount, 
+        projectsWithPendingApprovalsCount: pendingApprovalsCount,
+        projectsClosingThisMonthIds: closingIds,
+        projectsWithPendingApprovalsIds: pendingIds,
+    };
   }, [initialTasksByProject, projectStatuses, activeFilter]);
   
   const handleApprove = async (task: TeamViewTask) => {
@@ -259,13 +274,17 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     const newFilter = activeFilter === filterName ? null : filterName;
     setActiveFilter(newFilter);
 
-    if (newFilter === 'closingThisMonth') {
-      const closingProjectStatusNames = new Set(
+    if (newFilter) {
+      let idsToFilter: string[] = [];
+      if (newFilter === 'closingThisMonth') idsToFilter = projectsClosingThisMonthIds;
+      if (newFilter === 'pendingApprovals') idsToFilter = projectsWithPendingApprovalsIds;
+      
+      const relevantStatusNames = new Set(
         initialTasksByProject
-          .filter((p: any) => projectsClosingThisMonthIds.includes(p.project.id))
+          .filter((p: any) => idsToFilter.includes(p.project.id))
           .map((p: any) => projectStatuses.find((s:any) => s.id === p.project.statusId)?.name)
       );
-      const firstMatchingStatus = orderedStatuses.find(status => closingProjectStatusNames.has(status));
+      const firstMatchingStatus = orderedStatuses.find(status => relevantStatusNames.has(status));
       setExpandedStatusId(firstMatchingStatus || null);
     } else {
       setExpandedStatusId(null);
@@ -322,7 +341,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
             </CardDescription>
           </CardHeader>
            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                           <CardTitle className="text-sm font-medium">Projects Involved In</CardTitle>
@@ -331,12 +350,19 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                           <div className="text-2xl font-bold">{initialTasksByProject.length}</div>
                       </CardContent>
                   </Card>
-                   <Card>
+                   <Card 
+                     className={cn(
+                        'cursor-pointer transition-colors',
+                        activeFilter === 'pendingApprovals' ? 'bg-primary/10 border-primary' : 'hover:bg-muted/50'
+                     )}
+                     onClick={() => toggleFilter('pendingApprovals')}
+                   >
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                           <CardTitle className="text-sm font-medium">Pending Approvals</CardTitle>
+                          <AlertTriangle className="h-4 w-4 text-muted-foreground" />
                       </CardHeader>
                       <CardContent>
-                          <div className="text-2xl font-bold">{initialTasksByProject.reduce((acc: number, p: any) => acc + p.stats.pending, 0)}</div>
+                          <div className="text-2xl font-bold">{projectsWithPendingApprovalsCount}</div>
                       </CardContent>
                   </Card>
                   <Card
@@ -393,9 +419,9 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         } else if (stats.pending > 0) {
                                             statusBadge = <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending Review</Badge>;
                                         } else if (allTasksDone && Math.round(projectProgress) >= 100) {
-                                            statusBadge = <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Ready to Close</Badge>;
+                                            statusBadge = <Badge className="bg-sky-600 hover:bg-sky-600/90 text-primary-foreground">Ready to Close</Badge>;
                                         } else if (allTasksDone) {
-                                            statusBadge = <Badge className="bg-sky-600 hover:bg-sky-600/90 text-primary-foreground">All Tasks Done</Badge>;
+                                            statusBadge = <Badge className="bg-blue-600 hover:bg-blue-600/90 text-primary-foreground">All Tasks Done</Badge>;
                                         } else {
                                             statusBadge = <Badge className="bg-primary hover:bg-primary/90">Active</Badge>;
                                         }
