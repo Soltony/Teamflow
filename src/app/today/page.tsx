@@ -13,7 +13,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 import type { Task, User, TaskUpdate } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isToday, parseISO, format, formatDistanceToNow, addDays, subDays, isSameDay } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Search, CalendarClock, CalendarIcon, ChevronLeft, ChevronRight, Briefcase, XCircle } from 'lucide-react';
+import { Clock, Edit3, CheckCircle, Search, CalendarClock, CalendarIcon, ChevronLeft, ChevronRight, Briefcase, XCircle, CalendarCheck } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -412,4 +412,3 @@ export default function TodayPage() {
     </div>
   );
 }
-
