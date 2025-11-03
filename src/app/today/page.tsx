@@ -66,7 +66,7 @@ function LoadingSkeleton() {
   );
 }
 
-const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<string, User> }) => {
+const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<string, User>}) => {
     const isDueToday = isToday(parseISO(task.endDate as unknown as string));
     const wasCompletedToday = task.completedAt && isToday(parseISO(task.completedAt as unknown as string));
     

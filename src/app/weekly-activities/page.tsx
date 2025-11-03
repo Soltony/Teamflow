@@ -67,7 +67,7 @@ function LoadingSkeleton() {
   );
 }
 
-const TaskItem = ({ task, weekInterval, userMap }: { task: TaskWithRelations, weekInterval: {start: Date, end: Date}, userMap: Map<string, User> }) => {
+const TaskItem = ({ task, weekInterval, userMap }: { task: TaskWithRelations, weekInterval: {start: Date, end: Date}, userMap: Map<string, User>}) => {
     const isDueThisWeek = isWithinInterval(parseISO(task.endDate as unknown as string), weekInterval);
     const wasCompletedThisWeek = task.completedAt && isWithinInterval(parseISO(task.completedAt as unknown as string), weekInterval);
     
