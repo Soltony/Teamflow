@@ -61,10 +61,9 @@ function LoadingSkeleton() {
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-36" />
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Skeleton className="h-64" />
-        <Skeleton className="h-64" />
-        <Skeleton className="h-64" />
+      <div className="grid grid-cols-1 gap-6">
+        <Skeleton className="h-48" />
+        <Skeleton className="h-48" />
       </div>
     </div>
   );
@@ -109,8 +108,8 @@ const TaskItem = ({ task, weekInterval }: { task: TaskWithAssigneesAndUpdates, w
         return `${task.progress || 0}%`;
     }, [task, wasCompletedThisWeek, wasUpdatedThisWeek, weekInterval]);
 
-    const shortTitle = task.title.length > 15
-        ? `${task.title.substring(0, 15)}...`
+    const shortTitle = task.title.length > 25
+        ? `${task.title.substring(0, 25)}...`
         : task.title;
 
     return (
@@ -421,7 +420,7 @@ export default function WeeklyActivitiesPage() {
             </div>
       
             {filteredProjects.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <div className="grid grid-cols-1 gap-6">
                     {filteredProjects.map((project: ProjectWithTasks) => (
                     <ProjectCard 
                         key={project.id} 

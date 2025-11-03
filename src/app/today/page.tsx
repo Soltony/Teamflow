@@ -14,7 +14,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Task, User } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isToday, parseISO, format } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Crown, Search, ChevronDown, ListTodo } from 'lucide-react';
+import { Clock, Edit3, CheckCircle, Crown, Search, ChevronDown, ListTodo, CalendarDays, ChevronLeft, ChevronRight, CalendarIcon, Briefcase } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
@@ -59,10 +59,9 @@ function LoadingSkeleton() {
         <Skeleton className="h-8 w-48" />
         <Skeleton className="h-10 w-36" />
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Skeleton className="h-64" />
-        <Skeleton className="h-64" />
-        <Skeleton className="h-64" />
+      <div className="grid grid-cols-1 gap-6">
+        <Skeleton className="h-48" />
+        <Skeleton className="h-48" />
       </div>
     </div>
   );
@@ -108,8 +107,8 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
         return `${task.progress || 0}%`;
     }, [task, wasCompletedToday, wasUpdatedToday]);
 
-    const shortTitle = task.title.length > 15
-        ? `${task.title.substring(0, 15)}...`
+    const shortTitle = task.title.length > 25
+        ? `${task.title.substring(0, 25)}...`
         : task.title;
 
     return (
@@ -405,7 +404,7 @@ export default function TodayPage() {
       
       {paginatedProjects.length > 0 ? (
         <>
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6">
             {paginatedProjects.map((project: ProjectWithTasks) => (
               <ProjectCard 
                 key={project.id} 
