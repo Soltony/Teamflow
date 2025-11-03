@@ -107,7 +107,12 @@ export async function getWeeklyTasks(userId?: string, targetDate: Date = new Dat
                         include: {
                             status: true,
                             projectManager: true,
-                            pmoDivision: true
+                            pmoDivision: true,
+                            milestones: { // Fetch all milestones for the project
+                                include: {
+                                    tasks: true, // And all tasks for each milestone
+                                }
+                            }
                         }
                     },
                 },
@@ -157,6 +162,7 @@ export async function getWeeklyTasks(userId?: string, targetDate: Date = new Dat
                 pmoDivision: project.pmoDivision,
                 startDate: project.startDate,
                 endDate: project.endDate,
+                milestones: project.milestones,
                 tasks: [],
             });
         }

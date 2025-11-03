@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import type { Task, User, TaskUpdate } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isWithinInterval, parseISO, format, startOfWeek, endOfWeek, addDays, subDays, isSameDay, formatDistanceToNow } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Search, ChevronDown, ListTodo, CalendarDays, ChevronLeft, ChevronRight, CalendarIcon, Briefcase, XCircle, User as UserIcon } from 'lucide-react';
+import { Clock, Edit3, CheckCircle, Search, CalendarDays, ChevronLeft, ChevronRight, CalendarIcon, Briefcase, XCircle, User as UserIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -22,6 +22,7 @@ import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
 
 type TaskWithRelations = Task & { 
     assignees: User[],
@@ -50,6 +51,7 @@ type ProjectWithTasks = {
   pmoDivision: { name: string };
   startDate: string;
   endDate: string;
+  milestones: any[];
   tasks: TaskWithRelations[];
 };
 
@@ -66,20 +68,8 @@ function LoadingSkeleton() {
 }
 
 const TaskItem = ({ task, weekInterval, userMap }: { task: TaskWithRelations, weekInterval: {start: Date, end: Date}, userMap: Map<string, User>}) => {
-    const isDueThisWeek = isWithinInterval(parseISO(task.endDate as unknown as string), weekInterval);
-    const wasCompletedThisWeek = task.completedAt && isWithinInterval(parseISO(task.completedAt as unknown as string), weekInterval);
-    
-    const weeklyUpdates = useMemo(() => 
-        (task.updates || [])
-            .map(u => ({...u, createdAt: parseISO(u.createdAt as unknown as string)}))
-            .filter(update => isWithinInterval(update.createdAt, weekInterval))
-            .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
-    , [task.updates, weekInterval]);
-
-    const wasUpdatedThisWeek = !wasCompletedThisWeek && weeklyUpdates.length > 0;
-
     return (
-         <AccordionItem value={task.id} className="border-b-0">
+        <AccordionItem value={task.id} className="border-b-0">
             <Card>
                 <AccordionTrigger className="p-3 hover:no-underline text-left">
                      <div className="flex justify-between items-center gap-2 w-full">
@@ -89,17 +79,17 @@ const TaskItem = ({ task, weekInterval, userMap }: { task: TaskWithRelations, we
                             </Link>
                         </div>
                         <div className="flex flex-wrap gap-1">
-                            {isDueThisWeek && !wasCompletedThisWeek && (
+                            {isWithinInterval(parseISO(task.endDate as unknown as string), weekInterval) && task.status !== 'DONE' && (
                                 <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
                                     <Clock className="w-3 h-3" /> Due This Week
                                 </Badge>
                             )}
-                            {wasUpdatedThisWeek && (
+                            {task.updates?.some(update => isWithinInterval(parseISO(update.createdAt as unknown as string), weekInterval)) && !(task.completedAt && isWithinInterval(parseISO(task.completedAt as unknown as string), weekInterval)) && (
                                 <Badge className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
                                     <Edit3 className="w-3 h-3" /> Updated
                                 </Badge>
                             )}
-                            {wasCompletedThisWeek && (
+                            {task.completedAt && isWithinInterval(parseISO(task.completedAt as unknown as string), weekInterval) && (
                                 <Badge className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
                                     <CheckCircle className="w-3 h-3" /> Completed
                                 </Badge>
@@ -170,30 +160,64 @@ const ProjectAccordion = ({ project, weekInterval, userMap }: {
     const totalTasks = project.tasks.length;
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
+    const calculateMilestoneProgress = (milestone: any) => {
+        if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+        const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
+            const taskProgress = task.progress || 0;
+            return acc + (taskProgress * (task.weight / 100));
+        }, 0);
+        return totalProgress;
+    };
+
+    const calculateProjectProgress = (proj: any) => {
+        if (!proj.milestones || proj.milestones.length === 0) return 0;
+        const weightedMilestones = proj.milestones.filter((m: any) => m.weight > 0);
+        if (weightedMilestones.length > 0) {
+            return weightedMilestones.reduce((acc: number, milestone: any) => acc + (calculateMilestoneProgress(milestone) * (milestone.weight / 100)), 0);
+        } else {
+            const allTasks = proj.milestones.flatMap((m: any) => m.tasks);
+            if (allTasks.length === 0) return 0;
+            const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+            if (totalTaskWeight === 0) {
+                const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
+                return totalProgress / allTasks.length;
+            }
+            const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => acc + ((task.progress || 0) * task.weight), 0);
+            return totalWeightedTaskProgress / totalTaskWeight;
+        }
+    };
+    
+    const projectProgress = calculateProjectProgress(project);
+
     return (
         <AccordionItem value={project.id} className="border-none">
             <Card>
                 <AccordionTrigger className="p-4 hover:no-underline">
-                     <div className="flex justify-between items-center gap-4 w-full">
-                        <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
-                                        <h3 className="text-lg font-bold hover:underline truncate">{project.name}</h3>
-                                    </Link>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{project.name}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1.5">
-                                <CalendarIcon className="h-4 w-4" />
-                                <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
+                     <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
+                        <div className="flex-1 text-left space-y-1">
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger asChild>
+                                        <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
+                                            <h3 className="text-lg font-bold hover:underline truncate">{project.name}</h3>
+                                        </Link>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>{project.name}</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                            <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                                <div className="flex items-center gap-1.5">
+                                    <CalendarIcon className="h-4 w-4" />
+                                    <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
+                                </div>
+                                <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
                             </div>
-                            <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
-                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
+                        </div>
+                         <div className="flex items-center gap-3 w-full md:w-auto md:min-w-[200px]">
+                            <Progress value={projectProgress} className="h-2 flex-1" />
+                            <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
                         </div>
                     </div>
                 </AccordionTrigger>
@@ -245,7 +269,7 @@ export default function WeeklyActivitiesPage() {
           setIsLoading(true);
           try {
               const fetchedData = await getWeeklyTasks(localUser.id, targetDate);
-              setData(fetchedData);
+              setData(fetchedData as any);
           } catch (error) {
               console.error("Failed to fetch weekly tasks", error);
           } finally {

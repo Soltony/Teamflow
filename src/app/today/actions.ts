@@ -103,7 +103,12 @@ export async function getTodaysTasks(userId?: string) {
                         include: {
                             status: true,
                             projectManager: true,
-                            pmoDivision: true
+                            pmoDivision: true,
+                            milestones: { // Fetch all milestones for the project
+                                include: {
+                                    tasks: true, // And all tasks for each milestone
+                                }
+                            }
                         }
                     },
                 },
@@ -140,6 +145,7 @@ export async function getTodaysTasks(userId?: string) {
                 pmoDivision: project.pmoDivision,
                 startDate: project.startDate,
                 endDate: project.endDate,
+                milestones: project.milestones,
                 tasks: [],
             });
         }
