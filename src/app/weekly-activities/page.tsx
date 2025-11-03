@@ -81,84 +81,24 @@ const TaskItem = ({ task, weekInterval }: { task: TaskWithAssigneesAndUpdates, w
     , [task.updates, weekInterval]);
 
     const wasUpdatedThisWeek = !wasCompletedThisWeek && weeklyUpdates.length > 0;
-    
-    const progressText = useMemo(() => {
-        if (wasCompletedThisWeek) {
-            return `100%`;
-        }
-        
-        if (wasUpdatedThisWeek) {
-            const allUpdatesSorted = (task.updates || [])
-                .map(u => ({ ...u, createdAt: parseISO(u.createdAt) }))
-                .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    
-            const mostRecentUpdateThisWeek = allUpdatesSorted.find(u => isWithinInterval(u.createdAt, weekInterval));
-            
-            if (mostRecentUpdateThisWeek?.progressPercentage !== null) {
-                const updateBeforeThat = allUpdatesSorted.find(u => u.createdAt.getTime() < mostRecentUpdateThisWeek.createdAt.getTime() && u.progressPercentage !== null);
-                const previousProgress = updateBeforeThat?.progressPercentage ?? 0;
-                const currentProgress = mostRecentUpdateThisWeek.progressPercentage;
-
-                if (currentProgress !== previousProgress) {
-                    return `${previousProgress}% → ${currentProgress || 0}%`;
-                }
-            }
-        }
-        
-        return `${task.progress || 0}%`;
-    }, [task, wasCompletedThisWeek, wasUpdatedThisWeek, weekInterval]);
-
-    const shortTitle = task.title.length > 25
-        ? `${task.title.substring(0, 25)}...`
-        : task.title;
 
     return (
-        <TooltipProvider>
-            <div className="p-3 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors">
-                <Link href={`/tasks/${task.id}`} className="hover:underline">
-                    <div className="flex justify-between items-start mb-2 gap-2">
-                        <div className="flex-1 min-w-0">
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    
-                                        <h4 className="font-semibold text-sm truncate">{shortTitle}</h4>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{task.title}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </div>
-                        <div className="flex -space-x-2 flex-shrink-0">
-                            {task.assignees.slice(0, 3).map(assignee => (
-                                <Tooltip key={assignee.id}>
-                                    <TooltipTrigger>
-                                        <Avatar className="h-5 w-5 border-2 border-background">
-                                            <AvatarImage src={assignee.avatar || undefined} />
-                                            <AvatarFallback className="text-xs">{assignee.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                    </TooltipTrigger>
-                                    <TooltipContent>
-                                        <p>{assignee.name}</p>
-                                    </TooltipContent>
-                                </Tooltip>
-                            ))}
-                            {task.assignees.length > 3 && (
-                                <div className="h-5 w-5 rounded-full bg-muted border-2 border-background flex items-center justify-center">
-                                    <span className="text-[10px] font-semibold">+{task.assignees.length - 3}</span>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </Link>
+        <Link href={`/tasks/${task.id}`} className="block">
+            <div className="p-3 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors space-y-2">
+                <div className="flex justify-between items-start gap-2">
+                    <h4 className="font-semibold text-sm">{task.title}</h4>
+                     <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
+                        {task.progress || 0}%
+                    </span>
+                </div>
                 
-                {!wasCompletedThisWeek && (
-                    <div className="flex items-center gap-2 mb-2">
-                        <Progress value={task.progress || 0} className="flex-1 h-1.5" />
-                        <span className="text-[10px] font-semibold">{progressText}</span>
-                    </div>
-                )}
+                <div className="text-xs text-muted-foreground space-y-1">
+                    <p>Milestone: {task.milestone.title}</p>
+                    <p>Assignees: {task.assignees.map(a => a.name).join(', ')}</p>
+                    <p>Due: {format(parseISO(task.endDate as unknown as string), 'MMM dd, yyyy')}</p>
+                </div>
                 
-                <div className="flex flex-wrap gap-1">
+                <div className="flex flex-wrap gap-1 pt-1">
                     {isDueThisWeek && !wasCompletedThisWeek && (
                         <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
                             <Clock className="w-3 h-3" /> Due This Week
@@ -176,7 +116,7 @@ const TaskItem = ({ task, weekInterval }: { task: TaskWithAssigneesAndUpdates, w
                     )}
                 </div>
             </div>
-        </TooltipProvider>
+        </Link>
     );
 };
 
