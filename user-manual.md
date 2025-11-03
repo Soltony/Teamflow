@@ -69,6 +69,38 @@ The Dashboard is the first page you see after logging in. It provides a high-lev
   4.  **Approve:** Marks the task as "DONE".
   5.  **Decline:** Reverts the task to "IN_PROGRESS" and requires you to provide a reason for the rejection, which will be visible to the assignee.
 
+### 3.5. Activity Views
+
+#### 1. Today Page
+
+**Purpose:**
+The Today page provides a real-time, daily snapshot of all project activity. It is designed to answer the question:
+“What happened today?”
+
+**Details:**
+
+*   Displays all tasks due today.
+*   Highlights tasks completed today.
+*   Shows tasks that have received progress updates today.
+
+**Use Case:**
+This page is most effective for daily stand-up meetings or quick status checks. It enables team members to stay focused on immediate priorities and understand the most urgent activities across all active projects.
+
+#### 2. Weekly Page
+
+**Purpose:**
+The Weekly page offers a broader, summarized view of project progress over a selected week—past, present, or future. It helps answer the question:
+“What did we accomplish this week?”
+
+**Details:**
+
+*   Provides a weekly summary of project activities.
+*   Includes KPI cards showing active projects, updated tasks, and completed tasks during the week.
+*   Displays a key planning metric: the number of tasks due in the following week.
+
+**Use Case:**
+This page is ideal for weekly review sessions. It helps teams evaluate overall progress, identify trends, and prepare for upcoming work with a clear understanding of weekly performance and workload.
+
 ## 4. Governance & Approvals
 
 ### 4.1. Timeline Approvals (Admins)
