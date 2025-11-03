@@ -87,8 +87,8 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     
     const activeProjs = tempProjects.filter((p: any) => p.statusId !== completedStatusId && p.statusId !== onHandoverStatusId);
     
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
     
     const recentCompleted = tempProjects.filter((p: any) => {
         if (p.statusId !== completedStatusId) return false;
@@ -97,7 +97,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
         if(lastTaskUpdate.length === 0) return false;
         
         const lastCompletionDate = dateMax(lastTaskUpdate.map((d: any) => parseISO(d)));
-        return lastCompletionDate >= oneWeekAgo;
+        return lastCompletionDate >= threeDaysAgo;
     });
 
     return { 
