@@ -56,12 +56,9 @@ function LoadingSkeleton() {
     <div className="p-4 sm:p-6 space-y-6">
       <div className="flex justify-between items-center mb-6">
         <Skeleton className="h-8 w-48" />
-        <Skeleton className="h-10 w-36" />
       </div>
-      <div className="grid grid-cols-1 gap-6">
-        <Skeleton className="h-48" />
-        <Skeleton className="h-48" />
-      </div>
+      <Skeleton className="h-48" />
+      <Skeleton className="h-48" />
     </div>
   );
 }
@@ -78,20 +75,30 @@ const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<str
     , [task.updates]);
 
     const wasUpdatedToday = !wasCompletedToday && todaysUpdates.length > 0;
-    const assignees = task.assignees.map(a => userMap.get(a.id)?.name).filter(Boolean).join(', ');
-
+    
     return (
         <AccordionItem value={task.id} className="border rounded-md bg-muted/30">
             <AccordionTrigger className="p-3 hover:no-underline">
                 <div className="flex justify-between items-start gap-2 w-full">
                     <div className="flex-1 text-left space-y-1">
-                        <p className="font-semibold text-sm">{task.title}</p>
-                        <p className="text-xs text-muted-foreground">Due: {format(parseISO(task.endDate as unknown as string), 'MMM dd, yyyy')}</p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
-                            {task.progress || 0}%
-                        </span>
+                        <Link href={`/tasks/${task.id}`} className="font-semibold text-sm hover:underline">{task.title}</Link>
+                        <div className="flex flex-wrap gap-1">
+                            {isDueToday && !wasCompletedToday && (
+                                <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
+                                    <Clock className="w-3 h-3" /> Due Today
+                                </Badge>
+                            )}
+                            {wasUpdatedToday && (
+                                <Badge className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
+                                    <Edit3 className="w-3 h-3" /> Updated Today
+                                </Badge>
+                            )}
+                            {wasCompletedToday && (
+                                <Badge className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
+                                    <CheckCircle className="w-3 h-3" /> Completed Today
+                                </Badge>
+                            )}
+                        </div>
                     </div>
                 </div>
             </AccordionTrigger>
@@ -100,25 +107,9 @@ const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<str
                  <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
                  <div className="flex flex-wrap items-center gap-2 mb-3">
                     <Badge variant="outline">Milestone: {task.milestone.title}</Badge>
-                    <Badge variant="outline">Assignees: {assignees}</Badge>
+                    <Badge variant="outline">Assignees: {task.assignees.map(a => userMap.get(a.id)?.name).filter(Boolean).join(', ')}</Badge>
                  </div>
-                 <div className="flex flex-wrap gap-1">
-                    {isDueToday && !wasCompletedToday && (
-                        <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
-                            <Clock className="w-3 h-3" /> Due Today
-                        </Badge>
-                    )}
-                    {wasUpdatedToday && (
-                        <Badge className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
-                            <Edit3 className="w-3 h-3" /> Updated Today
-                        </Badge>
-                    )}
-                    {wasCompletedToday && (
-                        <Badge className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
-                            <CheckCircle className="w-3 h-3" /> Completed Today
-                        </Badge>
-                    )}
-                </div>
+                
                 {task.updates && task.updates.length > 0 && (
                     <>
                         <Separator className="my-3"/>
@@ -159,19 +150,14 @@ const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<str
                         </div>
                     </>
                 )}
-                <Button asChild variant="outline" size="sm" className="mt-4 w-full">
-                    <Link href={`/tasks/${task.id}`}>View Full Task Details <UserIcon className="ml-2 h-3 w-3"/></Link>
-                </Button>
             </AccordionContent>
         </AccordionItem>
     );
 };
 
-const ProjectCard = ({ project, userMap, isExpanded, onToggleExpand, expandedTaskId, onToggleTask }: { 
+const ProjectCard = ({ project, userMap, expandedTaskId, onToggleTask }: { 
     project: ProjectWithTasks, 
     userMap: Map<string, User>,
-    isExpanded: boolean, 
-    onToggleExpand: () => void,
     expandedTaskId: string | null;
     onToggleTask: (taskId: string) => void;
 }) => {
@@ -179,7 +165,7 @@ const ProjectCard = ({ project, userMap, isExpanded, onToggleExpand, expandedTas
 
     return (
         <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
-            <CardHeader className="cursor-pointer" onClick={onToggleExpand}>
+            <CardHeader>
                 <div className="flex justify-between items-start gap-4">
                     <div className="flex-1 truncate">
                          <TooltipProvider>
@@ -202,25 +188,22 @@ const ProjectCard = ({ project, userMap, isExpanded, onToggleExpand, expandedTas
                             <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
                         </div>
                     </div>
-                    <ChevronDown className={cn("h-5 w-5 transition-transform text-muted-foreground", isExpanded && "rotate-180")} />
                 </div>
             </CardHeader>
 
-            {isExpanded && (
-                <CardContent className="flex-grow flex flex-col justify-end pt-0">
-                    <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={onToggleTask}>
-                        {project.tasks.length > 0 ? (
-                            project.tasks.map(task => (
-                                <TaskItem key={task.id} task={task} userMap={userMap} />
-                            ))
-                        ) : (
-                            <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
-                                No activity recorded for this project today.
-                            </div>
-                        )}
-                    </Accordion>
-                </CardContent>
-            )}
+            <CardContent className="flex-grow flex flex-col justify-end pt-0">
+                <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={onToggleTask}>
+                    {project.tasks.length > 0 ? (
+                        project.tasks.map(task => (
+                            <TaskItem key={task.id} task={task} userMap={userMap} />
+                        ))
+                    ) : (
+                        <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
+                            No activity recorded for this project today.
+                        </div>
+                    )}
+                </Accordion>
+            </CardContent>
         </Card>
     );
 };
@@ -234,9 +217,8 @@ export default function TodayPage() {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedPmoDivision, setSelectedPmoDivision] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
-  const projectsPerPage = 9;
+  const projectsPerPage = 5;
 
   const fetchData = useCallback(async () => {
     if (localUser?.id) {
@@ -287,23 +269,12 @@ export default function TodayPage() {
     return filtered;
   }, [data.projects, searchQuery, selectedStatus, selectedPmoDivision]);
 
-  const handleToggleExpand = (projectId: string) => {
-    if (expandedProjectId === projectId) {
-        setExpandedProjectId(null);
-        setExpandedTaskId(null);
-    } else {
-        setExpandedProjectId(projectId);
-        setExpandedTaskId(null); // Collapse task when switching project
-    }
-  };
-  
   const handleToggleTask = (taskId: string) => {
     setExpandedTaskId(prevId => (prevId === taskId ? null : taskId));
   };
   
   useEffect(() => {
     setCurrentPage(1);
-    setExpandedProjectId(null);
     setExpandedTaskId(null);
   }, [searchQuery, selectedStatus, selectedPmoDivision]);
 
@@ -390,9 +361,7 @@ export default function TodayPage() {
                 key={project.id} 
                 project={project}
                 userMap={userMap}
-                isExpanded={expandedProjectId === project.id}
-                onToggleExpand={() => handleToggleExpand(project.id)}
-                expandedTaskId={expandedProjectId === project.id ? expandedTaskId : null}
+                expandedTaskId={expandedTaskId}
                 onToggleTask={handleToggleTask}
               />
             ))}
