@@ -19,6 +19,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { cn } from '@/lib/utils';
 
 type TaskWithAssigneesAndUpdates = Task & { 
     assignees: User[],
@@ -232,6 +233,7 @@ const ProjectCard = ({ project, isExpanded, onToggleExpand }: { project: Project
                             </Tooltip>
                         </TooltipProvider>
                     </Link>
+                    <ChevronDown className={cn("h-5 w-5 transition-transform text-muted-foreground", isExpanded && "rotate-180")} />
                 </div>
                  <div className="flex items-center gap-3 pt-2">
                     <Progress value={projectProgress} className="h-2 flex-1" />

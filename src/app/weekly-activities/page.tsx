@@ -234,6 +234,7 @@ const ProjectCard = ({ project, isExpanded, onToggleExpand, weekInterval }: { pr
                             </Tooltip>
                         </TooltipProvider>
                     </Link>
+                    <ChevronDown className={cn("h-5 w-5 transition-transform text-muted-foreground", isExpanded && "rotate-180")} />
                 </div>
                 <div className="flex items-center gap-3 pt-2">
                     <Progress value={projectProgress} className="h-2 flex-1" />
