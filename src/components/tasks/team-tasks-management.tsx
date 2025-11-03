@@ -179,10 +179,10 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const { toast } = useToast();
   const router = useRouter();
   const [taskToDecline, setTaskToDecline] = useState<TeamViewTask | null>(null);
+  const [expandedStatusId, setExpandedStatusId] = useState<string | null>(null);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [expandedStatusId, setExpandedStatusId] = useState<string | null>(null);
 
   const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
 
@@ -260,32 +260,34 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     setActiveFilter(newFilter);
 
     if (newFilter === 'closingThisMonth') {
-        const filteredProjects = initialTasksByProject.filter((p: any) => projectsClosingThisMonthIds.includes(p.project.id));
-        const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
-        const statusNames = new Set(filteredProjects.map((p: any) => statusIdToName.get(p.project.statusId)));
-        
-        // Expand the first status group that has closing projects
-        if (statusNames.size > 0) {
-            setExpandedStatusId(Array.from(statusNames)[0] as string);
-        } else {
-            setExpandedStatusId(null);
-        }
+      const closingProjectStatusNames = new Set(
+        initialTasksByProject
+          .filter((p: any) => projectsClosingThisMonthIds.includes(p.project.id))
+          .map((p: any) => projectStatuses.find((s:any) => s.id === p.project.statusId)?.name)
+      );
+      const firstMatchingStatus = orderedStatuses.find(status => closingProjectStatusNames.has(status));
+      setExpandedStatusId(firstMatchingStatus || null);
     } else {
-        setExpandedStatusId(null);
+      setExpandedStatusId(null);
     }
+    
     setExpandedProjectId(null);
     setExpandedTaskId(null);
   };
 
-  const handleProjectAccordionChange = (value: string) => {
-    setExpandedProjectId(value);
-    setExpandedTaskId(null); // Collapse task when project changes
+  const handleStatusAccordionChange = (value: string) => {
+    setExpandedStatusId(prevId => (prevId === value ? null : value));
+    setExpandedProjectId(null); 
+    setExpandedTaskId(null);
   };
 
-  const handleStatusAccordionChange = (value: string) => {
-    setExpandedStatusId(value);
-    setExpandedProjectId(null); // Collapse project when status changes
+  const handleProjectAccordionChange = (value: string) => {
+    setExpandedProjectId(prevId => (prevId === value ? null : value));
     setExpandedTaskId(null);
+  };
+
+  const handleTaskAccordionChange = (value: string) => {
+    setExpandedTaskId(prevId => (prevId === value ? null : value));
   };
   
   if (ledTeams.length === 0) {
@@ -320,15 +322,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
             </CardDescription>
           </CardHeader>
            <CardContent>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-                  <Card>
-                      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                          <CardTitle className="text-sm font-medium">Your Teams</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                          <div className="text-2xl font-bold">{ledTeams.length}</div>
-                      </CardContent>
-                  </Card>
+              <div className="grid gap-4 md:grid-cols-3">
                   <Card>
                       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                           <CardTitle className="text-sm font-medium">Projects Involved In</CardTitle>
@@ -431,7 +425,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         </AccordionTrigger>
                                         <AccordionContent className="p-4 pt-0">
                                            {tasks.length > 0 ? (
-                                             <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={(value) => setExpandedTaskId(value || null)}>
+                                             <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={handleTaskAccordionChange}>
                                               {tasks.sort((a: TeamViewTask, b: TeamViewTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((task: TeamViewTask) => (
                                                 <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-muted/50">
                                                     <AccordionTrigger className="hover:no-underline">
