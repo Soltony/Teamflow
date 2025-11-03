@@ -333,7 +333,7 @@ Let’s keep projects on track—together.
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2 pb-4">
-                                    <Accordion type="multiple" className="w-full space-y-2">
+                                    <Accordion type="single" collapsible className="w-full space-y-2">
                                         {project.milestones.map((milestone: any) => {
                                             const milestoneProgress = calculateMilestoneProgress(milestone);
                                             return (
