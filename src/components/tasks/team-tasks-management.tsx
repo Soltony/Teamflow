@@ -258,6 +258,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const toggleFilter = (filterName: string) => {
     const newFilter = activeFilter === filterName ? null : filterName;
     setActiveFilter(newFilter);
+
     if (newFilter === 'closingThisMonth') {
         const closingProjects = initialTasksByProject.filter((p: any) => projectsClosingThisMonthIds.includes(p.project.id));
         const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
@@ -265,9 +266,17 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
         
         setExpandedStatusIds(relevantStatusNames as string[]);
         setExpandedProjectIds(projectsClosingThisMonthIds);
+        
+        // Expand the first task of the first project
+        if (closingProjects.length > 0 && closingProjects[0].tasks.length > 0) {
+            setExpandedTaskId(closingProjects[0].tasks[0].id);
+        } else {
+            setExpandedTaskId(null);
+        }
     } else {
         setExpandedStatusIds([]);
         setExpandedProjectIds([]);
+        setExpandedTaskId(null);
     }
   };
 
@@ -423,7 +432,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         </AccordionTrigger>
                                         <AccordionContent className="p-4 pt-0">
                                            {tasks.length > 0 ? (
-                                             <Accordion type="single" collapsible className="w-full space-y-2">
+                                             <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
                                               {tasks.sort((a: TeamViewTask, b: TeamViewTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((task: TeamViewTask) => (
                                                 <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-muted/50">
                                                     <AccordionTrigger className="hover:no-underline">
