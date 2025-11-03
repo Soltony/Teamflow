@@ -259,9 +259,16 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     const newFilter = activeFilter === filterName ? null : filterName;
     setActiveFilter(newFilter);
 
-    // Reset all expansions when toggling filters
-    setExpandedStatusIds([]);
-    setExpandedProjectIds([]);
+    if (newFilter === 'closingThisMonth') {
+        const filteredProjects = initialTasksByProject.filter((p: any) => projectsClosingThisMonthIds.includes(p.project.id));
+        const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
+        const statusNames = new Set(filteredProjects.map((p: any) => statusIdToName.get(p.project.statusId)));
+        setExpandedStatusIds(Array.from(statusNames) as string[]);
+        setExpandedProjectIds([]); // Keep projects collapsed
+    } else {
+        setExpandedStatusIds([]);
+        setExpandedProjectIds([]);
+    }
     setExpandedTaskId(null);
   };
 
@@ -417,7 +424,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         </AccordionTrigger>
                                         <AccordionContent className="p-4 pt-0">
                                            {tasks.length > 0 ? (
-                                             <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
+                                             <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={(value) => setExpandedTaskId(value || null)}>
                                               {tasks.sort((a: TeamViewTask, b: TeamViewTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((task: TeamViewTask) => (
                                                 <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-muted/50">
                                                     <AccordionTrigger className="hover:no-underline">
