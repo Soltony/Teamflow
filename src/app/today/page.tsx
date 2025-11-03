@@ -8,18 +8,18 @@ import { useRouter } from 'next/navigation';
 import { getTodaysTasks } from './actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Progress } from '@/components/ui/progress';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isToday, parseISO, format } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Crown, Search, ChevronDown, ListTodo, CalendarDays, ChevronLeft, ChevronRight, CalendarIcon, Briefcase } from 'lucide-react';
+import { Clock, Edit3, CheckCircle, Search, ChevronDown, ListTodo, CalendarIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import { Progress } from '@/components/ui/progress';
 
 type TaskWithAssigneesAndUpdates = Task & { 
     assignees: User[],
@@ -179,43 +179,8 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
     );
 };
 
-const calculateMilestoneProgress = (milestone: any) => {
-    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
-    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-        const taskProgress = task.progress || 0;
-        return acc + (taskProgress * (task.weight / 100));
-    }, 0);
-    return totalProgress;
-};
-
-const calculateProjectProgress = (project: ProjectWithTasks) => {
-    if (!project.milestones || project.milestones.length === 0) {
-        return 0;
-    }
-    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
-    if (weightedMilestones.length > 0) {
-        return weightedMilestones.reduce((acc: number, milestone: any) => {
-            const milestoneProgress = calculateMilestoneProgress(milestone);
-            return acc + (milestoneProgress * (milestone.weight / 100));
-        }, 0);
-    } else {
-        const allTasks = project.milestones.flatMap((m: any) => m.tasks);
-        if (allTasks.length === 0) return 0;
-        const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-        if (totalTaskWeight === 0) {
-            const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
-            return allTasks.length > 0 ? totalProgress / allTasks.length : 0;
-        }
-        const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
-            return acc + ((task.progress || 0) * task.weight);
-        }, 0);
-        return totalWeightedTaskProgress / totalTaskWeight;
-    }
-};
-
 const ProjectCard = ({ project, isExpanded, onToggleExpand }: { project: ProjectWithTasks, isExpanded: boolean, onToggleExpand: () => void }) => {
     const totalTasks = project.tasks.length;
-    const projectProgress = calculateProjectProgress(project);
 
     return (
         <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
@@ -235,9 +200,11 @@ const ProjectCard = ({ project, isExpanded, onToggleExpand }: { project: Project
                     </Link>
                     <ChevronDown className={cn("h-5 w-5 transition-transform text-muted-foreground", isExpanded && "rotate-180")} />
                 </div>
-                 <div className="flex items-center gap-3 pt-2">
-                    <Progress value={projectProgress} className="h-2 flex-1" />
-                    <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
+                 <div className="flex items-center gap-3 pt-2 text-sm text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                        <CalendarIcon className="h-4 w-4" />
+                        <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
+                    </div>
                     <Badge variant="outline">Tasks: {totalTasks}</Badge>
                 </div>
             </CardHeader>
