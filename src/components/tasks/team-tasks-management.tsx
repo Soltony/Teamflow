@@ -259,25 +259,10 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     const newFilter = activeFilter === filterName ? null : filterName;
     setActiveFilter(newFilter);
 
-    if (newFilter === 'closingThisMonth') {
-        const closingProjects = initialTasksByProject.filter((p: any) => projectsClosingThisMonthIds.includes(p.project.id));
-        const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
-        const relevantStatusNames = [...new Set(closingProjects.map((p: any) => statusIdToName.get(p.project.statusId)))].filter(Boolean);
-        
-        setExpandedStatusIds(relevantStatusNames as string[]);
-        setExpandedProjectIds(projectsClosingThisMonthIds);
-        
-        // Expand the first task of the first project
-        if (closingProjects.length > 0 && closingProjects[0].tasks.length > 0) {
-            setExpandedTaskId(closingProjects[0].tasks[0].id);
-        } else {
-            setExpandedTaskId(null);
-        }
-    } else {
-        setExpandedStatusIds([]);
-        setExpandedProjectIds([]);
-        setExpandedTaskId(null);
-    }
+    // Reset all expansions when toggling filters
+    setExpandedStatusIds([]);
+    setExpandedProjectIds([]);
+    setExpandedTaskId(null);
   };
 
   const handleProjectAccordionChange = (value: string | string[]) => {
@@ -402,7 +387,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         } else if (allTasksDone && Math.round(projectProgress) >= 100) {
                                             statusBadge = <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Ready to Close</Badge>;
                                         } else if (allTasksDone) {
-                                            statusBadge = <Badge className="bg-blue-600 hover:bg-blue-600/90 text-primary-foreground">All Tasks Done</Badge>;
+                                            statusBadge = <Badge className="bg-sky-600 hover:bg-sky-600/90 text-primary-foreground">All Tasks Done</Badge>;
                                         } else {
                                             statusBadge = <Badge className="bg-primary hover:bg-primary/90">Active</Badge>;
                                         }
