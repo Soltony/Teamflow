@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -10,20 +9,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import type { Task, User } from '@prisma/client';
+import type { Task, User, TaskUpdate } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
-import { isToday, parseISO, format } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Search, ChevronDown, ListTodo, CalendarIcon } from 'lucide-react';
+import { isToday, parseISO, format, formatDistanceToNow } from 'date-fns';
+import { Clock, Edit3, CheckCircle, Search, ChevronDown, ListTodo, CalendarIcon, XCircle, User as UserIcon } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
-import { Progress } from '@/components/ui/progress';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Separator } from '@/components/ui/separator';
 
-type TaskWithAssigneesAndUpdates = Task & { 
+type TaskWithRelations = Task & { 
     assignees: User[],
-    updates: {createdAt: string, progressPercentage: number | null}[],
+    updates: (TaskUpdate & {author: User})[],
     milestone: {
         title: string;
         project: {
@@ -35,7 +35,6 @@ type TaskWithAssigneesAndUpdates = Task & {
             pmoDivision: { name: string };
             startDate: string;
             endDate: string;
-            milestones: any[];
         };
     };
 };
@@ -49,8 +48,7 @@ type ProjectWithTasks = {
   pmoDivision: { name: string };
   startDate: string;
   endDate: string;
-  tasks: TaskWithAssigneesAndUpdates[];
-  milestones: any[];
+  tasks: TaskWithRelations[];
 };
 
 function LoadingSkeleton() {
@@ -68,36 +66,44 @@ function LoadingSkeleton() {
   );
 }
 
-const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
+const TaskItem = ({ task, userMap, onToggleExpand, isExpanded }: { task: TaskWithRelations, userMap: Map<string, User>, onToggleExpand: () => void, isExpanded: boolean }) => {
     const isDueToday = isToday(parseISO(task.endDate as unknown as string));
     const wasCompletedToday = task.completedAt && isToday(parseISO(task.completedAt as unknown as string));
     
     const todaysUpdates = useMemo(() => 
         (task.updates || [])
-            .map(u => ({...u, createdAt: parseISO(u.createdAt)}))
+            .map(u => ({...u, createdAt: parseISO(u.createdAt as unknown as string)}))
             .filter(update => isToday(update.createdAt))
             .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
     , [task.updates]);
 
     const wasUpdatedToday = !wasCompletedToday && todaysUpdates.length > 0;
+    const assignees = task.assignees.map(a => userMap.get(a.id)?.name).filter(Boolean).join(', ');
 
     return (
-        <Link href={`/tasks/${task.id}`} className="block">
-            <div className="p-3 border rounded-md bg-muted/30 hover:bg-muted/50 transition-colors space-y-2">
-                <div className="flex justify-between items-start gap-2">
-                    <h4 className="font-semibold text-sm">{task.title}</h4>
-                    <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
-                        {task.progress || 0}%
-                    </span>
+        <AccordionItem value={task.id} className="border rounded-md bg-muted/30">
+            <AccordionTrigger className="p-3 hover:no-underline" onClick={onToggleExpand}>
+                <div className="flex justify-between items-start gap-2 w-full">
+                    <div className="flex-1 text-left space-y-1">
+                        <p className="font-semibold text-sm">{task.title}</p>
+                        <p className="text-xs text-muted-foreground">Due: {format(parseISO(task.endDate as unknown as string), 'MMM dd, yyyy')}</p>
+                    </div>
+                    <div className="flex items-center gap-2">
+                        <span className="text-xs font-bold text-muted-foreground whitespace-nowrap">
+                            {task.progress || 0}%
+                        </span>
+                        <ChevronDown className={cn("h-4 w-4 transition-transform", isExpanded && "rotate-180")} />
+                    </div>
                 </div>
-                
-                <div className="text-xs text-muted-foreground space-y-1">
-                    <p>Milestone: {task.milestone.title}</p>
-                    <p>Assignees: {task.assignees.map(a => a.name).join(', ')}</p>
-                    <p>Due: {format(parseISO(task.endDate as unknown as string), 'MMM dd, yyyy')}</p>
-                </div>
-                
-                <div className="flex flex-wrap gap-1 pt-1">
+            </AccordionTrigger>
+            <AccordionContent className="p-3 pt-0">
+                <Separator className="mb-3"/>
+                 <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
+                 <div className="flex flex-wrap items-center gap-2 mb-3">
+                    <Badge variant="outline">Milestone: {task.milestone.title}</Badge>
+                    <Badge variant="outline">Assignees: {assignees}</Badge>
+                 </div>
+                 <div className="flex flex-wrap gap-1">
                     {isDueToday && !wasCompletedToday && (
                         <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
                             <Clock className="w-3 h-3" /> Due Today
@@ -114,54 +120,106 @@ const TaskItem = ({ task }: { task: TaskWithAssigneesAndUpdates }) => {
                         </Badge>
                     )}
                 </div>
-            </div>
-        </Link>
+                {task.updates && task.updates.length > 0 && (
+                    <>
+                        <Separator className="my-3"/>
+                        <h4 className="font-semibold text-xs mb-2">Update History</h4>
+                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                             {task.updates.map(update => {
+                                const author = userMap.get(update.authorId);
+                                if (update.type === 'STATUS_CHANGE') {
+                                    const isApproval = update.text.includes('approved');
+                                    return (
+                                        <div key={update.id} className="flex items-start gap-3">
+                                            <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center">
+                                                {isApproval ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-destructive" />}
+                                            </div>
+                                            <div className="flex-1 text-xs bg-muted/50 p-2 rounded-md">
+                                                <p className="text-muted-foreground italic">{update.text} by <span className="font-semibold">{author?.name}</span></p>
+                                                <p className="text-right text-muted-foreground/80">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</p>
+                                            </div>
+                                        </div>
+                                    );
+                                }
+                                return (
+                                    <div key={update.id} className="flex items-start gap-3">
+                                        <Avatar className="w-6 h-6 border">
+                                            <AvatarImage src={author?.avatar} alt={author?.name} />
+                                            <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
+                                        </Avatar>
+                                        <div className="flex-1 text-xs bg-muted/50 p-2 rounded-md">
+                                            <p>{update.text}</p>
+                                            {update.progressPercentage !== null && (
+                                            <div className="mt-1 text-muted-foreground">Progress reported: <span className="font-bold">{update.progressPercentage}%</span></div>
+                                            )}
+                                            <p className="text-right text-muted-foreground/80">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</p>
+                                        </div>
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    </>
+                )}
+                <Button asChild variant="outline" size="sm" className="mt-4 w-full">
+                    <Link href={`/tasks/${task.id}`}>View Full Task Details <UserIcon className="ml-2 h-3 w-3"/></Link>
+                </Button>
+            </AccordionContent>
+        </AccordionItem>
     );
 };
 
-const ProjectCard = ({ project, isExpanded, onToggleExpand }: { project: ProjectWithTasks, isExpanded: boolean, onToggleExpand: () => void }) => {
+const ProjectCard = ({ project, userMap, isExpanded, onToggleExpand, expandedTaskId, onToggleTask }: { 
+    project: ProjectWithTasks, 
+    userMap: Map<string, User>,
+    isExpanded: boolean, 
+    onToggleExpand: () => void,
+    expandedTaskId: string | null;
+    onToggleTask: (taskId: string) => void;
+}) => {
     const totalTasks = project.tasks.length;
 
     return (
         <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
             <CardHeader className="cursor-pointer" onClick={onToggleExpand}>
                 <div className="flex justify-between items-start gap-4">
-                    <Link href={`/projects/${project.id}`} className="flex-1 truncate" onClick={(e) => e.stopPropagation()}>
+                    <div className="flex-1 truncate">
                          <TooltipProvider>
                             <Tooltip>
                                 <TooltipTrigger asChild>
-                                    <CardTitle className="text-lg font-bold hover:underline truncate">{project.name}</CardTitle>
+                                    <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
+                                        <CardTitle className="text-lg font-bold hover:underline truncate">{project.name}</CardTitle>
+                                    </Link>
                                 </TooltipTrigger>
                                 <TooltipContent>
                                     <p>{project.name}</p>
                                 </TooltipContent>
                             </Tooltip>
                         </TooltipProvider>
-                    </Link>
-                    <ChevronDown className={cn("h-5 w-5 transition-transform text-muted-foreground", isExpanded && "rotate-180")} />
-                </div>
-                 <div className="flex items-center gap-3 pt-2 text-sm text-muted-foreground">
-                    <div className="flex items-center gap-1.5">
-                        <CalendarIcon className="h-4 w-4" />
-                        <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
+                         <div className="flex items-center gap-3 pt-2 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                                <CalendarIcon className="h-4 w-4" />
+                                <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
+                            </div>
+                            <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
+                        </div>
                     </div>
-                    <Badge variant="outline">Tasks: {totalTasks}</Badge>
+                    <ChevronDown className={cn("h-5 w-5 transition-transform text-muted-foreground", isExpanded && "rotate-180")} />
                 </div>
             </CardHeader>
 
             {isExpanded && (
                 <CardContent className="flex-grow flex flex-col justify-end pt-0">
-                    <div className="space-y-3">
+                    <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={onToggleTask}>
                         {project.tasks.length > 0 ? (
                             project.tasks.map(task => (
-                                <TaskItem key={task.id} task={task} />
+                                <TaskItem key={task.id} task={task} userMap={userMap} onToggleExpand={() => onToggleTask(task.id)} isExpanded={expandedTaskId === task.id}/>
                             ))
                         ) : (
                             <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
                                 No activity recorded for this project today.
                             </div>
                         )}
-                    </div>
+                    </Accordion>
                 </CardContent>
             )}
         </Card>
@@ -171,21 +229,22 @@ const ProjectCard = ({ project, isExpanded, onToggleExpand }: { project: Project
 export default function TodayPage() {
   const { localUser, hasPermission, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [projects, setProjects] = useState<ProjectWithTasks[]>([]);
+  const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[]}>({projects: [], users: []});
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedPmoDivision, setSelectedPmoDivision] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
+  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const projectsPerPage = 9;
 
   const fetchData = useCallback(async () => {
     if (localUser?.id) {
       setIsLoading(true);
       try {
-        const data = await getTodaysTasks(localUser.id);
-        setProjects(data);
+        const fetchedData = await getTodaysTasks(localUser.id);
+        setData(fetchedData);
       } catch (error) {
         console.error("Failed to fetch today's tasks", error);
       } finally {
@@ -205,7 +264,7 @@ export default function TodayPage() {
   }, [authLoading, hasPermission, router, fetchData]);
 
   const filteredProjects = useMemo(() => {
-    let filtered = projects;
+    let filtered = data.projects;
     
     if (searchQuery) {
       filtered = filtered.filter(p => 
@@ -227,15 +286,26 @@ export default function TodayPage() {
     }
     
     return filtered;
-  }, [projects, searchQuery, selectedStatus, selectedPmoDivision]);
+  }, [data.projects, searchQuery, selectedStatus, selectedPmoDivision]);
 
   const handleToggleExpand = (projectId: string) => {
-    setExpandedProjectId(prevId => (prevId === projectId ? null : projectId));
+    if (expandedProjectId === projectId) {
+        setExpandedProjectId(null);
+        setExpandedTaskId(null);
+    } else {
+        setExpandedProjectId(projectId);
+        setExpandedTaskId(null); // Collapse task when switching project
+    }
+  };
+  
+  const handleToggleTask = (taskId: string) => {
+    setExpandedTaskId(prevId => (prevId === taskId ? null : taskId));
   };
   
   useEffect(() => {
     setCurrentPage(1);
     setExpandedProjectId(null);
+    setExpandedTaskId(null);
   }, [searchQuery, selectedStatus, selectedPmoDivision]);
 
   const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
@@ -246,14 +316,16 @@ export default function TodayPage() {
   }, [filteredProjects, currentPage, projectsPerPage]);
 
   const uniqueStatuses = useMemo(() => {
-    const statuses = projects.map(p => p.status.name);
+    const statuses = data.projects.map(p => p.status.name);
     return [...new Set(statuses)];
-  }, [projects]);
+  }, [data.projects]);
 
   const uniquePmoDivisions = useMemo(() => {
-    const divisions = projects.map(p => p.pmoDivision.name);
+    const divisions = data.projects.map(p => p.pmoDivision.name);
     return [...new Set(divisions)];
-  }, [projects]);
+  }, [data.projects]);
+
+  const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
   
   if (isLoading || authLoading) {
     return <LoadingSkeleton />;
@@ -318,8 +390,11 @@ export default function TodayPage() {
               <ProjectCard 
                 key={project.id} 
                 project={project}
+                userMap={userMap}
                 isExpanded={expandedProjectId === project.id}
                 onToggleExpand={() => handleToggleExpand(project.id)}
+                expandedTaskId={expandedProjectId === project.id ? expandedTaskId : null}
+                onToggleTask={handleToggleTask}
               />
             ))}
           </div>
@@ -359,4 +434,3 @@ export default function TodayPage() {
     </div>
   );
 }
-

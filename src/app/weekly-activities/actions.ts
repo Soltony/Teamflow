@@ -2,7 +2,7 @@
 'use server';
 
 import prisma from "@/lib/db";
-import { startOfWeek, endOfWeek, startOfDay, endOfDay } from 'date-fns';
+import { startOfWeek, endOfWeek } from 'date-fns';
 
 export async function getWeeklyTasks(userId?: string, targetDate: Date = new Date()) {
     const weekStart = startOfWeek(targetDate, { weekStartsOn: 1 }); // Monday
@@ -113,6 +113,9 @@ export async function getWeeklyTasks(userId?: string, targetDate: Date = new Dat
                 },
             },
             updates: {
+                include: {
+                    author: true,
+                },
                 orderBy: {
                     createdAt: 'desc'
                 },

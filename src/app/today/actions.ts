@@ -109,6 +109,9 @@ export async function getTodaysTasks(userId?: string) {
                 },
             },
             updates: {
+                include: {
+                    author: true,
+                },
                 orderBy: {
                     createdAt: 'desc'
                 },
@@ -142,6 +145,11 @@ export async function getTodaysTasks(userId?: string) {
         }
         projectsMap.get(project.id).tasks.push(task);
     });
+    
+    const allUsers = await prisma.user.findMany();
 
-    return JSON.parse(JSON.stringify(Array.from(projectsMap.values())));
+    return {
+        projects: JSON.parse(JSON.stringify(Array.from(projectsMap.values()))),
+        users: JSON.parse(JSON.stringify(allUsers)),
+    };
 }
