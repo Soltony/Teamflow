@@ -77,11 +77,13 @@ const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<str
     const wasUpdatedToday = !wasCompletedToday && todaysUpdates.length > 0;
     
     return (
-        <AccordionItem value={task.id} className="border rounded-md bg-muted/30">
-            <AccordionTrigger className="p-3 hover:no-underline">
-                <div className="flex justify-between items-start gap-2 w-full">
-                    <div className="flex-1 text-left space-y-1">
-                        <Link href={`/tasks/${task.id}`} className="font-semibold text-sm hover:underline">{task.title}</Link>
+        <AccordionItem value={task.id} className="border-b-0">
+            <Card>
+                <AccordionTrigger className="p-3 hover:no-underline text-left">
+                     <div className="flex justify-between items-center gap-2 w-full">
+                        <Link href={`/tasks/${task.id}`} className="font-semibold text-sm hover:underline flex-1 truncate" onClick={(e) => e.stopPropagation()}>
+                            {task.title}
+                        </Link>
                         <div className="flex flex-wrap gap-1">
                             {isDueToday && !wasCompletedToday && (
                                 <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
@@ -90,109 +92,107 @@ const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<str
                             )}
                             {wasUpdatedToday && (
                                 <Badge className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
-                                    <Edit3 className="w-3 h-3" /> Updated Today
+                                    <Edit3 className="w-3 h-3" /> Updated
                                 </Badge>
                             )}
                             {wasCompletedToday && (
                                 <Badge className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
-                                    <CheckCircle className="w-3 h-3" /> Completed Today
+                                    <CheckCircle className="w-3 h-3" /> Completed
                                 </Badge>
                             )}
                         </div>
                     </div>
-                </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-3 pt-0">
-                <Separator className="mb-3"/>
-                 <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
-                 <div className="flex flex-wrap items-center gap-2 mb-3">
-                    <Badge variant="outline">Milestone: {task.milestone.title}</Badge>
-                    <Badge variant="outline">Assignees: {task.assignees.map(a => userMap.get(a.id)?.name).filter(Boolean).join(', ')}</Badge>
-                 </div>
-                
-                {task.updates && task.updates.length > 0 && (
-                    <>
-                        <Separator className="my-3"/>
-                        <h4 className="font-semibold text-xs mb-2">Update History</h4>
-                        <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
-                             {task.updates.map(update => {
-                                const author = userMap.get(update.authorId);
-                                if (update.type === 'STATUS_CHANGE') {
-                                    const isApproval = update.text.includes('approved');
+                </AccordionTrigger>
+                <AccordionContent className="p-3 pt-0">
+                    <Separator className="mb-3"/>
+                    <p className="text-sm text-muted-foreground mb-3">{task.description}</p>
+                    <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <Badge variant="outline">Milestone: {task.milestone.title}</Badge>
+                        <Badge variant="outline">Assignees: {task.assignees.map(a => userMap.get(a.id)?.name).filter(Boolean).join(', ')}</Badge>
+                        <Badge variant="secondary">Due: {format(parseISO(task.endDate as unknown as string), 'MMM dd, yyyy')}</Badge>
+                        <Badge variant="secondary">Progress: {task.progress || 0}%</Badge>
+                    </div>
+                    
+                    {task.updates && task.updates.length > 0 && (
+                        <>
+                            <Separator className="my-3"/>
+                            <h4 className="font-semibold text-xs mb-2">Update History</h4>
+                            <div className="space-y-3 max-h-48 overflow-y-auto pr-2">
+                                {task.updates.map(update => {
+                                    const author = userMap.get(update.authorId);
+                                    if (update.type === 'STATUS_CHANGE') {
+                                        const isApproval = update.text.includes('approved');
+                                        return (
+                                            <div key={update.id} className="flex items-start gap-3">
+                                                <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center">
+                                                    {isApproval ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-destructive" />}
+                                                </div>
+                                                <div className="flex-1 text-xs bg-muted/50 p-2 rounded-md">
+                                                    <p className="text-muted-foreground italic">{update.text} by <span className="font-semibold">{author?.name}</span></p>
+                                                    <p className="text-right text-muted-foreground/80">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</p>
+                                                </div>
+                                            </div>
+                                        );
+                                    }
                                     return (
                                         <div key={update.id} className="flex items-start gap-3">
-                                            <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center">
-                                                {isApproval ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-destructive" />}
-                                            </div>
+                                            <Avatar className="w-6 h-6 border">
+                                                <AvatarImage src={author?.avatar} alt={author?.name} />
+                                                <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
+                                            </Avatar>
                                             <div className="flex-1 text-xs bg-muted/50 p-2 rounded-md">
-                                                <p className="text-muted-foreground italic">{update.text} by <span className="font-semibold">{author?.name}</span></p>
+                                                <p>{update.text}</p>
+                                                {update.progressPercentage !== null && (
+                                                <div className="mt-1 text-muted-foreground">Progress reported: <span className="font-bold">{update.progressPercentage}%</span></div>
+                                                )}
                                                 <p className="text-right text-muted-foreground/80">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</p>
                                             </div>
                                         </div>
-                                    );
-                                }
-                                return (
-                                    <div key={update.id} className="flex items-start gap-3">
-                                        <Avatar className="w-6 h-6 border">
-                                            <AvatarImage src={author?.avatar} alt={author?.name} />
-                                            <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
-                                        </Avatar>
-                                        <div className="flex-1 text-xs bg-muted/50 p-2 rounded-md">
-                                            <p>{update.text}</p>
-                                            {update.progressPercentage !== null && (
-                                            <div className="mt-1 text-muted-foreground">Progress reported: <span className="font-bold">{update.progressPercentage}%</span></div>
-                                            )}
-                                            <p className="text-right text-muted-foreground/80">{formatDistanceToNow(new Date(update.createdAt), { addSuffix: true })}</p>
-                                        </div>
-                                    </div>
-                                )
-                            })}
-                        </div>
-                    </>
-                )}
-            </AccordionContent>
+                                    )
+                                })}
+                            </div>
+                        </>
+                    )}
+                </AccordionContent>
+            </Card>
         </AccordionItem>
     );
 };
 
-const ProjectCard = ({ project, userMap, expandedTaskId, onToggleTask }: { 
+const ProjectAccordion = ({ project, userMap }: { 
     project: ProjectWithTasks, 
     userMap: Map<string, User>,
-    expandedTaskId: string | null;
-    onToggleTask: (taskId: string) => void;
 }) => {
     const totalTasks = project.tasks.length;
+    const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
     return (
-        <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
-            <CardHeader>
-                <div className="flex justify-between items-start gap-4">
-                    <div className="flex-1 truncate">
-                         <TooltipProvider>
-                            <Tooltip>
-                                <TooltipTrigger asChild>
-                                    <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
-                                        <CardTitle className="text-lg font-bold hover:underline truncate">{project.name}</CardTitle>
-                                    </Link>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                    <p>{project.name}</p>
-                                </TooltipContent>
-                            </Tooltip>
-                        </TooltipProvider>
-                         <div className="flex items-center gap-3 pt-2 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1.5">
-                                <CalendarIcon className="h-4 w-4" />
-                                <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
-                            </div>
-                            <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
+        <AccordionItem value={project.id}>
+            <AccordionTrigger className="p-4 hover:no-underline">
+                <div className="flex justify-between items-center gap-4 w-full">
+                    <TooltipProvider>
+                        <Tooltip>
+                            <TooltipTrigger asChild>
+                                <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
+                                    <h3 className="text-lg font-bold hover:underline truncate">{project.name}</h3>
+                                </Link>
+                            </TooltipTrigger>
+                            <TooltipContent>
+                                <p>{project.name}</p>
+                            </TooltipContent>
+                        </Tooltip>
+                    </TooltipProvider>
+                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                        <div className="flex items-center gap-1.5">
+                            <CalendarIcon className="h-4 w-4" />
+                            <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
                         </div>
+                        <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
                     </div>
                 </div>
-            </CardHeader>
-
-            <CardContent className="flex-grow flex flex-col justify-end pt-0">
-                <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={onToggleTask}>
+            </AccordionTrigger>
+            <AccordionContent className="p-4 pt-0">
+                <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={(value) => setExpandedTaskId(prev => prev === value ? null : value)}>
                     {project.tasks.length > 0 ? (
                         project.tasks.map(task => (
                             <TaskItem key={task.id} task={task} userMap={userMap} />
@@ -203,8 +203,8 @@ const ProjectCard = ({ project, userMap, expandedTaskId, onToggleTask }: {
                         </div>
                     )}
                 </Accordion>
-            </CardContent>
-        </Card>
+            </AccordionContent>
+        </AccordionItem>
     );
 };
 
@@ -217,7 +217,7 @@ export default function TodayPage() {
   const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const [selectedPmoDivision, setSelectedPmoDivision] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const projectsPerPage = 5;
 
   const fetchData = useCallback(async () => {
@@ -268,14 +268,10 @@ export default function TodayPage() {
     
     return filtered;
   }, [data.projects, searchQuery, selectedStatus, selectedPmoDivision]);
-
-  const handleToggleTask = (taskId: string) => {
-    setExpandedTaskId(prevId => (prevId === taskId ? null : taskId));
-  };
   
   useEffect(() => {
     setCurrentPage(1);
-    setExpandedTaskId(null);
+    setExpandedProjectId(null);
   }, [searchQuery, selectedStatus, selectedPmoDivision]);
 
   const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
@@ -355,17 +351,21 @@ export default function TodayPage() {
       
       {paginatedProjects.length > 0 ? (
         <>
-          <div className="grid grid-cols-1 gap-6">
+          <Accordion 
+              type="single" 
+              collapsible 
+              className="w-full space-y-4"
+              value={expandedProjectId || ""} 
+              onValueChange={(value) => setExpandedProjectId(prev => prev === value ? null : value)}
+          >
             {paginatedProjects.map((project: ProjectWithTasks) => (
-              <ProjectCard 
+              <ProjectAccordion 
                 key={project.id} 
                 project={project}
                 userMap={userMap}
-                expandedTaskId={expandedTaskId}
-                onToggleTask={handleToggleTask}
               />
             ))}
-          </div>
+          </Accordion>
           
           {totalPages > 1 && (
             <div className="flex justify-center items-center gap-4 mt-6">
