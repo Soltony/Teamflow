@@ -179,10 +179,10 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const { toast } = useToast();
   const router = useRouter();
   const [taskToDecline, setTaskToDecline] = useState<TeamViewTask | null>(null);
-  const [expandedProjectIds, setExpandedProjectIds] = useState<string[]>([]);
+  const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
-  const [expandedStatusIds, setExpandedStatusIds] = useState<string[]>([]);
+  const [expandedStatusId, setExpandedStatusId] = useState<string | null>(null);
 
   const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
 
@@ -263,21 +263,28 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
         const filteredProjects = initialTasksByProject.filter((p: any) => projectsClosingThisMonthIds.includes(p.project.id));
         const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
         const statusNames = new Set(filteredProjects.map((p: any) => statusIdToName.get(p.project.statusId)));
-        setExpandedStatusIds(Array.from(statusNames) as string[]);
-        setExpandedProjectIds([]); // Keep projects collapsed
+        
+        // Expand the first status group that has closing projects
+        if (statusNames.size > 0) {
+            setExpandedStatusId(Array.from(statusNames)[0] as string);
+        } else {
+            setExpandedStatusId(null);
+        }
     } else {
-        setExpandedStatusIds([]);
-        setExpandedProjectIds([]);
+        setExpandedStatusId(null);
     }
+    setExpandedProjectId(null);
     setExpandedTaskId(null);
   };
 
-  const handleProjectAccordionChange = (value: string | string[]) => {
-    if (Array.isArray(value)) {
-        setExpandedProjectIds(value);
-    } else {
-        setExpandedProjectIds(value ? [value] : []);
-    }
+  const handleProjectAccordionChange = (value: string) => {
+    setExpandedProjectId(value);
+    setExpandedTaskId(null); // Collapse task when project changes
+  };
+
+  const handleStatusAccordionChange = (value: string) => {
+    setExpandedStatusId(value);
+    setExpandedProjectId(null); // Collapse project when status changes
     setExpandedTaskId(null);
   };
   
@@ -363,7 +370,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                 <p>Once tasks are assigned, they will appear here for you to manage.</p>
             </div>
         ) : (
-          <Accordion type="multiple" className="w-full space-y-4" value={expandedStatusIds} onValueChange={setExpandedStatusIds}>
+          <Accordion type="single" collapsible className="w-full space-y-4" value={expandedStatusId || ""} onValueChange={handleStatusAccordionChange}>
             {orderedStatuses.map(statusName => {
                 const projects = projectsByStatus[statusName];
                 if (!projects || projects.length === 0) {
@@ -376,7 +383,7 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                 {statusName} Projects ({projects.length})
                             </AccordionTrigger>
                             <AccordionContent className="px-4 pb-4">
-                                <Accordion type="multiple" className="w-full space-y-4" value={expandedProjectIds} onValueChange={handleProjectAccordionChange}>
+                                <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || ""} onValueChange={handleProjectAccordionChange}>
                                     {projects.map(({ project, tasks, stats }: ProjectWithTasksAndStats) => {
                                         const projectProgress = calculateProjectProgress(project);
                                         const completedStatusNames = ['Completed', 'On Handover'];
