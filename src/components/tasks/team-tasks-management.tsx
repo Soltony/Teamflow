@@ -402,9 +402,9 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                         } else if (allTasksDone && Math.round(projectProgress) >= 100) {
                                             statusBadge = <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Ready to Close</Badge>;
                                         } else if (allTasksDone) {
-                                            statusBadge = <Badge className="bg-sky-600 hover:bg-sky-600/90 text-primary-foreground">All Tasks Done</Badge>;
+                                            statusBadge = <Badge className="bg-blue-600 hover:bg-blue-600/90 text-primary-foreground">All Tasks Done</Badge>;
                                         } else {
-                                            statusBadge = <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">Active</Badge>;
+                                            statusBadge = <Badge className="bg-primary hover:bg-primary/90">Active</Badge>;
                                         }
                                       
                                       return (
