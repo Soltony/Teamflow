@@ -2,11 +2,14 @@
 'use server';
 
 import prisma from "@/lib/db";
-import { startOfDay, endOfDay } from 'date-fns';
+import { startOfDay, endOfDay, addDays } from 'date-fns';
 
-export async function getTodaysTasks(userId?: string) {
-    const todayStart = startOfDay(new Date());
-    const todayEnd = endOfDay(new Date());
+export async function getTodaysTasks(userId?: string, targetDate: Date = new Date()) {
+    const dayStart = startOfDay(targetDate);
+    const dayEnd = endOfDay(targetDate);
+    
+    const tomorrowStart = startOfDay(addDays(targetDate, 1));
+    const tomorrowEnd = endOfDay(addDays(targetDate, 1));
 
     // Check if user has admin-level permissions (can see all projects)
     let hasAdminPermissions = false;
@@ -69,15 +72,15 @@ export async function getTodaysTasks(userId?: string) {
                         // Tasks that are due today
                         {
                             endDate: {
-                                gte: todayStart,
-                                lte: todayEnd
+                                gte: dayStart,
+                                lte: dayEnd
                             }
                         },
                         // Tasks that were completed today
                         {
                             completedAt: {
-                                gte: todayStart,
-                                lte: todayEnd
+                                gte: dayStart,
+                                lte: dayEnd
                             }
                         },
                         // Tasks that had an update today
@@ -85,8 +88,8 @@ export async function getTodaysTasks(userId?: string) {
                             updates: {
                                 some: {
                                     createdAt: {
-                                        gte: todayStart,
-                                        lte: todayEnd
+                                        gte: dayStart,
+                                        lte: dayEnd
                                     }
                                 }
                             }
@@ -130,6 +133,19 @@ export async function getTodaysTasks(userId?: string) {
             }
         },
     });
+    
+    const tasksDueTomorrow = await prisma.task.count({
+        where: {
+            milestone: { project: projectWhereClause },
+            endDate: {
+                gte: tomorrowStart,
+                lte: tomorrowEnd,
+            },
+            status: {
+                not: 'DONE'
+            }
+        }
+    });
 
     const projectsMap = new Map<string, any>();
 
@@ -153,9 +169,17 @@ export async function getTodaysTasks(userId?: string) {
     });
     
     const allUsers = await prisma.user.findMany();
+    
+    const activityStats = {
+        projectsActive: projectsMap.size,
+        tasksUpdated: tasks.filter(t => t.updates.some(u => u.createdAt >= dayStart && u.createdAt <= dayEnd)).length,
+        tasksCompleted: tasks.filter(t => t.completedAt && t.completedAt >= dayStart && t.completedAt <= dayEnd).length,
+        tasksDueTomorrow: tasksDueTomorrow,
+    };
 
     return {
         projects: JSON.parse(JSON.stringify(Array.from(projectsMap.values()))),
         users: JSON.parse(JSON.stringify(allUsers)),
+        stats: activityStats,
     };
 }

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -12,12 +11,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User, TaskUpdate } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
-import { isToday, parseISO, format, formatDistanceToNow } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Search, ListTodo, CalendarIcon, XCircle, User as UserIcon } from 'lucide-react';
+import { isToday, parseISO, format, formatDistanceToNow, addDays, subDays, isSameDay } from 'date-fns';
+import { Clock, Edit3, CheckCircle, Search, ListTodo, CalendarIcon, ChevronLeft, ChevronRight, XCircle, Briefcase } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
@@ -222,7 +222,7 @@ const ProjectAccordion = ({ project, userMap }: {
                     </div>
                 </AccordionTrigger>
                 <AccordionContent className="p-4 pt-0">
-                    <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={(value) => setExpandedTaskId(prev => prev === value ? null : value)}>
+                    <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
                         {project.tasks.length > 0 ? (
                             project.tasks.map(task => (
                                 <TaskItem key={task.id} task={task} userMap={userMap} />
@@ -242,20 +242,29 @@ const ProjectAccordion = ({ project, userMap }: {
 export default function TodayPage() {
   const { localUser, hasPermission, loading: authLoading } = useAuth();
   const router = useRouter();
-  const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[]}>({projects: [], users: []});
+  const searchParams = useSearchParams();
+
+  const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[], stats: any}>({projects: [], users: [], stats: { projectsActive: 0, tasksUpdated: 0, tasksCompleted: 0, tasksDueTomorrow: 0 }});
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-  const [selectedPmoDivision, setSelectedPmoDivision] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
-  const projectsPerPage = 5;
+  
+  const [date, setDate] = useState<Date>(() => {
+      const dateParam = searchParams.get('date');
+      return dateParam ? parseISO(dateParam) : new Date();
+  });
 
-  const fetchData = useCallback(async () => {
+  const handleDateChange = (newDate: Date) => {
+      const newDateString = format(newDate, 'yyyy-MM-dd');
+      setDate(newDate);
+      router.push(`/today?date=${newDateString}`);
+  };
+
+  const fetchData = useCallback(async (targetDate: Date) => {
     if (localUser?.id) {
       setIsLoading(true);
       try {
-        const fetchedData = await getTodaysTasks(localUser.id);
+        const fetchedData = await getTodaysTasks(localUser.id, targetDate);
         setData(fetchedData as any);
       } catch (error) {
         console.error("Failed to fetch today's tasks", error);
@@ -270,57 +279,27 @@ export default function TodayPage() {
       if (!hasPermission('dashboard:view')) {
         router.replace('/dashboard');
       } else {
-        fetchData();
+        fetchData(date);
       }
     }
-  }, [authLoading, hasPermission, router, fetchData]);
+  }, [authLoading, hasPermission, router, fetchData, date]);
 
   const filteredProjects = useMemo(() => {
-    let filtered = data.projects;
+    if (!searchQuery) return data.projects;
     
-    if (searchQuery) {
-      filtered = filtered.filter(p => 
+    return data.projects.filter(p => 
         p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.tasks.some(task => 
-          task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
+            task.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            (task.description && task.description.toLowerCase().includes(searchQuery.toLowerCase()))
         )
-      );
-    }
-    
-    if (selectedStatus) {
-      filtered = filtered.filter(p => p.status.name === selectedStatus);
-    }
-    
-    if (selectedPmoDivision) {
-      filtered = filtered.filter(p => p.pmoDivision.name === selectedPmoDivision);
-    }
-    
-    return filtered;
-  }, [data.projects, searchQuery, selectedStatus, selectedPmoDivision]);
+    );
+  }, [data.projects, searchQuery]);
   
   useEffect(() => {
-    setCurrentPage(1);
     setExpandedProjectId(null);
-  }, [searchQuery, selectedStatus, selectedPmoDivision]);
-
-  const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
-  const paginatedProjects = useMemo(() => {
-    const startIndex = (currentPage - 1) * projectsPerPage;
-    const endIndex = startIndex + projectsPerPage;
-    return filteredProjects.slice(startIndex, endIndex);
-  }, [filteredProjects, currentPage, projectsPerPage]);
-
-  const uniqueStatuses = useMemo(() => {
-    const statuses = data.projects.map(p => p.status.name);
-    return [...new Set(statuses)];
-  }, [data.projects]);
-
-  const uniquePmoDivisions = useMemo(() => {
-    const divisions = data.projects.map(p => p.pmoDivision.name);
-    return [...new Set(divisions)];
-  }, [data.projects]);
+  }, [searchQuery, date]);
 
   const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
   
@@ -331,102 +310,110 @@ export default function TodayPage() {
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-          <div className="space-y-1">
+        <div className="space-y-1">
             <h1 className="text-2xl font-bold flex items-center gap-2"><ListTodo className="w-6 h-6"/> Today's Activity</h1>
             <p className="text-sm text-muted-foreground max-w-2xl">
               A real-time picture of your team’s daily progress — showing what’s due and what’s getting done.
             </p>
-          </div>
         </div>
-        
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
-          <div className="relative flex-1 sm:max-w-xs">
-            <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Search projects and tasks..."
-              className="w-full rounded-lg bg-background pl-8"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-            />
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-3 border rounded-lg bg-card">
+              <div className="flex items-center gap-2">
+                  <Button variant="outline" size="icon" onClick={() => handleDateChange(subDays(date, 1))}><ChevronLeft className="h-4 w-4" /></Button>
+                  <Popover>
+                      <PopoverTrigger asChild>
+                          <Button variant={"outline"} className="w-[280px] justify-start text-left font-normal">
+                              <CalendarIcon className="mr-2 h-4 w-4" />
+                              {isToday(date) ? 'Today' : format(date, 'MMM d, yyyy')}
+                          </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0">
+                          <Calendar mode="single" selected={date} onSelect={(d) => d && handleDateChange(d)} initialFocus />
+                      </PopoverContent>
+                  </Popover>
+                  <Button variant="outline" size="icon" onClick={() => handleDateChange(addDays(date, 1))}><ChevronRight className="h-4 w-4" /></Button>
+              </div>
+              <div className="flex items-center gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => handleDateChange(subDays(new Date(), 1))}>Yesterday</Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDateChange(new Date())} disabled={isSameDay(date, new Date())}>Today</Button>
+                  <Button variant="ghost" size="sm" onClick={() => handleDateChange(addDays(new Date(), 1))}>Tomorrow</Button>
+              </div>
+              <div className="relative flex-1 sm:max-w-xs w-full">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                      type="search"
+                      placeholder="Search projects and tasks..."
+                      className="w-full rounded-lg bg-background pl-8"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+              </div>
           </div>
-          <Select onValueChange={(value) => setSelectedStatus(value === 'all' ? null : value)} value={selectedStatus || 'all'}>
-            <SelectTrigger className="w-full sm:w-[160px]">
-              <SelectValue placeholder="Filter by status" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All Statuses</SelectItem>
-              {uniqueStatuses.map(status => (
-                <SelectItem key={status} value={status}>
-                  {status}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          <Select onValueChange={(value) => setSelectedPmoDivision(value === 'all' ? null : value)} value={selectedPmoDivision || 'all'}>
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder="Filter by division" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All EPMO Divisions</SelectItem>
-              {uniquePmoDivisions.map(division => (
-                <SelectItem key={division} value={division}>
-                  {division}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Active Projects</CardTitle>
+                    <Briefcase className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{data.stats.projectsActive}</div>
+                    <p className="text-xs text-muted-foreground">Projects with activity today</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Tasks Updated</CardTitle>
+                    <Edit3 className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{data.stats.tasksUpdated}</div>
+                    <p className="text-xs text-muted-foreground">Tasks with new progress updates</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Tasks Completed</CardTitle>
+                    <CheckCircle className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{data.stats.tasksCompleted}</div>
+                    <p className="text-xs text-muted-foreground">Tasks marked as 'Done' today</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Due Tomorrow</CardTitle>
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">{data.stats.tasksDueTomorrow}</div>
+                    <p className="text-xs text-muted-foreground">Upcoming task deadlines</p>
+                </CardContent>
+            </Card>
         </div>
       </div>
       
-      {paginatedProjects.length > 0 ? (
-        <>
-          <Accordion 
-              type="single" 
-              collapsible 
-              className="w-full space-y-4"
-              value={expandedProjectId || ""} 
-              onValueChange={(value) => setExpandedProjectId(prev => prev === value ? null : value)}
-          >
-            {paginatedProjects.map((project: ProjectWithTasks) => (
-              <ProjectAccordion 
-                key={project.id} 
-                project={project}
-                userMap={userMap}
-              />
-            ))}
-          </Accordion>
-          
-          {totalPages > 1 && (
-            <div className="flex justify-center items-center gap-4 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </Button>
-              <span className="text-sm text-muted-foreground">
-                Page {currentPage} of {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </Button>
-            </div>
-          )}
-        </>
+      {filteredProjects.length > 0 ? (
+        <Accordion 
+            type="single" 
+            collapsible 
+            className="w-full space-y-4"
+            value={expandedProjectId || ""} 
+            onValueChange={setExpandedProjectId}
+        >
+          {filteredProjects.map((project: ProjectWithTasks) => (
+            <ProjectAccordion 
+              key={project.id} 
+              project={project}
+              userMap={userMap}
+            />
+          ))}
+        </Accordion>
       ) : (
         <div className="text-center py-24 border-2 border-dashed rounded-lg">
           <p className="text-muted-foreground font-semibold">No activity found for today.</p>
           <p className="text-muted-foreground text-sm">
-            {searchQuery || selectedStatus || selectedPmoDivision 
-              ? "Try adjusting your filters to see more results." 
-              : "No tasks are due, have been completed, or updated today."}
+            {searchQuery ? "Try adjusting your search query." : "No tasks are due, have been completed, or updated today."}
           </p>
         </div>
       )}
