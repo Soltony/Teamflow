@@ -13,7 +13,7 @@ import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '@/comp
 import type { Task, User, TaskUpdate } from '@prisma/client';
 import { Badge } from '@/components/ui/badge';
 import { isToday, parseISO, format, formatDistanceToNow, addDays, subDays, isSameDay } from 'date-fns';
-import { Clock, Edit3, CheckCircle, Search, CalendarClock, CalendarIcon, ChevronLeft, ChevronRight, Briefcase, XCircle, CalendarCheck, ChevronDown } from 'lucide-react';
+import { Clock, Edit3, CheckCircle, Search, CalendarClock, CalendarIcon, ChevronLeft, ChevronRight, Briefcase, XCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
@@ -68,30 +68,28 @@ function LoadingSkeleton() {
   );
 }
 
-const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<string, User>}) => {
+const TaskItem = ({ task, date, userMap }: { task: TaskWithRelations, date: Date, userMap: Map<string, User>}) => {
     
     return (
         <AccordionItem value={task.id} className="border-b-0">
             <Card>
                 <AccordionTrigger className="p-3 hover:no-underline text-left">
                      <div className="flex justify-between items-center gap-2 w-full">
-                        <div className="flex items-center gap-3">
-                            <Link href={`/tasks/${task.id}`} className="font-semibold text-sm hover:underline" onClick={(e) => e.stopPropagation()}>
-                                {task.title}
-                            </Link>
-                        </div>
+                        <Link href={`/tasks/${task.id}`} className="font-semibold text-sm hover:underline" onClick={(e) => e.stopPropagation()}>
+                            {task.title}
+                        </Link>
                          <div className="flex flex-wrap gap-1">
-                          {isToday(parseISO(task.endDate as unknown as string)) && task.status !== 'DONE' && (
+                          {isSameDay(parseISO(task.endDate as unknown as string), date) && task.status !== 'DONE' && (
                                 <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
                                     <Clock className="w-3 h-3" /> Due Today
                                 </Badge>
                             )}
-                            {task.updates?.some(update => isToday(parseISO(update.createdAt as unknown as string))) && !(task.completedAt && isToday(parseISO(task.completedAt as unknown as string))) && (
+                            {task.updates?.some(update => isSameDay(parseISO(update.createdAt as unknown as string), date)) && !(task.completedAt && isSameDay(parseISO(task.completedAt as unknown as string), date)) && (
                                 <Badge className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
                                     <Edit3 className="w-3 h-3" /> Updated
                                 </Badge>
                             )}
-                            {task.completedAt && isToday(parseISO(task.completedAt as unknown as string)) && (
+                            {task.completedAt && isSameDay(parseISO(task.completedAt as unknown as string), date) && (
                                 <Badge className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
                                     <CheckCircle className="w-3 h-3" /> Completed
                                 </Badge>
@@ -155,8 +153,9 @@ const TaskItem = ({ task, userMap }: { task: TaskWithRelations, userMap: Map<str
     );
 };
 
-const ProjectAccordion = ({ project, userMap }: { 
+const ProjectAccordion = ({ project, date, userMap }: { 
     project: ProjectWithTasks, 
+    date: Date,
     userMap: Map<string, User>,
 }) => {
     const totalTasks = project.tasks.length;
@@ -226,7 +225,7 @@ const ProjectAccordion = ({ project, userMap }: {
                 <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={setExpandedTaskId}>
                     {project.tasks.length > 0 ? (
                         project.tasks.map(task => (
-                            <TaskItem key={task.id} task={task} userMap={userMap} />
+                            <TaskItem key={task.id} task={task} date={date} userMap={userMap} />
                         ))
                     ) : (
                         <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
@@ -254,10 +253,12 @@ export default function TodayPage() {
       return dateParam ? parseISO(dateParam) : new Date();
   });
 
-  const handleDateChange = (newDate: Date) => {
+  const handleDateChange = (newDate: Date | undefined) => {
+    if (newDate) {
       const newDateString = format(newDate, 'yyyy-MM-dd');
       setDate(newDate);
       router.push(`/today?date=${newDateString}`);
+    }
   };
 
   const fetchData = useCallback(async (targetDate: Date) => {
@@ -327,7 +328,7 @@ export default function TodayPage() {
                           </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0">
-                          <Calendar mode="single" selected={date} onSelect={(d) => d && handleDateChange(d)} initialFocus />
+                          <Calendar mode="single" selected={date} onSelect={(d) => handleDateChange(d)} initialFocus />
                       </PopoverContent>
                   </Popover>
                   <Button variant="outline" size="icon" onClick={() => handleDateChange(addDays(date, 1))}><ChevronRight className="h-4 w-4" /></Button>
@@ -394,6 +395,7 @@ export default function TodayPage() {
             <AccordionItem value={project.id} key={project.id} className="border-none">
               <ProjectAccordion 
                 project={project}
+                date={date}
                 userMap={userMap}
               />
             </AccordionItem>
@@ -402,7 +404,7 @@ export default function TodayPage() {
       ) : (
         <div className="text-center py-24 border-2 border-dashed rounded-lg">
           <p className="text-muted-foreground font-semibold">No activity found for today.</p>
-          <p className="text-muted-foreground text-sm">
+          <p className="text-sm text-muted-foreground">
             {searchQuery ? "Try adjusting your search query." : "No tasks are due, have been completed, or updated today."}
           </p>
         </div>
@@ -410,3 +412,4 @@ export default function TodayPage() {
     </div>
   );
 }
+
