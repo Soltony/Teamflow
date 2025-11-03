@@ -1,4 +1,5 @@
 
+
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -82,9 +83,11 @@ const TaskItem = ({ task, weekInterval, userMap }: { task: TaskWithRelations, we
             <Card>
                 <AccordionTrigger className="p-3 hover:no-underline text-left">
                      <div className="flex justify-between items-center gap-2 w-full">
-                        <Link href={`/tasks/${task.id}`} className="font-semibold text-sm hover:underline flex-1 truncate" onClick={(e) => e.stopPropagation()}>
-                            {task.title}
-                        </Link>
+                        <div className="flex items-center gap-3">
+                            <Link href={`/tasks/${task.id}`} className="font-semibold text-sm hover:underline" onClick={(e) => e.stopPropagation()}>
+                                {task.title}
+                            </Link>
+                        </div>
                         <div className="flex flex-wrap gap-1">
                             {isDueThisWeek && !wasCompletedThisWeek && (
                                 <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
@@ -168,43 +171,46 @@ const ProjectAccordion = ({ project, weekInterval, userMap }: {
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
     return (
-        <AccordionItem value={project.id}>
-            <AccordionTrigger className="p-4 hover:no-underline">
-                 <div className="flex justify-between items-center gap-4 w-full">
-                    <TooltipProvider>
-                        <Tooltip>
-                            <TooltipTrigger asChild>
-                                <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
-                                    <h3 className="text-lg font-bold hover:underline truncate">{project.name}</h3>
-                                </Link>
-                            </TooltipTrigger>
-                            <TooltipContent>
-                                <p>{project.name}</p>
-                            </TooltipContent>
-                        </Tooltip>
-                    </TooltipProvider>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground">
-                        <div className="flex items-center gap-1.5">
-                            <CalendarIcon className="h-4 w-4" />
-                            <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
+        <AccordionItem value={project.id} className="border-none">
+            <Card>
+                <AccordionTrigger className="p-4 hover:no-underline">
+                     <div className="flex justify-between items-center gap-4 w-full">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger asChild>
+                                    <Link href={`/projects/${project.id}`} onClick={(e) => e.stopPropagation()}>
+                                        <h3 className="text-lg font-bold hover:underline truncate">{project.name}</h3>
+                                    </Link>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>{project.name}</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                        <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                            <div className="flex items-center gap-1.5">
+                                <CalendarIcon className="h-4 w-4" />
+                                <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
+                            </div>
+                            <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
+                            <ChevronDown className="h-4 w-4 shrink-0 transition-transform duration-200" />
                         </div>
-                        <Badge variant="outline">Tasks with activity: {totalTasks}</Badge>
                     </div>
-                </div>
-            </AccordionTrigger>
-            <AccordionContent className="p-4 pt-0">
-                <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={(value) => setExpandedTaskId(prev => prev === value ? null : value)}>
-                    {project.tasks.length > 0 ? (
-                        project.tasks.map(task => (
-                            <TaskItem key={task.id} task={task} weekInterval={weekInterval} userMap={userMap}/>
-                        ))
-                    ) : (
-                        <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
-                            No activity recorded for this project this week.
-                        </div>
-                    )}
-                </Accordion>
-            </AccordionContent>
+                </AccordionTrigger>
+                <AccordionContent className="p-4 pt-0">
+                    <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={(value) => setExpandedTaskId(prev => prev === value ? null : value)}>
+                        {project.tasks.length > 0 ? (
+                            project.tasks.map(task => (
+                                <TaskItem key={task.id} task={task} weekInterval={weekInterval} userMap={userMap}/>
+                            ))
+                        ) : (
+                            <div className="text-center text-sm text-muted-foreground py-4 border-2 border-dashed rounded-lg">
+                                No activity recorded for this project this week.
+                            </div>
+                        )}
+                    </Accordion>
+                </AccordionContent>
+            </Card>
         </AccordionItem>
     );
 };
