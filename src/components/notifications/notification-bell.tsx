@@ -60,19 +60,21 @@ export function NotificationBell() {
   const handleNotificationClick = async (notification: NotificationWithSender) => {
     if (!notification.read) {
       await markNotificationAsRead(notification.id);
+      // Immediately update UI before re-fetch for better UX
+      setNotifications(prev => prev.map(n => n.id === notification.id ? {...n, read: true} : n));
     }
     if (notification.link) {
         router.push(notification.link);
     }
     setIsOpen(false);
-    fetchNotifications();
   };
   
   const handleMarkAllAsRead = async (e: React.MouseEvent) => {
     e.stopPropagation();
     if (localUser?.id) {
       await markAllNotificationsAsRead(localUser.id);
-      fetchNotifications();
+      // Immediately update UI
+      setNotifications(prev => prev.map(n => ({...n, read: true})));
     }
   };
 

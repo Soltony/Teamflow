@@ -61,13 +61,13 @@ export async function getMyTasks(userId: string) {
     milestoneTitle: task.milestone.title,
     updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'], progressPercentage: u.progressPercentage})),
     assignedUserIds: task.assignees.map(a => a.id),
-    createdAt: task.createdAt.toISOString(),
-    endDate: task.endDate.toISOString(),
-    startDate: task.startDate.toISOString(),
-    completedAt: task.completedAt?.toISOString(),
+    createdAt: task.createdAt,
+    endDate: task.endDate,
+    startDate: task.startDate,
+    completedAt: task.completedAt,
   }));
   
-  const todaysTasksCount = userTasks.filter(task => task.status !== 'DONE' && isToday(parseISO(task.endDate))).length;
+  const todaysTasksCount = userTasks.filter(task => task.status !== 'DONE' && isToday(task.endDate)).length;
 
   return {
     userTasks: JSON.parse(JSON.stringify(userTasks)),
@@ -159,7 +159,11 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
         const project = task.milestone.project;
         const recipients = new Set<string>();
         recipients.add(project.projectManagerId);
-        project.teams.forEach(team => recipients.add(team.teamLeadId));
+        project.teams.forEach(team => {
+            if (team.teamLeadId) {
+                recipients.add(team.teamLeadId);
+            }
+        });
         
         const message = `Progress on task "${task.title}" was updated to ${progressPercentage}%. It is now pending your review.`;
         const link = `/tasks/${task.id}`;

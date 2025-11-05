@@ -103,15 +103,15 @@ export async function getTeamViewData(userId: string) {
             const userTask: TeamViewTask = {
                 ...task,
                 status: task.status as TaskStatusType,
-                updates: task.updates.map(u => ({ ...u, type: u.type as TaskUpdate['type'], createdAt: u.createdAt.toISOString(), author: u.author as User, authorId: u.authorId, id: u.id, text: u.text, progressPercentage: u.progressPercentage })),
+                updates: task.updates.map(u => ({ ...u, type: u.type as TaskUpdate['type'], createdAt: u.createdAt, author: u.author as User, authorId: u.authorId, id: u.id, text: u.text, progressPercentage: u.progressPercentage })),
                 projectId: task.milestone.project.id,
                 projectName: task.milestone.project.name,
                 milestoneId: task.milestone.id,
                 milestoneTitle: task.milestone.title,
                 assignedUserIds: task.assignees.map(a => a.id),
-                startDate: task.startDate.toISOString(),
-                endDate: task.endDate.toISOString(),
-                completedAt: task.completedAt?.toISOString(),
+                startDate: task.startDate,
+                endDate: task.endDate,
+                completedAt: task.completedAt,
             };
             
             acc[projectId].tasks.push(userTask);
