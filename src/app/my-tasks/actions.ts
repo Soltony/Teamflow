@@ -59,15 +59,20 @@ export async function getMyTasks(userId: string) {
     projectName: task.milestone.project.name,
     milestoneId: task.milestone.id,
     milestoneTitle: task.milestone.title,
-    updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'], progressPercentage: u.progressPercentage})),
+    updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'], progressPercentage: u.progressPercentage, createdAt: u.createdAt, updatedAt: u.updatedAt})),
     assignedUserIds: task.assignees.map(a => a.id),
     createdAt: task.createdAt,
     endDate: task.endDate,
     startDate: task.startDate,
     completedAt: task.completedAt,
+    weight: task.weight,
+    progress: task.progress,
+    description: task.description,
+    milestoneId: task.milestoneId,
+    updatedAt: task.updatedAt,
   }));
   
-  const todaysTasksCount = userTasks.filter(task => task.status !== 'DONE' && isToday(task.endDate)).length;
+  const todaysTasksCount = userTasks.filter(task => task.status !== 'DONE' && isToday(parseISO(task.endDate as unknown as string))).length;
 
   return {
     userTasks: JSON.parse(JSON.stringify(userTasks)),
@@ -158,7 +163,9 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
         // Notification Logic
         const project = task.milestone.project;
         const recipients = new Set<string>();
-        recipients.add(project.projectManagerId);
+        if (project.projectManagerId) {
+            recipients.add(project.projectManagerId);
+        }
         project.teams.forEach(team => {
             if (team.teamLeadId) {
                 recipients.add(team.teamLeadId);
