@@ -40,17 +40,17 @@ export function NotificationBell() {
   }, [localUser?.id]);
 
   useEffect(() => {
+    // Fetch notifications when the component mounts and user is available
+    if (localUser?.id) {
+      fetchNotifications();
+    }
+  }, [localUser?.id, fetchNotifications]);
+  
+  useEffect(() => {
+    // Fetch notifications when the dropdown is opened
     if (isOpen && localUser?.id) {
       fetchNotifications();
     }
-    // Also fetch periodically when not open to update badge
-    const interval = setInterval(() => {
-        if (document.visibilityState === 'visible') {
-            fetchNotifications();
-        }
-    }, 30000); // every 30 seconds
-
-    return () => clearInterval(interval);
   }, [isOpen, localUser?.id, fetchNotifications]);
 
   const unreadCount = useMemo(() => {
@@ -61,12 +61,15 @@ export function NotificationBell() {
     if (!notification.read) {
       await markNotificationAsRead(notification.id);
     }
-    router.push(notification.link);
+    if (notification.link) {
+        router.push(notification.link);
+    }
     setIsOpen(false);
     fetchNotifications();
   };
   
-  const handleMarkAllAsRead = async () => {
+  const handleMarkAllAsRead = async (e: React.MouseEvent) => {
+    e.stopPropagation();
     if (localUser?.id) {
       await markAllNotificationsAsRead(localUser.id);
       fetchNotifications();
@@ -96,7 +99,7 @@ export function NotificationBell() {
             )}
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        <DropdownMenuGroup>
+        <DropdownMenuGroup className="max-h-96 overflow-y-auto">
           {notifications.length > 0 ? (
             notifications.map((notification) => (
               <DropdownMenuItem
@@ -106,7 +109,7 @@ export function NotificationBell() {
               >
                 <div className="flex items-start gap-3 py-2">
                    {!notification.read && (
-                    <Circle className="h-2 w-2 mt-1.5 fill-primary text-primary" />
+                    <Circle className="h-2 w-2 mt-1.5 flex-shrink-0 fill-primary text-primary" />
                    )}
                   <div className={cn("grid gap-1", notification.read && "pl-5")}>
                     <p className="text-sm font-medium leading-none">
