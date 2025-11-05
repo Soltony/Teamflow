@@ -41,18 +41,15 @@ export async function getTaskDetails(taskId: string, userId: string) {
         return null;
     }
     
-    // Basic authorization: ensure user is an assignee
-    const isAssignee = task.assignees.some(assignee => assignee.id === userId);
-    
-    // Permission-based authorization: check if user has project management permissions
+    // Authorization Check
     const user = await prisma.user.findUnique({ where: { id: userId }, include: { roles: true }});
-    const canManage = user?.roles.some(role => 
-        role.permissions.includes('projects:read') && 
-        role.permissions.includes('projects:update') && 
-        role.permissions.includes('projects:delete')
-    );
+    if (!user) return null;
 
-    if (!isAssignee && !canManage) {
+    const isAssignee = task.assignees.some(assignee => assignee.id === userId);
+    const hasApprovalPermission = user.roles.some(role => role.permissions.includes('tasks:approve'));
+
+    // Allow access if the user is an assignee OR has approval permissions
+    if (!isAssignee && !hasApprovalPermission) {
         return null;
     }
 

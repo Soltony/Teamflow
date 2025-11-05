@@ -72,7 +72,7 @@ export async function getMyTasks(userId: string) {
     updatedAt: task.updatedAt,
   }));
   
-  const todaysTasksCount = userTasks.filter(task => task.status !== 'DONE' && isToday(parseISO(task.endDate as unknown as string))).length;
+  const todaysTasksCount = userTasks.filter(task => task.status !== 'DONE' && isToday(new Date(task.endDate))).length;
 
   return {
     userTasks: JSON.parse(JSON.stringify(userTasks)),
@@ -160,18 +160,40 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
             data: updates
         });
         
-        // Notification Logic
+        // --- Notification Logic ---
         const project = task.milestone.project;
         const recipients = new Set<string>();
+
+        // 1. Add Project Manager
         if (project.projectManagerId) {
             recipients.add(project.projectManagerId);
         }
+        
+        // 2. Add Team Leads
         project.teams.forEach(team => {
             if (team.teamLeadId) {
                 recipients.add(team.teamLeadId);
             }
         });
-        
+
+        // 3. Add Division Director(s)
+        if (project.pmoDivisionId) {
+            const divisionApprovers = await prisma.user.findMany({
+                where: {
+                    pmoDivisionId: project.pmoDivisionId,
+                    roles: {
+                        some: {
+                            permissions: {
+                                has: 'tasks:approve'
+                            }
+                        }
+                    }
+                },
+                select: { id: true }
+            });
+            divisionApprovers.forEach(approver => recipients.add(approver.id));
+        }
+
         const message = `Progress on task "${task.title}" was updated to ${progressPercentage}%. It is now pending your review.`;
         const link = `/tasks/${task.id}`;
 
