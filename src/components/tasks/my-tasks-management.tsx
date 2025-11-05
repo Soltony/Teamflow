@@ -28,12 +28,13 @@ import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import type { Task, User, TaskUpdate, TaskStatus } from "@/lib/types";
-import { format, formatDistanceToNow, isPast, parseISO, differenceInDays, isAfter, endOfDay } from "date-fns";
-import { CheckCircle, XCircle, AlertTriangle, Clock, Check, Target, Award } from "lucide-react";
+import { format, formatDistanceToNow, isPast, parseISO, differenceInDays, isAfter, endOfDay, isToday } from "date-fns";
+import { CheckCircle, XCircle, AlertTriangle, Clock, Check, Target, Award, CalendarCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import type { UserTask } from "@/app/my-tasks/actions";
 import { addTaskUpdateAction, updateTaskStatusAction } from "@/app/my-tasks/actions";
 import { Slider } from "../ui/slider";
+import { cn } from "@/lib/utils";
 
 const taskUpdateSchema = (taskProgress: number) => z.object({
   text: z.string().min(10, "Update must be at least 10 characters.").max(500, "Update cannot exceed 500 characters."),
@@ -47,6 +48,7 @@ type MyTasksManagementProps = {
     currentUser: User;
     initialTasks: UserTask[];
     onDataChange: () => void;
+    todaysTasksCount: number;
 };
 
 
@@ -215,7 +217,7 @@ const TaskItem = ({
     );
 }
 
-const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubmit, expandedTaskId, setExpandedTaskId }: {
+const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubmit, expandedTaskId, setExpandedTaskId, show }: {
     title: string;
     icon: React.ReactNode;
     tasks: UserTask[];
@@ -224,47 +226,59 @@ const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubm
     onUpdateSubmit: (task: UserTask, data: TaskUpdateFormValues) => void;
     expandedTaskId: string | null;
     setExpandedTaskId: (id: string | null) => void;
-}) => (
-    <Card>
-        <CardHeader className="flex flex-row items-center gap-4">
-            {icon}
-            <CardTitle>{title} ({tasks.length})</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-             <Accordion type="single" collapsible className="w-full" value={expandedTaskId || ""} onValueChange={(value) => setExpandedTaskId(value || null)}>
-                {tasks.length > 0 ? (
-                    tasks.map(task => (
-                        <AccordionItem value={task.id} key={task.id} className="border-b-0">
-                            <TaskItem 
-                                task={task}
-                                userMap={userMap}
-                                onStatusChange={(newStatus) => onStatusChange(task, newStatus)}
-                                onUpdateSubmit={(data) => onUpdateSubmit(task, data)}
-                            />
-                        </AccordionItem>
-                    ))
-                ) : (
-                    <p className="text-sm text-muted-foreground pl-4">No tasks in this category.</p>
-                )}
-             </Accordion>
-        </CardContent>
-    </Card>
-)
+    show: boolean;
+}) => {
+    if (!show) return null;
+    return (
+        <Card>
+            <CardHeader className="flex flex-row items-center gap-4">
+                {icon}
+                <CardTitle>{title} ({tasks.length})</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <Accordion type="single" collapsible className="w-full" value={expandedTaskId || ""} onValueChange={(value) => setExpandedTaskId(value || null)}>
+                    {tasks.length > 0 ? (
+                        tasks.map(task => (
+                            <AccordionItem value={task.id} key={task.id} className="border-b-0">
+                                <TaskItem 
+                                    task={task}
+                                    userMap={userMap}
+                                    onStatusChange={(newStatus) => onStatusChange(task, newStatus)}
+                                    onUpdateSubmit={(data) => onUpdateSubmit(task, data)}
+                                />
+                            </AccordionItem>
+                        ))
+                    ) : (
+                        <p className="text-sm text-muted-foreground pl-4">No tasks in this category.</p>
+                    )}
+                </Accordion>
+            </CardContent>
+        </Card>
+    )
+}
 
-export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataChange }: MyTasksManagementProps) {
+export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataChange, todaysTasksCount }: MyTasksManagementProps) {
   const { toast } = useToast();
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'overdue' | 'active' | 'accomplished' | 'today' | null>(null);
 
-  const { overdueTasks, activeTasks, accomplishedThisWeek, onTimePerformance, completedTasksCount } = useMemo(() => {
+  const { overdueTasks, activeTasks, accomplishedThisWeek, onTimePerformance, completedTasksCount, todaysTasks } = useMemo(() => {
     const overdue: UserTask[] = [];
     const active: UserTask[] = [];
     const accomplished: UserTask[] = [];
+    const today: UserTask[] = [];
     
     const allCompletedTasks = initialTasks.filter(t => t.status === 'DONE');
 
     initialTasks.forEach(task => {
         const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && task.status !== 'DONE';
+        const isTaskForToday = task.status !== 'DONE' && isToday(parseISO(task.endDate));
+        
+        if (isTaskForToday) {
+            today.push(task);
+        }
+
         if (isTaskOverdue) {
             overdue.push(task);
         } else if (task.status === 'DONE') {
@@ -279,6 +293,7 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
     overdue.sort((a,b) => parseISO(a.endDate).getTime() - parseISO(b.endDate).getTime());
     active.sort((a,b) => parseISO(a.endDate).getTime() - parseISO(b.endDate).getTime());
     accomplished.sort((a,b) => parseISO(b.completedAt!).getTime() - parseISO(a.completedAt!).getTime());
+    today.sort((a,b) => parseISO(a.endDate).getTime() - parseISO(b.endDate).getTime());
 
     const onTimeCount = allCompletedTasks.filter(t => 
         t.completedAt && parseISO(t.completedAt) <= parseISO(t.endDate)
@@ -294,6 +309,7 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
         accomplishedThisWeek: accomplished,
         onTimePerformance: performance,
         completedTasksCount: allCompletedTasks.length,
+        todaysTasks: today,
     };
   }, [initialTasks]);
 
@@ -357,6 +373,10 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
     setExpandedTaskId: handleSetExpanded,
   }
 
+  const handleFilterClick = (newFilter: 'overdue' | 'active' | 'accomplished' | 'today' | null) => {
+      setFilter(currentFilter => currentFilter === newFilter ? null : newFilter);
+  }
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="space-y-1">
@@ -366,8 +386,8 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
         </p>
       </div>
       
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+        <Card onClick={() => handleFilterClick('overdue')} className={cn("cursor-pointer transition-colors hover:bg-muted/50", filter === 'overdue' && "bg-primary/10 border-primary")}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
               <AlertTriangle className="h-4 w-4 text-destructive" />
@@ -377,17 +397,27 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
               <p className="text-xs text-muted-foreground">Tasks past their due date</p>
             </CardContent>
         </Card>
-        <Card>
+        <Card onClick={() => handleFilterClick('today')} className={cn("cursor-pointer transition-colors hover:bg-muted/50", filter === 'today' && "bg-primary/10 border-primary")}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-sm font-medium">Tasks Due Today</CardTitle>
+              <CalendarCheck className="h-4 w-4 text-orange-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-bold">{todaysTasksCount}</div>
+              <p className="text-xs text-muted-foreground">Tasks due by end of day</p>
+            </CardContent>
+        </Card>
+        <Card onClick={() => handleFilterClick('active')} className={cn("cursor-pointer transition-colors hover:bg-muted/50", filter === 'active' && "bg-primary/10 border-primary")}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
               <Clock className="h-4 w-4 text-blue-500" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{activeTasks.length}</div>
-              <p className="text-xs text-muted-foreground">Upcoming or in-progress tasks</p>
+              <p className="text-xs text-muted-foreground">Upcoming or in-progress</p>
             </CardContent>
         </Card>
-        <Card>
+        <Card onClick={() => handleFilterClick('accomplished')} className={cn("cursor-pointer transition-colors hover:bg-muted/50", filter === 'accomplished' && "bg-primary/10 border-primary")}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Accomplished (Week)</CardTitle>
               <Award className="h-4 w-4 text-green-500" />
@@ -414,37 +444,43 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
         </Card>
       </div>
 
-      {overdueTasks.length === 0 && activeTasks.length === 0 && accomplishedThisWeek.length === 0 && (
+      {(filter === null && overdueTasks.length === 0 && activeTasks.length === 0 && accomplishedThisWeek.length === 0) ? (
         <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
             <p className="text-lg font-semibold">No tasks assigned to you!</p>
             <p>Your task list is empty. Enjoy the peace and quiet.</p>
         </div>
+      ) : (
+        <>
+            <TaskSection 
+                title="Overdue"
+                icon={<AlertTriangle className="w-6 h-6 text-destructive" />}
+                tasks={overdueTasks}
+                show={filter === null || filter === 'overdue'}
+                {...commonTaskSectionProps}
+            />
+            <TaskSection 
+                title="Today's Tasks"
+                icon={<CalendarCheck className="w-6 h-6 text-orange-500" />}
+                tasks={todaysTasks}
+                show={filter === 'today'}
+                {...commonTaskSectionProps}
+            />
+            <TaskSection 
+                title="Active"
+                icon={<Clock className="w-6 h-6 text-blue-500" />}
+                tasks={activeTasks}
+                show={filter === null || filter === 'active'}
+                {...commonTaskSectionProps}
+            />
+            <TaskSection 
+                title="Accomplished This Week"
+                icon={<Check className="w-6 h-6 text-green-500" />}
+                tasks={accomplishedThisWeek}
+                show={filter === null || filter === 'accomplished'}
+                {...commonTaskSectionProps}
+            />
+        </>
       )}
-
-      {overdueTasks.length > 0 &&
-        <TaskSection 
-            title="Overdue"
-            icon={<AlertTriangle className="w-6 h-6 text-destructive" />}
-            tasks={overdueTasks}
-            {...commonTaskSectionProps}
-        />
-      }
-      {activeTasks.length > 0 &&
-        <TaskSection 
-            title="Active"
-            icon={<Clock className="w-6 h-6 text-blue-500" />}
-            tasks={activeTasks}
-            {...commonTaskSectionProps}
-        />
-      }
-      {accomplishedThisWeek.length > 0 && 
-        <TaskSection 
-            title="Accomplished This Week"
-            icon={<Check className="w-6 h-6 text-green-500" />}
-            tasks={accomplishedThisWeek}
-            {...commonTaskSectionProps}
-        />
-      }
     </div>
   );
 }

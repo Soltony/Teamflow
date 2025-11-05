@@ -4,6 +4,7 @@
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { Task, User, TaskStatus, TaskUpdate } from "@/lib/types";
+import { isToday, parseISO } from "date-fns";
 
 export type UserTask = Task & {
   projectId: string;
@@ -61,10 +62,13 @@ export async function getMyTasks(userId: string) {
     updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'], progressPercentage: u.progressPercentage})),
     assignedUserIds: task.assignees.map(a => a.id),
   }));
+  
+  const todaysTasksCount = userTasks.filter(task => task.status !== 'DONE' && isToday(parseISO(task.endDate))).length;
 
   return {
     userTasks: JSON.parse(JSON.stringify(userTasks)),
-    allUsers: JSON.parse(JSON.stringify(allUsers))
+    allUsers: JSON.parse(JSON.stringify(allUsers)),
+    todaysTasksCount,
   };
 }
 
