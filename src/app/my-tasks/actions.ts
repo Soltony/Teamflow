@@ -175,24 +175,18 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
                 recipients.add(team.teamLeadId);
             }
         });
+        
+        // 3. Add Admins (including Directors with full permissions)
+        const admins = await prisma.user.findMany({
+            where: {
+                roles: {
+                    some: { name: 'Admin' }
+                }
+            },
+            select: { id: true }
+        });
+        admins.forEach(admin => recipients.add(admin.id));
 
-        // 3. Add Division Director(s)
-        if (project.pmoDivisionId) {
-            const divisionApprovers = await prisma.user.findMany({
-                where: {
-                    pmoDivisionId: project.pmoDivisionId,
-                    roles: {
-                        some: {
-                            permissions: {
-                                has: 'tasks:approve'
-                            }
-                        }
-                    }
-                },
-                select: { id: true }
-            });
-            divisionApprovers.forEach(approver => recipients.add(approver.id));
-        }
 
         const message = `Progress on task "${task.title}" was updated to ${progressPercentage}%. It is now pending your review.`;
         const link = `/tasks/${task.id}`;
