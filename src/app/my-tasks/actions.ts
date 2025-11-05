@@ -114,6 +114,14 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
                 throw new Error("Task not found.");
             }
             
+            // Only create an update if progress actually changed
+            if (progressPercentage === task.progress) {
+                // We might want to throw an error here to notify the user, 
+                // but for now, we'll just prevent the update.
+                // The client-side form submission should also prevent this.
+                return;
+            }
+
             await tx.taskUpdate.create({
                 data: {
                     text,
@@ -124,17 +132,12 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
                 }
             });
 
+            // Any progress update now moves the task to PENDING_REVIEW
             const updates: any = {
                 progress: progressPercentage,
+                status: 'PENDING_REVIEW'
             };
-
-            if (task.status === 'TODO' && progressPercentage > 0) {
-              updates.status = 'IN_PROGRESS';
-            } else if (progressPercentage === 100) {
-              updates.status = 'PENDING_REVIEW';
-            }
             
-
             await tx.task.update({
                 where: { id: taskId },
                 data: updates

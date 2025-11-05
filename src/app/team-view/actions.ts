@@ -147,10 +147,10 @@ export async function approveTaskAction(taskId: string, teamLeadId: string, team
 
         if (isComplete) {
             newStatus = 'DONE';
-            updateText = `Task approved by ${teamLeadName}. Status changed to Done.`;
+            updateText = `Task approved as complete by ${teamLeadName}. Status changed to Done.`;
         } else {
-            newStatus = task.progress > 0 ? 'IN_PROGRESS' : 'TODO';
-            updateText = `Progress update of ${task.progress}% was approved by ${teamLeadName}. Status is now ${newStatus.replace(/_/g, ' ')}.`;
+            newStatus = 'IN_PROGRESS';
+            updateText = `Progress update to ${task.progress}% was approved by ${teamLeadName}. Status is now In Progress.`;
         }
         
         await prisma.task.update({
