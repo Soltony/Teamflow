@@ -63,7 +63,7 @@ export async function getMyTasks(userId: string) {
     assignedUserIds: task.assignees.map(a => a.id),
   }));
   
-  const todaysTasksCount = userTasks.filter(task => task.status !== 'DONE' && isToday(parseISO(task.endDate))).length;
+  const todaysTasksCount = userTasks.filter(task => task.status !== 'DONE' && isToday(task.endDate)).length;
 
   return {
     userTasks: JSON.parse(JSON.stringify(userTasks)),
@@ -126,8 +126,14 @@ export async function addTaskUpdateAction(taskId: string, text: string, authorId
 
             const updates: any = {
                 progress: progressPercentage,
-                status: 'PENDING_REVIEW'
             };
+
+            if (task.status === 'TODO' && progressPercentage > 0) {
+              updates.status = 'IN_PROGRESS';
+            } else if (progressPercentage === 100) {
+              updates.status = 'PENDING_REVIEW';
+            }
+            
 
             await tx.task.update({
                 where: { id: taskId },
