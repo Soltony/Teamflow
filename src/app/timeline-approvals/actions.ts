@@ -68,9 +68,10 @@ export async function approveTimelineChange(requestId: string, reviewerId: strin
             });
             
             // Notify original requester
+            const project = await tx.project.findUnique({where: {id: request.projectId}, select: {name: true}});
             await tx.notification.create({
                 data: {
-                    message: `Your timeline change request for project was approved.`,
+                    message: `Your timeline change request for project "${project?.name}" was approved.`,
                     link: `/projects/${request.projectId}?tab=timeline`,
                     recipientId: request.requestedById,
                     senderId: reviewerId
@@ -105,9 +106,10 @@ export async function rejectTimelineChange(requestId: string, reviewerId: string
         });
 
         // Notify original requester
+        const project = await prisma.project.findUnique({where: {id: request.projectId}, select: {name: true}});
         await prisma.notification.create({
             data: {
-                message: `Your timeline change request for project was rejected. Reason: ${notes}`,
+                message: `Your timeline change request for project "${project?.name}" was rejected. Reason: ${notes}`,
                 link: `/projects/${request.projectId}?tab=timeline`,
                 recipientId: request.requestedById,
                 senderId: reviewerId

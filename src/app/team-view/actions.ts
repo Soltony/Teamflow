@@ -136,7 +136,7 @@ export async function getTeamViewData(userId: string) {
 
 export async function approveTaskAction(taskId: string, teamLeadId: string, teamLeadName: string) {
     try {
-        const task = await prisma.task.findUnique({ where: { id: taskId } });
+        const task = await prisma.task.findUnique({ where: { id: taskId }, include: { assignees: true } });
         if (!task) {
             return { success: false, error: "Task not found." };
         }
@@ -169,9 +169,21 @@ export async function approveTaskAction(taskId: string, teamLeadId: string, team
             }
         });
 
+        // Notify assignees
+        const message = `Your work on task "${task.title}" was approved. Status is now "${newStatus.replace('_', ' ')}".`;
+        const link = `/tasks/${task.id}`;
+        for (const assignee of task.assignees) {
+            if (assignee.id !== teamLeadId) {
+                await prisma.notification.create({
+                    data: { message, link, recipientId: assignee.id, senderId: teamLeadId }
+                });
+            }
+        }
+
         revalidatePath('/team-view');
         revalidatePath('/my-tasks');
         revalidatePath('/task-approvals');
+        revalidatePath('/notifications');
         return { success: true };
 
     } catch (error) {
@@ -183,6 +195,11 @@ export async function approveTaskAction(taskId: string, teamLeadId: string, team
 
 export async function declineTaskAction(taskId: string, teamLeadId: string, teamLeadName: string, reason: string) {
     try {
+        const task = await prisma.task.findUnique({ where: { id: taskId }, include: { assignees: true } });
+        if (!task) {
+            return { success: false, error: "Task not found." };
+        }
+
         const updateText = `Task declined by ${teamLeadName}. Reason: ${reason}`;
         
         await prisma.task.update({
@@ -198,10 +215,22 @@ export async function declineTaskAction(taskId: string, teamLeadId: string, team
                 }
             }
         });
+        
+        // Notify assignees
+        const message = `Your update for task "${task.title}" was declined. Reason: ${reason}`;
+        const link = `/tasks/${task.id}`;
+        for (const assignee of task.assignees) {
+            if (assignee.id !== teamLeadId) {
+                await prisma.notification.create({
+                    data: { message, link, recipientId: assignee.id, senderId: teamLeadId }
+                });
+            }
+        }
 
         revalidatePath('/team-view');
         revalidatePath('/my-tasks');
         revalidatePath('/task-approvals');
+        revalidatePath('/notifications');
         return { success: true };
 
     } catch (error) {
