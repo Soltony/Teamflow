@@ -66,12 +66,23 @@ export async function approveTimelineChange(requestId: string, reviewerId: strin
                     dueDate: request.newEndDate,
                 }
             });
+            
+            // Notify original requester
+            await tx.notification.create({
+                data: {
+                    message: `Your timeline change request for project was approved.`,
+                    link: `/projects/${request.projectId}?tab=timeline`,
+                    recipientId: request.requestedById,
+                    senderId: reviewerId
+                }
+            });
         });
 
         revalidatePath('/timeline-approvals');
         revalidatePath(`/projects/${request.projectId}`);
         revalidatePath(`/projects/${request.projectId}/milestones`);
         revalidatePath('/milestones');
+        revalidatePath('/notifications');
         return { success: true };
     } catch (error) {
         console.error("Failed to approve timeline change:", error);
@@ -84,7 +95,7 @@ export async function rejectTimelineChange(requestId: string, reviewerId: string
         return { success: false, error: "A rejection reason of at least 10 characters is required."}
     }
     try {
-        await prisma.timelineChangeRequest.update({
+        const request = await prisma.timelineChangeRequest.update({
             where: { id: requestId },
             data: {
                 status: 'REJECTED',
@@ -92,7 +103,19 @@ export async function rejectTimelineChange(requestId: string, reviewerId: string
                 reviewNotes: notes,
             }
         });
+
+        // Notify original requester
+        await prisma.notification.create({
+            data: {
+                message: `Your timeline change request for project was rejected. Reason: ${notes}`,
+                link: `/projects/${request.projectId}?tab=timeline`,
+                recipientId: request.requestedById,
+                senderId: reviewerId
+            }
+        });
+
         revalidatePath('/timeline-approvals');
+        revalidatePath('/notifications');
         return { success: true };
     } catch (error) {
         console.error("Failed to reject timeline change:", error);

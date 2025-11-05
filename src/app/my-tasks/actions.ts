@@ -108,45 +108,79 @@ export async function updateTaskStatusAction(taskId: string, newStatus: TaskStat
 
 export async function addTaskUpdateAction(taskId: string, text: string, authorId: string, progressPercentage: number) {
     try {
-        await prisma.$transaction(async (tx) => {
-            const task = await tx.task.findUnique({ where: { id: taskId } });
-            if (!task) {
-                throw new Error("Task not found.");
-            }
-            
-            // Only create an update if progress actually changed
-            if (progressPercentage === task.progress) {
-                // We might want to throw an error here to notify the user, 
-                // but for now, we'll just prevent the update.
-                // The client-side form submission should also prevent this.
-                return;
-            }
-
-            await tx.taskUpdate.create({
-                data: {
-                    text,
-                    authorId,
-                    taskId: taskId,
-                    type: 'COMMENT',
-                    progressPercentage,
+        const task = await prisma.task.findUnique({ 
+            where: { id: taskId },
+            include: {
+                milestone: {
+                    include: {
+                        project: {
+                            include: {
+                                projectManager: true,
+                                teams: {
+                                    include: {
+                                        teamLead: true
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
-            });
-
-            // Any progress update now moves the task to PENDING_REVIEW
-            const updates: any = {
-                progress: progressPercentage,
-                status: 'PENDING_REVIEW'
-            };
-            
-            await tx.task.update({
-                where: { id: taskId },
-                data: updates
-            });
+            }
         });
+        if (!task) {
+            throw new Error("Task not found.");
+        }
+        
+        if (progressPercentage === task.progress) {
+            return { success: false, error: "Progress must be changed to post an update."};
+        }
+
+        await prisma.taskUpdate.create({
+            data: {
+                text,
+                authorId,
+                taskId: taskId,
+                type: 'COMMENT',
+                progressPercentage,
+            }
+        });
+
+        const updates: any = {
+            progress: progressPercentage,
+            status: 'PENDING_REVIEW'
+        };
+        
+        await prisma.task.update({
+            where: { id: taskId },
+            data: updates
+        });
+        
+        // Notification Logic
+        const project = task.milestone.project;
+        const recipients = new Set<string>();
+        recipients.add(project.projectManagerId);
+        project.teams.forEach(team => recipients.add(team.teamLeadId));
+        
+        const message = `Progress on task "${task.title}" was updated to ${progressPercentage}%. It is now pending your review.`;
+        const link = `/tasks/${task.id}`;
+
+        for (const recipientId of recipients) {
+            if (recipientId !== authorId) { // Don't notify the user who made the update
+                await prisma.notification.create({
+                    data: {
+                        message,
+                        link,
+                        recipientId,
+                        senderId: authorId
+                    }
+                });
+            }
+        }
         
         revalidatePath('/my-tasks');
         revalidatePath('/team-view');
         revalidatePath('/task-approvals');
+        revalidatePath('/notifications');
         return { success: true };
     } catch (error) {
         console.error("Failed to add task update:", error);

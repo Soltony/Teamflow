@@ -188,10 +188,30 @@ export async function updateProject(projectId: string, data: any) {
                         oldEndDate: existingProject.endDate,
                         newEndDate: projectData.endDate,
                         reason: timelineChangeReason,
-                        requestedById: projectData.projectManagerId, // Or whoever is making the request
+                        requestedById: projectData.projectManagerId,
                         status: 'PENDING',
                     }
                 });
+
+                // Notify users with approval permissions
+                const approvers = await tx.user.findMany({
+                    where: { roles: { some: { permissions: { has: 'timeline:approve' } } } },
+                    select: { id: true }
+                });
+
+                const message = `A timeline change has been requested for project "${existingProject.name}".`;
+                const link = '/timeline-approvals';
+                for(const approver of approvers) {
+                    await tx.notification.create({
+                        data: {
+                            message,
+                            link,
+                            recipientId: approver.id,
+                            senderId: projectData.projectManagerId,
+                        }
+                    });
+                }
+                revalidatePath('/notifications');
             }
 
             // --- PROJECT UPDATE ---
@@ -201,8 +221,6 @@ export async function updateProject(projectId: string, data: any) {
                   name: projectData.name,
                   description: projectData.description,
                   startDate: projectData.startDate,
-                  // endDate is NOT updated here directly anymore if a change is requested.
-                  // It will be updated upon approval. If no change, it remains the same.
                   endDate: endDateChanged ? existingProject.endDate : projectData.endDate,
                   statusId: projectData.statusId,
                   pmoDivisionId: projectData.pmoDivisionId,

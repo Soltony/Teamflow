@@ -106,7 +106,10 @@ export async function getPendingReviewTasks(userId: string) {
 
 export async function approveTask(taskId: string, reviewerId: string) {
     try {
-        const task = await prisma.task.findUnique({ where: { id: taskId } });
+        const task = await prisma.task.findUnique({ 
+            where: { id: taskId },
+            include: { assignees: true }
+        });
         if (!task) {
             return { success: false, error: "Task not found." };
         }
@@ -117,7 +120,7 @@ export async function approveTask(taskId: string, reviewerId: string) {
 
         if (isComplete) {
             newStatus = 'DONE';
-            updateText = 'Task has been reviewed and approved as complete. Status changed to Done.';
+            updateText = `Task has been reviewed and approved as complete. Status changed to Done.`;
         } else {
             newStatus = 'IN_PROGRESS';
             updateText = `Progress update to ${task.progress}% was approved. Status is now In Progress.`;
@@ -138,10 +141,23 @@ export async function approveTask(taskId: string, reviewerId: string) {
                 }
             }
         });
+        
+        // Notify assignees
+        const message = `Your work on task "${task.title}" was approved. Status is now "${newStatus.replace('_', ' ')}".`;
+        const link = `/tasks/${task.id}`;
+        for (const assignee of task.assignees) {
+            if (assignee.id !== reviewerId) {
+                await prisma.notification.create({
+                    data: { message, link, recipientId: assignee.id, senderId: reviewerId }
+                });
+            }
+        }
+
 
         revalidatePath('/task-approvals');
         revalidatePath('/team-view');
         revalidatePath('/my-tasks');
+        revalidatePath('/notifications');
         return { success: true, message: updateText };
     } catch(e) {
         console.error("Failed to approve task", e);
@@ -151,6 +167,14 @@ export async function approveTask(taskId: string, reviewerId: string) {
 
 export async function rejectTask(taskId: string, reviewerId: string, reason: string) {
     try {
+        const task = await prisma.task.findUnique({
+            where: { id: taskId },
+            include: { assignees: true }
+        });
+        if (!task) {
+            return { success: false, error: "Task not found." };
+        }
+        
         await prisma.task.update({
             where: { id: taskId },
             data: {
@@ -164,9 +188,22 @@ export async function rejectTask(taskId: string, reviewerId: string, reason: str
                 }
             }
         });
+        
+        // Notify assignees
+        const message = `Your update for task "${task.title}" was declined. Reason: ${reason}`;
+        const link = `/tasks/${task.id}`;
+        for (const assignee of task.assignees) {
+            if (assignee.id !== reviewerId) {
+                await prisma.notification.create({
+                    data: { message, link, recipientId: assignee.id, senderId: reviewerId }
+                });
+            }
+        }
+
         revalidatePath('/task-approvals');
         revalidatePath('/team-view');
         revalidatePath('/my-tasks');
+        revalidatePath('/notifications');
         return { success: true };
     } catch(e) {
         console.error("Failed to reject task", e);
