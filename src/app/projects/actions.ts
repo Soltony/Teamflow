@@ -3,6 +3,7 @@
 
 
 
+
 'use server';
 
 import prisma from "@/lib/db";
@@ -427,7 +428,7 @@ export async function updateMilestone(milestoneId: string, projectId: string, da
     revalidatePath(`/projects/${projectId}`);
 }
 
-export async function addTask(projectId: string, milestoneId: string | null, data: any) {
+export async function addTask(projectId: string, milestoneId: string | null, authorId: string, data: any) {
     const { assignedUserIds, ...taskData } = data;
     let finalMilestoneId = milestoneId;
 
@@ -477,6 +478,9 @@ export async function addTask(projectId: string, milestoneId: string | null, dat
                 link,
                 recipient: {
                     connect: { id: userId }
+                },
+                sender: {
+                    connect: { id: authorId }
                 }
             }
         });
@@ -488,7 +492,7 @@ export async function addTask(projectId: string, milestoneId: string | null, dat
     revalidatePath('/notifications');
 }
 
-export async function updateTask(taskId: string, projectId: string, data: any) {
+export async function updateTask(taskId: string, projectId: string, authorId: string, data: any) {
     const { assignedUserIds, milestoneId, ...taskData } = data;
     let finalMilestoneId = milestoneId;
     
@@ -571,6 +575,9 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
                     link,
                     recipient: {
                         connect: { id: userId }
+                    },
+                    sender: {
+                        connect: { id: authorId }
                     }
                 }
             });

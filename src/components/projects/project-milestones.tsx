@@ -88,7 +88,8 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
   };
 
   const handleTaskAdd = async (projectId: string, milestoneId: string | null, newTask: any) => {
-    await addTask(projectId, milestoneId, newTask);
+    if (!localUser) return;
+    await addTask(projectId, milestoneId, localUser.id, newTask);
     toast({
       title: "Task Added!",
       description: `The task "${newTask.title}" has been successfully added.`,
@@ -98,8 +99,9 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
   };
 
   const handleTaskUpdate = async (updatedTask: Task) => {
+    if (!localUser) return;
     const { id, ...dataToUpdate } = updatedTask;
-    await updateTask(id, project.id, dataToUpdate);
+    await updateTask(id, project.id, localUser.id, dataToUpdate);
     toast({
       title: "Task Updated!",
       description: `The task "${updatedTask.title}" has been successfully updated.`,
