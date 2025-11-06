@@ -118,23 +118,23 @@ export default function ProjectsPage() {
         return filteredProjects.slice(startIndex, endIndex);
     }, [filteredProjects, currentPage, projectsPerPage]);
 
-    const handleTaskAdd = async (projectId: string, milestoneId: string | null, newTask: any) => {
-        if (!projectId) {
+    const handleTaskAdd = async (newTaskData: any) => {
+        if (!addingTaskToProject || !localUser) {
              toast({ title: "Error", description: "Could not find the parent project for this task.", variant: "destructive" });
              return;
         }
-
-        await addTask(projectId, milestoneId, newTask);
-        toast({ title: "Task Added!", description: `The task "${newTask.title}" has been added.` });
+    
+        await addTask(addingTaskToProject.id, newTaskData.milestoneId, localUser.id, newTaskData);
+        toast({ title: "Task Added!", description: `The task "${newTaskData.title}" has been added.` });
         setAddingTaskToProject(null);
         await fetchData();
     };
 
     const handleTaskUpdate = async (projectId: string, updatedTask: TaskType) => {
-        const { id, ...dataToUpdate } = updatedTask;
-        if (!editingTaskInfo) return;
+        if (!editingTaskInfo || !localUser) return;
 
-        await updateTask(id, projectId, dataToUpdate);
+        const { id, ...dataToUpdate } = updatedTask;
+        await updateTask(id, projectId, localUser.id, dataToUpdate);
         toast({ title: "Task Updated!", description: "The task has been successfully updated." });
         setEditingTaskInfo(null);
         await fetchData();
