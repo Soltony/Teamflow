@@ -52,7 +52,7 @@ type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   project: ProjectWithTeamsAndMilestones;
-  onTaskAdd: (newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
+  onTaskAdd: (data: Omit<Task, 'id' | 'status'>, milestoneId?: string) => Promise<void>;
   users: UserWithRoles[];
 };
 
@@ -204,7 +204,8 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   );
 
   async function onSubmit(data: z.infer<ReturnType<typeof createTaskSchema>>) {
-    await onTaskAdd(data as any);
+    const { milestoneId, ...newTaskData } = data;
+    await onTaskAdd(newTaskData as any, milestoneId);
   }
 
   return (
@@ -390,7 +391,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
                                 <Slider
                                     value={[field.value ?? 0]}
                                     onValueChange={(value) => field.onChange(value[0])}
-                                    max={remainingWeight > 0 ? remainingWeight : 100}
+                                    max={remainingWeight}
                                     step={5}
                                 />
                             </FormControl>
