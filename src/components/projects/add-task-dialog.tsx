@@ -52,7 +52,7 @@ type AddTaskDialogProps = {
   isOpen: boolean;
   onOpenChange: (open: boolean) => void;
   project: ProjectWithTeamsAndMilestones;
-  onTaskAdd: (projectId: string, milestoneId: string | null, newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
+  onTaskAdd: (newTask: Omit<Task, 'id' | 'status'>) => Promise<void>;
   users: UserWithRoles[];
 };
 
@@ -204,9 +204,7 @@ export function AddTaskDialog({ isOpen, onOpenChange, project, onTaskAdd, users 
   );
 
   async function onSubmit(data: z.infer<ReturnType<typeof createTaskSchema>>) {
-    const { milestoneId, ...newTaskData } = data;
-    const finalMilestoneId = hasMilestones ? milestoneId : null;
-    await onTaskAdd(project.id, finalMilestoneId || null, newTaskData as any);
+    await onTaskAdd(data as any);
   }
 
   return (

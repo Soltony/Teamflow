@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -87,9 +88,13 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
     await fetchData();
   };
 
-  const handleTaskAdd = async (projectId: string, milestoneId: string | null, newTask: any) => {
-    if (!localUser) return;
-    await addTask(projectId, milestoneId, localUser.id, newTask);
+  const handleTaskAdd = async (newTask: any) => {
+    if (!localUser || !addingTaskToMilestone) return;
+
+    const { milestoneId, ...taskData } = newTask;
+    
+    await addTask(project.id, milestoneId || addingTaskToMilestone.id, localUser.id, taskData);
+    
     toast({
       title: "Task Added!",
       description: `The task "${newTask.title}" has been successfully added.`,
@@ -246,7 +251,7 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
             isOpen={!!addingTaskToMilestone}
             onOpenChange={(open) => !open && setAddingTaskToMilestone(null)}
             project={project}
-            onTaskAdd={(projectId, milestoneId, newTask) => handleTaskAdd(projectId, addingTaskToMilestone.id, newTask)}
+            onTaskAdd={handleTaskAdd}
             users={users}
         />
       )}
