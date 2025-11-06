@@ -2,6 +2,7 @@
 
 
 
+
 'use server';
 
 import prisma from "@/lib/db";
@@ -474,9 +475,9 @@ export async function addTask(projectId: string, milestoneId: string | null, dat
             data: {
                 message,
                 link,
-                recipientId: userId,
-                // Assuming there's a way to get the current user's ID, or using a system ID
-                // For now, let's leave senderId null or handle it appropriately
+                recipient: {
+                    connect: { id: userId }
+                }
             }
         });
     }
@@ -568,7 +569,9 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
                 data: {
                     message,
                     link,
-                    recipientId: userId,
+                    recipient: {
+                        connect: { id: userId }
+                    }
                 }
             });
         }
