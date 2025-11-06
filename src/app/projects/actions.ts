@@ -1,6 +1,7 @@
 
 
 
+
 'use server';
 
 import prisma from "@/lib/db";
@@ -454,7 +455,7 @@ export async function addTask(projectId: string, milestoneId: string | null, dat
         finalMilestoneId = generalMilestone.id;
     }
     
-    await prisma.task.create({
+    const newTask = await prisma.task.create({
         data: {
             ...taskData,
             status: 'TODO',
@@ -464,14 +465,38 @@ export async function addTask(projectId: string, milestoneId: string | null, dat
             }
         }
     });
+
+    const message = `You have been assigned to a new task: "${newTask.title}"`;
+    const link = `/tasks/${newTask.id}`;
+
+    for (const userId of assignedUserIds) {
+        await prisma.notification.create({
+            data: {
+                message,
+                link,
+                recipientId: userId,
+                // Assuming there's a way to get the current user's ID, or using a system ID
+                // For now, let's leave senderId null or handle it appropriately
+            }
+        });
+    }
+
     revalidatePath(`/projects`);
     revalidatePath(`/projects/${projectId}`);
     revalidatePath('/my-tasks');
+    revalidatePath('/notifications');
 }
 
 export async function updateTask(taskId: string, projectId: string, data: any) {
     const { assignedUserIds, milestoneId, ...taskData } = data;
     let finalMilestoneId = milestoneId;
+    
+    // Get original task to compare assignees
+    const originalTask = await prisma.task.findUnique({
+        where: { id: taskId },
+        include: { assignees: true }
+    });
+    const originalAssigneeIds = originalTask?.assignees.map(a => a.id) || [];
 
     // Handle the case where the task is moved to the project level (no milestone)
     if (finalMilestoneId === 'project-level') {
@@ -528,10 +553,28 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         };
     }
     
-    await prisma.task.update({
+    const updatedTask = await prisma.task.update({
         where: { id: taskId },
         data: updateData
     });
+
+    // Notify newly assigned users
+    const newAssigneeIds = assignedUserIds.filter((id: string) => !originalAssigneeIds.includes(id));
+    if (newAssigneeIds.length > 0) {
+        const message = `You have been assigned to task: "${updatedTask.title}"`;
+        const link = `/tasks/${updatedTask.id}`;
+        for (const userId of newAssigneeIds) {
+            await prisma.notification.create({
+                data: {
+                    message,
+                    link,
+                    recipientId: userId,
+                }
+            });
+        }
+        revalidatePath('/notifications');
+    }
+
     revalidatePath(`/projects`);
     revalidatePath(`/projects/${projectId}`);
 }
