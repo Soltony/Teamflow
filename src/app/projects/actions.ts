@@ -5,6 +5,7 @@
 
 
 
+
 'use server';
 
 import prisma from "@/lib/db";
@@ -429,35 +430,39 @@ export async function updateMilestone(milestoneId: string, projectId: string, da
     revalidatePath(`/projects/${projectId}`);
 }
 
-export async function addTask(projectId: string, milestoneId: string | null, authorId: string, data: any) {
+export async function addTask(projectId: string, milestoneId: string | null | undefined, authorId: string, data: any) {
     const { assignedUserIds, ...taskData } = data;
     let finalMilestoneId = milestoneId;
-
-    if (!finalMilestoneId) {
+    
+    if (!finalMilestoneId || finalMilestoneId === 'project-level') {
         const project = await prisma.project.findUnique({
             where: { id: projectId },
-            include: { milestones: true }
+            include: { milestones: { where: { title: 'General Tasks' } } }
         });
-        
+
         if (!project) throw new Error("Project not found");
 
-        let generalMilestone = project.milestones.find(m => m.title === "General Tasks");
-
-        if (!generalMilestone) {
-            generalMilestone = await prisma.milestone.create({
+        if (project.milestones.length > 0) {
+            finalMilestoneId = project.milestones[0].id;
+        } else {
+            const generalMilestone = await prisma.milestone.create({
                 data: {
                     title: "General Tasks",
                     description: "A default collection of tasks for this project that are not assigned to a specific milestone.",
                     startDate: project.startDate,
                     dueDate: project.endDate,
-                    weight: 100, // General milestone has a weight of 100
+                    weight: 0, 
                     projectId: projectId,
                 }
             });
+            finalMilestoneId = generalMilestone.id;
         }
-        finalMilestoneId = generalMilestone.id;
     }
     
+    if (!finalMilestoneId) {
+        throw new Error("Could not determine a milestone for the task.");
+    }
+
     const newTask = await prisma.task.create({
         data: {
             ...taskData,

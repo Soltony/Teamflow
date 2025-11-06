@@ -118,14 +118,15 @@ export default function ProjectsPage() {
         return filteredProjects.slice(startIndex, endIndex);
     }, [filteredProjects, currentPage, projectsPerPage]);
 
-    const handleTaskAdd = async (newTaskData: any) => {
+    const handleTaskAdd = async (data: any) => {
         if (!addingTaskToProject || !localUser) {
              toast({ title: "Error", description: "Could not find the parent project for this task.", variant: "destructive" });
              return;
         }
     
-        await addTask(addingTaskToProject.id, newTaskData.milestoneId, localUser.id, newTaskData);
-        toast({ title: "Task Added!", description: `The task "${newTaskData.title}" has been added.` });
+        const { milestoneId, ...taskData } = data;
+        await addTask(addingTaskToProject.id, milestoneId, localUser.id, taskData);
+        toast({ title: "Task Added!", description: `The task "${taskData.title}" has been added.` });
         setAddingTaskToProject(null);
         await fetchData();
     };
@@ -304,7 +305,7 @@ export default function ProjectsPage() {
                             canManageTeams={{ create: canCreateTeams, update: canUpdateTeams, delete: canDeleteTeams }}
                             teamToDelete={teamToDelete}
                             setTeamToDelete={setTeamToDelete}
-                            handleDeleteTeam={handleTeamDelete}
+                            handleDeleteTeam={handleDeleteTeam}
                             isTasksExpanded={expandedItem?.projectId === project.id && expandedItem?.section === 'tasks'}
                             isTeamsExpanded={expandedItem?.projectId === project.id && expandedItem?.section === 'teams'}
                             onExpandToggle={handleExpandToggle}
