@@ -4,38 +4,94 @@
 import prisma from "@/lib/db";
 import { startOfDay, endOfDay } from 'date-fns';
 
-export async function getTodaysTasks() {
-    const todayStart = startOfDay(new Date());
-    const todayEnd = endOfDay(new Date());
+export async function getTodaysTasks(userId?: string, targetDate: Date = new Date()) {
+    const dayStart = startOfDay(targetDate);
+    const dayEnd = endOfDay(targetDate);
 
-    const tasks = await prisma.task.findMany({
-        where: {
+    // Check if user has admin-level permissions (can see all projects)
+    let hasAdminPermissions = false;
+    if (userId) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { roles: true },
+        });
+        
+        hasAdminPermissions = user?.roles.some(role => 
+            role.permissions.includes('projects:read') && 
+            role.permissions.includes('projects:update') && 
+            role.permissions.includes('projects:delete')
+        ) ?? false;
+    }
+
+    // Build where clause based on permissions
+    let projectWhereClause: any = {};
+    
+    if (!hasAdminPermissions && userId) {
+        projectWhereClause = {
             OR: [
-                // Tasks that are currently active and not done
+                { projectManagerId: userId },
                 {
-                    AND: [
-                        { startDate: { lte: todayEnd } },
-                        { endDate: { gte: todayStart } },
-                        { status: { not: 'DONE' } }
-                    ]
-                },
-                // Tasks that were completed today
-                {
-                    completedAt: {
-                        gte: todayStart,
-                        lte: todayEnd
-                    }
-                },
-                // Tasks that had an update today
-                {
-                    updates: {
+                    teams: {
                         some: {
-                            createdAt: {
-                                gte: todayStart,
-                                lte: todayEnd
+                            members: {
+                                some: { id: userId }
                             }
                         }
                     }
+                },
+                {
+                    milestones: {
+                        some: {
+                            tasks: {
+                                some: {
+                                    assignees: {
+                                        some: { id: userId }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        };
+    }
+
+    const tasks = await prisma.task.findMany({
+        where: {
+            AND: [
+                {
+                    milestone: {
+                        project: projectWhereClause
+                    }
+                },
+                {
+                    OR: [
+                        // Tasks that are due today
+                        {
+                            endDate: {
+                                gte: dayStart,
+                                lte: dayEnd
+                            }
+                        },
+                        // Tasks that were completed today
+                        {
+                            completedAt: {
+                                gte: dayStart,
+                                lte: dayEnd
+                            }
+                        },
+                        // Tasks that had an update today
+                        {
+                            updates: {
+                                some: {
+                                    createdAt: {
+                                        gte: dayStart,
+                                        lte: dayEnd
+                                    }
+                                }
+                            }
+                        }
+                    ]
                 }
             ]
         },
@@ -43,10 +99,24 @@ export async function getTodaysTasks() {
             assignees: true,
             milestone: {
                 include: {
-                    project: true,
+                    project: {
+                        include: {
+                            status: true,
+                            projectManager: true,
+                            pmoDivision: true,
+                            milestones: { // Fetch all milestones for the project
+                                include: {
+                                    tasks: true, // And all tasks for each milestone
+                                }
+                            }
+                        }
+                    },
                 },
             },
             updates: {
+                include: {
+                    author: true,
+                },
                 orderBy: {
                     createdAt: 'desc'
                 },
@@ -60,7 +130,7 @@ export async function getTodaysTasks() {
             }
         },
     });
-
+    
     const projectsMap = new Map<string, any>();
 
     tasks.forEach(task => {
@@ -69,11 +139,31 @@ export async function getTodaysTasks() {
             projectsMap.set(project.id, {
                 id: project.id,
                 name: project.name,
+                description: project.description,
+                status: project.status,
+                projectManager: project.projectManager,
+                pmoDivision: project.pmoDivision,
+                startDate: project.startDate,
+                endDate: project.endDate,
+                milestones: project.milestones,
                 tasks: [],
             });
         }
         projectsMap.get(project.id).tasks.push(task);
     });
+    
+    const allUsers = await prisma.user.findMany();
+    
+    const activityStats = {
+        projectsActive: projectsMap.size,
+        tasksWithActivity: tasks.length,
+        tasksRemaining: tasks.filter(t => t.status !== 'DONE').length,
+        tasksCompleted: tasks.filter(t => t.completedAt && t.completedAt >= dayStart && t.completedAt <= dayEnd).length,
+    };
 
-    return JSON.parse(JSON.stringify(Array.from(projectsMap.values())));
+    return {
+        projects: JSON.parse(JSON.stringify(Array.from(projectsMap.values()))),
+        users: JSON.parse(JSON.stringify(allUsers)),
+        stats: activityStats,
+    };
 }

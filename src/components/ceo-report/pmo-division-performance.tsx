@@ -8,6 +8,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { isPast, max as dateMax, parseISO, isAfter } from 'date-fns';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import { cn } from '@/lib/utils';
 
 type ProjectWithRelations = Project & {
     status: ProjectStatus;
@@ -77,9 +79,10 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                 <CardDescription>A breakdown of key metrics for each EPMO division.</CardDescription>
             </CardHeader>
             <CardContent>
+              <TooltipProvider>
                 <div className="border rounded-md">
-                    {/* Header Row */}
-                    <div className="flex p-4 bg-muted/50 border-b font-semibold text-sm text-muted-foreground">
+                    {/* Header Row - visible on medium screens and up */}
+                    <div className="hidden md:flex p-4 bg-muted/50 border-b font-semibold text-sm text-muted-foreground">
                         <div className="flex-1">EPMO Division</div>
                         <div className="w-32 text-center">Total Projects</div>
                         <div className="w-32 text-center">Completion Rate</div>
@@ -90,11 +93,22 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                         <Accordion type="multiple" defaultValue={defaultOpenAccordionItems} className="w-full">
                             {pmoDivisionPerformance.map(div => (
                                 <AccordionItem value={div.id} key={div.id} className="border-b">
-                                    <AccordionTrigger className="flex p-4 hover:bg-muted/30 hover:no-underline">
-                                        <div className="flex-1 text-left font-semibold text-base">{div.name}</div>
-                                        <div className="w-32 text-center text-lg font-bold">{div.totalProjects}</div>
-                                        <div className="w-32 text-center text-lg font-bold">{div.completionRate.toFixed(0)}%</div>
-                                        <div className="w-32 text-center text-lg font-bold">{div.overdueCount}</div>
+                                    <AccordionTrigger className="flex flex-col md:flex-row p-4 hover:bg-muted/30 hover:no-underline text-left">
+                                        <div className="flex-1 font-semibold text-base mb-2 md:mb-0">{div.name}</div>
+                                        <div className="flex w-full md:w-auto justify-between items-center text-lg font-bold">
+                                            <div className="md:w-32 text-center">
+                                                <span className="md:hidden text-sm font-medium text-muted-foreground">Total: </span>
+                                                {div.totalProjects}
+                                            </div>
+                                            <div className="md:w-32 text-center">
+                                                <span className="md:hidden text-sm font-medium text-muted-foreground">Completion: </span>
+                                                {div.completionRate.toFixed(0)}%
+                                            </div>
+                                            <div className="md:w-32 text-center">
+                                                <span className="md:hidden text-sm font-medium text-muted-foreground">Overdue: </span>
+                                                {div.overdueCount}
+                                            </div>
+                                        </div>
                                     </AccordionTrigger>
                                     <AccordionContent>
                                         <div className="p-4 bg-muted/20 space-y-4">
@@ -103,9 +117,16 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                                                     <h4 className="font-semibold text-muted-foreground mb-2">{status} ({projectList.length})</h4>
                                                     <div className="pl-4 border-l-2 space-y-2">
                                                         {projectList.map(p => (
-                                                            <Link href={`/reports?type=${status.toLowerCase()}`} key={p.id} className="block text-sm text-primary hover:underline">
-                                                                {p.name}
-                                                            </Link>
+                                                            <Tooltip key={p.id}>
+                                                              <TooltipTrigger asChild>
+                                                                  <Link href={`/projects/${p.id}`} className="block text-sm text-primary hover:underline truncate">
+                                                                      {p.name}
+                                                                  </Link>
+                                                              </TooltipTrigger>
+                                                              <TooltipContent>
+                                                                  <p>{p.name}</p>
+                                                              </TooltipContent>
+                                                            </Tooltip>
                                                         ))}
                                                     </div>
                                                 </div>
@@ -123,8 +144,9 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                         </div>
                     )}
                 </div>
+              </TooltipProvider>
             </CardContent>
         </Card>
     );
 }
-    
+

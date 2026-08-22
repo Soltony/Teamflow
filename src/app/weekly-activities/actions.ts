@@ -1,0 +1,169 @@
+
+'use server';
+
+import prisma from "@/lib/db";
+import { startOfWeek, endOfWeek } from 'date-fns';
+
+export async function getWeeklyTasks(userId?: string, targetDate: Date = new Date()) {
+    const weekStart = startOfWeek(targetDate, { weekStartsOn: 1 }); // Monday
+    const weekEnd = endOfWeek(targetDate, { weekStartsOn: 1 }); // Sunday
+
+    // Check if user has admin-level permissions (can see all projects)
+    let hasAdminPermissions = false;
+    if (userId) {
+        const user = await prisma.user.findUnique({
+            where: { id: userId },
+            include: { roles: true },
+        });
+        
+        hasAdminPermissions = user?.roles.some(role => 
+            role.permissions.includes('projects:read') && 
+            role.permissions.includes('projects:update') && 
+            role.permissions.includes('projects:delete')
+        ) ?? false;
+    }
+
+    // Build where clause based on permissions
+    let projectWhereClause: any = {};
+    
+    if (!hasAdminPermissions && userId) {
+        projectWhereClause = {
+            OR: [
+                { projectManagerId: userId },
+                {
+                    teams: {
+                        some: {
+                            members: {
+                                some: { id: userId }
+                            }
+                        }
+                    }
+                },
+                {
+                    milestones: {
+                        some: {
+                            tasks: {
+                                some: {
+                                    assignees: {
+                                        some: { id: userId }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        };
+    }
+
+    const tasks = await prisma.task.findMany({
+        where: {
+            AND: [
+                {
+                    milestone: {
+                        project: projectWhereClause
+                    }
+                },
+                {
+                    OR: [
+                        // Tasks that are due this week
+                        {
+                            endDate: {
+                                gte: weekStart,
+                                lte: weekEnd
+                            }
+                        },
+                        // Tasks that were completed this week
+                        {
+                            completedAt: {
+                                gte: weekStart,
+                                lte: weekEnd
+                            }
+                        },
+                        // Tasks that had an update this week
+                        {
+                            updates: {
+                                some: {
+                                    createdAt: {
+                                        gte: weekStart,
+                                        lte: weekEnd
+                                    }
+                                }
+                            }
+                        }
+                    ]
+                }
+            ]
+        },
+        include: {
+            assignees: true,
+            milestone: {
+                include: {
+                    project: {
+                        include: {
+                            status: true,
+                            projectManager: true,
+                            pmoDivision: true,
+                            milestones: { // Fetch all milestones for the project
+                                include: {
+                                    tasks: true, // And all tasks for each milestone
+                                }
+                            }
+                        }
+                    },
+                },
+            },
+            updates: {
+                include: {
+                    author: true,
+                },
+                orderBy: {
+                    createdAt: 'desc'
+                },
+            }
+        },
+        orderBy: {
+            milestone: {
+                project: {
+                    name: 'asc'
+                }
+            }
+        },
+    });
+
+    const projectsMap = new Map<string, any>();
+
+    tasks.forEach(task => {
+        const project = task.milestone.project;
+        if (!projectsMap.has(project.id)) {
+            projectsMap.set(project.id, {
+                id: project.id,
+                name: project.name,
+                description: project.description,
+                status: project.status,
+                projectManager: project.projectManager,
+                pmoDivision: project.pmoDivision,
+                startDate: project.startDate,
+                endDate: project.endDate,
+                milestones: project.milestones,
+                tasks: [],
+            });
+        }
+        projectsMap.get(project.id).tasks.push(task);
+    });
+    
+    const allUsers = await prisma.user.findMany();
+
+    const activityStats = {
+        projectsActive: projectsMap.size,
+        tasksWithActivity: tasks.length,
+        tasksRemaining: tasks.filter(t => t.status !== 'DONE').length,
+        tasksCompleted: tasks.filter(t => t.completedAt && t.completedAt >= weekStart && t.completedAt <= weekEnd).length,
+    };
+
+    return {
+        projects: JSON.parse(JSON.stringify(Array.from(projectsMap.values()))),
+        users: JSON.parse(JSON.stringify(allUsers)),
+        stats: activityStats
+    };
+}

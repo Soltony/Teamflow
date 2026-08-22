@@ -58,11 +58,14 @@ export async function getTeamViewData(userId: string) {
                         id: true,
                         title: true,
                         project: {
-                            select: {
-                                id: true,
-                                name: true,
-                                status: true
-                            }
+                           include: {
+                             status: true,
+                             milestones: {
+                                include: {
+                                    tasks: true,
+                                }
+                             }
+                           }
                         }
                     }
                 },
@@ -71,7 +74,7 @@ export async function getTeamViewData(userId: string) {
                         author: true
                     },
                     orderBy: {
-                        createdAt: 'asc'
+                        createdAt: 'desc'
                     }
                 },
                 assignees: true
@@ -79,13 +82,18 @@ export async function getTeamViewData(userId: string) {
         });
 
         tasksByProject = teamMemberTasks.reduce((acc, task) => {
-            const projectId = task.milestone.project.id;
+            const project = task.milestone.project;
+            const projectId = project.id;
+
             if (!acc[projectId]) {
                 acc[projectId] = {
                     project: {
                         id: projectId,
-                        name: task.milestone.project.name,
-                        statusId: task.milestone.project.status?.id ?? null,
+                        name: project.name,
+                        statusId: project.status?.id ?? null,
+                        endDate: project.endDate,
+                        createdAt: project.createdAt,
+                        milestones: project.milestones,
                     },
                     tasks: [],
                     stats: { pending: 0, inProgress: 0, done: 0, todo: 0, total: 0 }
@@ -95,15 +103,15 @@ export async function getTeamViewData(userId: string) {
             const userTask: TeamViewTask = {
                 ...task,
                 status: task.status as TaskStatusType,
-                updates: task.updates.map(u => ({ ...u, type: u.type as TaskUpdate['type'], createdAt: u.createdAt.toISOString(), author: u.author as User, authorId: u.authorId, id: u.id, text: u.text, progressPercentage: u.progressPercentage })),
+                updates: task.updates.map(u => ({ ...u, type: u.type as TaskUpdate['type'], createdAt: u.createdAt, author: u.author as User, authorId: u.authorId, id: u.id, text: u.text, progressPercentage: u.progressPercentage })),
                 projectId: task.milestone.project.id,
                 projectName: task.milestone.project.name,
                 milestoneId: task.milestone.id,
                 milestoneTitle: task.milestone.title,
                 assignedUserIds: task.assignees.map(a => a.id),
-                startDate: task.startDate.toISOString(),
-                endDate: task.endDate.toISOString(),
-                completedAt: task.completedAt?.toISOString(),
+                startDate: task.startDate,
+                endDate: task.endDate,
+                completedAt: task.completedAt,
             };
             
             acc[projectId].tasks.push(userTask);
@@ -128,26 +136,54 @@ export async function getTeamViewData(userId: string) {
 
 export async function approveTaskAction(taskId: string, teamLeadId: string, teamLeadName: string) {
     try {
-        const updateText = `Task approved by ${teamLeadName}. Status changed to Done.`;
+        const task = await prisma.task.findUnique({ where: { id: taskId }, include: { assignees: true } });
+        if (!task) {
+            return { success: false, error: "Task not found." };
+        }
+
+        const isComplete = task.progress === 100;
+        let updateText = '';
+        let newStatus: TaskStatusType;
+
+        if (isComplete) {
+            newStatus = 'DONE';
+            updateText = `Task approved as complete by ${teamLeadName}. Status changed to Done.`;
+        } else {
+            newStatus = 'IN_PROGRESS';
+            updateText = `Progress update to ${task.progress}% was approved by ${teamLeadName}. Status is now In Progress.`;
+        }
         
         await prisma.task.update({
             where: { id: taskId },
             data: {
-                status: 'DONE',
-                completedAt: new Date(),
-                progress: 100,
+                status: newStatus,
+                completedAt: isComplete ? new Date() : null,
                 updates: {
                     create: {
                         text: updateText,
                         authorId: teamLeadId,
                         type: 'STATUS_CHANGE',
-                        progressPercentage: 100,
+                        progressPercentage: task.progress,
                     }
                 }
             }
         });
 
+        // Notify assignees
+        const message = `Your work on task "${task.title}" was approved. Status is now "${newStatus.replace('_', ' ')}".`;
+        const link = `/tasks/${task.id}`;
+        for (const assignee of task.assignees) {
+            if (assignee.id !== teamLeadId) {
+                await prisma.notification.create({
+                    data: { message, link, recipientId: assignee.id, senderId: teamLeadId }
+                });
+            }
+        }
+
         revalidatePath('/team-view');
+        revalidatePath('/my-tasks');
+        revalidatePath('/task-approvals');
+        revalidatePath('/notifications');
         return { success: true };
 
     } catch (error) {
@@ -159,6 +195,11 @@ export async function approveTaskAction(taskId: string, teamLeadId: string, team
 
 export async function declineTaskAction(taskId: string, teamLeadId: string, teamLeadName: string, reason: string) {
     try {
+        const task = await prisma.task.findUnique({ where: { id: taskId }, include: { assignees: true } });
+        if (!task) {
+            return { success: false, error: "Task not found." };
+        }
+
         const updateText = `Task declined by ${teamLeadName}. Reason: ${reason}`;
         
         await prisma.task.update({
@@ -174,8 +215,22 @@ export async function declineTaskAction(taskId: string, teamLeadId: string, team
                 }
             }
         });
+        
+        // Notify assignees
+        const message = `Your update for task "${task.title}" was declined. Reason: ${reason}`;
+        const link = `/tasks/${task.id}`;
+        for (const assignee of task.assignees) {
+            if (assignee.id !== teamLeadId) {
+                await prisma.notification.create({
+                    data: { message, link, recipientId: assignee.id, senderId: teamLeadId }
+                });
+            }
+        }
 
         revalidatePath('/team-view');
+        revalidatePath('/my-tasks');
+        revalidatePath('/task-approvals');
+        revalidatePath('/notifications');
         return { success: true };
 
     } catch (error) {

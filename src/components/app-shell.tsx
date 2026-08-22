@@ -23,6 +23,8 @@ import {
   ListTodo,
   Archive,
   Clock,
+  ThumbsUp,
+  CalendarDays,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -49,12 +51,15 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import { NibLogo } from "./logo";
+import { NotificationBell } from "./notifications/notification-bell";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: Home, permission: 'dashboard:view' },
   { href: "/today", label: "Today", icon: ListTodo, permission: 'dashboard:view' },
+  { href: "/weekly-activities", label: "Weekly", icon: CalendarDays, permission: 'dashboard:view' },
   { href: "/my-tasks", label: "My Tasks", icon: ClipboardCheck, permission: 'my-tasks:view' },
   { href: "/team-view", label: "Team View", icon: ClipboardList, permission: 'team-view:view' },
+  { href: "/task-approvals", label: "Task Approvals", icon: ThumbsUp, permission: 'tasks:approve' },
   { href: "/projects", label: "Projects", icon: FolderKanban, permission: 'projects:read' },
   { href: "/archive", label: "Archive", icon: Archive, permission: 'projects:read' },
   { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
@@ -173,6 +178,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <PanelLeft className="w-6 h-6" />
             <span className="sr-only">Toggle Menu</span>
           </Button>
+           <div className="flex items-center gap-4 ml-auto">
+              <NotificationBell />
+            </div>
         </header>
         <div className="flex-1 overflow-y-auto overflow-x-hidden">{children}</div>
       </main>

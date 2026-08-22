@@ -15,20 +15,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'placehold.co',
-        port: '',
-        pathname: '/**',
-      },
-      {
-        protocol: 'https',
-        hostname: 'play-lh.googleusercontent.com',
-        port: '',
-        pathname: '/**',
-      },
-    ],
+    remotePatterns: [],
   },
 };
 

@@ -14,11 +14,16 @@ export async function getGanttPageData(userId: string) {
         return [];
     }
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
+    // Check if user has admin-level permissions (can see all projects)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
 
     let whereClause: Prisma.ProjectWhereInput = {};
 
-    if (!isManagerOrAdmin) {
+    if (!hasAdminPermissions) {
         // User is a member, so filter projects to only ones they are involved in
         whereClause = {
             OR: [

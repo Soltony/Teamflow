@@ -6,7 +6,7 @@ import { useAuth } from "@/context/auth-context";
 import { TeamTasksManagement } from "@/components/tasks/team-tasks-management";
 import { getTeamViewData } from "./actions";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { Task, User, Team, ProjectStatus, TaskUpdate, TaskStatus as TaskStatusType } from "@/lib/types";
+import type { Task, User, Team, ProjectStatus, TaskUpdate, TaskStatus as TaskStatusType, Project } from "@/lib/types";
 import { useRouter } from "next/navigation";
 
 
@@ -19,10 +19,9 @@ export type TeamViewTask = Task & {
 };
 
 export type ProjectWithTasksAndStats = {
-    project: {
-        id: string;
-        name: string;
+    project: Project & {
         statusId: string | null;
+        createdAt: Date;
     };
     tasks: TeamViewTask[];
     stats: {

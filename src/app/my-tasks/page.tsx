@@ -27,7 +27,7 @@ function LoadingSkeleton() {
 
 export default function MyTasksPage() {
     const { localUser, loading: authLoading } = useAuth();
-    const [tasksData, setTasksData] = useState<{ userTasks: UserTask[], allUsers: User[] } | null>(null);
+    const [tasksData, setTasksData] = useState<{ userTasks: UserTask[], allUsers: User[], todaysTasksCount: number } | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchTasks = useCallback(async () => {
@@ -65,6 +65,7 @@ export default function MyTasksPage() {
             currentUser={localUser}
             initialTasks={tasksData.userTasks}
             onDataChange={fetchTasks}
+            todaysTasksCount={tasksData.todaysTasksCount}
         />
     );
 }

@@ -1,13 +1,10 @@
 
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "@/components/ui/toaster";
 import { cn } from "@/lib/utils";
 import { AuthProvider } from "@/context/auth-context";
 import { AuthShell } from "@/components/auth-shell";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
   title: {
@@ -17,8 +14,8 @@ export const metadata: Metadata = {
   description: "A project management solution to assign tasks and manage activity online.",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.ico",
-    apple: "https://play-lh.googleusercontent.com/bXqMt9ROsGd0H9vPhib5hG-0NB-EJcAwZy6UUDhvlP-ykE595IMQtzr14R6IRWtJiGTh",
+    icon: "/img/logo.png",
+    apple: "/img/logo.png",
   },
 };
 
@@ -35,8 +32,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
       <body
         className={cn(
-          "min-h-screen bg-background font-sans antialiased",
-          inter.variable
+          "min-h-screen bg-background font-sans antialiased"
         )}
       >
         <AuthProvider>

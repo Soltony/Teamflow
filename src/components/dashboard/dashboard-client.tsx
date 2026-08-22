@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/select";
 import { Separator } from "../ui/separator";
 import { Badge } from "../ui/badge";
-import { isPast, max as dateMax, parseISO, format } from 'date-fns';
+import { isPast, max as dateMax, parseISO, format, differenceInDays, endOfDay, isAfter } from 'date-fns';
 import { useAuth } from "@/context/auth-context";
 import { CelebrationSlider } from "./celebration-slider";
 
@@ -68,7 +68,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
   const selectedYear = searchParams.get('year') || currentWorkingYear;
   const selectedDivision = searchParams.get('division') || "all";
 
-  const { filteredProjects, filteredTeams, activeProjects, completedProjects } = React.useMemo(() => {
+  const { filteredProjects, filteredTeams, activeProjects, recentlyCompletedProjects } = React.useMemo(() => {
     let tempProjects = initialProjects;
 
     if (selectedYear !== "all") {
@@ -86,20 +86,35 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     const onHandoverStatusId = projectStatuses.find((s: any) => s.name === 'On Handover')?.id;
     
     const activeProjs = tempProjects.filter((p: any) => p.statusId !== completedStatusId && p.statusId !== onHandoverStatusId);
-    const completedProjs = tempProjects.filter((p: any) => p.statusId === completedStatusId);
+    
+    const threeDaysAgo = new Date();
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+    
+    const recentCompleted = tempProjects.filter((p: any) => {
+        if (p.statusId !== completedStatusId) return false;
+        
+        const lastTaskUpdate = p.milestones.flatMap((m:any) => m.tasks.map((t:any) => t.completedAt)).filter(Boolean);
+        if(lastTaskUpdate.length === 0) return false;
+        
+        const lastCompletionDate = dateMax(lastTaskUpdate.map((d: any) => parseISO(d)));
+        return lastCompletionDate >= threeDaysAgo;
+    });
 
     return { 
       filteredProjects: tempProjects, 
       filteredTeams: tempTeams,
       activeProjects: activeProjs,
-      completedProjects: completedProjs
+      recentlyCompletedProjects: recentCompleted
     };
   }, [selectedYear, selectedDivision, initialProjects, projectStatuses, teams]);
 
   const { stats, projectsWithBlockers } = React.useMemo(() => {
     const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
     const completedProjects = filteredProjects.filter((p: any) => p.statusId === completedStatusId);
-    const overdueProjects = filteredProjects.filter((p: any) => p.status.name === 'Active' && isPast(parseISO(p.endDate)));
+    
+    const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
+    const overdueProjects = filteredProjects.filter((p: any) => nonArchivedStatusNames.includes(p.status.name) && isAfter(new Date(), endOfDay(parseISO(p.endDate))));
+    
     const projectsWithOpenBlockers = filteredProjects.filter((p: any) => p.blockers?.some((b: any) => b.status === 'OPEN'));
     
     const onTimeProjectsCount = completedProjects.filter((project: any) => {
@@ -111,10 +126,7 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     
     const lateProjectsCount = completedProjects.length - onTimeProjectsCount;
 
-    const totalBlockersCount = projectsWithOpenBlockers.reduce((acc: number, p: any) => {
-        const openBlockers = p.blockers?.filter((b: any) => b.status === 'OPEN') || [];
-        return acc + openBlockers.length;
-    }, 0);
+    const totalBlockersCount = projectsWithOpenBlockers.reduce((acc: number, p: any) => acc + (p.blockers?.length || 0), 0);
     
     return {
         stats: {
@@ -147,28 +159,53 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     router.push(`${pathname}?${params.toString()}`);
   }
   
-  const calculateProjectProgress = (project: any) => {
-    return project.milestones.reduce((progress: number, milestone: any) => {
-        const completedTaskWeightInMilestone = milestone.tasks
-            .filter((task: any) => task.status === 'DONE')
-            .reduce((sum: number, task: any) => sum + task.weight, 0);
-        const milestoneProgress = completedTaskWeightInMilestone / 100;
-        return progress + (milestoneProgress * milestone.weight);
-    }, 0);
-  };
-  
   const calculateMilestoneProgress = (milestone: any) => {
     if (!milestone.tasks || milestone.tasks.length === 0) return 0;
     const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-      return acc + (task.progress * (task.weight / 100));
+      const taskProgress = task.progress || 0;
+      return acc + (taskProgress * (task.weight / 100));
     }, 0);
     return totalProgress;
   };
 
+  const calculateProjectProgress = (project: any) => {
+    if (!project.milestones || project.milestones.length === 0) {
+      return 0;
+    }
+    
+    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
+
+    if (weightedMilestones.length > 0) {
+      // Standard weighted calculation if there are weighted milestones
+      return weightedMilestones.reduce((acc: number, milestone: any) => {
+        const milestoneProgress = calculateMilestoneProgress(milestone);
+        return acc + (milestoneProgress * (milestone.weight / 100));
+      }, 0);
+    } else {
+      // If no weighted milestones, calculate based on task weights directly
+      const allTasks = project.milestones.flatMap((m: any) => m.tasks);
+      if (allTasks.length === 0) return 0;
+
+      const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+      if (totalTaskWeight === 0) {
+          // If tasks have no weight, calculate simple average of progress
+          const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
+          return totalProgress / allTasks.length;
+      }
+      
+      const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
+        return acc + ((task.progress || 0) * task.weight);
+      }, 0);
+
+      return totalWeightedTaskProgress / totalTaskWeight;
+    }
+  };
+
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
-       {completedProjects.length > 0 && (
-        <CelebrationSlider completedProjects={completedProjects} teams={teams} />
+       {recentlyCompletedProjects.length > 0 && (
+        <CelebrationSlider completedProjects={recentlyCompletedProjects} teams={teams} />
       )}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
@@ -278,7 +315,7 @@ Let’s keep projects on track—together.
         </CardHeader>
         <CardContent>
             {activeProjects.length > 0 ? (
-                <Accordion type="multiple" className="w-full space-y-2">
+                <Accordion type="single" collapsible className="w-full space-y-2">
                     {activeProjects.map((project: any) => {
                         const projectProgress = calculateProjectProgress(project);
                         return (
@@ -296,7 +333,7 @@ Let’s keep projects on track—together.
                                     </div>
                                 </AccordionTrigger>
                                 <AccordionContent className="pt-2 pb-4">
-                                    <Accordion type="multiple" className="w-full space-y-2">
+                                    <Accordion type="single" collapsible className="w-full space-y-2">
                                         {project.milestones.map((milestone: any) => {
                                             const milestoneProgress = calculateMilestoneProgress(milestone);
                                             return (
@@ -496,5 +533,3 @@ Let’s keep projects on track—together.
     </div>
   );
 }
-
-    

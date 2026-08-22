@@ -1,5 +1,11 @@
 
 
+
+
+
+
+
+
 'use server';
 
 import prisma from "@/lib/db";
@@ -26,7 +32,7 @@ export async function getNewProjectData() {
 
 
 export async function createProject(data: any) {
-    const { milestones, responsibleDepartmentIds, hasCost, payments, ...projectData } = data;
+    const { milestones, responsibleDepartmentIds, hasCost, payments, hasMilestones, ...projectData } = data;
 
     const newProject = await prisma.project.create({
         data: {
@@ -36,7 +42,7 @@ export async function createProject(data: any) {
             responsibleDepartments: {
                 connect: responsibleDepartmentIds.map((id: string) => ({ id }))
             },
-            milestones: {
+            milestones: hasMilestones && milestones ? {
                 create: milestones.map((m: any) => ({
                     title: m.title,
                     description: m.description,
@@ -44,7 +50,7 @@ export async function createProject(data: any) {
                     dueDate: m.dueDate,
                     weight: m.weight,
                 }))
-            },
+            } : undefined,
             payments: hasCost && payments ? {
                 create: payments.map((p: any) => ({
                     title: p.title,
@@ -73,7 +79,11 @@ export async function getProjectForEdit(projectId: string) {
         prisma.project.findUnique({
             where: { id: projectId },
             include: {
-                milestones: true,
+                milestones: {
+                  include: {
+                    tasks: true,
+                  }
+                },
                 responsibleDepartments: {
                     select: { id: true }
                 },
@@ -88,9 +98,35 @@ export async function getProjectForEdit(projectId: string) {
 
     if (!project) return null;
 
+    const userCreatedMilestones = project.milestones.filter(m => m.title !== "General Tasks");
+    
+    // If there are no user-created milestones, ensure a "General Tasks" milestone exists with weight 100
+    if (userCreatedMilestones.length === 0) {
+        let generalMilestone = project.milestones.find(m => m.title === "General Tasks");
+        if (!generalMilestone) {
+            generalMilestone = {
+                id: `temp-${new Date().getTime()}`, // Temporary ID for the form
+                projectId: project.id,
+                title: 'General Tasks',
+                description: 'A default collection of tasks for this project that are not assigned to a specific milestone.',
+                startDate: project.startDate,
+                dueDate: project.endDate,
+                weight: 100,
+                createdAt: new Date(),
+                updatedAt: new Date(),
+                tasks: [],
+            };
+            project.milestones.push(generalMilestone);
+        } else if (generalMilestone.weight !== 100) {
+            generalMilestone.weight = 100;
+        }
+    }
+
+
     const normalizedProject = {
         ...project,
         hasCost: project.totalCost !== null,
+        hasMilestones: userCreatedMilestones.length > 0,
         responsibleDepartmentIds: project.responsibleDepartments.map(d => d.id),
     };
 
@@ -105,7 +141,7 @@ export async function getProjectForEdit(projectId: string) {
 
 
 export async function updateProject(projectId: string, data: any) {
-    const { milestones, responsibleDepartmentIds, hasCost, payments, timelineChangeReason, ...projectData } = data;
+    const { milestones, responsibleDepartmentIds, hasCost, payments, timelineChangeReason, hasMilestones, ...projectData } = data;
 
     const existingProject = await prisma.project.findUnique({ where: { id: projectId } });
     if (!existingProject) {
@@ -124,8 +160,7 @@ export async function updateProject(projectId: string, data: any) {
     });
     const existingMilestoneIds = existingMilestones.map(m => m.id);
 
-    const incomingMilestoneIds = milestones.filter((m: any) => m.id).map((m: any) => m.id);
-    const milestoneIdsToDelete = existingMilestoneIds.filter((id: string) => !incomingMilestoneIds.includes(id));
+    const incomingMilestoneIds = hasMilestones && milestones ? milestones.filter((m: any) => m.id).map((m: any) => m.id) : [];
     
     const existingPayments = await prisma.payment.findMany({
         where: { projectId: projectId },
@@ -133,7 +168,7 @@ export async function updateProject(projectId: string, data: any) {
     });
     const existingPaymentIds = existingPayments.map(p => p.id);
 
-    const incomingPaymentIds = payments.filter((p: any) => p.id).map((p: any) => p.id);
+    const incomingPaymentIds = payments ? payments.filter((p: any) => p.id).map((p: any) => p.id) : [];
     const paymentIdsToDelete = existingPaymentIds.filter((id: string) => !incomingPaymentIds.includes(id));
 
     try {
@@ -144,27 +179,6 @@ export async function updateProject(projectId: string, data: any) {
         const isCompletingProject = completedStatus && projectData.statusId === completedStatus.id;
 
         await prisma.$transaction(async (tx) => {
-            // --- MILESTONE SYNC ---
-            if (milestoneIdsToDelete.length > 0) {
-                const tasksInDeletedMilestones = await tx.task.findMany({
-                    where: { milestoneId: { in: milestoneIdsToDelete }},
-                    select: { id: true }
-                });
-                const taskIdsToDelete = tasksInDeletedMilestones.map(t => t.id);
-
-                if (taskIdsToDelete.length > 0) {
-                     await tx.taskUpdate.deleteMany({
-                        where: { taskId: { in: taskIdsToDelete }}
-                    });
-                    await tx.task.deleteMany({
-                        where: { id: { in: taskIdsToDelete }}
-                    });
-                }
-                await tx.milestone.deleteMany({
-                    where: { id: { in: milestoneIdsToDelete } }
-                });
-            }
-
             // --- PAYMENT SYNC ---
             if (paymentIdsToDelete.length > 0) {
                 await tx.payment.deleteMany({
@@ -180,10 +194,30 @@ export async function updateProject(projectId: string, data: any) {
                         oldEndDate: existingProject.endDate,
                         newEndDate: projectData.endDate,
                         reason: timelineChangeReason,
-                        requestedById: projectData.projectManagerId, // Or whoever is making the request
+                        requestedById: projectData.projectManagerId,
                         status: 'PENDING',
                     }
                 });
+
+                // Notify users with approval permissions
+                const approvers = await tx.user.findMany({
+                    where: { roles: { some: { permissions: { has: 'timeline:approve' } } } },
+                    select: { id: true }
+                });
+
+                const message = `A timeline change has been requested for project "${existingProject.name}".`;
+                const link = '/timeline-approvals';
+                for(const approver of approvers) {
+                    await tx.notification.create({
+                        data: {
+                            message,
+                            link,
+                            recipientId: approver.id,
+                            senderId: projectData.projectManagerId,
+                        }
+                    });
+                }
+                revalidatePath('/notifications');
             }
 
             // --- PROJECT UPDATE ---
@@ -193,8 +227,6 @@ export async function updateProject(projectId: string, data: any) {
                   name: projectData.name,
                   description: projectData.description,
                   startDate: projectData.startDate,
-                  // endDate is NOT updated here directly anymore if a change is requested.
-                  // It will be updated upon approval. If no change, it remains the same.
                   endDate: endDateChanged ? existingProject.endDate : projectData.endDate,
                   statusId: projectData.statusId,
                   pmoDivisionId: projectData.pmoDivisionId,
@@ -208,29 +240,64 @@ export async function updateProject(projectId: string, data: any) {
                 }
             });
 
-            // --- MILESTONE UPSERT ---
-            for (const milestone of milestones) {
-                const { id, ...milestoneData } = milestone;
-                
-                const dataForUpsert = {
-                    title: milestoneData.title,
-                    description: milestoneData.description,
-                    startDate: milestoneData.startDate,
-                    dueDate: milestoneData.dueDate,
-                    weight: milestoneData.weight,
-                };
+            if (hasMilestones && milestones) {
+                 for (const milestone of milestones) {
+                    const { id, ...milestoneData } = milestone;
+                    
+                    const dataForUpsert = {
+                        title: milestoneData.title,
+                        description: milestoneData.description,
+                        startDate: milestoneData.startDate,
+                        dueDate: milestoneData.dueDate,
+                        weight: milestoneData.weight,
+                    };
 
-                if (id) {
-                    await tx.milestone.update({
-                        where: { id: id },
-                        data: dataForUpsert
+                    if (id && !id.startsWith('temp-')) {
+                        await tx.milestone.update({
+                            where: { id: id },
+                            data: dataForUpsert
+                        });
+                    } else {
+                        await tx.milestone.create({
+                            data: {
+                                ...dataForUpsert,
+                                project: { connect: { id: projectId } },
+                            }
+                        });
+                    }
+                }
+            } else if (!hasMilestones) {
+                // If hasMilestones is false, delete user-created milestones, but preserve "General Tasks"
+                const milestonesToDelete = await tx.milestone.findMany({
+                    where: {
+                        projectId,
+                        title: { not: "General Tasks" }
+                    },
+                    select: { id: true },
+                });
+                const milestoneIdsToDelete = milestonesToDelete.map(m => m.id);
+
+                if (milestoneIdsToDelete.length > 0) {
+                    // Find all tasks related to these milestones
+                    const tasksToDelete = await tx.task.findMany({
+                        where: { milestoneId: { in: milestoneIdsToDelete } },
+                        select: { id: true },
                     });
-                } else {
-                    await tx.milestone.create({
-                        data: {
-                            ...dataForUpsert,
-                             project: { connect: { id: projectId } },
-                        }
+                    const taskIdsToDelete = tasksToDelete.map(t => t.id);
+
+                    if (taskIdsToDelete.length > 0) {
+                        // Delete task updates first
+                        await tx.taskUpdate.deleteMany({
+                            where: { taskId: { in: taskIdsToDelete } },
+                        });
+                        // Then delete tasks
+                        await tx.task.deleteMany({
+                            where: { id: { in: taskIdsToDelete } },
+                        });
+                    }
+                    // Finally, delete the milestones
+                    await tx.milestone.deleteMany({
+                        where: { id: { in: milestoneIdsToDelete } },
                     });
                 }
             }
@@ -262,27 +329,27 @@ export async function updateProject(projectId: string, data: any) {
                         });
                     }
                 }
+            } else if (!hasCost) { // if hasCost is false, delete all payments
+                await tx.payment.deleteMany({
+                    where: { projectId }
+                });
             }
 
 
             // --- PROJECT COMPLETION LOGIC ---
             if (isCompletingProject) {
-                const allProjectMilestones = await tx.milestone.findMany({
-                    where: { projectId: projectId },
+                const projectTasks = await tx.task.findMany({
+                    where: { milestone: { projectId: projectId } },
                     select: { id: true }
                 });
-                const allProjectMilestoneIds = allProjectMilestones.map(m => m.id);
-
-                if (allProjectMilestoneIds.length > 0) {
-                    await tx.task.updateMany({
-                        where: { milestoneId: { in: allProjectMilestoneIds } },
-                        data: {
-                            status: 'DONE',
-                            progress: 100,
-                            completedAt: new Date(),
-                        }
-                    });
-                }
+                await tx.task.updateMany({
+                    where: { id: { in: projectTasks.map(t => t.id) } },
+                    data: {
+                        status: 'DONE',
+                        progress: 100,
+                        completedAt: new Date(),
+                    }
+                });
             }
         });
 
@@ -343,44 +410,128 @@ export async function updateBlocker(blockerId: string, description: string, proj
 }
 
 export async function addMilestone(projectId: string, data: any) {
-  const { ...milestoneData } = data;
-  await prisma.milestone.create({
-    data: {
-      ...milestoneData,
-      project: { connect: { id: projectId } },
-    }
-  });
-  revalidatePath(`/projects/${projectId}/milestones`);
+    const newMilestone = await prisma.milestone.create({
+        data: {
+            ...data,
+            projectId,
+        }
+    });
+    revalidatePath(`/projects`);
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true, milestone: newMilestone };
 }
 
 export async function updateMilestone(milestoneId: string, projectId: string, data: any) {
-    const { ...milestoneData } = data;
     await prisma.milestone.update({
         where: { id: milestoneId },
-        data: {
-            ...milestoneData,
-        }
+        data
     });
-    revalidatePath(`/projects/${projectId}/milestones`);
+    revalidatePath(`/projects`);
+    revalidatePath(`/projects/${projectId}`);
 }
 
-export async function addTask(milestoneId: string, projectId: string, data: any) {
+export async function addTask(projectId: string, milestoneId: string | null | undefined, authorId: string, data: any) {
     const { assignedUserIds, ...taskData } = data;
-    await prisma.task.create({
+    let finalMilestoneId = milestoneId;
+    
+    if (!finalMilestoneId || finalMilestoneId === 'project-level') {
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            include: { milestones: { where: { title: 'General Tasks' } } }
+        });
+
+        if (!project) throw new Error("Project not found");
+
+        if (project.milestones.length > 0) {
+            finalMilestoneId = project.milestones[0].id;
+        } else {
+            const generalMilestone = await prisma.milestone.create({
+                data: {
+                    title: "General Tasks",
+                    description: "A default collection of tasks for this project that are not assigned to a specific milestone.",
+                    startDate: project.startDate,
+                    dueDate: project.endDate,
+                    weight: 0, 
+                    projectId: projectId,
+                }
+            });
+            finalMilestoneId = generalMilestone.id;
+        }
+    }
+    
+    if (!finalMilestoneId) {
+        throw new Error("Could not determine a milestone for the task.");
+    }
+
+    const newTask = await prisma.task.create({
         data: {
             ...taskData,
             status: 'TODO',
-            milestoneId,
+            milestoneId: finalMilestoneId,
             assignees: {
                 connect: assignedUserIds.map((id:string) => ({ id }))
             }
         }
     });
-    revalidatePath(`/projects/${projectId}/milestones`);
+
+    const message = `You have been assigned to a new task: "${newTask.title}"`;
+    const link = `/tasks/${newTask.id}`;
+
+    for (const userId of assignedUserIds) {
+        await prisma.notification.create({
+            data: {
+                message,
+                link,
+                recipient: {
+                    connect: { id: userId }
+                },
+                sender: {
+                    connect: { id: authorId }
+                }
+            }
+        });
+    }
+
+    revalidatePath(`/projects`);
+    revalidatePath(`/projects/${projectId}`);
+    revalidatePath('/my-tasks');
+    revalidatePath('/notifications');
 }
 
-export async function updateTask(taskId: string, projectId: string, data: any) {
-    const { assignedUserIds, ...taskData } = data;
+export async function updateTask(taskId: string, projectId: string, authorId: string, data: any) {
+    const { assignedUserIds, milestoneId, ...taskData } = data;
+    let finalMilestoneId = milestoneId;
+    
+    // Get original task to compare assignees
+    const originalTask = await prisma.task.findUnique({
+        where: { id: taskId },
+        include: { assignees: true }
+    });
+    const originalAssigneeIds = originalTask?.assignees.map(a => a.id) || [];
+
+    // Handle the case where the task is moved to the project level (no milestone)
+    if (finalMilestoneId === 'project-level') {
+        const project = await prisma.project.findUnique({
+            where: { id: projectId },
+            include: { milestones: true }
+        });
+        if (!project) throw new Error("Project not found");
+        
+        let generalMilestone = project.milestones.find(m => m.title === "General Tasks");
+        if (!generalMilestone) {
+            generalMilestone = await prisma.milestone.create({
+                data: {
+                    title: "General Tasks",
+                    description: "A default collection of tasks for this project that are not assigned to a specific milestone.",
+                    startDate: project.startDate,
+                    dueDate: project.endDate,
+                    weight: 100,
+                    projectId: projectId,
+                }
+            });
+        }
+        finalMilestoneId = generalMilestone.id;
+    }
 
     const finalTaskData = { ...taskData };
 
@@ -398,16 +549,50 @@ export async function updateTask(taskId: string, projectId: string, data: any) {
         // finalTaskData.progress = 95; // or some other value
     }
     
-    await prisma.task.update({
+    // Prepare the update data
+    const updateData: any = {
+        ...finalTaskData,
+        assignees: assignedUserIds ? {
+            set: assignedUserIds.map((id:string) => ({ id }))
+        } : undefined,
+    };
+
+    // Only update milestone if finalMilestoneId is defined
+    if (finalMilestoneId) {
+        updateData.milestone = {
+            connect: { id: finalMilestoneId }
+        };
+    }
+    
+    const updatedTask = await prisma.task.update({
         where: { id: taskId },
-        data: {
-            ...finalTaskData,
-            assignees: assignedUserIds ? {
-                set: assignedUserIds.map((id:string) => ({ id }))
-            } : undefined,
-        }
+        data: updateData
     });
-    revalidatePath(`/projects/${projectId}/milestones`);
+
+    // Notify newly assigned users
+    const newAssigneeIds = assignedUserIds.filter((id: string) => !originalAssigneeIds.includes(id));
+    if (newAssigneeIds.length > 0) {
+        const message = `You have been assigned to task: "${updatedTask.title}"`;
+        const link = `/tasks/${updatedTask.id}`;
+        for (const userId of newAssigneeIds) {
+            await prisma.notification.create({
+                data: {
+                    message,
+                    link,
+                    recipient: {
+                        connect: { id: userId }
+                    },
+                    sender: {
+                        connect: { id: authorId }
+                    }
+                }
+            });
+        }
+        revalidatePath('/notifications');
+    }
+
+    revalidatePath(`/projects`);
+    revalidatePath(`/projects/${projectId}`);
 }
 
 export async function deleteTask(taskId: string, projectId: string) {
@@ -420,9 +605,9 @@ export async function deleteTask(taskId: string, projectId: string) {
                 where: { id: taskId }
             });
         });
-
-        revalidatePath(`/projects/${projectId}/milestones`);
-        revalidatePath(`/projects/${projectId}`);
+        
+        revalidatePath(`/projects`);
+        if (projectId) revalidatePath(`/projects/${projectId}`);
         revalidatePath('/my-tasks');
         revalidatePath('/dashboard');
         
@@ -433,7 +618,7 @@ export async function deleteTask(taskId: string, projectId: string) {
     }
 }
 
-export async function getProjectsPageData(userId: string) {
+export async function getProjectsPageData(userId: string, filters: { status?: string | null; pmoDivisionId?: string | null; }) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
         include: { roles: true },
@@ -442,30 +627,37 @@ export async function getProjectsPageData(userId: string) {
     if (!user) {
         return {
             projects: [],
-            statuses: []
+            statuses: [],
+            users: [],
+            pmoDivisions: [],
         };
     }
     
-    const statuses = await prisma.projectStatus.findMany({
-        orderBy: {
-            name: 'asc'
-        }
-    });
+    const [statuses, users, pmoDivisions] = await Promise.all([
+        prisma.projectStatus.findMany({ orderBy: { name: 'asc' } }),
+        prisma.user.findMany({ include: { roles: true } }),
+        prisma.pmoDivision.findMany({ orderBy: { name: 'asc' } }),
+    ]);
     
     const archivedStatusNames = ['Completed', 'On Handover'];
     const archivedStatusIds = statuses.filter(s => archivedStatusNames.includes(s.name)).map(s => s.id);
 
-
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
+    // Check if user has admin-level permissions (can see all projects)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
 
     let whereClause: Prisma.ProjectWhereInput = {
         statusId: {
             notIn: archivedStatusIds,
-        }
+        },
+        ...(filters.status && { statusId: filters.status }),
+        ...(filters.pmoDivisionId && { pmoDivisionId: filters.pmoDivisionId }),
     };
 
-    if (!isManagerOrAdmin) {
-        // User is a member, so filter projects to only ones they are involved in
+    if (!hasAdminPermissions) {
         whereClause.OR = [
             { projectManagerId: userId },
             {
@@ -477,7 +669,7 @@ export async function getProjectsPageData(userId: string) {
                     }
                 }
             },
-            { // Also check if they are assigned to any task in the project
+            {
                 milestones: {
                     some: {
                         tasks: {
@@ -501,12 +693,27 @@ export async function getProjectsPageData(userId: string) {
             status: true,
             milestones: {
                 include: {
-                    tasks: true,
-                },
+                    tasks: {
+                        include: {
+                            assignees: true,
+                        }
+                    }
+                }
             },
             timelineChangeRequests: {
                 where: {
                     status: 'PENDING'
+                }
+            },
+            teams: {
+                include: {
+                    members: true,
+                    teamLead: true,
+                }
+            },
+            blockers: {
+                where: {
+                    status: 'OPEN'
                 }
             }
         },
@@ -517,7 +724,9 @@ export async function getProjectsPageData(userId: string) {
 
     return {
         projects: JSON.parse(JSON.stringify(projects)),
-        statuses: JSON.parse(JSON.stringify(statuses.filter(s => !archivedStatusNames.includes(s.name))))
+        statuses: JSON.parse(JSON.stringify(statuses.filter(s => !archivedStatusNames.includes(s.name)))),
+        users: JSON.parse(JSON.stringify(users)),
+        pmoDivisions: JSON.parse(JSON.stringify(pmoDivisions)),
     };
 }
 
@@ -547,7 +756,7 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
                             assignees: true,
                             updates: true,
                         }
-                    }
+                    },
                 }
             },
             timelineChangeRequests: {
@@ -566,8 +775,14 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
         return null; // Project not found
     }
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
-    if (isManagerOrAdmin) {
+    // Check if user has admin-level permissions (can see all projects)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
+    
+    if (hasAdminPermissions) {
         return JSON.parse(JSON.stringify(project));
     }
 
@@ -621,11 +836,16 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
 
     if (!user) return null;
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
+    // Check if user has admin-level permissions (can see all projects)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
     
     let whereClause: Prisma.ProjectWhereUniqueInput = { id: projectId };
     
-    if (!isManagerOrAdmin) {
+    if (!hasAdminPermissions) {
         const projectAccess = await prisma.project.findFirst({
             where: {
                 id: projectId,
@@ -646,16 +866,18 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
         where: whereClause,
         include: {
             milestones: {
-                orderBy: { createdAt: 'desc' },
+                orderBy: {
+                    createdAt: 'desc'
+                },
                 include: {
                     tasks: {
                         orderBy: { createdAt: 'desc' },
                         include: {
                             assignees: true,
                         }
-                    },
+                    }
                 }
-            }
+            },
         }
     });
 
@@ -677,16 +899,14 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
 export async function deleteProject(projectId: string) {
     try {
         await prisma.$transaction(async (tx) => {
-            // Find all milestones associated with the project
             const milestones = await tx.milestone.findMany({
-                where: { projectId: projectId },
+                where: { projectId },
                 select: { id: true }
             });
             const milestoneIds = milestones.map(m => m.id);
 
             if (milestoneIds.length > 0) {
-                // Find all tasks associated with these milestones
-                const tasks = await tx.task.findMany({
+                 const tasks = await tx.task.findMany({
                     where: { milestoneId: { in: milestoneIds } },
                     select: { id: true }
                 });
@@ -702,12 +922,11 @@ export async function deleteProject(projectId: string) {
                         where: { id: { in: taskIds } }
                     });
                 }
+                // Delete milestones
+                await tx.milestone.deleteMany({
+                    where: { id: { in: milestoneIds } }
+                });
             }
-
-            // Delete milestones
-            await tx.milestone.deleteMany({
-                where: { projectId: projectId }
-            });
 
             // Delete blockers
             await tx.blocker.deleteMany({

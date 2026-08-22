@@ -26,7 +26,12 @@ export async function getArchivedProjects(userId: string) {
     const archivedStatusNames = ['Completed', 'On Handover'];
     const archivedStatusIds = statuses.filter(s => archivedStatusNames.includes(s.name)).map(s => s.id);
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
+    // Check if user has admin-level permissions (can see all projects)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('projects:read') && 
+        role.permissions.includes('projects:update') && 
+        role.permissions.includes('projects:delete')
+    );
 
     let whereClause: Prisma.ProjectWhereInput = {
         statusId: {
@@ -34,7 +39,7 @@ export async function getArchivedProjects(userId: string) {
         }
     };
 
-    if (!isManagerOrAdmin) {
+    if (!hasAdminPermissions) {
         whereClause.OR = [
             { projectManagerId: userId },
             { teams: { some: { members: { some: { id: userId } } } } },

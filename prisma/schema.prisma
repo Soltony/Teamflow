@@ -106,25 +106,27 @@ model TaskUpdate {
 }
 
 model User {
-  id                      String                 @id @default(cuid())
-  name                    String
-  firstName               String
-  lastName                String
-  email                   String                 @unique
-  avatar                  String?
-  phoneNumber             String?
-  pmoDivision             PmoDivision?           @relation(fields: [pmoDivisionId], references: [id])
-  pmoDivisionId           String?
-  roles                   Role[]                 @relation("UserRoles")
-  assignedTasks           Task[]                 @relation("TaskAssignees")
-  teamsAsLead             Team[]                 @relation("TeamLead")
-  teamsAsMember           Team[]                 @relation("TeamMembers")
-  taskUpdates             TaskUpdate[]
-  managedProjects         Project[]
-  timelineChangeRequests  TimelineChangeRequest[] @relation("RequestedBy")
-  timelineChangeApprovals TimelineChangeRequest[] @relation("ReviewedBy")
-  createdAt               DateTime               @default(now())
-  updatedAt               DateTime               @updatedAt
+  id                        String                 @id @default(cuid())
+  name                      String
+  firstName                 String
+  lastName                  String
+  email                     String                 @unique
+  avatar                    String?
+  phoneNumber               String?
+  pmoDivision               PmoDivision?           @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivisionId             String?
+  roles                     Role[]                 @relation("UserRoles")
+  assignedTasks             Task[]                 @relation("TaskAssignees")
+  teamsAsLead               Team[]                 @relation("TeamLead")
+  teamsAsMember             Team[]                 @relation("TeamMembers")
+  taskUpdates               TaskUpdate[]
+  managedProjects           Project[]
+  timelineChangeRequests    TimelineChangeRequest[] @relation("RequestedBy")
+  timelineChangeApprovals   TimelineChangeRequest[] @relation("ReviewedBy")
+  notificationsSent         Notification[]         @relation("SentNotifications")
+  notificationsReceived     Notification[]         @relation("ReceivedNotifications")
+  createdAt                 DateTime               @default(now())
+  updatedAt                 DateTime               @updatedAt
 }
 
 model Role {
@@ -186,18 +188,30 @@ enum RequestStatus {
 }
 
 model TimelineChangeRequest {
-  id          String        @id @default(cuid())
-  project     Project       @relation(fields: [projectId], references: [id])
-  projectId   String
-  oldEndDate  DateTime
-  newEndDate  DateTime
-  reason      String
-  status      RequestStatus @default(PENDING)
-  requestedBy User          @relation("RequestedBy", fields: [requestedById], references: [id])
+  id            String        @id @default(cuid())
+  project       Project       @relation(fields: [projectId], references: [id])
+  projectId     String
+  oldEndDate    DateTime
+  newEndDate    DateTime
+  reason        String
+  status        RequestStatus @default(PENDING)
+  requestedBy   User          @relation("RequestedBy", fields: [requestedById], references: [id])
   requestedById String
-  reviewedBy  User?         @relation("ReviewedBy", fields: [reviewedById], references: [id])
-  reviewedById String?
-  reviewNotes String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
+  reviewedBy    User?         @relation("ReviewedBy", fields: [reviewedById], references: [id])
+  reviewedById  String?
+  reviewNotes   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Notification {
+  id            String    @id @default(cuid())
+  message       String
+  link          String
+  read          Boolean   @default(false)
+  recipient     User      @relation("ReceivedNotifications", fields: [recipientId], references: [id])
+  recipientId   String
+  sender        User      @relation("SentNotifications", fields: [senderId], references: [id])
+  senderId      String
+  createdAt     DateTime  @default(now())
 }

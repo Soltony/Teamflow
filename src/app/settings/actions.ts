@@ -145,7 +145,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
     }
 
     try {
-        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/register`;
+        const authApiUrl = `${process.env.AUTH_API_BASE_URL}/api/Auth/register`;
 
         const registrationPayload = {
             firstName: data.firstName,
@@ -237,7 +237,7 @@ export async function createUser(data: { firstName: string, lastName: string, em
 
 export async function forgotPasswordForUser(phoneNumber: string) {
     try {
-        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/forgot-password`;
+        const authApiUrl = `${process.env.AUTH_API_BASE_URL}/api/Auth/forgot-password`;
         
         const payload = { phoneNumber };
 
@@ -286,7 +286,7 @@ export async function forgotPasswordForUser(phoneNumber: string) {
 
 export async function resetPasswordForUser(data: { phoneNumber: string, newPassword?: string, token: string }) {
     try {
-        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/reset-password`;
+        const authApiUrl = `${process.env.AUTH_API_BASE_URL}/api/Auth/reset-password`;
         const response = await axios.post(authApiUrl, data);
 
         if (response.data?.isSuccess || response.status === 200 || response.status === 204) {

@@ -3,7 +3,7 @@
 "use client";
 
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams, useRouter } from 'next/navigation';
 import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot, AlertTriangle, ArrowRight } from "lucide-react";
 import { format, differenceInDays, parseISO, isAfter, endOfDay } from "date-fns";
 import type { Blocker, TaskStatus, Project } from "@/lib/types";
@@ -122,25 +122,54 @@ export function ProjectView({
 }: ProjectViewProps) {
   
   const searchParams = useSearchParams();
+  const router = useRouter();
   const defaultTab = searchParams.get('tab') || 'milestones';
   
-  const weightedProgress = project.milestones.reduce((progress: number, milestone: any) => {
-    const completedTaskWeightInMilestone = milestone.tasks
-      .filter((task: any) => task.status === 'DONE')
-      .reduce((sum: number, task: any) => sum + task.weight, 0);
+  const calculateMilestoneProgress = (milestone: any) => {
+    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
+    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
+      const taskProgress = task.progress || 0;
+      return acc + (taskProgress * (task.weight / 100));
+    }, 0);
+    return totalProgress;
+  };
+  
+  const calculateProjectProgress = (project: any) => {
+    if (!project.milestones || project.milestones.length === 0) {
+      return 0;
+    }
     
-    const milestoneProgress = completedTaskWeightInMilestone / 100;
+    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
 
-    return progress + (milestoneProgress * milestone.weight);
-  }, 0);
+    if (weightedMilestones.length > 0) {
+      // Standard weighted calculation if there are weighted milestones
+      return weightedMilestones.reduce((acc: number, milestone: any) => {
+        const milestoneProgress = calculateMilestoneProgress(milestone);
+        return acc + (milestoneProgress * (milestone.weight / 100));
+      }, 0);
+    } else {
+      // If no weighted milestones, calculate based on task weights directly
+      const allTasks = project.milestones.flatMap((m: any) => m.tasks);
+      if (allTasks.length === 0) return 0;
+
+      const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
+      if (totalTaskWeight === 0) {
+          // If tasks have no weight, calculate simple average of progress
+          const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
+          return totalProgress / allTasks.length;
+      }
+      
+      const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
+        return acc + ((task.progress || 0) * task.weight);
+      }, 0);
+
+      return totalWeightedTaskProgress / totalTaskWeight;
+    }
+  };
+
+  const weightedProgress = calculateProjectProgress(project);
 
   const allResponsibleDepartments = project.responsibleDepartments?.map((d: any) => d.name) || [];
-
-  const calculateMilestoneProgress = (milestone: any) => {
-    return milestone.tasks
-      .filter((t: any) => t.status === 'DONE')
-      .reduce((sum: number, task: any) => sum + task.weight, 0);
-  };
 
   const renderTimelineStatus = () => {
     const isProjectComplete = project.status.name === 'Completed' || project.status.name === 'On Handover';
@@ -176,9 +205,9 @@ export function ProjectView({
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
-      <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
+      <Link href="/projects" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
         <ArrowLeft className="w-4 h-4" />
-        Back to Dashboard
+        Back to Projects
       </Link>
       
       <Card>
@@ -264,6 +293,11 @@ export function ProjectView({
                     <CardDescription>A breakdown of all milestones and their associated tasks for this project.</CardDescription>
                 </CardHeader>
                 <CardContent>
+                  {(!project.milestones || project.milestones.length === 0) ? (
+                    <div className="text-center py-12 text-muted-foreground">
+                      No milestones have been created for this project yet.
+                    </div>
+                  ) : (
                     <Accordion type="multiple" className="w-full space-y-2">
                         {project.milestones.map((milestone: any) => {
                             const milestoneProgress = calculateMilestoneProgress(milestone);
@@ -299,7 +333,11 @@ export function ProjectView({
                                                 </TableHeader>
                                                 <TableBody>
                                                     {milestone.tasks.map((task: any) => (
-                                                        <TableRow key={task.id}>
+                                                        <TableRow 
+                                                            key={task.id} 
+                                                            onClick={() => router.push(`/tasks/${task.id}`)}
+                                                            className="cursor-pointer"
+                                                        >
                                                             <TableCell className="font-medium">{task.title}</TableCell>
                                                             <TableCell>{getStatusBadge(task.status)}</TableCell>
                                                             <TableCell>
@@ -322,6 +360,7 @@ export function ProjectView({
                             )
                         })}
                     </Accordion>
+                    )}
                 </CardContent>
             </Card>
         </TabsContent>

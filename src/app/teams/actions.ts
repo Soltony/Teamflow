@@ -17,6 +17,7 @@ export async function createTeam(data: { name: string; projectId: string; teamLe
                 }
             }
         });
+        revalidatePath('/projects');
         revalidatePath('/teams');
         revalidatePath('/dashboard');
         return { success: true };
@@ -39,6 +40,7 @@ export async function updateTeam(teamId: string, data: { name: string; projectId
                 }
             }
         });
+        revalidatePath('/projects');
         revalidatePath('/teams');
         revalidatePath('/dashboard');
         return { success: true };
@@ -53,6 +55,7 @@ export async function deleteTeam(teamId: string) {
         await prisma.team.delete({
             where: { id: teamId }
         });
+        revalidatePath('/projects');
         revalidatePath('/teams');
         revalidatePath('/dashboard');
         return { success: true };
@@ -73,11 +76,16 @@ export async function getTeamsPageData(userId: string) {
         return { teams: [], projects: [], users: [] };
     }
 
-    const isManagerOrAdmin = user.roles.some(role => role.name === 'Admin' || role.name === 'Project Manager' || role.name === 'CEO');
+    // Check if user has admin-level permissions (can see all teams)
+    const hasAdminPermissions = user.roles.some(role => 
+        role.permissions.includes('teams:read') && 
+        role.permissions.includes('teams:update') && 
+        role.permissions.includes('teams:delete')
+    );
     
     let whereClause: Prisma.TeamWhereInput = {};
 
-    if (!isManagerOrAdmin) {
+    if (!hasAdminPermissions) {
         whereClause = {
             OR: [
                 { teamLeadId: userId },

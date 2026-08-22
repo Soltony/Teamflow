@@ -131,7 +131,7 @@ export function TimelineApprovalManagement({ initialRequests, onDataChange }: Ti
                         <Badge variant="default">{format(new Date(request.newEndDate), 'MMM dd, yyyy')}</Badge>
                     </div>
                   </TableCell>
-                  <TableCell className="max-w-xs truncate">{request.reason}</TableCell>
+                  <TableCell>{request.reason}</TableCell>
                   <TableCell className="text-right">
                     {canManage && (
                       <div className="flex gap-2 justify-end">

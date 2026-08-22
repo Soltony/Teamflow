@@ -1,4 +1,5 @@
 
+
 "use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
@@ -87,8 +88,13 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
     await fetchData();
   };
 
-  const handleTaskAdd = async (milestoneId: string, newTask: any) => {
-    await addTask(milestoneId, project.id, newTask);
+  const handleTaskAdd = async (newTask: any) => {
+    if (!localUser || !addingTaskToMilestone) return;
+
+    const { milestoneId, ...taskData } = newTask;
+    
+    await addTask(project.id, milestoneId || addingTaskToMilestone.id, localUser.id, taskData);
+    
     toast({
       title: "Task Added!",
       description: `The task "${newTask.title}" has been successfully added.`,
@@ -97,9 +103,10 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
     await fetchData();
   };
 
-  const handleTaskUpdate = async (milestoneId: string, updatedTask: Task) => {
+  const handleTaskUpdate = async (updatedTask: Task) => {
+    if (!localUser) return;
     const { id, ...dataToUpdate } = updatedTask;
-    await updateTask(id, project.id, dataToUpdate);
+    await updateTask(id, project.id, localUser.id, dataToUpdate);
     toast({
       title: "Task Updated!",
       description: `The task "${updatedTask.title}" has been successfully updated.`,
@@ -202,7 +209,11 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
                                   <TaskList 
                                       tasks={milestone.tasks} 
                                       users={projectUsers}
-                                      onEditTask={(task) => setEditingTaskInfo({ task, milestone })}
+                                      onEditTask={(task) => {
+                                          console.log('ProjectMilestones - task data from TaskList:', task);
+                                          console.log('ProjectMilestones - task.assignedUserIds:', task.assignedUserIds);
+                                          setEditingTaskInfo({ task, milestone });
+                                      }}
                                       onDeleteTask={(task) => setTaskToDelete(task)}
                                       canManageTasks={canManageProjectTasks}
                                   />
@@ -239,9 +250,9 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
         <AddTaskDialog
             isOpen={!!addingTaskToMilestone}
             onOpenChange={(open) => !open && setAddingTaskToMilestone(null)}
-            milestone={addingTaskToMilestone}
+            project={project}
             onTaskAdd={handleTaskAdd}
-            users={projectUsers}
+            users={users}
         />
       )}
       
@@ -249,10 +260,10 @@ export function ProjectMilestones({ initialProject, users, departments, fetchDat
         <EditTaskDialog
             isOpen={!!editingTaskInfo}
             onOpenChange={(open) => !open && setEditingTaskInfo(null)}
-            milestone={editingTaskInfo.milestone}
+            project={project}
             task={editingTaskInfo.task}
             onTaskUpdate={handleTaskUpdate}
-            users={projectUsers}
+            users={users}
         />
       )}
 
