@@ -6,20 +6,14 @@ import { useAuth } from "@/context/auth-context";
 import { useRouter } from 'next/navigation';
 import { SettingsTabs } from "@/components/settings/settings-tabs";
 import { Card, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import { getSettingsPageData } from './actions';
 import type { ProjectStatus, Project, Setting, User, Role, PmoDivision } from '@prisma/client';
+import { useFirstLoad } from "@/hooks/use-first-load";
 
 type UserWithRoles = User & { roles: Role[] };
 
-type SettingsData = {
-  projectStatuses: ProjectStatus[];
-  projects: { workingYear: string }[];
-  activeYearSetting: Setting | null;
-  users: UserWithRoles[];
-  roles: Role[];
-  pmoDivisions: PmoDivision[];
-}
+type SettingsData = Awaited<ReturnType<typeof getSettingsPageData>>;
 
 function generateWorkingYears() {
     const currentYear = new Date().getFullYear();
@@ -35,18 +29,20 @@ function generateWorkingYears() {
 
 function LoadingSkeleton() {
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <Card>
-                <CardHeader>
-                  <Skeleton className="h-8 w-64" />
-                  <Skeleton className="h-4 w-96 mt-2" />
-                </CardHeader>
-            </Card>
-            <div className="space-y-4">
-                <Skeleton className="h-10 w-1/2" />
-                <Skeleton className="h-64 w-full" />
-            </div>
-        </div>
+        <LoadingRegion label="Loading settings">
+          <div className="p-4 sm:p-6 space-y-6">
+              <Card>
+                  <CardHeader>
+                    <Skeleton className="h-8 w-64" />
+                    <Skeleton className="h-4 w-96 mt-2" />
+                  </CardHeader>
+              </Card>
+              <div className="space-y-4">
+                  <Skeleton className="h-10 w-1/2" />
+                  <Skeleton className="h-64 w-full" />
+              </div>
+          </div>
+        </LoadingRegion>
     );
 }
 
@@ -79,9 +75,12 @@ export default function SettingsPage() {
         fetchSettingsData();
       }
     }
-  }, [authLoading, canViewPage, router, fetchSettingsData]);
+  }, [authLoading, canViewPage, router, fetchSettingsData]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
 
-  if (isLoading || authLoading || !data) {
+  if (showSkeleton || authLoading || !data) {
     return <LoadingSkeleton />;
   }
   

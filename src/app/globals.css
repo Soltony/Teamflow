@@ -3,9 +3,11 @@
 @tailwind components;
 @tailwind utilities;
 
-body {
-  font-family: Arial, Helvetica, sans-serif;
-}
+/*
+ * Typography is set by next/font in app/layout.tsx, which defines --font-sans
+ * and is picked up by Tailwind's font-sans. The Arial rule that used to live
+ * here overrode it on every page, so the blueprint's Inter never applied.
+ */
 
 @layer base {
   :root {
@@ -20,14 +22,29 @@ body {
     --secondary: 47 40% 92%;
     --secondary-foreground: 26 30% 25%;
     --muted: 47 40% 92%;
-    --muted-foreground: 26 20% 45%;
+    /* Was 45%, which put secondary text at 3.7:1 on the page background —
+     * below the 4.5:1 needed to read it. Most dates, counts and descriptions
+     * in this system use this token. */
+    --muted-foreground: 26 20% 38%;
     --accent: 47 40% 92%;
     --accent-foreground: 26 30% 25%;
-    --destructive: 0 84.2% 60.2%;
+    /* Was 60.2%: white label on it measured 3.6:1, so every Delete button
+     * failed. */
+    --destructive: 0 72% 42%;
     --destructive-foreground: 0 0% 98%;
-    --border: 40 30% 88%;
-    --input: 50 64% 95%; /* #faf7e8 */
-    --ring: 45 90% 55%;
+    /* Was 88% — 1.01:1 against the background, which is to say invisible.
+     * Card edges and table rules had no perceptible separation. */
+    --border: 40 25% 68%;
+    /* A control boundary, not a decoration: this is the only thing marking
+     * where a text field is, so it carries the 3:1 requirement. */
+    --input: 40 30% 45%;
+    /* The keyboard focus indicator. It was the same gold as --primary, at
+     * 1.35:1 against the background — anyone navigating by keyboard could not
+     * see where they were. Brand brown instead, which is the sidebar colour. */
+    --ring: 26 64% 33%;
+    /* The off track of a switch. Distinct from both --primary (on) and the
+     * card behind it, so the state is never ambiguous. */
+    --switch-off: 30 12% 42%;
     --chart-1: 45 90% 55%;
     --chart-2: 160 70% 45%;
     --chart-3: 30 80% 55%;
@@ -47,6 +64,21 @@ body {
   }
   body {
     @apply bg-background text-foreground;
+    /*
+     * Tabular figures. This system is mostly numbers in columns — progress
+     * percentages, currency, dates, weights — and proportional digits make them
+     * jitter as they update and fail to line up down a column. cv11 gives Inter
+     * a single-storey l, so 1 / l / I stay distinguishable in ids and amounts.
+     */
+    font-feature-settings: "tnum" 1, "cv11" 1;
+  }
+
+  /*
+   * Running prose reads better with proportional figures; opt back out where a
+   * paragraph happens to contain a number.
+   */
+  .prose-numerals {
+    font-feature-settings: "tnum" 0;
   }
   .sidebar {
     --secondary: 26 64% 43%;

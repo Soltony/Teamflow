@@ -7,11 +7,26 @@ import { isPast, parseISO, max as dateMax, endOfDay, isAfter } from 'date-fns';
 import type { Project } from '@prisma/client';
 import { Suspense } from 'react';
 import prisma from '@/lib/db';
-import { redirect } from 'next/navigation';
+import { requirePermissionOrRedirect } from '@/lib/auth/guard';
+import { isLate, isOnTime, isOverdue } from '@/lib/metrics';
+import { serialize } from '@/lib/serialize';
+import { isOpenBlocker } from '@/lib/validation/blocker';
 
-async function ReportsContent({ searchParams }: { searchParams: { type?: string, year?: string } }) {
-    const type = searchParams?.type;
-    const year = searchParams?.year;
+// Reads the session, so it must never be prerendered.
+export const dynamic = 'force-dynamic';
+
+type ReportSearchParams = { type?: string; year?: string; division?: string };
+
+async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSearchParams> }) {
+    // This page previously read every project in the portfolio with no
+    // permission check of any kind.
+    await requirePermissionOrRedirect('reports:view');
+
+    // Next 15 hands these over as a promise.
+    const params = await searchParams;
+    const type = params?.type;
+    const year = params?.year;
+    const division = params?.division;
 
     let title = "Projects Report";
     let description = "A list of projects based on the selected filter.";
@@ -19,7 +34,12 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
     const allProjectStatuses = await prisma.projectStatus.findMany();
 
     const allProjectsQuery = prisma.project.findMany({
-        where: year && year !== 'all' ? { workingYear: year } : {},
+        // Both filters, because the dashboard cards were counted under both.
+        // Honouring only the year is what made a card read 7 and its list 19.
+        where: {
+            ...(year && year !== 'all' ? { workingYear: year } : {}),
+            ...(division ? { pmoDivisionId: division } : {}),
+        },
         include: { 
             status: true,
             milestones: {
@@ -34,42 +54,32 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
     const [allProjects] = await Promise.all([allProjectsQuery]);
 
     let filteredProjects: any[] = [];
-    const completedStatusId = allProjectStatuses.find(s => s.name === 'Completed')?.id;
-    const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
 
     if (type) {
-        const allCompletedProjects = allProjects.filter(p => p.statusId === completedStatusId);
-        
+        // Same predicates the dashboard and CEO report use, so a drill-down
+        // always lists exactly the projects the card counted. These filters
+        // previously used planned task dates while the cards used actual
+        // completion, so the number and the list disagreed.
         switch (type) {
             case 'on-time':
                 title = "On-Time Completion Projects";
-                description = "Projects that were completed on or before their scheduled end date.";
-                filteredProjects = allCompletedProjects.filter(project => {
-                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.endDate));
-                    if (allTaskEndDates.length === 0) return true;
-                    const lastTaskDate = dateMax(allTaskEndDates);
-                    return lastTaskDate <= project.endDate;
-                });
+                description = "Completed projects delivered on or before their committed deadline.";
+                filteredProjects = allProjects.filter(isOnTime);
                 break;
             case 'late':
                 title = "Late Completion Projects";
-                description = "Projects that were completed after their scheduled end date.";
-                filteredProjects = allCompletedProjects.filter(project => {
-                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.endDate));
-                    if (allTaskEndDates.length === 0) return false;
-                    const lastTaskDate = dateMax(allTaskEndDates);
-                    return lastTaskDate > project.endDate;
-                });
+                description = "Completed projects delivered after their committed deadline.";
+                filteredProjects = allProjects.filter(isLate);
                 break;
             case 'overdue':
                 title = "Overdue Projects";
-                description = "Active projects that are past their deadline.";
-                filteredProjects = allProjects.filter(p => nonArchivedStatusNames.includes(p.status.name) && isAfter(new Date(), endOfDay(p.endDate)));
+                description = "Projects still running that are past their deadline.";
+                filteredProjects = allProjects.filter(p => isOverdue(p));
                 break;
             case 'active-blockers':
                 title = "Projects with Active Blockers";
                 description = "Projects that have open issues requiring attention.";
-                filteredProjects = allProjects.filter(p => p.blockers?.some(b => b.status === 'OPEN'));
+                filteredProjects = allProjects.filter(p => p.blockers?.some(b => isOpenBlocker(b.status)));
                 break;
             default:
                 title = "All Projects";
@@ -82,7 +92,7 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
         filteredProjects = allProjects;
     }
     
-    const serializableProjects = JSON.parse(JSON.stringify(filteredProjects));
+    const serializableProjects = serialize(filteredProjects);
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -117,7 +127,7 @@ async function ReportsContent({ searchParams }: { searchParams: { type?: string,
     );
 }
 
-export default async function ReportsPage({ searchParams }: { searchParams: { type?: string, year?: string } }) {
+export default async function ReportsPage({ searchParams }: { searchParams: Promise<ReportSearchParams> }) {
     return (
         <Suspense fallback={<div className="p-4 sm:p-6">Loading...</div>}>
             <ReportsContent searchParams={searchParams} />

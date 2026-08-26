@@ -1,9 +1,14 @@
 
 'use client';
 
-import type { ProjectStatus, Role, User, PmoDivision } from "@prisma/client";
+import type { ProjectStatus, PmoDivision } from "@prisma/client";
+// UserWithRoles and Role come from lib/types: the shape the browser actually
+// receives. Rebuilding them from the Prisma row declared a passwordHash on
+// data the queries deliberately never select.
+import type { Role, UserWithRoles } from "@/lib/types";
 import { useAuth } from "@/context/auth-context";
 import { ActiveYearManagement } from "./active-year-management";
+import { SystemSettings } from "./system-settings";
 import { ProjectStatusManagement } from "./status-management";
 import { UserManagement } from "./user-management";
 import { RoleManagement } from "./role-management";
@@ -12,16 +17,16 @@ import { Skeleton } from "../ui/skeleton";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { cn } from "@/lib/utils";
+import type { Serialized } from '@/lib/serialize';
 
-type UserWithRoles = User & { roles: Role[] };
 
 type SettingsTabsProps = {
-    projectStatuses: ProjectStatus[];
+    projectStatuses: Serialized<ProjectStatus>[];
     availableYears: string[];
     currentActiveYear: string;
     users: UserWithRoles[];
     roles: Role[];
-    pmoDivisions: PmoDivision[];
+    pmoDivisions: Serialized<PmoDivision>[];
     onDataChange: () => void;
 }
 
@@ -45,7 +50,8 @@ export function SettingsTabs({
         canManageUsers && 'users',
         canManageRoles && 'roles',
         canManageSettings && 'statuses',
-        canManageSettings && 'general'
+        canManageSettings && 'general',
+        canManageSettings && 'system'
     ].filter(Boolean) as string[];
 
     const defaultTab = visibleTabs[0] || "";
@@ -77,6 +83,7 @@ export function SettingsTabs({
                 {canManageRoles && <TabsTrigger value="roles">Roles</TabsTrigger>}
                 {canManageSettings && <TabsTrigger value="statuses">Project Statuses</TabsTrigger>}
                 {canManageSettings && <TabsTrigger value="general">General</TabsTrigger>}
+                {canManageSettings && <TabsTrigger value="system">System</TabsTrigger>}
             </TabsList>
             
             {canManageUsers && (
@@ -105,6 +112,13 @@ export function SettingsTabs({
                         initialStatuses={projectStatuses}
                         onDataChange={onDataChange}
                     />
+                </TabsContent>
+            )}
+
+            {canManageSettings && (
+                <TabsContent value="system" className="mt-6">
+                    {/* Renders itself from the registry in lib/settings. */}
+                    <SystemSettings onDataChange={onDataChange} />
                 </TabsContent>
             )}
 

@@ -52,27 +52,9 @@ import {
 import { cn } from "@/lib/utils";
 import { NibLogo } from "./logo";
 import { NotificationBell } from "./notifications/notification-bell";
+import { NAV_GROUPS, isNavItemActive, visibleGroups } from "./navigation";
 
-const menuItems = [
-  { href: "/dashboard", label: "Dashboard", icon: Home, permission: 'dashboard:view' },
-  { href: "/today", label: "Today", icon: ListTodo, permission: 'dashboard:view' },
-  { href: "/weekly-activities", label: "Weekly", icon: CalendarDays, permission: 'dashboard:view' },
-  { href: "/my-tasks", label: "My Tasks", icon: ClipboardCheck, permission: 'my-tasks:view' },
-  { href: "/team-view", label: "Team View", icon: ClipboardList, permission: 'team-view:view' },
-  { href: "/task-approvals", label: "Task Approvals", icon: ThumbsUp, permission: 'tasks:approve' },
-  { href: "/projects", label: "Projects", icon: FolderKanban, permission: 'projects:read' },
-  { href: "/archive", label: "Archive", icon: Archive, permission: 'projects:read' },
-  { href: "/milestones", label: "Milestones", icon: Milestone, permission: 'milestones:view' },
-  { href: "/gantt", label: "Gantt", icon: GanttChartSquare, permission: 'gantt:view' },
-  { href: "/pmo-divisions", label: "EPMO Divisions", icon: Library, permission: 'pmo-divisions:view' },
-  { href: "/departments", label: "Departments", icon: Building2, permission: 'departments:read' },
-  { href: "/teams", label: "Teams", icon: UsersRound, permission: 'teams:read' },
-  { href: "/payments", label: "Payments", icon: DollarSign, permission: 'payments:view' },
-  { href: "/payment-approvals", label: "Payment Approvals", icon: CheckSquare, permission: 'payment-approvals:view' },
-  { href: "/timeline-approvals", label: "Timeline Approvals", icon: Clock, permission: 'timeline:approve' },
-  { href: "/ceo-report", label: "Reports", icon: AreaChart, permission: 'reports:view' },
-  { href: "/settings", label: "Settings", icon: Settings, permission: ['settings:manage', 'config:manage-users', 'config:manage-roles'] },
-];
+
 
 function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
@@ -87,10 +69,8 @@ function AppSidebar({ className }: { className?: string }) {
   const userName = localUser?.name ?? 'Loading...';
   const userEmail = localUser?.email ?? '...';
   
-  const visibleMenuItems = menuItems.filter(item => {
-    if (!item.permission) return true;
-    return hasPermission(item.permission);
-  });
+  // Groups whose every item is hidden by permission drop out entirely.
+  const groups = visibleGroups(NAV_GROUPS, hasPermission);
 
   return (
     <Sidebar className={cn(className, "sidebar text-sidebar-foreground")}>
@@ -101,26 +81,39 @@ function AppSidebar({ className }: { className?: string }) {
         </div>
       </SidebarHeader>
       <SidebarContent>
-        <SidebarMenu>
-          {visibleMenuItems.map((item) => (
-            <SidebarMenuItem key={item.label}>
-              <SidebarMenuButton
-                href={item.href}
-                isActive={pathname.startsWith(item.href) && (item.href !== '/dashboard' || pathname === '/dashboard')}
-                icon={<item.icon />}
-              >
-                {item.label}
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
+        {groups.map((group) => (
+          <div key={group.label} className="mb-4">
+            {/*
+              The heading is hidden when the rail is collapsed to icons, where
+              there is no room for it — the grouping still shows as spacing.
+            */}
+            {(isOpen || isMobile) && (
+              <p className="px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+                {group.label}
+              </p>
+            )}
+            <SidebarMenu>
+              {group.items.map((item) => (
+                <SidebarMenuItem key={item.href}>
+                  <SidebarMenuButton
+                    href={item.href}
+                    isActive={isNavItemActive(item, pathname)}
+                    icon={<item.icon />}
+                  >
+                    {item.label}
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </div>
+        ))}
       </SidebarContent>
       <SidebarFooter>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" className="justify-start w-full gap-2 px-2">
               <Avatar className="w-8 h-8">
-                 <AvatarImage src={localUser?.avatar} />
+                 <AvatarImage src={localUser?.avatar ?? undefined} />
                  <AvatarFallback>{userInitials}</AvatarFallback>
               </Avatar>
               {(isOpen || isMobile) && <span className="text-sm font-medium truncate">{userName}</span>}
@@ -158,6 +151,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         "min-h-screen w-full",
       )}
     >
+      {/*
+        Visible only once focused, which is the point: a keyboard user would
+        otherwise tab through every sidebar link on every page before reaching
+        the content. Placed first so it is the very first stop.
+      */}
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-background focus:px-4 focus:py-2 focus:text-sm focus:font-medium focus:shadow-lg focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+      >
+        Skip to content
+      </a>
       <AppSidebar />
       <main className={cn(
         "flex flex-col flex-1",
@@ -182,7 +186,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <NotificationBell />
             </div>
         </header>
-        <div className="flex-1 overflow-y-auto overflow-x-hidden">{children}</div>
+        {/* tabIndex -1 so the skip link can move focus here, not just scroll. */}
+        <div
+          id="main-content"
+          tabIndex={-1}
+          className="flex-1 overflow-y-auto overflow-x-hidden focus:outline-none"
+        >
+          {children}
+        </div>
       </main>
     </div>
   );

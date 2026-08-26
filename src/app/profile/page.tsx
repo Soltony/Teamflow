@@ -46,7 +46,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 type ChangePasswordFormValues = z.infer<typeof changePasswordSchema>;
 
 export default function ProfilePage() {
-  const { localUser, accessToken, logout } = useAuth();
+  const { localUser, logout, refresh } = useAuth();
   const { toast } = useToast();
   const [isProfilePending, startProfileTransition] = useTransition();
   const [isPasswordPending, startPasswordTransition] = useTransition();
@@ -74,14 +74,14 @@ export default function ProfilePage() {
 
   const onProfileSubmit = (data: ProfileFormValues) => {
     startProfileTransition(async () => {
-        if (!localUser || !accessToken) return;
-        const result = await updateUserProfile(localUser.id, data, accessToken);
+        if (!localUser) return;
+        const result = await updateUserProfile(localUser.id, data);
         if (result.success) {
             toast({
                 title: 'Profile Updated',
                 description: 'Your profile information has been successfully updated.',
             });
-            // Optionally, refresh auth context data if it's stale
+            await refresh();
         } else {
             toast({
                 title: 'Error Updating Profile',
@@ -94,25 +94,25 @@ export default function ProfilePage() {
 
   const onPasswordSubmit = (data: ChangePasswordFormValues) => {
     startPasswordTransition(async () => {
-      if (!localUser || !localUser.phoneNumber || !accessToken) {
+      if (!localUser) {
         toast({
           title: 'Authentication Error',
-          description: 'Your user profile is incomplete or you are not logged in. Please log in again.',
+          description: 'You are not signed in. Please sign in again.',
           variant: 'destructive',
         });
         return;
       }
 
       const result = await changePassword({
-        phoneNumber: localUser.phoneNumber,
         currentPassword: data.currentPassword,
         newPassword: data.newPassword,
-      }, accessToken);
+      });
 
       if (result.success) {
         toast({
           title: 'Password Changed Successfully',
-          description: 'Your password has been updated. Please log in again with your new password.',
+          description:
+            'Your password has been updated and you have been signed out on all devices. Sign in again with your new password.',
         });
         logout();
       } else {

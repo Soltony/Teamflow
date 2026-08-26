@@ -9,32 +9,36 @@ import Link from 'next/link';
 import { Badge } from "@/components/ui/badge";
 import { format } from 'date-fns';
 import { getMilestonesPageData } from './actions';
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import type { Project, Milestone, Department, Role, Task } from "@prisma/client";
 import { Progress } from "@/components/ui/progress";
+import { useFirstLoad } from "@/hooks/use-first-load";
+import {
+  milestoneProgress as calculateMilestoneProgress,
+  projectProgress as calculateProjectProgress,
+} from '@/lib/metrics';
 
-type ProjectWithMilestones = Project & {
-    milestones: (Milestone & { tasks: Task[] })[],
-    responsibleDepartments: Department[],
-}
+type ProjectWithMilestones = Awaited<ReturnType<typeof getMilestonesPageData>>[number];
 
 function LoadingSkeleton() {
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-4 w-96 mt-2" />
-                </CardHeader>
-                <CardContent>
-                    <div className="space-y-4">
-                        <Skeleton className="h-12 w-full" />
-                        <Skeleton className="h-12 w-full" />
-                        <Skeleton className="h-12 w-full" />
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+        <LoadingRegion label="Loading milestones">
+          <div className="p-4 sm:p-6 space-y-6">
+              <Card>
+                  <CardHeader>
+                      <Skeleton className="h-8 w-64" />
+                      <Skeleton className="h-4 w-96 mt-2" />
+                  </CardHeader>
+                  <CardContent>
+                      <div className="space-y-4">
+                          <Skeleton className="h-12 w-full" />
+                          <Skeleton className="h-12 w-full" />
+                          <Skeleton className="h-12 w-full" />
+                      </div>
+                  </CardContent>
+              </Card>
+          </div>
+        </LoadingRegion>
     )
 }
 
@@ -53,9 +57,12 @@ export default function AllMilestonesPage() {
       } else if (!authLoading) {
           setIsLoading(false);
       }
-  }, [localUser, authLoading]);
+  }, [localUser, authLoading]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
 
-  if (isLoading || authLoading) {
+  if (showSkeleton || authLoading) {
       return <LoadingSkeleton />;
   }
 
@@ -66,50 +73,9 @@ export default function AllMilestonesPage() {
         </div>
     )
   }
-  
-  const calculateMilestoneProgress = (milestone: Milestone & { tasks: Task[] }) => {
-    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
-    const totalProgress = milestone.tasks.reduce((acc, task) => {
-        const taskProgress = task.progress || 0;
-        return acc + (taskProgress * (task.weight / 100));
-    }, 0);
-    return totalProgress;
-  };
 
-  const calculateProjectProgress = (project: ProjectWithMilestones) => {
-    if (!project.milestones || project.milestones.length === 0) {
-      return 0;
-    }
-    
-    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
 
-    if (weightedMilestones.length > 0) {
-      // Standard weighted calculation if there are weighted milestones
-      return weightedMilestones.reduce((acc: number, milestone: any) => {
-        const milestoneProgress = calculateMilestoneProgress(milestone);
-        return acc + (milestoneProgress * (milestone.weight / 100));
-      }, 0);
-    } else {
-      // If no weighted milestones, calculate based on task weights directly
-      const allTasks = project.milestones.flatMap((m: any) => m.tasks);
-      if (allTasks.length === 0) return 0;
-
-      const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-      if (totalTaskWeight === 0) {
-          // If tasks have no weight, calculate simple average of progress
-          const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
-          return totalProgress / allTasks.length;
-      }
-      
-      const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
-        return acc + ((task.progress || 0) * task.weight);
-      }, 0);
-
-      return totalWeightedTaskProgress / totalTaskWeight;
-    }
-  };
-
-  const isMemberOnly = localUser && !localUser.roles.some((r: Role) => r.name === 'Admin' || r.name === 'Project Manager');
+  const isMemberOnly = localUser && !localUser.roles.some((r) => r.name === 'Admin' || r.name === 'Project Manager');
 
   return (
     <div className="p-4 sm:p-6 space-y-6">

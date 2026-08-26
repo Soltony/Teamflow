@@ -9,34 +9,92 @@
 'use server';
 
 import prisma from "@/lib/db";
+import { notifyMany } from "@/lib/notifications/notify";
 import { revalidatePath } from "next/cache";
 import type { TaskStatus } from "@/lib/types";
 import type { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
+import { requirePermission, canSeeAllProjects } from "@/lib/auth/guard";
+import { isArchivedStatus, isClosedStatus } from "@/lib/metrics";
+import { auditAction } from "@/lib/auth/audit-context";
+import { AUDIT_ACTIONS, diffFields } from "@/lib/audit-log";
+import {
+    blockerTransitionError,
+    canTransitionBlocker,
+    createBlockerSchema,
+    escalateBlockerSchema,
+    resolveBlockerSchema,
+    updateBlockerSchema,
+    type CreateBlockerInput,
+    type EscalateBlockerInput,
+    type UpdateBlockerInput,
+} from "@/lib/validation/blocker";
+import { GENERAL_TASKS_TITLE, ensureGeneralTasksMilestone } from "@/lib/services/milestones";
+import { resolvePage } from "@/lib/pagination";
+
+/**
+ * Thrown inside the update transaction when a project cannot be closed.
+ * Carries a message meant for the user, unlike the generic failure below it.
+ */
+class ProjectCompletionBlocked extends Error {}
+
+import {
+    createProjectSchema,
+    formatValidationError,
+    updateProjectSchema,
+} from "@/lib/validation/project";
+import { serialize } from '@/lib/serialize';
+import { USER_DISPLAY_SELECT, USER_WITH_ROLES_SELECT } from '@/lib/queries/user-select';
+import { OPEN_BLOCKER_STATUSES } from '@/lib/validation/blocker';
+import { projectVisibilityClauses } from '@/lib/queries/project-visibility';
 
 export async function getNewProjectData() {
+    await requirePermission('projects:create');
     const [users, pmoDivisions, projectStatuses, departments] = await Promise.all([
-        prisma.user.findMany({ include: { roles: { select: { name: true } } } }),
+        prisma.user.findMany({ select: USER_WITH_ROLES_SELECT }),
         prisma.pmoDivision.findMany(),
         prisma.projectStatus.findMany(),
         prisma.department.findMany(),
       ]);
 
       return {
-        users: JSON.parse(JSON.stringify(users)),
-        pmoDivisions: JSON.parse(JSON.stringify(pmoDivisions)),
-        projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
-        departments: JSON.parse(JSON.stringify(departments)),
+        users: serialize(users),
+        pmoDivisions: serialize(pmoDivisions),
+        projectStatuses: serialize(projectStatuses),
+        departments: serialize(departments),
       }
 }
 
 
-export async function createProject(data: any) {
-    const { milestones, responsibleDepartmentIds, hasCost, payments, hasMilestones, ...projectData } = data;
+export async function createProject(data: unknown) {
+    const actor = await requirePermission('projects:create');
+
+    // Validated here, not just in the form. Server actions are HTTP endpoints,
+    // so a rule that only runs in the browser is a suggestion.
+    const parsed = createProjectSchema.safeParse(data);
+    if (!parsed.success) {
+        return { success: false, error: formatValidationError(parsed.error) };
+    }
+    const { milestones, responsibleDepartmentIds, hasCost, payments, hasMilestones, timelineChangeReason, ...projectData } = parsed.data;
 
     const newProject = await prisma.project.create({
         data: {
-            ...projectData,
+            // Fields are enumerated rather than spread from the request, so a
+            // crafted payload cannot set columns the form never exposes.
+            name: projectData.name,
+            description: projectData.description,
+            startDate: projectData.startDate,
+            endDate: projectData.endDate,
+            workingYear: projectData.workingYear,
+            statusId: projectData.statusId,
+            pmoDivisionId: projectData.pmoDivisionId,
+            projectManagerId: projectData.projectManagerId,
+            // Capture the original commitment at creation. Every schedule
+            // metric is measured against this, so an approved extension moves
+            // the plan without moving the yardstick.
+            baselineStartDate: projectData.startDate,
+            baselineEndDate: projectData.endDate,
+            baselineSetAt: new Date(),
             totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
             currency: projectData.currency,
             responsibleDepartments: {
@@ -67,6 +125,23 @@ export async function createProject(data: any) {
         }
     });
 
+    await auditAction(actor, {
+        action: AUDIT_ACTIONS.PROJECT_CREATED,
+        entity: 'Project',
+        entityId: newProject.id,
+        details: {
+            name: newProject.name,
+            startDate: newProject.startDate,
+            endDate: newProject.endDate,
+            statusId: newProject.statusId,
+            pmoDivisionId: newProject.pmoDivisionId,
+            projectManagerId: newProject.projectManagerId,
+            totalCost: newProject.totalCost,
+            milestoneCount: newProject.milestones.length,
+            paymentCount: newProject.payments.length,
+        },
+    });
+
     revalidatePath('/dashboard');
     revalidatePath('/projects');
     revalidatePath('/gantt');
@@ -75,6 +150,7 @@ export async function createProject(data: any) {
 }
 
 export async function getProjectForEdit(projectId: string) {
+    await requirePermission('projects:update');
     const [project, users, pmoDivisions, projectStatuses, departments] = await Promise.all([
         prisma.project.findUnique({
             where: { id: projectId },
@@ -90,7 +166,7 @@ export async function getProjectForEdit(projectId: string) {
                 payments: true,
             }
         }),
-        prisma.user.findMany({ include: { roles: { select: { name: true } } }, orderBy: { name: 'asc' } }),
+        prisma.user.findMany({ select: USER_WITH_ROLES_SELECT, orderBy: { name: 'asc' } }),
         prisma.pmoDivision.findMany({ orderBy: { name: 'asc' } }),
         prisma.projectStatus.findMany({ orderBy: { name: 'asc' } }),
         prisma.department.findMany({ orderBy: { name: 'asc' } }),
@@ -98,16 +174,16 @@ export async function getProjectForEdit(projectId: string) {
 
     if (!project) return null;
 
-    const userCreatedMilestones = project.milestones.filter(m => m.title !== "General Tasks");
+    const userCreatedMilestones = project.milestones.filter(m => m.title !== GENERAL_TASKS_TITLE);
     
     // If there are no user-created milestones, ensure a "General Tasks" milestone exists with weight 100
     if (userCreatedMilestones.length === 0) {
-        let generalMilestone = project.milestones.find(m => m.title === "General Tasks");
+        let generalMilestone = project.milestones.find(m => m.title === GENERAL_TASKS_TITLE);
         if (!generalMilestone) {
             generalMilestone = {
                 id: `temp-${new Date().getTime()}`, // Temporary ID for the form
                 projectId: project.id,
-                title: 'General Tasks',
+                title: GENERAL_TASKS_TITLE,
                 description: 'A default collection of tasks for this project that are not assigned to a specific milestone.',
                 startDate: project.startDate,
                 dueDate: project.endDate,
@@ -131,17 +207,23 @@ export async function getProjectForEdit(projectId: string) {
     };
 
     return {
-        project: JSON.parse(JSON.stringify(normalizedProject)),
-        users: JSON.parse(JSON.stringify(users)),
-        pmoDivisions: JSON.parse(JSON.stringify(pmoDivisions)),
-        projectStatuses: JSON.parse(JSON.stringify(projectStatuses)),
-        departments: JSON.parse(JSON.stringify(departments)),
+        project: serialize(normalizedProject),
+        users: serialize(users),
+        pmoDivisions: serialize(pmoDivisions),
+        projectStatuses: serialize(projectStatuses),
+        departments: serialize(departments),
     };
 }
 
 
-export async function updateProject(projectId: string, data: any) {
-    const { milestones, responsibleDepartmentIds, hasCost, payments, timelineChangeReason, hasMilestones, ...projectData } = data;
+export async function updateProject(projectId: string, data: unknown) {
+    await requirePermission('projects:update');
+
+    const parsed = updateProjectSchema.safeParse(data);
+    if (!parsed.success) {
+        return { success: false, error: formatValidationError(parsed.error) };
+    }
+    const { milestones, responsibleDepartmentIds, hasCost, payments, timelineChangeReason, hasMilestones, ...projectData } = parsed.data;
 
     const existingProject = await prisma.project.findUnique({ where: { id: projectId } });
     if (!existingProject) {
@@ -150,9 +232,12 @@ export async function updateProject(projectId: string, data: any) {
 
     const endDateChanged = new Date(projectData.endDate).getTime() !== new Date(existingProject.endDate).getTime();
 
-    if (endDateChanged && !timelineChangeReason) {
+    if (endDateChanged && !timelineChangeReason?.trim()) {
         return { success: false, error: 'A reason for changing the project deadline is required.' };
     }
+    // Narrowed for use inside the transaction closure, where the guard above is
+    // no longer visible to the type checker.
+    const changeReason = timelineChangeReason?.trim() ?? '';
 
     const existingMilestones = await prisma.milestone.findMany({
         where: { projectId: projectId },
@@ -172,11 +257,13 @@ export async function updateProject(projectId: string, data: any) {
     const paymentIdsToDelete = existingPaymentIds.filter((id: string) => !incomingPaymentIds.includes(id));
 
     try {
-        const completedStatus = await prisma.projectStatus.findUnique({
-            where: { name: 'Completed' },
-            select: { id: true }
+        // "Closing" is decided by the status's category, so a differently
+        // named closed status still triggers the completion checks.
+        const targetStatus = await prisma.projectStatus.findUnique({
+            where: { id: projectData.statusId },
+            select: { id: true, name: true, category: true }
         });
-        const isCompletingProject = completedStatus && projectData.statusId === completedStatus.id;
+        const isCompletingProject = isClosedStatus(targetStatus);
 
         await prisma.$transaction(async (tx) => {
             // --- PAYMENT SYNC ---
@@ -193,7 +280,7 @@ export async function updateProject(projectId: string, data: any) {
                         projectId: projectId,
                         oldEndDate: existingProject.endDate,
                         newEndDate: projectData.endDate,
-                        reason: timelineChangeReason,
+                        reason: changeReason,
                         requestedById: projectData.projectManagerId,
                         status: 'PENDING',
                     }
@@ -207,16 +294,11 @@ export async function updateProject(projectId: string, data: any) {
 
                 const message = `A timeline change has been requested for project "${existingProject.name}".`;
                 const link = '/timeline-approvals';
-                for(const approver of approvers) {
-                    await tx.notification.create({
-                        data: {
-                            message,
-                            link,
-                            recipientId: approver.id,
-                            senderId: projectData.projectManagerId,
-                        }
-                    });
-                }
+                await notifyMany(
+                    tx,
+                    { message, link, senderId: projectData.projectManagerId },
+                    approvers.map((a) => a.id),
+                );
                 revalidatePath('/notifications');
             }
 
@@ -228,6 +310,16 @@ export async function updateProject(projectId: string, data: any) {
                   description: projectData.description,
                   startDate: projectData.startDate,
                   endDate: endDateChanged ? existingProject.endDate : projectData.endDate,
+                  // Backfill the baseline for projects created before it
+                  // existed, using the dates they have now. Never overwrite an
+                  // existing baseline — that is the whole point of it.
+                  ...(existingProject.baselineEndDate
+                    ? {}
+                    : {
+                        baselineStartDate: existingProject.startDate,
+                        baselineEndDate: existingProject.endDate,
+                        baselineSetAt: new Date(),
+                      }),
                   statusId: projectData.statusId,
                   pmoDivisionId: projectData.pmoDivisionId,
                   projectManagerId: projectData.projectManagerId,
@@ -271,7 +363,7 @@ export async function updateProject(projectId: string, data: any) {
                 const milestonesToDelete = await tx.milestone.findMany({
                     where: {
                         projectId,
-                        title: { not: "General Tasks" }
+                        title: { not: GENERAL_TASKS_TITLE }
                     },
                     select: { id: true },
                 });
@@ -336,20 +428,35 @@ export async function updateProject(projectId: string, data: any) {
             }
 
 
-            // --- PROJECT COMPLETION LOGIC ---
+            // --- PROJECT COMPLETION ---
+            //
+            // Closing a project used to force every task to DONE / 100% with
+            // today's date, overwriting the real completion dates. Because the
+            // on-time metrics read completedAt, that corrupted the reporting at
+            // exactly the moment a project finished — and marked work complete
+            // that nobody had done.
+            //
+            // Closure now records what happened rather than rewriting it: the
+            // transition is refused while work is outstanding, and the tasks
+            // responsible are named so the user can finish or cancel them.
             if (isCompletingProject) {
-                const projectTasks = await tx.task.findMany({
-                    where: { milestone: { projectId: projectId } },
-                    select: { id: true }
+                const outstanding = await tx.task.findMany({
+                    where: {
+                        milestone: { projectId },
+                        NOT: { status: 'DONE' },
+                    },
+                    select: { id: true, title: true, status: true },
+                    take: 20,
                 });
-                await tx.task.updateMany({
-                    where: { id: { in: projectTasks.map(t => t.id) } },
-                    data: {
-                        status: 'DONE',
-                        progress: 100,
-                        completedAt: new Date(),
-                    }
-                });
+
+                if (outstanding.length > 0) {
+                    const names = outstanding.slice(0, 5).map(t => `"${t.title}"`).join(', ');
+                    const more = outstanding.length > 5 ? ` and ${outstanding.length - 5} more` : '';
+                    throw new ProjectCompletionBlocked(
+                        `This project still has ${outstanding.length} unfinished task(s): ${names}${more}. ` +
+                        `Complete or cancel them before closing the project.`,
+                    );
+                }
             }
         });
 
@@ -363,53 +470,294 @@ export async function updateProject(projectId: string, data: any) {
         revalidatePath('/timeline-approvals');
         return { success: true };
     } catch (e) {
+        // A blocked closure is a business rule, not a fault: show the user why.
+        if (e instanceof ProjectCompletionBlocked) {
+            return { success: false, error: e.message };
+        }
         console.error("Failed to update project", e);
         return { success: false, error: 'Failed to update project. Please ensure all data is correct.' };
     }
 }
 
 
-export async function addBlocker(projectId: string, description: string) {
-    await prisma.blocker.create({
+// ------------------------------------------------------------ issue register
+//
+// Blockers were a description and open/resolved. That records that something
+// is wrong; it does not let anyone manage it. These actions add the parts that
+// make it a register: who owns it, how serious it is, when it must clear, and
+// what happened when it was escalated.
+
+export async function addBlocker(projectId: string, input: CreateBlockerInput) {
+    const actor = await requirePermission('projects:update');
+
+    const parsed = createBlockerSchema.safeParse(input);
+    if (!parsed.success) {
+        return { success: false as const, error: formatValidationError(parsed.error) };
+    }
+    const data = parsed.data;
+
+    const blocker = await prisma.blocker.create({
         data: {
-            description,
+            title: data.title,
+            description: data.description,
+            category: data.category,
+            severity: data.severity,
+            impact: data.impact || null,
+            dueDate: data.dueDate ?? null,
+            ownerId: data.ownerId || null,
+            raisedById: actor.id,
             status: 'OPEN',
             projectId,
-        }
+        },
     });
+
+    await auditAction(actor, {
+        action: AUDIT_ACTIONS.BLOCKER_RAISED,
+        entity: 'Blocker',
+        entityId: blocker.id,
+        details: {
+            projectId,
+            title: blocker.title,
+            severity: blocker.severity,
+            category: blocker.category,
+            ownerId: blocker.ownerId,
+            dueDate: blocker.dueDate,
+        },
+    });
+
+    // The owner did not choose to be given this, so tell them.
+    if (blocker.ownerId) {
+        await notifyMany(
+            prisma,
+            {
+                message: `You were made owner of a ${blocker.severity.toLowerCase()} issue: "${blocker.title}".`,
+                link: `/projects/${projectId}?tab=blockers`,
+                senderId: actor.id,
+            },
+            [blocker.ownerId],
+        );
+    }
+
     revalidatePath(`/projects/${projectId}`);
+    return { success: true as const, id: blocker.id };
+}
+
+export async function updateBlocker(blockerId: string, projectId: string, input: UpdateBlockerInput) {
+    const actor = await requirePermission('projects:update');
+
+    const parsed = updateBlockerSchema.safeParse(input);
+    if (!parsed.success) {
+        return { success: false as const, error: formatValidationError(parsed.error) };
+    }
+    const data = parsed.data;
+
+    const existing = await prisma.blocker.findUnique({ where: { id: blockerId } });
+    if (!existing) return { success: false as const, error: 'Issue not found.' };
+
+    if (data.status && !canTransitionBlocker(existing.status, data.status)) {
+        return {
+            success: false as const,
+            error: blockerTransitionError(existing.status, data.status),
+        };
+    }
+
+    // Resolving is its own action, because it requires a resolution.
+    if (data.status === 'RESOLVED') {
+        return {
+            success: false as const,
+            error: 'Use the resolve action, which records how the issue was resolved.',
+        };
+    }
+
+    const updated = await prisma.blocker.update({
+        where: { id: blockerId },
+        data: {
+            title: data.title,
+            description: data.description,
+            category: data.category,
+            severity: data.severity,
+            impact: data.impact === '' ? null : data.impact,
+            dueDate: data.dueDate ?? undefined,
+            ownerId: data.ownerId === '' ? null : data.ownerId,
+            status: data.status,
+            // Reopening clears the resolution, so a stale one cannot sit on an
+            // issue that is live again.
+            ...(data.status === 'OPEN' && existing.status !== 'OPEN'
+                ? { resolution: null, resolvedAt: null, resolvedById: null }
+                : {}),
+        },
+    });
+
+    await auditAction(actor, {
+        action: AUDIT_ACTIONS.BLOCKER_UPDATED,
+        entity: 'Blocker',
+        entityId: blockerId,
+        details: {
+            projectId,
+            changes: diffFields(existing, updated, [
+                'title',
+                'description',
+                'category',
+                'severity',
+                'status',
+                'ownerId',
+                'dueDate',
+                'impact',
+            ]),
+        },
+    });
+
+    if (updated.ownerId && updated.ownerId !== existing.ownerId) {
+        await notifyMany(
+            prisma,
+            {
+                message: `You were made owner of an issue: "${updated.title}".`,
+                link: `/projects/${projectId}?tab=blockers`,
+                senderId: actor.id,
+            },
+            [updated.ownerId],
+        );
+    }
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true as const };
+}
+
+export async function escalateBlocker(blockerId: string, projectId: string, input: EscalateBlockerInput) {
+    const actor = await requirePermission('projects:update');
+
+    const parsed = escalateBlockerSchema.safeParse(input);
+    if (!parsed.success) {
+        return { success: false as const, error: formatValidationError(parsed.error) };
+    }
+    const { escalatedToId, escalationReason } = parsed.data;
+
+    const existing = await prisma.blocker.findUnique({ where: { id: blockerId } });
+    if (!existing) return { success: false as const, error: 'Issue not found.' };
+    if (!canTransitionBlocker(existing.status, 'ESCALATED')) {
+        return {
+            success: false as const,
+            error: blockerTransitionError(existing.status, 'ESCALATED'),
+        };
+    }
+
+    const escalatedTo = await prisma.user.findUnique({
+        where: { id: escalatedToId },
+        select: { id: true, isActive: true },
+    });
+    if (!escalatedTo || !escalatedTo.isActive) {
+        return { success: false as const, error: 'That person cannot receive escalations.' };
+    }
+
+    const updated = await prisma.blocker.update({
+        where: { id: blockerId },
+        data: {
+            status: 'ESCALATED',
+            escalatedToId,
+            escalationReason,
+            escalatedAt: new Date(),
+        },
+    });
+
+    await auditAction(actor, {
+        action: AUDIT_ACTIONS.BLOCKER_ESCALATED,
+        entity: 'Blocker',
+        entityId: blockerId,
+        details: { projectId, title: updated.title, escalatedToId, escalationReason },
+    });
+
+    await notifyMany(
+        prisma,
+        {
+            message: `A ${updated.severity.toLowerCase()} issue was escalated to you: "${updated.title}".`,
+            link: `/projects/${projectId}?tab=blockers`,
+            senderId: actor.id,
+        },
+        [escalatedToId, updated.ownerId].filter((id): id is string => Boolean(id)),
+    );
+
+    revalidatePath(`/projects/${projectId}`);
+    return { success: true as const };
 }
 
 export async function resolveBlocker(blockerId: string, resolution: string, projectId: string) {
+    const actor = await requirePermission('projects:update');
+
+    const parsed = resolveBlockerSchema.safeParse({ resolution });
+    if (!parsed.success) {
+        return { success: false as const, error: formatValidationError(parsed.error) };
+    }
+
+    const existing = await prisma.blocker.findUnique({ where: { id: blockerId } });
+    if (!existing) return { success: false as const, error: 'Issue not found.' };
+    if (!canTransitionBlocker(existing.status, 'RESOLVED')) {
+        return {
+            success: false as const,
+            error: blockerTransitionError(existing.status, 'RESOLVED'),
+        };
+    }
+
     await prisma.blocker.update({
         where: { id: blockerId },
         data: {
             status: 'RESOLVED',
-            resolution,
+            resolution: parsed.data.resolution,
             resolvedAt: new Date(),
-        }
+            resolvedById: actor.id,
+        },
     });
+
+    await auditAction(actor, {
+        action: AUDIT_ACTIONS.BLOCKER_RESOLVED,
+        entity: 'Blocker',
+        entityId: blockerId,
+        details: { projectId, title: existing.title, resolution: parsed.data.resolution },
+    });
+
+    // Whoever raised it, and whoever it was escalated to, both need to know.
+    await notifyMany(
+        prisma,
+        {
+            message: `An issue was resolved: "${existing.title}".`,
+            link: `/projects/${projectId}?tab=blockers`,
+            senderId: actor.id,
+        },
+        [existing.raisedById, existing.escalatedToId, existing.ownerId].filter(
+            (id): id is string => Boolean(id),
+        ),
+    );
+
     revalidatePath(`/projects/${projectId}`);
+    return { success: true as const };
 }
 
 export async function deleteBlocker(blockerId: string, projectId: string) {
-    await prisma.blocker.delete({
-        where: { id: blockerId },
+    const actor = await requirePermission('projects:update');
+
+    const existing = await prisma.blocker.findUnique({ where: { id: blockerId } });
+    if (!existing) return { success: false as const, error: 'Issue not found.' };
+
+    await prisma.blocker.delete({ where: { id: blockerId } });
+
+    await auditAction(actor, {
+        action: AUDIT_ACTIONS.BLOCKER_DELETED,
+        entity: 'Blocker',
+        entityId: blockerId,
+        details: {
+            projectId,
+            title: existing.title,
+            severity: existing.severity,
+            status: existing.status,
+        },
     });
+
     revalidatePath(`/projects/${projectId}`);
+    return { success: true as const };
 }
 
-export async function updateBlocker(blockerId: string, description: string, projectId: string) {
-    await prisma.blocker.update({
-        where: { id: blockerId },
-        data: {
-            description,
-        }
-    });
-    revalidatePath(`/projects/${projectId}`);
-}
 
 export async function addMilestone(projectId: string, data: any) {
+    await requirePermission('projects:update');
     const newMilestone = await prisma.milestone.create({
         data: {
             ...data,
@@ -422,6 +770,7 @@ export async function addMilestone(projectId: string, data: any) {
 }
 
 export async function updateMilestone(milestoneId: string, projectId: string, data: any) {
+    await requirePermission('projects:update');
     await prisma.milestone.update({
         where: { id: milestoneId },
         data
@@ -430,37 +779,18 @@ export async function updateMilestone(milestoneId: string, projectId: string, da
     revalidatePath(`/projects/${projectId}`);
 }
 
-export async function addTask(projectId: string, milestoneId: string | null | undefined, authorId: string, data: any) {
+export async function addTask(projectId: string, milestoneId: string | null | undefined, _authorId: string | undefined, data: any) {
+    // The author is the session user, not whoever the browser named.
+    const authorId = (await requirePermission('projects:update')).id;
     const { assignedUserIds, ...taskData } = data;
     let finalMilestoneId = milestoneId;
     
+    // Project-level tasks are parked on the shared holding milestone, whose
+    // weight the helper keeps consistent. The two call sites used to create it
+    // themselves with different weights — 0 here and 100 in updateTask — so a
+    // project's progress depended on which path had created it first.
     if (!finalMilestoneId || finalMilestoneId === 'project-level') {
-        const project = await prisma.project.findUnique({
-            where: { id: projectId },
-            include: { milestones: { where: { title: 'General Tasks' } } }
-        });
-
-        if (!project) throw new Error("Project not found");
-
-        if (project.milestones.length > 0) {
-            finalMilestoneId = project.milestones[0].id;
-        } else {
-            const generalMilestone = await prisma.milestone.create({
-                data: {
-                    title: "General Tasks",
-                    description: "A default collection of tasks for this project that are not assigned to a specific milestone.",
-                    startDate: project.startDate,
-                    dueDate: project.endDate,
-                    weight: 0, 
-                    projectId: projectId,
-                }
-            });
-            finalMilestoneId = generalMilestone.id;
-        }
-    }
-    
-    if (!finalMilestoneId) {
-        throw new Error("Could not determine a milestone for the task.");
+        finalMilestoneId = await ensureGeneralTasksMilestone(prisma, projectId);
     }
 
     const newTask = await prisma.task.create({
@@ -477,20 +807,7 @@ export async function addTask(projectId: string, milestoneId: string | null | un
     const message = `You have been assigned to a new task: "${newTask.title}"`;
     const link = `/tasks/${newTask.id}`;
 
-    for (const userId of assignedUserIds) {
-        await prisma.notification.create({
-            data: {
-                message,
-                link,
-                recipient: {
-                    connect: { id: userId }
-                },
-                sender: {
-                    connect: { id: authorId }
-                }
-            }
-        });
-    }
+    await notifyMany(prisma, { message, link, senderId: authorId }, assignedUserIds);
 
     revalidatePath(`/projects`);
     revalidatePath(`/projects/${projectId}`);
@@ -498,14 +815,15 @@ export async function addTask(projectId: string, milestoneId: string | null | un
     revalidatePath('/notifications');
 }
 
-export async function updateTask(taskId: string, projectId: string, authorId: string, data: any) {
+export async function updateTask(taskId: string, projectId: string, _authorId: string | undefined, data: any) {
+    const authorId = (await requirePermission('projects:update')).id;
     const { assignedUserIds, milestoneId, ...taskData } = data;
     let finalMilestoneId = milestoneId;
     
     // Get original task to compare assignees
     const originalTask = await prisma.task.findUnique({
         where: { id: taskId },
-        include: { assignees: true }
+        include: { assignees: { select: USER_DISPLAY_SELECT } }
     });
     const originalAssigneeIds = originalTask?.assignees.map(a => a.id) || [];
 
@@ -517,20 +835,7 @@ export async function updateTask(taskId: string, projectId: string, authorId: st
         });
         if (!project) throw new Error("Project not found");
         
-        let generalMilestone = project.milestones.find(m => m.title === "General Tasks");
-        if (!generalMilestone) {
-            generalMilestone = await prisma.milestone.create({
-                data: {
-                    title: "General Tasks",
-                    description: "A default collection of tasks for this project that are not assigned to a specific milestone.",
-                    startDate: project.startDate,
-                    dueDate: project.endDate,
-                    weight: 100,
-                    projectId: projectId,
-                }
-            });
-        }
-        finalMilestoneId = generalMilestone.id;
+        finalMilestoneId = await ensureGeneralTasksMilestone(prisma, projectId);
     }
 
     const finalTaskData = { ...taskData };
@@ -574,20 +879,7 @@ export async function updateTask(taskId: string, projectId: string, authorId: st
     if (newAssigneeIds.length > 0) {
         const message = `You have been assigned to task: "${updatedTask.title}"`;
         const link = `/tasks/${updatedTask.id}`;
-        for (const userId of newAssigneeIds) {
-            await prisma.notification.create({
-                data: {
-                    message,
-                    link,
-                    recipient: {
-                        connect: { id: userId }
-                    },
-                    sender: {
-                        connect: { id: authorId }
-                    }
-                }
-            });
-        }
+        await notifyMany(prisma, { message, link, senderId: authorId }, newAssigneeIds);
         revalidatePath('/notifications');
     }
 
@@ -596,6 +888,7 @@ export async function updateTask(taskId: string, projectId: string, authorId: st
 }
 
 export async function deleteTask(taskId: string, projectId: string) {
+    await requirePermission('projects:update');
     try {
         await prisma.$transaction(async (tx) => {
             await tx.taskUpdate.deleteMany({
@@ -618,11 +911,21 @@ export async function deleteTask(taskId: string, projectId: string) {
     }
 }
 
-export async function getProjectsPageData(userId: string, filters: { status?: string | null; pmoDivisionId?: string | null; }) {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { roles: true },
-    });
+/** Identity comes from the session; `_userId` is ignored (see archive/actions.ts). */
+export interface ProjectsPageFilters {
+    status?: string | null;
+    pmoDivisionId?: string | null;
+    /** Matched against the project name, case-insensitively. */
+    search?: string | null;
+    /** 1-based. */
+    page?: number | null;
+    pageSize?: number | null;
+}
+
+
+export async function getProjectsPageData(_userId: string | undefined, filters: ProjectsPageFilters) {
+    const user = await requirePermission('projects:read');
+    const userId = user.id;
 
     if (!user) {
         return {
@@ -635,58 +938,43 @@ export async function getProjectsPageData(userId: string, filters: { status?: st
     
     const [statuses, users, pmoDivisions] = await Promise.all([
         prisma.projectStatus.findMany({ orderBy: { name: 'asc' } }),
-        prisma.user.findMany({ include: { roles: true } }),
+        prisma.user.findMany({ select: USER_WITH_ROLES_SELECT }),
         prisma.pmoDivision.findMany({ orderBy: { name: 'asc' } }),
     ]);
     
-    const archivedStatusNames = ['Completed', 'On Handover'];
-    const archivedStatusIds = statuses.filter(s => archivedStatusNames.includes(s.name)).map(s => s.id);
+    const archivedStatusIds = statuses.filter(s => isArchivedStatus(s)).map(s => s.id);
 
     // Check if user has admin-level permissions (can see all projects)
-    const hasAdminPermissions = user.roles.some(role => 
-        role.permissions.includes('projects:read') && 
-        role.permissions.includes('projects:update') && 
-        role.permissions.includes('projects:delete')
-    );
+    // One explicit permission, checked in one place. See canSeeAllProjects().
+    const hasAdminPermissions = canSeeAllProjects(user);
 
+    // Composed with AND so a status filter cannot cancel the archive
+    // exclusion. Spreading `statusId` a second time overwrote the `notIn`
+    // clause entirely, which let archived projects surface in the active list.
     let whereClause: Prisma.ProjectWhereInput = {
-        statusId: {
-            notIn: archivedStatusIds,
-        },
-        ...(filters.status && { statusId: filters.status }),
-        ...(filters.pmoDivisionId && { pmoDivisionId: filters.pmoDivisionId }),
+        AND: [
+            { statusId: { notIn: archivedStatusIds } },
+            ...(filters.status ? [{ statusId: filters.status }] : []),
+            ...(filters.pmoDivisionId ? [{ pmoDivisionId: filters.pmoDivisionId }] : []),
+            // Searching in the database rather than filtering an array the
+            // browser already holds: the point of paging is not to send the
+            // rest in the first place.
+            ...(filters.search?.trim()
+                ? [{ name: { contains: filters.search.trim(), mode: 'insensitive' as const } }]
+                : []),
+        ],
     };
 
     if (!hasAdminPermissions) {
-        whereClause.OR = [
-            { projectManagerId: userId },
-            {
-                teams: {
-                    some: {
-                        members: {
-                            some: { id: userId }
-                        }
-                    }
-                }
-            },
-            {
-                milestones: {
-                    some: {
-                        tasks: {
-                            some: {
-                                assignees: {
-                                    some: {
-                                        id: userId
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        ];
+        whereClause.OR = projectVisibilityClauses(userId);
     }
     
+    // Count and page in one round trip. Previously the whole result set was
+    // loaded — every project with its milestones, tasks, assignees, teams and
+    // blockers — and the browser then showed nine of them.
+    const totalCount = await prisma.project.count({ where: whereClause });
+    const { page, pageSize, skip, totalPages } = resolvePage(filters, totalCount);
+
     const projects = await prisma.project.findMany({
         where: whereClause,
         include: {
@@ -695,7 +983,7 @@ export async function getProjectsPageData(userId: string, filters: { status?: st
                 include: {
                     tasks: {
                         include: {
-                            assignees: true,
+                            assignees: { select: USER_DISPLAY_SELECT },
                         }
                     }
                 }
@@ -705,37 +993,63 @@ export async function getProjectsPageData(userId: string, filters: { status?: st
                     status: 'PENDING'
                 }
             },
-            teams: {
+            teamLinks: {
                 include: {
-                    members: true,
-                    teamLead: true,
+                    team: {
+                        include: {
+                            members: { select: USER_DISPLAY_SELECT },
+                            teamLead: { select: USER_DISPLAY_SELECT },
+                            // Every project this team serves, so editing it
+                            // from one project cannot silently drop the rest.
+                            projects: { select: { projectId: true } },
+                        },
+                    },
                 }
             },
             blockers: {
                 where: {
-                    status: 'OPEN'
+                    status: { in: [...OPEN_BLOCKER_STATUSES] }
                 }
             }
         },
         orderBy: {
             createdAt: 'desc'
-        }
+        },
+        skip,
+        take: pageSize,
     });
 
+    // Flattened here rather than in every component that reads it. Teams
+    // reach a project through ProjectTeam now, and asking each card to walk
+    // project.teamLinks[].team is both noisy and easy to miss — which is what
+    // happened: the cards kept reading project.teams and silently showed none.
+    const projectsWithTeams = projects.map((project) => ({
+        ...project,
+        teams: project.teamLinks.map((link) => ({
+            ...link.team,
+            projectIds: link.team.projects.map((p) => p.projectId),
+        })),
+    }));
+
     return {
-        projects: JSON.parse(JSON.stringify(projects)),
-        statuses: JSON.parse(JSON.stringify(statuses.filter(s => !archivedStatusNames.includes(s.name)))),
-        users: JSON.parse(JSON.stringify(users)),
-        pmoDivisions: JSON.parse(JSON.stringify(pmoDivisions)),
+        projects: serialize(projectsWithTeams),
+        statuses: serialize(statuses.filter(s => !isArchivedStatus(s))),
+        users: serialize(users),
+        pmoDivisions: serialize(pmoDivisions),
+        // The client needs the total to draw the pager; it no longer holds the
+        // rows to count them itself.
+        page,
+        pageSize,
+        totalCount,
+        totalPages: Math.max(1, Math.ceil(totalCount / pageSize)),
     };
 }
 
 
-export async function getProjectDetailsForUser(projectId: string, userId: string) {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { roles: true },
-    });
+/** Identity comes from the session; `_userId` is ignored (see archive/actions.ts). */
+export async function getProjectDetailsForUser(projectId: string, _userId?: string) {
+    const user = await requirePermission('projects:read');
+    const userId = user.id;
 
     if (!user) {
         return null; // User not found
@@ -746,14 +1060,21 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
         include: {
             status: true,
             pmoDivision: true,
-            projectManager: true,
+            projectManager: { select: USER_DISPLAY_SELECT },
             responsibleDepartments: true,
-            blockers: true,
+            blockers: {
+                include: {
+                    owner: { select: { id: true, name: true } },
+                    raisedBy: { select: { id: true, name: true } },
+                    escalatedTo: { select: { id: true, name: true } },
+                },
+                orderBy: { createdAt: 'desc' },
+            },
             milestones: {
                 include: {
                     tasks: {
                         include: {
-                            assignees: true,
+                            assignees: { select: USER_DISPLAY_SELECT },
                             updates: true,
                         }
                     },
@@ -761,8 +1082,8 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
             },
             timelineChangeRequests: {
                 include: {
-                    requestedBy: true,
-                    reviewedBy: true,
+                    requestedBy: { select: USER_DISPLAY_SELECT },
+                    reviewedBy: { select: USER_DISPLAY_SELECT },
                 },
                 orderBy: {
                     createdAt: 'desc'
@@ -776,47 +1097,18 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
     }
 
     // Check if user has admin-level permissions (can see all projects)
-    const hasAdminPermissions = user.roles.some(role => 
-        role.permissions.includes('projects:read') && 
-        role.permissions.includes('projects:update') && 
-        role.permissions.includes('projects:delete')
-    );
+    // One explicit permission, checked in one place. See canSeeAllProjects().
+    const hasAdminPermissions = canSeeAllProjects(user);
     
     if (hasAdminPermissions) {
-        return JSON.parse(JSON.stringify(project));
+        return serialize(project);
     }
 
     // If not admin/manager, check for involvement
     const userInvolvement = await prisma.project.findFirst({
         where: {
             id: projectId,
-            OR: [
-                { projectManagerId: userId },
-                {
-                    teams: {
-                        some: {
-                            members: {
-                                some: { id: userId }
-                            }
-                        }
-                    }
-                },
-                {
-                    milestones: {
-                        some: {
-                            tasks: {
-                                some: {
-                                    assignees: {
-                                        some: {
-                                            id: userId
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            ]
+            OR: projectVisibilityClauses(userId)
         }
     });
 
@@ -824,24 +1116,39 @@ export async function getProjectDetailsForUser(projectId: string, userId: string
         return null; // User is not involved in this project
     }
 
-    return JSON.parse(JSON.stringify(project));
+    return serialize(project);
 }
 
-export async function getProjectMilestonesForUser(projectId: string, userId: string) {
-    // First, verify the user has access to the project
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { roles: true },
+/**
+ * Who can be given an issue to own, or have one escalated to them.
+ *
+ * A separate call rather than more fields on the project payload: the list is
+ * the same for every project and is only needed when a dialog opens, so
+ * attaching it to the detail query would mean loading it on every page view.
+ */
+export async function getBlockerOwnerOptions() {
+    await requirePermission('projects:read');
+    const users = await prisma.user.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' },
     });
+    return serialize(users);
+}
+
+/**
+ * The session decides who is asking; the project-level access check below then
+ * decides whether they may see this particular project.
+ */
+export async function getProjectMilestonesForUser(projectId: string, _userId?: string) {
+    const user = await requirePermission('projects:read');
+    const userId = user.id;
 
     if (!user) return null;
 
     // Check if user has admin-level permissions (can see all projects)
-    const hasAdminPermissions = user.roles.some(role => 
-        role.permissions.includes('projects:read') && 
-        role.permissions.includes('projects:update') && 
-        role.permissions.includes('projects:delete')
-    );
+    // One explicit permission, checked in one place. See canSeeAllProjects().
+    const hasAdminPermissions = canSeeAllProjects(user);
     
     let whereClause: Prisma.ProjectWhereUniqueInput = { id: projectId };
     
@@ -849,11 +1156,7 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
         const projectAccess = await prisma.project.findFirst({
             where: {
                 id: projectId,
-                OR: [
-                    { projectManagerId: userId },
-                    { teams: { some: { members: { some: { id: userId } } } } },
-                    { milestones: { some: { tasks: { some: { assignees: { some: { id: userId } } } } } } }
-                ]
+                OR: projectVisibilityClauses(userId)
             },
             select: { id: true }
         });
@@ -873,7 +1176,7 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
                     tasks: {
                         orderBy: { createdAt: 'desc' },
                         include: {
-                            assignees: true,
+                            assignees: { select: USER_DISPLAY_SELECT },
                         }
                     }
                 }
@@ -884,19 +1187,24 @@ export async function getProjectMilestonesForUser(projectId: string, userId: str
     if (!project) return null;
 
     const [users, departments] = await Promise.all([
-        prisma.user.findMany({ include: { roles: { select: { name: true } } } }),
+        prisma.user.findMany({ select: USER_WITH_ROLES_SELECT }),
         prisma.department.findMany()
     ]);
 
     return {
-        project: JSON.parse(JSON.stringify(project)),
-        users: JSON.parse(JSON.stringify(users)),
-        departments: JSON.parse(JSON.stringify(departments))
+        project: serialize(project),
+        users: serialize(users),
+        departments: serialize(departments)
     };
 }
 
 
 export async function deleteProject(projectId: string) {
+    const actor = await requirePermission('projects:delete');
+    const doomed = await prisma.project.findUnique({
+        where: { id: projectId },
+        select: { name: true, statusId: true, projectManagerId: true, workingYear: true },
+    });
     try {
         await prisma.$transaction(async (tx) => {
             const milestones = await tx.milestone.findMany({
@@ -933,8 +1241,13 @@ export async function deleteProject(projectId: string) {
                 where: { projectId: projectId }
             });
 
-            // Delete teams
-            await tx.team.deleteMany({
+            // Unlink the teams. They are standing teams now, so deleting a
+            // project must not delete the people who worked on it — which is
+            // what the old `team.deleteMany({ where: { projectId } })` did.
+            await tx.projectTeam.deleteMany({
+                where: { projectId: projectId }
+            });
+            await tx.projectAssignment.deleteMany({
                 where: { projectId: projectId }
             });
             
@@ -952,6 +1265,13 @@ export async function deleteProject(projectId: string) {
             await tx.project.delete({
                 where: { id: projectId }
             });
+        });
+
+        await auditAction(actor, {
+            action: AUDIT_ACTIONS.PROJECT_DELETED,
+            entity: 'Project',
+            entityId: projectId,
+            details: doomed ?? { note: 'project row already gone' },
         });
 
         revalidatePath('/projects');

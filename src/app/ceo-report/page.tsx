@@ -9,6 +9,12 @@ import Link from 'next/link';
 import { AlertTriangle, ShieldAlert } from "lucide-react";
 import { format } from "date-fns";
 import { PmoDivisionPerformance } from "@/components/ceo-report/pmo-division-performance";
+import { MetricInfo } from "@/components/metrics/metric-info";
+
+import { requirePermissionOrRedirect } from "@/lib/auth/guard";
+import { isClosedStatus, isOverdue, statusCategory, summarizeSchedule } from "@/lib/metrics";
+import { serialize } from '@/lib/serialize';
+import { OPEN_BLOCKER_STATUSES } from '@/lib/validation/blocker';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,6 +26,10 @@ const LinkWrapper = ({ href, count, children }: { href: string; count: number; c
 };
 
 export default async function CEOReportPage() {
+    // The route layout gates this too; checking here as well means the page
+    // cannot leak the portfolio if it is ever rendered from somewhere else.
+    await requirePermissionOrRedirect('reports:view');
+
     const [projects, projectStatuses, pmoDivisions] = await Promise.all([
         prisma.project.findMany({
             include: {
@@ -31,7 +41,7 @@ export default async function CEOReportPage() {
                     },
                 },
                 blockers: {
-                    where: { status: 'OPEN' }
+                    where: { status: { in: [...OPEN_BLOCKER_STATUSES] } }
                 },
             },
         }),
@@ -39,39 +49,28 @@ export default async function CEOReportPage() {
         prisma.pmoDivision.findMany(),
     ]);
 
-    const completedStatusId = projectStatuses.find(s => s.name === 'Completed')?.id;
-    const activeStatusId = projectStatuses.find(s => s.name === 'Active')?.id;
+    // Every KPI here comes from @/lib/metrics. This page previously carried its
+    // own on-time rule that substituted `new Date(0)` for tasks that were never
+    // completed — taken as a maximum, that made outstanding work invisible, so
+    // projects with unfinished tasks scored as delivered on time.
+    const schedule = summarizeSchedule(projects);
 
-    // KPI Calculations
-    const totalActiveProjects = projects.filter(p => p.status.name === 'Active').length;
+    const totalActiveProjects = projects.filter(p => statusCategory(p.status) === 'ACTIVE').length;
     const totalOpenBlockers = projects.reduce((acc, p) => acc + p.blockers.length, 0);
-    
-    const nonArchivedStatuses = ['Active', 'Pending', 'Parked'];
-    const overdueProjects = projects.filter(p => 
-        nonArchivedStatuses.includes(p.status.name) && isPast(p.endDate)
-    );
-    const totalOverdueProjects = overdueProjects.length;
 
-    const completedProjects = projects.filter(p => p.statusId === completedStatusId);
-    
-    // An on-time project is a completed project where the last task was finished on or before the project's planned end date.
-    const onTimeProjectsCount = completedProjects.filter(project => {
-        const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.completedAt ? parseISO(t.completedAt.toISOString()) : new Date(0)));
-        if (allTaskEndDates.length === 0) return true; // No tasks, considered on-time.
-        const lastTaskDate = dateMax(allTaskEndDates);
-        return !isAfter(lastTaskDate, project.endDate);
-    }).length;
-    
-    const overallCompletionRate = completedProjects.length > 0 
-        ? (onTimeProjectsCount / completedProjects.length) * 100 
-        : 0;
+    const overdueProjects = projects.filter(p => isOverdue(p));
+    const totalOverdueProjects = schedule.overdue;
+
+    const completedProjects = projects.filter(p => isClosedStatus(p.status));
+    const onTimeProjectsCount = schedule.onTime;
+    const overallCompletionRate = schedule.onTimeRate;
 
     // At-Risk Projects
-    const atRiskProjects = projects.filter(p => 
-        p.status.name === 'Active' && (isPast(p.endDate) || p.blockers.length > 0)
+    const atRiskProjects = projects.filter(p =>
+        statusCategory(p.status) === 'ACTIVE' && (isOverdue(p) || p.blockers.length > 0)
     ).sort((a,b) => b.blockers.length - a.blockers.length || a.endDate.getTime() - b.endDate.getTime());
 
-    const serializableProjects = JSON.parse(JSON.stringify(projects));
+    const serializableProjects = serialize(projects);
 
     return (
         <div className="p-4 sm:p-6 space-y-6">
@@ -98,7 +97,7 @@ export default async function CEOReportPage() {
                 <LinkWrapper href="/reports?type=on-time" count={onTimeProjectsCount}>
                     <Card className="hover:bg-muted/80 transition-colors">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">On-Time Completion Rate</CardTitle>
+                            <CardTitle className="text-sm font-medium flex items-center gap-1.5">On-Time Completion Rate<MetricInfo metric="onTimeRate" /></CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">
@@ -113,7 +112,7 @@ export default async function CEOReportPage() {
                 <LinkWrapper href="/reports?type=overdue" count={totalOverdueProjects}>
                     <Card className="hover:bg-muted/80 transition-colors">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Overdue Projects</CardTitle>
+                            <CardTitle className="text-sm font-medium flex items-center gap-1.5">Overdue Projects<MetricInfo metric="overdue" /></CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{totalOverdueProjects}</div>
@@ -124,7 +123,7 @@ export default async function CEOReportPage() {
                 <LinkWrapper href="/reports?type=active-blockers" count={totalOpenBlockers}>
                     <Card className="hover:bg-muted/80 transition-colors">
                         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                            <CardTitle className="text-sm font-medium">Open Blockers</CardTitle>
+                            <CardTitle className="text-sm font-medium flex items-center gap-1.5">Open Blockers<MetricInfo metric="blockers" /></CardTitle>
                         </CardHeader>
                         <CardContent>
                             <div className="text-2xl font-bold">{totalOpenBlockers}</div>
@@ -162,7 +161,7 @@ export default async function CEOReportPage() {
                 </CardHeader>
                 <CardContent>
                     {atRiskProjects.length > 0 ? (
-                        <Table>
+                        <Table scrollLabel="Projects at risk">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Project</TableHead>

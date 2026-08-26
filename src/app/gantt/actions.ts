@@ -3,56 +3,29 @@
 
 import prisma from "@/lib/db";
 import type { Prisma } from '@prisma/client';
+import { requirePermission, canSeeAllProjects } from "@/lib/auth/guard";
+import { serialize } from '@/lib/serialize';
+import { projectVisibilityClauses } from '@/lib/queries/project-visibility';
 
-export async function getGanttPageData(userId: string) {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { roles: true },
-    });
+/** Identity comes from the session; `_userId` is ignored (see archive/actions.ts). */
+export async function getGanttPageData(_userId?: string) {
+    const user = await requirePermission('gantt:view');
+    const userId = user.id;
 
     if (!user) {
         return [];
     }
 
     // Check if user has admin-level permissions (can see all projects)
-    const hasAdminPermissions = user.roles.some(role => 
-        role.permissions.includes('projects:read') && 
-        role.permissions.includes('projects:update') && 
-        role.permissions.includes('projects:delete')
-    );
+    // One explicit permission, checked in one place. See canSeeAllProjects().
+    const hasAdminPermissions = canSeeAllProjects(user);
 
     let whereClause: Prisma.ProjectWhereInput = {};
 
     if (!hasAdminPermissions) {
         // User is a member, so filter projects to only ones they are involved in
         whereClause = {
-            OR: [
-                { projectManagerId: userId },
-                {
-                    teams: {
-                        some: {
-                            members: {
-                                some: { id: userId }
-                            }
-                        }
-                    }
-                },
-                {
-                    milestones: {
-                        some: {
-                            tasks: {
-                                some: {
-                                    assignees: {
-                                        some: {
-                                            id: userId
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            ]
+            OR: projectVisibilityClauses(userId)
         };
     }
 
@@ -70,5 +43,5 @@ export async function getGanttPageData(userId: string) {
         }
     });
 
-    return JSON.parse(JSON.stringify(projects));
+    return serialize(projects);
 }

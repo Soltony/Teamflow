@@ -1,415 +1,215 @@
-
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
+import React, {
+  createContext,
+  useCallback,
+  useContext,
+  useEffect,
+  useMemo,
+  useState,
+  type ReactNode,
+} from 'react';
 import { useRouter } from 'next/navigation';
-import axios, { AxiosError } from 'axios';
-import { jwtDecode } from 'jwt-decode';
-import { syncUser } from '@/app/auth/actions';
-import type { Role, User as PrismaUser } from '@prisma/client';
-import { allPermissions as ALL_PERMISSIONS } from '@/lib/permissions';
-import { useToast } from '@/hooks/use-toast';
 import { useIdle } from 'react-use';
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
-interface AuthenticatedUser {
-  email: string;
-  given_name: string;
-  family_name: string;
-  nameid?: string;
-  sub?: string;
-  picture?: string;
-  [key: string]: any;
-}
+import { useToast } from '@/hooks/use-toast';
+import {
+  getCurrentUserAction,
+  logoutAction,
+  type CurrentUserPayload,
+} from '@/app/auth/actions';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-interface AuthResponse {
-  isSuccess: boolean;
-  accessToken?: string;
-  refreshToken?: string;
-  errors?: string[] | string | null;
-}
+/**
+ * Client-side view of the signed-in user.
+ *
+ * The session itself lives in an httpOnly cookie that this code cannot read —
+ * everything here is a convenience copy handed down by the server for
+ * rendering. Hiding a button via `hasPermission` is presentation only; the
+ * server re-checks the same permission in the route guard and in every action.
+ *
+ * The shape of this context is unchanged from the previous external-auth
+ * version (`localUser`, `hasPermission`, `isAdmin`, `logout`, `loading`) so the
+ * 60+ components that consume it needed no edits.
+ */
 
-type LocalUser = PrismaUser & { roles: Role[] };
+type LocalUser = CurrentUserPayload;
 
 interface AuthContextType {
-  user: (AuthenticatedUser & { nameid: string }) | null;
-  localUser: (PrismaUser & { roles: Role[] }) | null;
-  accessToken: string | null;
+  localUser: LocalUser | null;
+  /** Retained for compatibility with components that checked for a session. */
+  user: LocalUser | null;
   loading: boolean;
   isAdmin: boolean;
   permissions: Set<string>;
-  login: (data: any) => Promise<AuthResponse>;
-  register: (data: any) => Promise<AuthResponse>;
-  logout: () => void;
+  logout: () => Promise<void>;
   hasPermission: (permission: string | string[]) => boolean;
   isUserAdmin: () => boolean;
+  refresh: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const axiosInstance = axios.create({
-  baseURL: process.env.NEXT_PUBLIC_AUTH_API_BASE_URL,
-});
+/**
+ * How long before the warning appears, when the server has not said.
+ *
+ * The idle timeout is a setting now, so the server passes its real value
+ * down and the warning lands a minute before it. Hard-coding fourteen would
+ * mean an administrator who shortened the timeout to five minutes signed
+ * people out with no warning at all.
+ */
+const DEFAULT_IDLE_WARNING_MS = 14 * 60 * 1000;
 
-let isRefreshing = false;
-let failedQueue: { resolve: (value: any) => void; reject: (reason?: any) => void; }[] = [];
+function InactivityWarningDialog({
+  open,
+  onStay,
+  onTimeout,
+}: {
+  open: boolean;
+  onStay: () => void;
+  onTimeout: () => void;
+}) {
+  const [countdown, setCountdown] = useState(60);
 
-const processQueue = (error: any, token: string | null = null) => {
-  failedQueue.forEach(prom => {
-    if (error) {
-      prom.reject(error);
-    } else {
-      prom.resolve(token);
+  useEffect(() => {
+    if (open) setCountdown(60);
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (countdown <= 0) {
+      onTimeout();
+      return;
     }
-  });
+    const timer = setTimeout(() => setCountdown((c) => c - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [open, countdown, onTimeout]);
 
-  failedQueue = [];
-};
-
-function InactivityWarningDialog({ open, onConfirm, onIdle }: { open: boolean, onConfirm: () => void, onIdle: () => void }) {
-    const [countdown, setCountdown] = useState(60);
-
-    useEffect(() => {
-        if (open) {
-            setCountdown(60);
-        }
-    }, [open]);
-
-    useEffect(() => {
-        if (open && countdown > 0) {
-            const timer = setInterval(() => {
-                setCountdown(prev => prev - 1);
-            }, 1000);
-            return () => clearInterval(timer);
-        } else if (open && countdown === 0) {
-            onIdle();
-        }
-    }, [open, countdown, onIdle]);
-
-    return (
-        <AlertDialog open={open}>
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Are you still there?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        You've been inactive for a while. You will be logged out in {countdown} seconds for security reasons.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogAction onClick={onConfirm}>Stay Logged In</AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
-        </AlertDialog>
-    );
+  return (
+    <AlertDialog open={open}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you still there?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You have been inactive for a while. For security you will be signed out in {countdown}{' '}
+            second{countdown === 1 ? '' : 's'}.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={onStay}>Stay signed in</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
 }
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
-  const [user, setUser] = useState<(AuthenticatedUser & { nameid: string }) | null>(null);
-  const [localUser, setLocalUser] = useState<(PrismaUser & { roles: Role[] }) | null>(null);
-  const [accessToken, setAccessToken] = useState<string | null>(null);
-  const [refreshToken, setRefreshToken] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [userPermissions, setUserPermissions] = useState<Set<string>>(new Set());
+export function AuthProvider({
+  children,
+  initialUser = null,
+  idleWarningMs = DEFAULT_IDLE_WARNING_MS,
+}: {
+  children: ReactNode;
+  /** Resolved on the server so the first paint already knows who is signed in. */
+  initialUser?: LocalUser | null;
+  /** Derived from the session idle setting; a minute before the server gives up. */
+  idleWarningMs?: number;
+}) {
+  const [localUser, setLocalUser] = useState<LocalUser | null>(initialUser);
+  const [loading, setLoading] = useState(false);
+  const [showIdleWarning, setShowIdleWarning] = useState(false);
   const router = useRouter();
   const { toast } = useToast();
-  
-  const [showIdleWarning, setShowIdleWarning] = useState(false);
-  const isIdle = useIdle(14 * 60 * 1000, false); // 14 minutes
 
-  const setSession = useCallback(async (newAccessToken: string | null, newRefreshToken: string | null, authData?: any) => {
+  const isIdle = useIdle(idleWarningMs, false);
+
+  useEffect(() => {
+    setLocalUser(initialUser);
+  }, [initialUser]);
+
+  const refresh = useCallback(async () => {
     setLoading(true);
-    if (newAccessToken && newRefreshToken) {
-      try {
-        const decodedUser = jwtDecode<AuthenticatedUser>(newAccessToken);
-        const userId = decodedUser.nameid || decodedUser.sub;
-        
-        if (!userId) {
-          console.error("Failed to decode token: no user identifier (nameid or sub) found.");
-          // Clear everything if the token is invalid
-          localStorage.clear();
-          setUser(null);
-          setLocalUser(null);
-          setAccessToken(null);
-          setRefreshToken(null);
-          setUserPermissions(new Set());
-          delete axiosInstance.defaults.headers.common['Authorization'];
-          setLoading(false);
-          router.replace('/login');
-          return;
-        }
-
-        localStorage.setItem('accessToken', newAccessToken);
-        localStorage.setItem('refreshToken', newRefreshToken);
-        setUser({ ...decodedUser, nameid: userId });
-        setAccessToken(newAccessToken);
-        setRefreshToken(newAccessToken);
-        axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${newAccessToken}`;
-
-        const syncInput = {
-            id: userId,
-            email: decodedUser.email,
-            given_name: decodedUser.given_name,
-            family_name: decodedUser.family_name,
-            picture: decodedUser.picture,
-            phoneNumber: authData?.phoneNumber,
-        };
-
-        const syncedUser = await syncUser(syncInput);
-        if (syncedUser) {
-          setLocalUser(syncedUser);
-          localStorage.setItem('localUser', JSON.stringify(syncedUser));
-          
-          const allPermissions = new Set<string>();
-          syncedUser.roles?.forEach(role => {
-              if (role.name === 'Admin') {
-                ALL_PERMISSIONS.forEach(p => allPermissions.add(p));
-              } else {
-                role.permissions?.forEach(p => allPermissions.add(p));
-              }
-          });
-          setUserPermissions(allPermissions);
-
-        } else {
-            localStorage.removeItem('localUser');
-            setLocalUser(null);
-            setUserPermissions(new Set());
-        }
-
-      } catch (error) {
-        console.error("Failed to decode token or sync user:", error);
-        localStorage.clear();
-        setUser(null);
-        setLocalUser(null);
-        setAccessToken(null);
-        setRefreshToken(null);
-        setUserPermissions(new Set());
-        delete axiosInstance.defaults.headers.common['Authorization'];
-        router.replace('/login');
-      }
-    } else {
-      localStorage.clear();
-      setUser(null);
-      setLocalUser(null);
-      setAccessToken(null);
-      setRefreshToken(null);
-      setUserPermissions(new Set());
-      delete axiosInstance.defaults.headers.common['Authorization'];
+    try {
+      setLocalUser(await getCurrentUserAction());
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
+  }, []);
+
+  const logout = useCallback(async () => {
+    await logoutAction();
+    setLocalUser(null);
+    router.replace('/login');
+    router.refresh();
   }, [router]);
 
-  const logout = useCallback(() => {
-    setSession(null, null);
-    router.replace('/login');
-  }, [setSession, router]);
-
   useEffect(() => {
-      if (isIdle && accessToken) {
-          setShowIdleWarning(true);
-      }
-  }, [isIdle, accessToken]);
+    if (isIdle && localUser) setShowIdleWarning(true);
+  }, [isIdle, localUser]);
 
-  const handleIdleConfirm = () => {
+  const handleStay = useCallback(() => {
     setShowIdleWarning(false);
-  };
+    // Touches the session server-side so its idle clock resets too.
+    void refresh();
+  }, [refresh]);
 
-  const handleIdleLogout = () => {
-      setShowIdleWarning(false);
-      logout();
-      toast({
-          title: "Session Timed Out",
-          description: "You have been logged out due to inactivity.",
-          variant: 'destructive',
-      });
-  };
-  
-  useEffect(() => {
-    const responseInterceptor = axiosInstance.interceptors.response.use(
-        (response) => response,
-        async (error) => {
-            const originalRequest = error.config;
-            if (error.response?.status === 401 && !originalRequest._retry) {
-                if (isRefreshing) {
-                    return new Promise(function(resolve, reject) {
-                        failedQueue.push({resolve, reject});
-                    }).then(token => {
-                        originalRequest.headers['Authorization'] = 'Bearer ' + token;
-                        return axiosInstance(originalRequest);
-                    }).catch(err => {
-                        return Promise.reject(err);
-                    });
-                }
-                
-                originalRequest._retry = true;
-                isRefreshing = true;
+  const handleIdleTimeout = useCallback(async () => {
+    setShowIdleWarning(false);
+    await logout();
+    toast({
+      title: 'Session timed out',
+      description: 'You were signed out because of inactivity. Sign in again to continue.',
+      variant: 'destructive',
+    });
+  }, [logout, toast]);
 
-                const localRefreshToken = localStorage.getItem('refreshToken');
-                if (!localRefreshToken) {
-                    logout();
-                    return Promise.reject(error);
-                }
+  const permissions = useMemo(
+    () => new Set(localUser?.permissions ?? []),
+    [localUser],
+  );
 
-                try {
-                  const { data } = await axios.post<AuthResponse>(`${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/refresh-token`, { refreshToken: localRefreshToken });
-                  if (data.isSuccess && data.accessToken && data.refreshToken) {
-                      await setSession(data.accessToken, data.refreshToken);
-                      axiosInstance.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
-                      originalRequest.headers['Authorization'] = `Bearer ${data.accessToken}`;
-                      processQueue(null, data.accessToken);
-                      return axiosInstance(originalRequest);
-                  } else {
-                      // This path is hit if the refresh token is invalid or expired
-                      throw new Error("Refresh token failed or expired");
-                  }
-                } catch (refreshError) {
-                    processQueue(refreshError, null);
-                    logout();
-                    toast({
-                        title: 'Session Expired',
-                        description: 'You have been logged out. Please sign in again.',
-                        variant: 'destructive',
-                    });
-                    return Promise.reject(refreshError);
-                } finally {
-                    isRefreshing = false;
-                }
-            }
-            return Promise.reject(error);
-        }
-    );
+  const isUserAdmin = useCallback(() => localUser?.isAdmin ?? false, [localUser]);
 
-    return () => {
-        axiosInstance.interceptors.response.eject(responseInterceptor);
-    };
-  }, [logout, setSession, toast]);
-  
-  useEffect(() => {
-    const initAuth = async () => {
-        try {
-            const storedAccessToken = localStorage.getItem('accessToken');
-            const storedRefreshToken = localStorage.getItem('refreshToken');
-            
-            if (storedAccessToken && storedRefreshToken) {
-                await setSession(storedAccessToken, storedRefreshToken);
-            } else {
-                setLoading(false);
-            }
-        } catch (error) {
-            console.error("Failed to initialize auth session from storage", error);
-            await setSession(null, null);
-        }
-    };
-    initAuth();
-  }, [setSession]);
-  
-  const isUserAdmin = useCallback(() => {
-    return localUser?.roles?.some(role => role.name === 'Admin') ?? false;
-  }, [localUser]);
-
-  const hasPermission = useCallback((permission: string | string[]) => {
-    if (isUserAdmin()) {
-        return true;
-    }
-    if (Array.isArray(permission)) {
-      return permission.some(p => userPermissions.has(p));
-    }
-    return userPermissions.has(permission);
-  }, [userPermissions, isUserAdmin]);
-
-  const isAdmin = useMemo(() => isUserAdmin(), [isUserAdmin]);
-  const permissions = useMemo(() => userPermissions, [userPermissions]);
-
-  const handleAuthResponse = async (response: AuthResponse, authData?: any) => {
-    if (response.isSuccess && response.accessToken && response.refreshToken) {
-      await setSession(response.accessToken, response.refreshToken, authData);
-    }
-    return response;
-  }
-
-  const login = async (data: any) => {
-    setLoading(true);
-    try {
-      const response = await axiosInstance.post<AuthResponse>('/api/Auth/login', data);
-      return await handleAuthResponse(response.data, data);
-    } catch (error) {
-      const axiosError = error as AxiosError<AuthResponse>;
-      setLoading(false);
-      if (axiosError.response) {
-          console.error("Auth service login failed on client. Response:", axiosError.response.data);
-          const errorData = axiosError.response.data;
-          
-          let errorMessage = 'Login failed. Please check your credentials and try again.'; // Default message
-          
-          if (errorData) {
-            if (typeof errorData === 'string') {
-              errorMessage = errorData;
-            } else if (Array.isArray(errorData) && errorData.length > 0 && typeof errorData[0] === 'string') {
-              errorMessage = errorData.join(', ');
-            } else if (errorData.errors) {
-              if (Array.isArray(errorData.errors) && errorData.errors.length > 0) {
-                  errorMessage = errorData.errors.join(', ');
-              } else if (typeof errorData.errors === 'string') {
-                  errorMessage = errorData.errors;
-              }
-            }
-          }
-
-          return { isSuccess: false, errors: [errorMessage] };
-      }
-      console.error("Client-side login request failed:", axiosError.message);
-      return { isSuccess: false, errors: ['Could not connect to the authentication service.'] };
-    } finally {
-        setLoading(false);
-    }
-  };
-
-  const register = async (data: any) => {
-    setLoading(true);
-    const payload = { ...data, email: data.email || null };
-    try {
-      const response = await axiosInstance.post<AuthResponse>('/api/Auth/register', payload);
-      return await handleAuthResponse(response.data, data);
-    } catch (error) {
-       const axiosError = error as AxiosError<AuthResponse>;
-       setLoading(false);
-       if (axiosError.response) {
-            console.error("Auth service registration failed on client. Response:", axiosError.response.data);
-            const errorData = axiosError.response.data;
-            const errorMessage = Array.isArray(errorData.errors) ? errorData.errors.join(', ') : (typeof errorData.errors === 'string' ? errorData.errors : 'An unexpected error occurred during registration.');
-            return { isSuccess: false, errors: [errorMessage] };
-       }
-       console.error("Client-side registration request failed:", axiosError.message);
-       return { isSuccess: false, errors: ['Could not connect to the authentication service. Please check your network or contact support.'] };
-    } finally {
-        setLoading(false);
-    }
-  };
+  const hasPermission = useCallback(
+    (permission: string | string[]) => {
+      if (localUser?.isAdmin) return true;
+      return Array.isArray(permission)
+        ? permission.some((p) => permissions.has(p))
+        : permissions.has(permission);
+    },
+    [localUser, permissions],
+  );
 
   const value: AuthContextType = {
-    user,
     localUser,
-    accessToken,
+    user: localUser,
     loading,
-    isAdmin,
+    isAdmin: localUser?.isAdmin ?? false,
     permissions,
-    login,
-    register,
     logout,
     hasPermission,
     isUserAdmin,
+    refresh,
   };
 
   return (
     <AuthContext.Provider value={value}>
-        {children}
-        <InactivityWarningDialog 
-            open={showIdleWarning}
-            onConfirm={handleIdleConfirm}
-            onIdle={handleIdleLogout}
-        />
+      {children}
+      <InactivityWarningDialog
+        open={showIdleWarning}
+        onStay={handleStay}
+        onTimeout={handleIdleTimeout}
+      />
     </AuthContext.Provider>
   );
-};
+}
 
 export const useAuth = () => {
   const context = useContext(AuthContext);

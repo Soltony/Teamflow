@@ -5,25 +5,28 @@ import { useEffect, useState, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import { getPendingReviewTasks } from "./actions";
 import { TaskApprovalManagement } from "@/components/task-approvals/task-approvals-management";
+import { useFirstLoad } from "@/hooks/use-first-load";
 
 function LoadingSkeleton() {
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-4 w-96 mt-2" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                </CardContent>
-            </Card>
-        </div>
+        <LoadingRegion label="Loading task approvals">
+          <div className="p-4 sm:p-6 space-y-6">
+              <Card>
+                  <CardHeader>
+                      <Skeleton className="h-8 w-64" />
+                      <Skeleton className="h-4 w-96 mt-2" />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-12 w-full" />
+                  </CardContent>
+              </Card>
+          </div>
+        </LoadingRegion>
     );
 }
 
@@ -55,9 +58,12 @@ export default function TaskApprovalsPage() {
                 fetchData();
             }
         }
-    }, [authLoading, hasPermission, router, fetchData]);
+    }, [authLoading, hasPermission, router, fetchData]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
 
-    if (isLoading || authLoading) {
+    if (showSkeleton || authLoading) {
         return <LoadingSkeleton />;
     }
 

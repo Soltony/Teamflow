@@ -46,8 +46,15 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Role, User, PmoDivision } from "@prisma/client";
-import { updateUser, createUser, deleteUser, forgotPasswordForUser, resetPasswordForUser } from "@/app/settings/actions";
+
+// UserWithRoles and Role come from lib/types, which describes what the
+// browser actually receives. Building them from the Prisma row instead
+// declared a passwordHash on data the query deliberately never selects.
+import type { Role, UserWithRoles } from "@/lib/types";
+
+/** Only what the division dropdown renders. */
+type PmoDivisionOption = { id: string; name: string };
+import { updateUser, createUser, deleteUser, resetUserPassword } from "@/app/settings/actions";
 import { Badge } from "../ui/badge";
 import {
     DropdownMenu,
@@ -59,12 +66,11 @@ import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 import { Skeleton } from "../ui/skeleton";
 
-type UserWithRoles = User & { roles: Role[] };
 
 type UserManagementProps = {
   initialUsers: UserWithRoles[];
   initialRoles: Role[];
-  initialPmoDivisions: PmoDivision[];
+  initialPmoDivisions: PmoDivisionOption[];
   onDataChange: () => void;
 };
 
@@ -90,29 +96,30 @@ const addUserSchema = z.object({
 });
 type AddUserFormValues = z.infer<typeof addUserSchema>;
 
-const resetPasswordSchema = z.object({
-    password: z.string().min(6, 'New password must be at least 6 characters.'),
-    confirmPassword: z.string(),
-}).refine(data => data.password === data.confirmPassword, {
-    message: "Passwords don't match.",
-    path: ['confirmPassword'],
-});
-type ResetPasswordFormValues = z.infer<typeof resetPasswordSchema>;
-
 export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions, onDataChange }: UserManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const { accessToken, hasPermission } = useAuth();
-  
+  const { hasPermission } = useAuth();
+
   const canManageUsers = hasPermission('config:manage-users');
 
   const [editingUser, setEditingUser] = useState<UserWithRoles | null>(null);
   const [userToDelete, setUserToDelete] = useState<UserWithRoles | null>(null);
   const [isAddUserDialogOpen, setIsAddUserDialogOpen] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  
-  const [passwordResetData, setPasswordResetData] = useState<{ user: UserWithRoles, token: string | null, error: string | null, loading: boolean }>({ user: {} as UserWithRoles, token: null, error: null, loading: false });
-  
+
+  /**
+   * A password reset produces a one-time temporary password that is shown to
+   * the administrator so they can pass it on. It is never emailed and cannot
+   * be retrieved again — only its hash is stored.
+   */
+  const [passwordResetData, setPasswordResetData] = useState<{
+    user: UserWithRoles;
+    temporaryPassword: string | null;
+    error: string | null;
+    loading: boolean;
+  }>({ user: {} as UserWithRoles, temporaryPassword: null, error: null, loading: false });
+
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
@@ -152,13 +159,6 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
     },
   });
 
-  const resetPasswordForm = useForm<ResetPasswordFormValues>({
-    resolver: zodResolver(resetPasswordSchema),
-    defaultValues: {
-        password: '',
-        confirmPassword: '',
-    },
-  });
 
   const handleEdit = (user: UserWithRoles) => {
     setEditingUser(user);
@@ -187,48 +187,31 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
   };
 
   const handleOpenPasswordDialog = (user: UserWithRoles) => {
-    setPasswordResetData({ user, token: null, error: null, loading: true });
-  };
-  
-  const handleClosePasswordDialog = () => {
-    setPasswordResetData({ user: {} as UserWithRoles, token: null, error: null, loading: false });
-    resetPasswordForm.reset();
-  };
+    setPasswordResetData({ user, temporaryPassword: null, error: null, loading: true });
 
-  useEffect(() => {
-      if (passwordResetData.loading && !passwordResetData.token && !passwordResetData.error) {
-          const fetchToken = async () => {
-              if (!passwordResetData.user.phoneNumber) {
-                   setPasswordResetData(prev => ({...prev, error: 'User does not have a phone number.', loading: false}));
-                   return;
-              }
-              const result = await forgotPasswordForUser(passwordResetData.user.phoneNumber);
-              if (result.success && result.token) {
-                  setPasswordResetData(prev => ({ ...prev, token: result.token, loading: false }));
-              } else {
-                  setPasswordResetData(prev => ({ ...prev, error: result.error || 'Failed to generate token.', loading: false }));
-              }
-          };
-          fetchToken();
-      }
-  }, [passwordResetData]);
-
-  const handleResetPassword = (data: ResetPasswordFormValues) => {
-    if (!passwordResetData.token) return;
     startTransition(async () => {
-        const result = await resetPasswordForUser({
-            phoneNumber: passwordResetData.user.phoneNumber!,
-            newPassword: data.password,
-            token: passwordResetData.token!
+      const result = await resetUserPassword(user.id);
+      if (result.success) {
+        setPasswordResetData({
+          user,
+          temporaryPassword: result.temporaryPassword,
+          error: null,
+          loading: false,
         });
-
-        if (result.success) {
-            toast({ title: "Password Reset Successfully", description: `The password for ${passwordResetData.user.name} has been changed.` });
-            handleClosePasswordDialog();
-        } else {
-            toast({ title: "Error", description: result.error, variant: "destructive" });
-        }
+        onDataChange();
+      } else {
+        setPasswordResetData({
+          user,
+          temporaryPassword: null,
+          error: result.error || 'Failed to reset the password.',
+          loading: false,
+        });
+      }
     });
+  };
+
+  const handleClosePasswordDialog = () => {
+    setPasswordResetData({ user: {} as UserWithRoles, temporaryPassword: null, error: null, loading: false });
   };
 
   function onEditUserSubmit(data: EditUserFormValues) {
@@ -250,15 +233,18 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
 
   const onAddUserSubmit = (data: AddUserFormValues) => {
     startTransition(async () => {
-        if (!accessToken) {
-            toast({ title: "Authentication Error", description: "You are not authenticated. Please log in again.", variant: "destructive" });
-            return;
-        }
-        const result = await createUser({ ...data, roleIds: data.roleIds || [] }, accessToken);
+        const result = await createUser({ ...data, roleIds: data.roleIds || [] });
         if (result.success) {
-            toast({ title: "User Created", description: `User ${data.firstName} ${data.lastName} has been created.` });
             handleCloseAddUserDialog();
             onDataChange();
+            // Show the generated password in the same dialog used for resets,
+            // since it is the only time it will ever be visible.
+            setPasswordResetData({
+              user: { ...(data as unknown as UserWithRoles), name: `${data.firstName} ${data.lastName}` },
+              temporaryPassword: result.temporaryPassword,
+              error: null,
+              loading: false,
+            });
         } else {
             toast({ title: "Error", description: result.error, variant: "destructive" });
         }
@@ -334,7 +320,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table scrollLabel="User accounts">
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>
@@ -503,7 +489,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
         <DialogContent className="p-0 flex flex-col max-h-[90dvh]">
           <DialogHeader className="p-6 pb-4">
             <DialogTitle>Add New User</DialogTitle>
-            <DialogDescription>Create a new user account and assign initial roles. The password will be set to "Welcome2PMO".</DialogDescription>
+            <DialogDescription>Create a new user account and assign initial roles. A one-time temporary password will be generated for you to hand over; the user must change it when they first sign in.</DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-6">
             <Form {...addUserForm}>
@@ -611,69 +597,67 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Change Password Dialog */}
-      <Dialog open={passwordResetData.loading || !!passwordResetData.token || !!passwordResetData.error} onOpenChange={handleClosePasswordDialog}>
+      {/* Temporary password dialog — shown after a reset or a new account */}
+      <Dialog
+        open={passwordResetData.loading || !!passwordResetData.temporaryPassword || !!passwordResetData.error}
+        onOpenChange={handleClosePasswordDialog}
+      >
         <DialogContent>
             <DialogHeader>
-                <DialogTitle>Reset Password for {passwordResetData.user?.name}</DialogTitle>
+                <DialogTitle>Temporary password for {passwordResetData.user?.name}</DialogTitle>
                 <DialogDescription>
-                    {passwordResetData.loading ? "Generating a secure reset token..." : (passwordResetData.error ? "An error occurred." : "Enter a new password for the user.")}
+                    {passwordResetData.loading
+                      ? 'Generating a temporary password...'
+                      : passwordResetData.error
+                        ? 'The password could not be reset.'
+                        : 'Give this password to the user in person. It is shown once and cannot be retrieved again. They must change it when they sign in.'}
                 </DialogDescription>
             </DialogHeader>
 
             {passwordResetData.loading && (
                 <div className="py-4 space-y-4">
                     <Skeleton className="h-10 w-full" />
-                    <Skeleton className="h-10 w-full" />
                 </div>
             )}
 
             {passwordResetData.error && (
-                <div className="py-4 text-center text-red-600">
+                <div className="py-4 text-center text-destructive">
                     <p>{passwordResetData.error}</p>
                 </div>
             )}
-            
-            {passwordResetData.token && !passwordResetData.loading && (
-                 <Form {...resetPasswordForm}>
-                    <form id="reset-password-form" onSubmit={resetPasswordForm.handleSubmit(handleResetPassword)} className="space-y-4 py-4">
-                        <FormField
-                            control={resetPasswordForm.control}
-                            name="password"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>New Password</FormLabel>
-                                    <FormControl>
-                                        <Input type="password" placeholder="••••••••" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                        <FormField
-                            control={resetPasswordForm.control}
-                            name="confirmPassword"
-                            render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel>Confirm New Password</FormLabel>
-                                    <FormControl>
-                                        <Input type="password" placeholder="••••••••" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </form>
-                </Form>
+
+            {passwordResetData.temporaryPassword && !passwordResetData.loading && (
+                <div className="py-4 space-y-3">
+                    <div className="rounded-md border bg-muted p-4 text-center">
+                        <code className="select-all font-mono text-lg tracking-wider">
+                            {passwordResetData.temporaryPassword}
+                        </code>
+                    </div>
+                    <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full"
+                        onClick={() => {
+                            navigator.clipboard
+                                ?.writeText(passwordResetData.temporaryPassword!)
+                                .then(() => toast({ title: 'Copied to clipboard' }))
+                                .catch(() => toast({
+                                    title: 'Could not copy',
+                                    description: 'Select the password and copy it manually.',
+                                    variant: 'destructive',
+                                }));
+                        }}
+                    >
+                        Copy password
+                    </Button>
+                    <p className="text-xs text-muted-foreground">
+                        Any sessions this user had open have been signed out.
+                    </p>
+                </div>
             )}
 
             <DialogFooter>
-                <Button variant="outline" onClick={handleClosePasswordDialog} disabled={isPending}>Cancel</Button>
-                {passwordResetData.token && !passwordResetData.loading && (
-                     <Button type="submit" form="reset-password-form" disabled={isPending}>
-                        {isPending ? "Resetting..." : "Reset Password"}
-                    </Button>
-                )}
+                <Button onClick={handleClosePasswordDialog} disabled={isPending}>Done</Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>

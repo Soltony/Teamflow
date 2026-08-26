@@ -1,3 +1,4 @@
+import type { UserWithRoles } from '@/lib/types';
 
 
 'use client';
@@ -9,37 +10,34 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { getNewProjectData, createProject } from "../actions";
 import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import type { User, Department, ProjectStatus, PmoDivision } from "@prisma/client";
 
-type NewProjectData = {
-  users: User[];
-  pmoDivisions: PmoDivision[];
-  departments: Department[];
-  projectStatuses: ProjectStatus[];
-};
+type NewProjectData = Awaited<ReturnType<typeof getNewProjectData>>;
 
 function LoadingSkeleton() {
   return (
-    <div className="p-4 sm:p-6">
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-96 mt-2" />
-        </CardHeader>
-        <CardContent className="space-y-8">
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <div className="grid grid-cols-2 gap-4">
+        <LoadingRegion label="Loading">
+      <div className="p-4 sm:p-6">
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader>
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96 mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-8">
+            <div className="space-y-4">
               <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <div className="grid grid-cols-2 gap-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
             </div>
-          </div>
-          <Skeleton className="h-48 w-full" />
-        </CardContent>
-      </Card>
-    </div>
+            <Skeleton className="h-48 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+        </LoadingRegion>
   );
 }
 

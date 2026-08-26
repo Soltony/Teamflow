@@ -3,61 +3,40 @@
 
 import prisma from "@/lib/db";
 import type { Prisma } from '@prisma/client';
+import { requirePermission, canSeeAllProjects } from "@/lib/auth/guard";
+import { resolvePage, type PageRequest } from "@/lib/pagination";
+import { serialize } from '@/lib/serialize';
+import { projectVisibilityClauses } from '@/lib/queries/project-visibility';
 
-export async function getMilestonesPageData(userId: string) {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { roles: true },
-    });
+/** Identity comes from the session; `_userId` is ignored (see archive/actions.ts). */
+export async function getMilestonesPageData(_userId?: string, pageRequest: PageRequest = {}) {
+    const user = await requirePermission('milestones:view');
+    const userId = user.id;
 
     if (!user) {
         return [];
     }
 
     // Check if user has admin-level permissions (can see all projects)
-    const hasAdminPermissions = user.roles.some(role => 
-        role.permissions.includes('projects:read') && 
-        role.permissions.includes('projects:update') && 
-        role.permissions.includes('projects:delete')
-    );
+    // One explicit permission, checked in one place. See canSeeAllProjects().
+    const hasAdminPermissions = canSeeAllProjects(user);
 
     let whereClause: Prisma.ProjectWhereInput = {};
 
     if (!hasAdminPermissions) {
         // User is a member, so filter projects to only ones they are involved in
         whereClause = {
-            OR: [
-                { projectManagerId: userId },
-                {
-                    teams: {
-                        some: {
-                            members: {
-                                some: { id: userId }
-                            }
-                        }
-                    }
-                },
-                {
-                    milestones: {
-                        some: {
-                            tasks: {
-                                some: {
-                                    assignees: {
-                                        some: {
-                                            id: userId
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            ]
+            OR: projectVisibilityClauses(userId)
         };
     }
 
+    const totalCount = await prisma.project.count({ where: whereClause });
+    const { skip, pageSize } = resolvePage(pageRequest, totalCount);
+
     const projects = await prisma.project.findMany({
         where: whereClause,
+        skip,
+        take: pageSize,
         include: {
             responsibleDepartments: true,
             milestones: {
@@ -74,5 +53,5 @@ export async function getMilestonesPageData(userId: string) {
         }
     });
 
-    return JSON.parse(JSON.stringify(projects));
+    return serialize(projects);
 }

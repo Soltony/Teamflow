@@ -1,9 +1,12 @@
-
 'use client';
 
+import { Suspense, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
+
 import { Button } from '@/components/ui/button';
 import {
   Form,
@@ -15,13 +18,11 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { useAuth } from '@/context/auth-context';
-import { useRouter } from 'next/navigation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
 import { NibLogo } from '@/components/logo';
-import Link from 'next/link';
-import { useState } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { loginAction } from '@/app/auth/actions';
+import { isKnownAppPath } from '@/lib/permissions';
 
 const loginSchema = z.object({
   phoneNumber: z.string().min(1, 'Phone number is required'),
@@ -30,50 +31,57 @@ const loginSchema = z.object({
 
 type LoginFormValues = z.infer<typeof loginSchema>;
 
-export default function LoginPage() {
-  const { login } = useAuth();
+/**
+ * Wrapped in Suspense below: useSearchParams (for the ?from= return path)
+ * opts the component out of static prerendering unless it sits behind a
+ * boundary.
+ */
+function LoginForm() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const form = useForm<LoginFormValues>({
     resolver: zodResolver(loginSchema),
-    defaultValues: {
-      phoneNumber: '',
-      password: '',
-    },
+    defaultValues: { phoneNumber: '', password: '' },
   });
 
   const { isSubmitting } = form.formState;
 
   async function onSubmit(data: LoginFormValues) {
-    const normalizedData = {
-      ...data,
-      phoneNumber: data.phoneNumber.replace(/\D/g, ''),
-    };
+    setError(null);
 
-    const result = await login(normalizedData);
-    if (result.isSuccess) {
-      toast({
-        title: 'Login Successful',
-        description: "Welcome back! You're being redirected to your dashboard.",
-      });
-      router.replace('/dashboard');
-    } else {
-      const errorValue = result.errors;
-      let description = 'An unknown error occurred.';
-      if (Array.isArray(errorValue) && errorValue.length > 0) {
-        description = errorValue[0];
-      } else if (typeof errorValue === 'string') {
-        description = errorValue;
-      }
-      
-      toast({
-        title: 'Login Failed',
-        description: description,
-        variant: 'destructive',
-      });
+    const result = await loginAction({
+      phoneNumber: data.phoneNumber,
+      password: data.password,
+    });
+
+    if (!result.success) {
+      setError(result.error);
+      form.setValue('password', '');
+      return;
     }
+
+    toast({
+      title: 'Signed in',
+      description: 'Welcome back.',
+    });
+
+    if (result.mustChangePassword) {
+      router.replace('/change-password');
+    } else {
+      const from = searchParams.get('from');
+      // Follow ?from= only when it is a same-site path (so it cannot bounce
+      // someone to another origin) *and* a route this application serves (so a
+      // stale link or a probe like /admin/login cannot strand them on a 404).
+      const sameSite = Boolean(from && from.startsWith('/') && !from.startsWith('//'));
+      const target =
+        sameSite && isKnownAppPath(from!.split('?')[0]) ? from! : '/dashboard';
+      router.replace(target);
+    }
+    router.refresh();
   }
 
   return (
@@ -86,6 +94,11 @@ export default function LoginPage() {
         <CardDescription>Enter your credentials to access your account.</CardDescription>
       </CardHeader>
       <CardContent>
+        {error && (
+          <Alert variant="destructive" className="mb-4">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
             <FormField
@@ -95,7 +108,13 @@ export default function LoginPage() {
                 <FormItem>
                   <FormLabel>Phone Number</FormLabel>
                   <FormControl>
-                    <Input placeholder="0912345678" {...field} disabled={isSubmitting} />
+                    <Input
+                      placeholder="0912345678"
+                      autoComplete="username"
+                      inputMode="tel"
+                      {...field}
+                      disabled={isSubmitting}
+                    />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -113,6 +132,7 @@ export default function LoginPage() {
                         type={showPassword ? 'text' : 'password'}
                         placeholder="••••••••"
                         className="pr-10"
+                        autoComplete="current-password"
                         {...field}
                         disabled={isSubmitting}
                       />
@@ -123,11 +143,7 @@ export default function LoginPage() {
                       className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground"
                       aria-label={showPassword ? 'Hide password' : 'Show password'}
                     >
-                      {showPassword ? (
-                        <EyeOff className="h-5 w-5" />
-                      ) : (
-                        <Eye className="h-5 w-5" />
-                      )}
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                     </button>
                   </div>
                   <FormMessage />
@@ -139,7 +155,30 @@ export default function LoginPage() {
             </Button>
           </form>
         </Form>
+        <p className="mt-6 text-center text-xs text-muted-foreground">
+          Forgotten your password? Contact your EPMO administrator to have it reset.
+        </p>
       </CardContent>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense
+      fallback={
+        <Card className="w-full max-w-sm">
+          <CardHeader className="text-center">
+            <div className="mx-auto mb-4">
+              <NibLogo className="w-12 h-12" />
+            </div>
+            <CardTitle>Welcome Back to NIB EPMO</CardTitle>
+            <CardDescription>Loading…</CardDescription>
+          </CardHeader>
+        </Card>
+      }
+    >
+      <LoginForm />
+    </Suspense>
   );
 }

@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import type { PmoDivision } from "@prisma/client";
+import type { Serialized } from "@/lib/serialize";
 import { useToast } from "@/hooks/use-toast";
 import { Pencil, Trash2 } from "lucide-react";
 import {
@@ -43,15 +44,15 @@ const pmoDivisionSchema = z.object({
 type PmoDivisionFormValues = z.infer<typeof pmoDivisionSchema>;
 
 type PmoDivisionManagementProps = {
-    initialPmoDivisions: PmoDivision[];
+    initialPmoDivisions: Serialized<PmoDivision>[];
     onDataChange: () => void;
 };
 
 export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: PmoDivisionManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [editingPmoDivision, setEditingPmoDivision] = useState<PmoDivision | null>(null);
-  const [pmoDivisionToDelete, setPmoDivisionToDelete] = useState<PmoDivision | null>(null);
+  const [editingPmoDivision, setEditingPmoDivision] = useState<Serialized<PmoDivision> | null>(null);
+  const [pmoDivisionToDelete, setPmoDivisionToDelete] = useState<Serialized<PmoDivision> | null>(null);
   const { hasPermission } = useAuth();
   
   const canManage = hasPermission('pmo-divisions:view'); // Assuming one permission for now
@@ -88,7 +89,7 @@ export function PmoDivisionManagement({ initialPmoDivisions, onDataChange }: Pmo
     });
   }
 
-  function handleEdit(pmoDivision: PmoDivision) {
+  function handleEdit(pmoDivision: Serialized<PmoDivision>) {
     setEditingPmoDivision(pmoDivision);
     form.reset({
       name: pmoDivision.name,

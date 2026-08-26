@@ -8,40 +8,88 @@ generator client {
 }
 
 model Project {
-  id                      String                 @id @default(cuid())
-  name                    String
-  description             String
-  startDate               DateTime
-  endDate                 DateTime
-  workingYear             String
-  totalCost               Decimal?               @db.Decimal(12, 2)
-  currency                String                 @default("ETB")
-  status                  ProjectStatus          @relation(fields: [statusId], references: [id])
-  statusId                String
-  pmoDivision             PmoDivision            @relation(fields: [pmoDivisionId], references: [id])
-  pmoDivisionId           String
-  projectManager          User                   @relation(fields: [projectManagerId], references: [id])
-  projectManagerId        String
-  responsibleDepartments  Department[]           @relation("ProjectResponsibleDepartments")
-  milestones              Milestone[]
-  teams                   Team[]
-  blockers                Blocker[]
-  payments                Payment[]
-  timelineChangeRequests  TimelineChangeRequest[]
-  createdAt               DateTime               @default(now())
-  updatedAt               DateTime               @updatedAt
+  id                String    @id @default(cuid())
+  name              String
+  description       String
+  /// The plan as it stands now. Moves whenever a timeline change is approved.
+  startDate         DateTime
+  endDate           DateTime
+  /// The plan as it was originally committed to.
+  ///
+  /// Approving an extension rewrites endDate, so without these every schedule
+  /// metric was measured against a deadline that moves whenever it is missed —
+  /// an extended project could never be reported late. Set once, when the
+  /// project is first baselined, and never touched by an extension.
+  baselineStartDate DateTime?
+  baselineEndDate   DateTime?
+  baselineSetAt     DateTime?
+  /// How many times the baseline has been re-set. A governance signal in its
+  /// own right: a project re-baselined four times is not "on schedule".
+  rebaselineCount   Int       @default(0)
+
+  // --- Lifecycle gates -----------------------------------------------------
+  /// Where the project sits in the initiation → delivery → closure sequence.
+  ///
+  /// Distinct from `status`, which describes how delivery is going. A project
+  /// could previously be created directly into any status with no charter, no
+  /// business case and nobody's approval, so the portfolio counted work that
+  /// had never been agreed.
+  stage                  ProjectStage            @default(DRAFT)
+  /// Why the project exists and what it will deliver. Required to submit.
+  charter                String?
+  businessCase           String?
+  submittedAt            DateTime?
+  submittedBy            User?                   @relation("ProjectSubmittedBy", fields: [submittedById], references: [id])
+  submittedById          String?
+  /// The sponsor who let it into the portfolio.
+  approvedAt             DateTime?
+  approvedBy             User?                   @relation("ProjectApprovedBy", fields: [approvedById], references: [id])
+  approvedById           String?
+  initiationNotes        String?
+  /// Filled in when closure is signed off; see ProjectClosure.
+  closure                ProjectClosure?
+  documents              Document[]
+  workingYear            String
+  totalCost              Decimal?                @db.Decimal(12, 2)
+  currency               String                  @default("ETB")
+  status                 ProjectStatus           @relation(fields: [statusId], references: [id])
+  statusId               String
+  pmoDivision            PmoDivision             @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivisionId          String
+  projectManager         User                    @relation(fields: [projectManagerId], references: [id])
+  projectManagerId       String
+  responsibleDepartments Department[]            @relation("ProjectResponsibleDepartments")
+  milestones             Milestone[]
+  /// Teams are linked through ProjectTeam now, so one team can serve several
+  /// projects. `teamLinks` is the join; use it to reach the teams themselves.
+  teamLinks              ProjectTeam[]
+  assignments            ProjectAssignment[]
+  blockers               Blocker[]
+  payments               Payment[]
+  timelineChangeRequests TimelineChangeRequest[]
+  createdAt              DateTime                @default(now())
+  updatedAt              DateTime                @updatedAt
+
+  // PostgreSQL does not index foreign keys automatically, so without these
+  // every filter and join on the dashboard was a sequential scan.
+  @@index([statusId])
+  @@index([pmoDivisionId])
+  @@index([projectManagerId])
+  @@index([workingYear])
+  /// The dashboard's dominant filter: a working year plus a status.
+  @@index([workingYear, statusId])
 }
 
 model PmoDivision {
-  id                String    @id @default(cuid())
-  name              String    @unique
-  responsibleName   String
-  responsibleTitle  String
-  responsiblePhone  String
-  users             User[]
-  projects          Project[]
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  id               String    @id @default(cuid())
+  name             String    @unique
+  responsibleName  String
+  responsibleTitle String
+  responsiblePhone String
+  users            User[]
+  projects         Project[]
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
 }
 
 model Department {
@@ -52,12 +100,160 @@ model Department {
   updatedAt DateTime  @updatedAt
 }
 
+/// What a document is, so the project record can be read at a glance.
+enum DocumentCategory {
+  CHARTER
+  BUSINESS_CASE
+  CONTRACT
+  SPECIFICATION
+  MINUTES
+  REPORT
+  SIGN_OFF
+  OTHER
+}
+
+/// A document attached to a project.
+///
+/// Charters, contracts, specifications, minutes and sign-offs previously lived
+/// outside the system entirely, which meant the project record was permanently
+/// incomplete — closure could be signed with nothing to sign against.
+///
+/// This row is the *logical* document; its contents live in DocumentVersion, so
+/// replacing a file keeps the history rather than overwriting it.
+model Document {
+  id          String           @id @default(cuid())
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId   String
+  title       String
+  description String?
+  category    DocumentCategory @default(OTHER)
+
+  versions DocumentVersion[]
+
+  uploadedBy   User   @relation("DocumentUploadedBy", fields: [uploadedById], references: [id])
+  uploadedById String
+
+  /// Soft delete: removing a document from a project must not destroy the
+  /// record that it once existed, or who removed it.
+  deletedAt   DateTime?
+  deletedBy   User?     @relation("DocumentDeletedBy", fields: [deletedById], references: [id])
+  deletedById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([projectId, deletedAt])
+  @@index([projectId, category])
+  @@index([uploadedById])
+}
+
+/// One uploaded file. A new upload against the same document adds a version.
+model DocumentVersion {
+  id            String   @id @default(cuid())
+  document      Document @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentId    String
+  versionNumber Int
+
+  /// The uploader's filename, sanitised. A label for display and for the
+  /// download header — never used to build a path.
+  fileName    String
+  /// Resolved from the file's own bytes, not from what the browser claimed.
+  contentType String
+  sizeBytes   Int
+  /// Opaque, random, and the only thing that locates the file on disk.
+  storageKey  String @unique
+  /// SHA-256 of the contents.
+  checksum    String
+
+  uploadedBy   User     @relation("VersionUploadedBy", fields: [uploadedById], references: [id])
+  uploadedById String
+  uploadedAt   DateTime @default(now())
+  notes        String?
+
+  @@unique([documentId, versionNumber])
+  @@index([documentId, versionNumber])
+  @@index([uploadedById])
+}
+
+/// The lifecycle gates a project passes through.
+///
+/// `status` says how delivery is going; this says whether the project has been
+/// agreed and whether it has been properly closed. Keeping them apart means a
+/// project cannot be "Active" without ever having been approved, and cannot be
+/// "Completed" without anyone accepting the deliverables.
+enum ProjectStage {
+  /// Being written up. Not in the portfolio, not counted in any KPI.
+  DRAFT
+  /// Submitted for a sponsor's decision.
+  SUBMITTED
+  /// Approved and baselined. This is where delivery happens.
+  APPROVED
+  /// Delivery finished; closure checklist in progress.
+  CLOSING
+  /// Signed off, with lessons captured.
+  CLOSED
+  /// Stopped before completion. Kept, not deleted, so the decision is on record.
+  CANCELLED
+}
+
+/// The record of a project actually being finished, rather than merely being
+/// given a status of "Completed".
+///
+/// Closure is the point at which an EPMO captures what it learned; without
+/// this, nothing was captured and nothing was signed.
+model ProjectClosure {
+  id        String  @id @default(cuid())
+  project   Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String  @unique
+
+  /// The checklist. Each must be true before closure can be signed off.
+  deliverablesAccepted Boolean @default(false)
+  paymentsSettled      Boolean @default(false)
+  blockersClosed       Boolean @default(false)
+  handoverAcknowledged Boolean @default(false)
+
+  /// Who receives the delivered work.
+  handoverRecipient String?
+  /// What went well, what did not, and what the next project should do
+  /// differently. The reason closure exists.
+  lessonsLearned    String?
+
+  signedOffAt   DateTime?
+  signedOffBy   User?     @relation("ClosureSignedBy", fields: [signedOffById], references: [id])
+  signedOffById String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([signedOffById])
+}
+
+/// What a status *means*, independent of what it is called.
+///
+/// Statuses are rows users may rename in Settings, yet the application branched
+/// on their names in dozens of places — so renaming "Completed" silently broke
+/// completion, archiving, overdue and every report at once. Behaviour keys off
+/// this immutable category; `name` is only ever a label.
+enum StatusCategory {
+  /// Work is expected to be happening.
+  ACTIVE
+  /// Deliberately paused; still the EPMO's problem.
+  ON_HOLD
+  /// Delivered, being handed to the receiving department.
+  HANDOVER
+  /// Finished. No further work expected.
+  CLOSED
+}
+
 model ProjectStatus {
-  id        String    @id @default(cuid())
-  name      String    @unique
+  id        String         @id @default(cuid())
+  name      String         @unique
+  category  StatusCategory @default(ACTIVE)
   projects  Project[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([category])
 }
 
 model Milestone {
@@ -67,66 +263,121 @@ model Milestone {
   startDate   DateTime
   dueDate     DateTime
   weight      Float
-  project     Project  @relation(fields: [projectId], references: [id])
+  /// Cascade: a milestone belongs to its project and has no meaning without it.
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId   String
   tasks       Task[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+
+  @@index([projectId])
+  @@index([dueDate])
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  PENDING_REVIEW
+  DONE
+  /// Work that will not be done. Lets a project close honestly instead of
+  /// marking abandoned tasks complete.
+  CANCELLED
 }
 
 model Task {
-  id          String    @id @default(cuid())
+  id          String       @id @default(cuid())
   title       String
   description String
-  status      String
+  status      TaskStatus   @default(TODO)
   startDate   DateTime
   endDate     DateTime
   weight      Float
-  progress    Float     @default(0)
+  progress    Float        @default(0)
   completedAt DateTime?
-  milestone   Milestone @relation(fields: [milestoneId], references: [id])
+  milestone   Milestone    @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
   milestoneId String
-  assignees   User[]    @relation("TaskAssignees")
+  assignees   User[]       @relation("TaskAssignees")
   updates     TaskUpdate[]
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  @@index([milestoneId])
+  @@index([status])
+  @@index([endDate])
+  /// Drives the approvals queue: pending tasks, oldest deadline first.
+  @@index([status, endDate])
+  @@index([completedAt])
+}
+
+enum TaskUpdateType {
+  COMMENT
+  STATUS_CHANGE
 }
 
 model TaskUpdate {
-  id                  String   @id @default(cuid())
-  text                String
-  type                String   // e.g., 'COMMENT', 'STATUS_CHANGE'
-  progressPercentage  Float?
-  author              User     @relation(fields: [authorId], references: [id])
-  authorId            String
-  task                Task     @relation(fields: [taskId], references: [id])
-  taskId              String
-  createdAt           DateTime @default(now())
-  updatedAt           DateTime @updatedAt
+  id                 String         @id @default(cuid())
+  text               String
+  type               TaskUpdateType @default(COMMENT)
+  progressPercentage Float?
+  author             User           @relation(fields: [authorId], references: [id])
+  authorId           String
+  task               Task           @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  taskId             String
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
 }
 
 model User {
-  id                        String                 @id @default(cuid())
-  name                      String
-  firstName                 String
-  lastName                  String
-  email                     String                 @unique
-  avatar                    String?
-  phoneNumber               String?
-  pmoDivision               PmoDivision?           @relation(fields: [pmoDivisionId], references: [id])
-  pmoDivisionId             String?
-  roles                     Role[]                 @relation("UserRoles")
-  assignedTasks             Task[]                 @relation("TaskAssignees")
-  teamsAsLead               Team[]                 @relation("TeamLead")
-  teamsAsMember             Team[]                 @relation("TeamMembers")
-  taskUpdates               TaskUpdate[]
-  managedProjects           Project[]
-  timelineChangeRequests    TimelineChangeRequest[] @relation("RequestedBy")
-  timelineChangeApprovals   TimelineChangeRequest[] @relation("ReviewedBy")
-  notificationsSent         Notification[]         @relation("SentNotifications")
-  notificationsReceived     Notification[]         @relation("ReceivedNotifications")
-  createdAt                 DateTime               @default(now())
-  updatedAt                 DateTime               @updatedAt
+  id          String  @id @default(cuid())
+  name        String
+  firstName   String
+  lastName    String
+  email       String  @unique
+  avatar      String?
+  phoneNumber String? @unique
+
+  // --- Authentication (owned by this system; migrated from the legacy auth service) ---
+  /// ASP.NET Core Identity PasswordHasher v3 format. Null means the account
+  /// has no local credential yet and cannot sign in until one is set.
+  passwordHash        String?
+  /// Forces a password change on the next successful sign-in.
+  mustChangePassword  Boolean           @default(false)
+  /// Disabled accounts keep their data and history but cannot sign in.
+  isActive            Boolean           @default(true)
+  passwordChangedAt   DateTime?
+  lastLoginAt         DateTime?
+  failedLoginAttempts Int               @default(0)
+  lockedUntil         DateTime?
+  sessions            Session[]
+  authEvents          AuthEvent[]
+  paymentDecisions    Payment[]         @relation("PaymentDecisions")
+  projectsSubmitted   Project[]         @relation("ProjectSubmittedBy")
+  projectsApproved    Project[]         @relation("ProjectApprovedBy")
+  closuresSignedOff   ProjectClosure[]  @relation("ClosureSignedBy")
+  documentsUploaded   Document[]        @relation("DocumentUploadedBy")
+  documentsDeleted    Document[]        @relation("DocumentDeletedBy")
+  documentVersions    DocumentVersion[] @relation("VersionUploadedBy")
+  blockersOwned       Blocker[]         @relation("OwnedBlockers")
+  blockersRaised      Blocker[]         @relation("RaisedBlockers")
+  blockersResolved    Blocker[]         @relation("ResolvedBlockers")
+  blockersEscalatedTo Blocker[]         @relation("EscalatedBlockers")
+
+  pmoDivision             PmoDivision?            @relation(fields: [pmoDivisionId], references: [id])
+  pmoDivisionId           String?
+  roles                   Role[]                  @relation("UserRoles")
+  assignedTasks           Task[]                  @relation("TaskAssignees")
+  teamsAsLead             Team[]                  @relation("TeamLead")
+  teamsAsMember           Team[]                  @relation("TeamMembers")
+  projectAssignments      ProjectAssignment[]     @relation("ProjectAssignments")
+  settingsUpdated         Setting[]               @relation("SettingsUpdatedBy")
+  taskUpdates             TaskUpdate[]
+  managedProjects         Project[]
+  timelineChangeRequests  TimelineChangeRequest[] @relation("RequestedBy")
+  timelineChangeApprovals TimelineChangeRequest[] @relation("ReviewedBy")
+  notificationsSent       Notification[]          @relation("SentNotifications")
+  notificationsReceived   Notification[]          @relation("ReceivedNotifications")
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                @updatedAt
 }
 
 model Role {
@@ -139,46 +390,301 @@ model Role {
   updatedAt   DateTime @updatedAt
 }
 
+/// Server-side session. The cookie carries an opaque random token; only its
+/// SHA-256 hash is stored, so a database leak does not yield usable sessions.
+/// Sessions are revocable, which is what lets a password change sign the user
+/// out everywhere.
+model Session {
+  id            String    @id @default(cuid())
+  tokenHash     String    @unique
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  /// Absolute expiry. Idle expiry is enforced separately against lastSeenAt.
+  expiresAt     DateTime
+  lastSeenAt    DateTime  @default(now())
+  revokedAt     DateTime?
+  revokedReason String?
+  ipAddress     String?
+  userAgent     String?
+  createdAt     DateTime  @default(now())
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+enum AuthEventType {
+  LOGIN_SUCCEEDED
+  LOGIN_FAILED
+  LOGGED_OUT
+  PASSWORD_CHANGED
+  PASSWORD_RESET
+  ACCOUNT_LOCKED
+  ACCOUNT_ENABLED
+  ACCOUNT_DISABLED
+  SESSIONS_REVOKED
+  ACCESS_DENIED
+}
+
+/// Append-only record of authentication and authorization events.
+model AuthEvent {
+  id        String        @id @default(cuid())
+  type      AuthEventType
+  /// Null when the event could not be attributed (for example, a sign-in
+  /// attempt for a phone number that does not exist).
+  user      User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    String?
+  /// Whatever identifier the actor supplied, kept even when no user matched.
+  subject   String?
+  detail    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime      @default(now())
+
+  @@index([userId, createdAt])
+  @@index([type, createdAt])
+}
+
+/// Append-only record of who changed what business data, when, and from where.
+///
+/// Separate from AuthEvent, which records authentication and authorization
+/// outcomes (sign-ins, lockouts, denied permissions). This table records domain
+/// mutations — a project edited, an approval granted, a role reassigned — and
+/// carries before/after values in `details`.
+///
+/// `actorId` is a plain string rather than a relation so an entry survives the
+/// deletion of the user who made it, which is the point of an audit trail.
+model AuditLog {
+  id            String   @id @default(cuid())
+  /// User id, or "SYSTEM" for events with no human actor.
+  actorId       String
+  actorName     String?
+  actorType     String   @default("USER") // USER | SYSTEM
+  /// Verb in past tense, e.g. "PROJECT_UPDATED", "PAYMENT_APPROVED".
+  action        String
+  entity        String?
+  entityId      String?
+  /// JSON. Passed through sanitizeDetails() so credentials never land here.
+  details       String?
+  ipAddress     String?
+  userAgent     String?
+  /// Ties together every row written by one request.
+  correlationId String?
+  createdAt     DateTime @default(now())
+
+  @@index([actorId, createdAt])
+  @@index([entity, entityId])
+  @@index([action, createdAt])
+  @@index([createdAt])
+  @@index([correlationId])
+}
+
+/// Credentials migrated from the legacy auth service for people who never
+/// signed in to this application, so no local User record was ever created.
+/// The User is created on their first successful sign-in, then the staging row
+/// is deleted. See scripts/import-legacy-auth.ts.
+model PendingUser {
+  id                 String   @id
+  firstName          String
+  lastName           String
+  email              String   @unique
+  phoneNumber        String   @unique
+  passwordHash       String
+  mustChangePassword Boolean  @default(true)
+  createdAt          DateTime @default(now())
+}
+
+/// A standing team.
+///
+/// A team used to belong to exactly one project, so the same group of people
+/// had to be recreated for every project they worked on. That made "which
+/// projects is this team on?" and "what is this person working on?"
+/// unanswerable, and deleting a project silently deleted the team with it.
+///
+/// A team now exists on its own and is linked to the projects it serves.
 model Team {
-  id         String   @id @default(cuid())
-  name       String
-  project    Project  @relation(fields: [projectId], references: [id])
-  projectId  String
-  teamLead   User     @relation("TeamLead", fields: [teamLeadId], references: [id])
-  teamLeadId String
-  members    User[]   @relation("TeamMembers")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  teamLead    User    @relation("TeamLead", fields: [teamLeadId], references: [id])
+  teamLeadId  String
+  members     User[]  @relation("TeamMembers")
+  /// Retired rather than deleted, so historical assignments still read.
+  isActive    Boolean @default(true)
+
+  projects ProjectTeam[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([teamLeadId])
+  @@index([isActive, name])
 }
 
+/// Which teams work on which projects.
+model ProjectTeam {
+  id        String   @id @default(cuid())
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  teamId    String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId String
+  createdAt DateTime @default(now())
+
+  /// A team is on a project once, not three times.
+  @@unique([teamId, projectId])
+  @@index([projectId])
+}
+
+/// One person on one project, in one capacity.
+///
+/// Team membership says who is in a group; it does not say how much of their
+/// week a project has, which is what makes over-allocation invisible. A person
+/// on four projects at "100%" each is the thing this exists to show.
+model ProjectAssignment {
+  id            String      @id @default(cuid())
+  user          User        @relation("ProjectAssignments", fields: [userId], references: [id], onDelete: Cascade)
+  userId        String
+  project       Project     @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId     String
+  role          ProjectRole @default(MEMBER)
+  /// Percentage of a working week. 100 means full time on this project.
+  allocationPct Int         @default(100)
+  /// Null means "from the start of the project" and "until it ends".
+  startDate     DateTime?
+  endDate       DateTime?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  /// Somebody can be both a team lead and a member of a workstream, but not
+  /// the same role twice on the same project.
+  @@unique([userId, projectId, role])
+  @@index([projectId])
+  @@index([userId, startDate, endDate])
+}
+
+enum ProjectRole {
+  SPONSOR
+  PROJECT_MANAGER
+  TEAM_LEAD
+  MEMBER
+  STAKEHOLDER
+}
+
+enum BlockerStatus {
+  OPEN
+  IN_PROGRESS
+  /// Raised to someone with the authority to clear it. Distinct from OPEN so
+  /// the register can show what is stuck rather than merely unfinished.
+  ESCALATED
+  RESOLVED
+  /// Closed without being resolved — withdrawn, duplicated, or overtaken.
+  CLOSED
+}
+
+enum BlockerSeverity {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum BlockerCategory {
+  RESOURCE
+  TECHNICAL
+  VENDOR
+  FINANCIAL
+  DEPENDENCY
+  REGULATORY
+  SCOPE
+  OTHER
+}
+
+/// An issue blocking a project.
+///
+/// This carried only a description and open/resolved, which is enough to note
+/// that something is wrong and not enough to manage it: nobody owned it, there
+/// was no date by which it had to clear, and every issue looked equally urgent,
+/// so a critical vendor failure and a minor query sat side by side in one list.
 model Blocker {
-  id          String    @id @default(cuid())
+  id          String          @id @default(cuid())
+  /// A short label for lists and reports; `description` carries the detail.
+  title       String
   description String
-  status      String // "OPEN" or "RESOLVED"
+  category    BlockerCategory @default(OTHER)
+  severity    BlockerSeverity @default(MEDIUM)
+  status      BlockerStatus   @default(OPEN)
+  /// What this is holding up, in the raiser’s words.
+  impact      String?
+  /// When it must be cleared by. Null means no date was agreed, which for a
+  /// high or critical issue is itself worth reporting on.
+  dueDate     DateTime?
   resolution  String?
-  createdAt   DateTime  @default(now())
-  resolvedAt  DateTime?
-  project     Project   @relation(fields: [projectId], references: [id])
-  projectId   String
+
+  /// Accountable for clearing it. An issue with no owner is nobody’s job.
+  owner        User?   @relation("OwnedBlockers", fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId      String?
+  raisedBy     User?   @relation("RaisedBlockers", fields: [raisedById], references: [id], onDelete: SetNull)
+  raisedById   String?
+  resolvedBy   User?   @relation("ResolvedBlockers", fields: [resolvedById], references: [id], onDelete: SetNull)
+  resolvedById String?
+
+  /// Escalation is recorded rather than implied, so "who was told, and when"
+  /// survives the meeting it was raised in.
+  escalatedTo      User?     @relation("EscalatedBlockers", fields: [escalatedToId], references: [id], onDelete: SetNull)
+  escalatedToId    String?
+  escalatedAt      DateTime?
+  escalationReason String?
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  resolvedAt DateTime?
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  projectId  String
+
+  @@index([projectId, status])
+  /// Drives "what is overdue and serious", the register’s main view.
+  @@index([status, severity, dueDate])
+  @@index([ownerId, status])
 }
 
+/// A configurable value, declared in src/lib/settings/definitions.ts.
+///
+/// Only the key and value were stored, so there was no way to answer who
+/// relaxed the password policy or when — which for a security control is
+/// the first question anyone asks.
 model Setting {
-  key   String @id
-  value String
+  key         String   @id
+  value       String
+  updatedAt   DateTime @default(now()) @updatedAt
+  updatedBy   User?    @relation("SettingsUpdatedBy", fields: [updatedById], references: [id], onDelete: SetNull)
+  updatedById String?
+}
+
+enum PaymentStatus {
+  PENDING
+  APPROVED
+  REJECTED
 }
 
 model Payment {
-  id          String   @id @default(cuid())
+  id          String        @id @default(cuid())
   title       String
   description String?
-  amount      Decimal  @db.Decimal(12, 2)
-  status      String   @default("PENDING") // PENDING, APPROVED, REJECTED
+  amount      Decimal       @db.Decimal(12, 2)
+  status      PaymentStatus @default(PENDING)
   notes       String?
   paymentDate DateTime
-  project     Project  @relation(fields: [projectId], references: [id])
+  project     Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  /// Who approved or rejected this payment, and when. Financial decisions were
+  /// previously recorded with neither.
+  decidedBy   User?         @relation("PaymentDecisions", fields: [decidedById], references: [id])
+  decidedById String?
+  decidedAt   DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  @@index([projectId, status])
+  @@index([status, paymentDate])
 }
 
 enum RequestStatus {
@@ -189,7 +695,7 @@ enum RequestStatus {
 
 model TimelineChangeRequest {
   id            String        @id @default(cuid())
-  project       Project       @relation(fields: [projectId], references: [id])
+  project       Project       @relation(fields: [projectId], references: [id], onDelete: Cascade)
   projectId     String
   oldEndDate    DateTime
   newEndDate    DateTime
@@ -200,18 +706,28 @@ model TimelineChangeRequest {
   reviewedBy    User?         @relation("ReviewedBy", fields: [reviewedById], references: [id])
   reviewedById  String?
   reviewNotes   String?
+  /// When the decision was taken, as distinct from when the row last changed.
+  reviewedAt    DateTime?
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
+
+  @@index([projectId, status])
+  @@index([status, createdAt])
+  @@index([requestedById])
 }
 
 model Notification {
-  id            String    @id @default(cuid())
-  message       String
-  link          String
-  read          Boolean   @default(false)
-  recipient     User      @relation("ReceivedNotifications", fields: [recipientId], references: [id])
-  recipientId   String
-  sender        User      @relation("SentNotifications", fields: [senderId], references: [id])
-  senderId      String
-  createdAt     DateTime  @default(now())
+  id          String   @id @default(cuid())
+  message     String
+  link        String
+  read        Boolean  @default(false)
+  recipient   User     @relation("ReceivedNotifications", fields: [recipientId], references: [id], onDelete: Cascade)
+  recipientId String
+  sender      User     @relation("SentNotifications", fields: [senderId], references: [id])
+  senderId    String
+  createdAt   DateTime @default(now())
+
+  /// Drives the bell: this user's unread notifications, newest first.
+  @@index([recipientId, read, createdAt])
+  @@index([recipientId, createdAt])
 }

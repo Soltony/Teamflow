@@ -29,7 +29,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '../ui/avatar';
 import { ScrollArea } from '../ui/scroll-area';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '../ui/tooltip';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
-
+import { isOpenBlocker } from '@/lib/validation/blocker';
+import { ProjectCardTeams } from './project-card-teams';
+import { ProjectCardTasks } from './project-card-tasks';
+import {
+  milestoneProgress as calculateMilestoneProgress,
+  projectProgress as calculateProjectProgress,
+} from '@/lib/metrics';
 
 type ProjectListItemProps = {
   project: any;
@@ -52,7 +58,6 @@ type ProjectListItemProps = {
   onExpandToggle: (projectId: string, section: 'tasks' | 'teams') => void;
 };
 
-
 const ProgressBadge = ({ progress, isOverdue }: { progress: number, isOverdue: boolean }) => {
     const isComplete = progress >= 100;
     const badgeColor = isComplete ? 'bg-green-600' : isOverdue ? 'bg-red-600' : 'bg-primary';
@@ -69,7 +74,6 @@ const ProgressBadge = ({ progress, isOverdue }: { progress: number, isOverdue: b
       </div>
     );
 };
-
 
 export function ProjectListItem({ 
     project, 
@@ -106,7 +110,6 @@ export function ProjectListItem({
     allTasks.filter((task: any) => task.status === 'DONE').length
   , [allTasks]);
 
-
   const { todaysTasks, otherTasks } = useMemo(() => {
     const todays: any[] = [];
     const others: any[] = [];
@@ -137,45 +140,6 @@ export function ProjectListItem({
     ? otherTasks 
     : project.milestones.find((m: any) => m.id === selectedMilestoneId)?.tasks.filter((t: any) => !todaysTasks.some(tt => tt.id === t.id)).sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()) || [];
   
-  const calculateMilestoneProgress = (milestone: any) => {
-    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
-    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-        const taskProgress = task.progress || 0;
-        return acc + (taskProgress * (task.weight / 100));
-    }, 0);
-    return totalProgress;
-  };
-
-  const calculateProjectProgress = (project: any) => {
-    if (!project.milestones || project.milestones.length === 0) {
-      return 0;
-    }
-    
-    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
-
-    if (weightedMilestones.length > 0) {
-      return weightedMilestones.reduce((acc: number, milestone: any) => {
-        const milestoneProgress = calculateMilestoneProgress(milestone);
-        return acc + (milestoneProgress * (milestone.weight / 100));
-      }, 0);
-    } else {
-      const allTasks = project.milestones.flatMap((m: any) => m.tasks);
-      if (allTasks.length === 0) return 0;
-
-      const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-      if (totalTaskWeight === 0) {
-          if (allTasks.length === 0) return 0;
-          const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
-          return totalProgress / allTasks.length;
-      }
-      
-      const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
-        return acc + ((task.progress || 0) * task.weight);
-      }, 0);
-
-      return totalWeightedTaskProgress / totalTaskWeight;
-    }
-  };
 
   const handleAddTaskClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -292,151 +256,27 @@ export function ProjectListItem({
         <CardContent className="flex-grow flex flex-col justify-end pt-0">
           <Separator className="mb-4" />
           
-          {/* Teams Section */}
-          <div className="space-y-3">
-            <div 
-                className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors"
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onExpandToggle(project.id, 'teams');
-                }}
-            >
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <h4 className="font-semibold text-blue-700">Teams ({project.teams?.length || 0})</h4>
-                </div>
-                <div className="flex items-center gap-2">
-                    {canManageTeams.create && (
-                        <Button variant="secondary" size="sm" onClick={handleAddTeamClick}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Team
-                        </Button>
-                    )}
-                    <div className="cursor-pointer p-1">
-                        <ChevronDown className={cn("h-5 w-5 transition-transform text-blue-600", isTeamsExpanded && "rotate-180")} />
-                    </div>
-                </div>
-            </div>
+          {/* Teams and tasks each own their markup; see the two components. */}
+          <ProjectCardTeams
+            project={project}
+            isTeamsExpanded={isTeamsExpanded}
+            onExpandToggle={onExpandToggle}
+            canManageTeams={canManageTeams}
+            onAddTeam={onAddTeam}
+            onEditTeam={onEditTeam}
+            onDeleteTeam={onDeleteTeam}
+          />
 
-            {isTeamsExpanded && (
-              <div className="ml-6 space-y-3 border-l-2 border-blue-200 pl-4">
-                {(project.teams && project.teams.length > 0) ? (
-                    <div className="space-y-3">
-                        {project.teams.map((team: any) => {
-                            const teamLead = team.teamLead;
-                            const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
-
-                            return (
-                                <div key={team.id} className="text-sm p-3 rounded-md bg-blue-50 border border-blue-200 group">
-                                    <div className="flex justify-between items-start">
-                                        <h5 className="font-semibold text-blue-800">{team.name}</h5>
-                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {canManageTeams.update && (
-                                                <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleEditTeamClick(e, team)}>
-                                                    <Edit className="h-3 w-3" />
-                                                </Button>
-                                            )}
-                                            {canManageTeams.delete && (
-                                                <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive hover:text-destructive" onClick={(e) => handleDeleteTeamClick(e, team)}>
-                                                    <Trash2 className="h-3 w-3" />
-                                                </Button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    <div className="text-blue-600 mt-1 space-y-1">
-                                        {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
-                                        {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
-                                    </div>
-                                </div>
-                            )
-                        })}
-                    </div>
-                ) : (
-                    <p className="text-sm text-blue-600 mt-2">No teams assigned.</p>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Visual Separator */}
           <Separator className="my-4" />
 
-          {/* Tasks Section */}
-          <div className="space-y-3">
-            <div 
-                className="flex justify-between items-center cursor-pointer p-2 rounded-md hover:bg-muted/50 transition-colors" 
-                onClick={(e) => {
-                    e.stopPropagation();
-                    onExpandToggle(project.id, 'tasks');
-                }}
-            >
-                <div className="flex items-center gap-2">
-                  <CheckSquare className="h-4 w-4 text-green-600" />
-                  <h4 className="font-semibold text-green-700">Tasks ({completedTasksCount}/{allTasks.length})</h4>
-                </div>
-                <div className="flex items-center gap-2">
-                    {canManageTasks && (
-                        <Button variant="secondary" size="sm" onClick={handleAddTaskClick}>
-                            <PlusCircle className="mr-2 h-4 w-4" />
-                            Add Task
-                        </Button>
-                    )}
-                    <div className="cursor-pointer p-1">
-                        <ChevronDown className={cn("h-5 w-5 transition-transform text-green-600", isTasksExpanded && "rotate-180")} />
-                    </div>
-                </div>
-            </div>
-          
-          {isTasksExpanded && (
-            <div className="ml-6 space-y-3 border-l-2 border-green-200 pl-4">
-              {allTasks.length > 0 ? (
-                <Tabs defaultValue="today" className="w-full">
-                    <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="today">Today's Tasks ({completedTodaysTasksCount}/{todaysTasks.length})</TabsTrigger>
-                        <TabsTrigger value="other">Other Tasks ({completedOtherTasksCount}/{otherTasks.length})</TabsTrigger>
-                    </TabsList>
-                    <TabsContent value="today">
-                      {todaysTasks.length > 0 ? (
-                        <ScrollArea className="h-48 pr-3">
-                          <div className="space-y-1.5">
-                            {todaysTasks.map((task: any) => <TaskRow key={task.id} task={task} />)}
-                          </div>
-                        </ScrollArea>
-                      ) : (
-                         <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
-                            No tasks were created today.
-                         </div>
-                      )}
-                    </TabsContent>
-                    <TabsContent value="other">
-                        {userCreatedMilestones.length > 0 && (
-                            <Select value={selectedMilestoneId} onValueChange={setSelectedMilestoneId}>
-                                <SelectTrigger className="w-full sm:w-[240px] h-9 mb-4">
-                                    <SelectValue placeholder="Filter by milestone..." />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="all">All Milestones</SelectItem>
-                                    {userCreatedMilestones.map((m: any) => (
-                                        <SelectItem key={m.id} value={m.id}>{m.title}</SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
-                        )}
-                        <ScrollArea className="h-48 pr-3">
-                          <div className="space-y-1.5">
-                            {filteredTasks.map((task: any) => <TaskRow key={task.id} task={task} />)}
-                          </div>
-                        </ScrollArea>
-                    </TabsContent>
-                </Tabs>
-              ) : (
-                   <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
-                      No tasks yet for this project.
-                  </div>
-              )}
-            </div>
-          )}
-          </div>
+          <ProjectCardTasks
+            project={project}
+            isTasksExpanded={isTasksExpanded}
+            onExpandToggle={onExpandToggle}
+            onAddTask={onAddTask}
+            onEditTask={onEditTask}
+            onDeleteTask={onDeleteTask}
+          />
         </CardContent>
       </Card>
       <AlertDialog open={!!taskToDelete} onOpenChange={() => setTaskToDelete(null)}>
@@ -477,48 +317,8 @@ export function ProjectListItem({
 
 export function ProjectCard({ project, href }: { project: any, href?: string }) {
 
-    const calculateMilestoneProgress = (milestone: any) => {
-        if (!milestone.tasks || milestone.tasks.length === 0) return 0;
-        const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-            const taskProgress = task.progress || 0;
-            return acc + (taskProgress * (task.weight / 100));
-        }, 0);
-        return totalProgress;
-    };
-
-    const calculateProjectProgress = (project: any) => {
-        if (!project.milestones || project.milestones.length === 0) {
-        return 0;
-        }
-        
-        const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
-
-        if (weightedMilestones.length > 0) {
-        return weightedMilestones.reduce((acc: number, milestone: any) => {
-            const milestoneProgress = calculateMilestoneProgress(milestone);
-            return acc + (milestoneProgress * (milestone.weight / 100));
-        }, 0);
-        } else {
-        const allTasks = project.milestones.flatMap((m: any) => m.tasks);
-        if (allTasks.length === 0) return 0;
-
-        const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-        if (totalTaskWeight === 0) {
-            if (allTasks.length === 0) return 0;
-            const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
-            return totalProgress / allTasks.length;
-        }
-        
-        const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
-            return acc + ((task.progress || 0) * task.weight);
-        }, 0);
-
-        return totalWeightedTaskProgress / totalTaskWeight;
-        }
-    };
-
     const progress = calculateProjectProgress(project);
-    const hasOpenBlockers = project.blockers && project.blockers.some((b: any) => b.status === 'OPEN');
+    const hasOpenBlockers = project.blockers && project.blockers.some((b: any) => isOpenBlocker(b.status));
 
     const cardContent = (
       <Card className="flex flex-col h-full hover:shadow-md transition-shadow">

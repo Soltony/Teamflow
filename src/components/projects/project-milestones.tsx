@@ -6,7 +6,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from 'next/link';
 import { ArrowLeft, Pencil, PlusCircle, Building, Trash2 } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import type { Milestone, Task, User, Department } from "@/lib/types";
+import type { Milestone, Task, User, Department, UserWithRoles } from "@/lib/types";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -23,7 +23,6 @@ import { AddMilestoneDialog } from "./add-milestone-dialog";
 import { useRouter } from "next/navigation";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
 
-type UserWithRoles = User & { roles: { name: string }[] };
 
 type ProjectMilestonesProps = {
   initialProject: any;

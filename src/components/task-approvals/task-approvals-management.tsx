@@ -121,7 +121,7 @@ export function TaskApprovalManagement({ initialTasks, onDataChange }: TaskAppro
   return (
     <>
       <TooltipProvider>
-        <Table>
+        <Table scrollLabel="Tasks awaiting approval">
           <TableHeader>
             <TableRow>
               <TableHead>Task</TableHead>

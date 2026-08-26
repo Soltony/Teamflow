@@ -43,6 +43,16 @@ import { Badge } from "../ui/badge";
 import { isPast, max as dateMax, parseISO, format, differenceInDays, endOfDay, isAfter } from 'date-fns';
 import { useAuth } from "@/context/auth-context";
 import { CelebrationSlider } from "./celebration-slider";
+import { MetricInfo } from "@/components/metrics/metric-info";
+import { isOpenBlocker } from '@/lib/validation/blocker';
+import {
+  milestoneProgress as calculateMilestoneProgress,
+  projectProgress as calculateProjectProgress,
+  isArchivedStatus,
+  isClosedStatus,
+  isOverdue,
+  summarizeSchedule,
+} from '@/lib/metrics';
 
 const StatCardWrapper = ({ children, count, href }: { children: React.ReactNode, count: number, href: string }) => {
   if (count > 0) {
@@ -82,17 +92,22 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     const projectIds = new Set(tempProjects.map((p:any) => p.id));
     const tempTeams = teams.filter((t: any) => projectIds.has(t.projectId));
 
-    const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
-    const onHandoverStatusId = projectStatuses.find((s: any) => s.name === 'On Handover')?.id;
-    
-    const activeProjs = tempProjects.filter((p: any) => p.statusId !== completedStatusId && p.statusId !== onHandoverStatusId);
-    
+    // Category, not name: statuses are renameable, categories are not.
+    const archivedStatusIds = new Set(
+      projectStatuses.filter((s: any) => isArchivedStatus(s)).map((s: any) => s.id),
+    );
+    const closedStatusIds = new Set(
+      projectStatuses.filter((s: any) => isClosedStatus(s)).map((s: any) => s.id),
+    );
+
+    const activeProjs = tempProjects.filter((p: any) => !archivedStatusIds.has(p.statusId));
+
     const threeDaysAgo = new Date();
     threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
-    
+
     const recentCompleted = tempProjects.filter((p: any) => {
-        if (p.statusId !== completedStatusId) return false;
-        
+        if (!closedStatusIds.has(p.statusId)) return false;
+
         const lastTaskUpdate = p.milestones.flatMap((m:any) => m.tasks.map((t:any) => t.completedAt)).filter(Boolean);
         if(lastTaskUpdate.length === 0) return false;
         
@@ -109,25 +124,20 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
   }, [selectedYear, selectedDivision, initialProjects, projectStatuses, teams]);
 
   const { stats, projectsWithBlockers } = React.useMemo(() => {
-    const completedStatusId = projectStatuses.find((s: any) => s.name === 'Completed')?.id;
-    const completedProjects = filteredProjects.filter((p: any) => p.statusId === completedStatusId);
-    
-    const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
-    const overdueProjects = filteredProjects.filter((p: any) => nonArchivedStatusNames.includes(p.status.name) && isAfter(new Date(), endOfDay(parseISO(p.endDate))));
-    
-    const projectsWithOpenBlockers = filteredProjects.filter((p: any) => p.blockers?.some((b: any) => b.status === 'OPEN'));
-    
-    const onTimeProjectsCount = completedProjects.filter((project: any) => {
-        const allTaskEndDates = project.milestones.flatMap((m: any) => m.tasks.map((t: any) => parseISO(t.endDate)));
-        if (allTaskEndDates.length === 0) return true;
-        const lastTaskDate = dateMax(allTaskEndDates);
-        return lastTaskDate <= parseISO(project.endDate);
-    }).length;
-    
-    const lateProjectsCount = completedProjects.length - onTimeProjectsCount;
+    // Every figure below comes from @/lib/metrics, so this card and the report
+    // it links to cannot disagree. The previous local arithmetic compared
+    // planned task dates rather than actual completion, and used a different
+    // day boundary from the CEO report.
+    const schedule = summarizeSchedule(filteredProjects);
+
+    const projectsWithOpenBlockers = filteredProjects.filter((p: any) => p.blockers?.some((b: any) => isOpenBlocker(b.status)));
+
+    const onTimeProjectsCount = schedule.onTime;
+    const lateProjectsCount = schedule.late;
+    const overdueProjects = filteredProjects.filter((p: any) => isOverdue(p));
 
     const totalBlockersCount = projectsWithOpenBlockers.reduce((acc: number, p: any) => acc + (p.blockers?.length || 0), 0);
-    
+
     return {
         stats: {
           onTimeProjectsCount,
@@ -139,12 +149,20 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     };
   }, [filteredProjects, projectStatuses]);
 
+  /** Every filter the cards were counted under, so a drill-down matches. */
+  const reportQuery = React.useMemo(() => {
+    const params = new URLSearchParams();
+    params.set('year', selectedYear);
+    if (selectedDivision !== 'all') params.set('division', selectedDivision);
+    return params.toString();
+  }, [selectedYear, selectedDivision]);
+
   const activeBlockersHref = React.useMemo(() => {
     if (projectsWithBlockers.length === 1) {
         return `/projects/${projectsWithBlockers[0].id}?tab=blockers`;
     }
-    return `/reports?type=active-blockers&year=${selectedYear}`;
-  }, [projectsWithBlockers, selectedYear]);
+    return `/reports?type=active-blockers&${reportQuery}`;
+  }, [projectsWithBlockers, reportQuery]);
 
   const handleQueryChange = (key: string, value: string) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -159,48 +177,6 @@ export function DashboardClient({ initialProjects, projectStatuses, pmoDivisions
     router.push(`${pathname}?${params.toString()}`);
   }
   
-  const calculateMilestoneProgress = (milestone: any) => {
-    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
-    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-      const taskProgress = task.progress || 0;
-      return acc + (taskProgress * (task.weight / 100));
-    }, 0);
-    return totalProgress;
-  };
-
-  const calculateProjectProgress = (project: any) => {
-    if (!project.milestones || project.milestones.length === 0) {
-      return 0;
-    }
-    
-    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
-
-    if (weightedMilestones.length > 0) {
-      // Standard weighted calculation if there are weighted milestones
-      return weightedMilestones.reduce((acc: number, milestone: any) => {
-        const milestoneProgress = calculateMilestoneProgress(milestone);
-        return acc + (milestoneProgress * (milestone.weight / 100));
-      }, 0);
-    } else {
-      // If no weighted milestones, calculate based on task weights directly
-      const allTasks = project.milestones.flatMap((m: any) => m.tasks);
-      if (allTasks.length === 0) return 0;
-
-      const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-      if (totalTaskWeight === 0) {
-          // If tasks have no weight, calculate simple average of progress
-          const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
-          return totalProgress / allTasks.length;
-      }
-      
-      const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
-        return acc + ((task.progress || 0) * task.weight);
-      }, 0);
-
-      return totalWeightedTaskProgress / totalTaskWeight;
-    }
-  };
-
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -255,10 +231,10 @@ Let’s keep projects on track—together.
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <StatCardWrapper count={stats.onTimeProjectsCount} href={`/reports?type=on-time&year=${selectedYear}`}>
+        <StatCardWrapper count={stats.onTimeProjectsCount} href={`/reports?type=on-time&${reportQuery}`}>
           <Card className={stats.onTimeProjectsCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">On-Time Completion</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">On-Time Completion<MetricInfo metric="onTime" /></CardTitle>
               <CheckCircle className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -268,10 +244,10 @@ Let’s keep projects on track—together.
           </Card>
         </StatCardWrapper>
         
-        <StatCardWrapper count={stats.lateProjectsCount} href={`/reports?type=late&year=${selectedYear}`}>
+        <StatCardWrapper count={stats.lateProjectsCount} href={`/reports?type=late&${reportQuery}`}>
           <Card className={stats.lateProjectsCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Late Completion</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">Late Completion<MetricInfo metric="late" /></CardTitle>
               <Clock className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -281,10 +257,10 @@ Let’s keep projects on track—together.
           </Card>
         </StatCardWrapper>
 
-        <StatCardWrapper count={stats.overdueProjectsCount} href={`/reports?type=overdue&year=${selectedYear}`}>
+        <StatCardWrapper count={stats.overdueProjectsCount} href={`/reports?type=overdue&${reportQuery}`}>
           <Card className={stats.overdueProjectsCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overdue Projects</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">Overdue Projects<MetricInfo metric="overdue" /></CardTitle>
               <AlertOctagon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
@@ -297,12 +273,19 @@ Let’s keep projects on track—together.
         <StatCardWrapper count={stats.totalBlockersCount} href={activeBlockersHref}>
           <Card className={stats.totalBlockersCount > 0 ? 'hover:bg-muted transition-colors' : ''}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Blockers</CardTitle>
+              <CardTitle className="text-sm font-medium flex items-center gap-1.5">Active Blockers<MetricInfo metric="blockers" /></CardTitle>
               <ShieldAlert className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats.totalBlockersCount}</div>
-              <p className="text-xs text-muted-foreground">issues requiring attention</p>
+              {/*
+                The headline counts blockers; the report behind it lists the
+                projects holding them. Naming both makes the two figures
+                reconcile instead of looking like a contradiction.
+              */}
+              <p className="text-xs text-muted-foreground">
+                across {projectsWithBlockers.length} project{projectsWithBlockers.length === 1 ? '' : 's'}
+              </p>
             </CardContent>
           </Card>
         </StatCardWrapper>
@@ -356,7 +339,7 @@ Let’s keep projects on track—together.
                                                     </AccordionTrigger>
                                                     <AccordionContent className="pt-2 pb-4">
                                                         {milestone.tasks.length > 0 ? (
-                                                            <Table>
+                                                            <Table scrollLabel="Projects in this division">
                                                                 <TableHeader>
                                                                     <TableRow>
                                                                         <TableHead>Task</TableHead>

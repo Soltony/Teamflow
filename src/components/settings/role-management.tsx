@@ -15,7 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Role } from "@prisma/client";
+// From lib/types, not the Prisma row: these render names and role badges,
+// and the queries behind them select a deliberately narrow set of columns.
+import type { Role } from "@/lib/types";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +47,7 @@ import * as AccordionPrimitive from "@radix-ui/react-accordion";
 import { Badge } from "../ui/badge";
 import { useAuth } from "@/context/auth-context";
 import { availablePermissions } from "@/lib/permissions";
+import { summarisePermissions } from "@/lib/permissions-summary";
 
 type RoleManagementProps = {
   initialRoles: Role[];
@@ -163,8 +166,24 @@ export function RoleManagement({ initialRoles, onDataChange }: RoleManagementPro
                                 <div>
                                     <h3 className="font-semibold text-lg">{role.name}</h3>
                                     <p className="text-muted-foreground">{role.description}</p>
-                                    <div className="mt-2 text-sm text-muted-foreground">
-                                        <span className="font-medium">Permissions:</span> {role.permissions.join(", ") || "None"}
+                                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                                        {/* How many people this role affects, so
+                                            editing or deleting it is an informed choice. */}
+                                        <Badge variant="secondary">
+                                            {(role as any)._count?.users ?? 0}
+                                            {((role as any)._count?.users ?? 0) === 1 ? " person" : " people"}
+                                        </Badge>
+                                        {summarisePermissions(role.permissions).map((s) => (
+                                            <Badge key={s.group} variant={s.complete ? "default" : "outline"}>
+                                                {s.group}
+                                                {!s.complete && ` ${s.granted}/${s.total}`}
+                                            </Badge>
+                                        ))}
+                                        {role.permissions.length === 0 && (
+                                            <span className="text-sm text-muted-foreground">
+                                                No permissions
+                                            </span>
+                                        )}
                                     </div>
                                 </div>
                                 <div className="flex items-center gap-1">

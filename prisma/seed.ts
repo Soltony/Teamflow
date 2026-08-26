@@ -1,4 +1,5 @@
 
+import type { BlockerStatus, TaskStatus, TaskUpdateType } from '@prisma/client';
 import { PrismaClient } from '@prisma/client';
 import { 
     users as usersData, 
@@ -12,7 +13,58 @@ import { allPermissions } from '../src/lib/permissions';
 
 const prisma = new PrismaClient();
 
+/**
+ * Refuses to wipe a database that holds real work.
+ *
+ * This script deletes every user, project, task, milestone and role before it
+ * seeds. That is right for an empty development database and catastrophic
+ * anywhere else — `npm run db:seed` against production would erase the system,
+ * and nothing stopped it.
+ *
+ * The test is whether any account has a password. Demo users are seeded without
+ * one; a real account only gets a hash through the credential import or an
+ * administrator issuing it. So a single hash means somebody has really been
+ * using this database.
+ *
+ * `SEED_ALLOW_DESTRUCTIVE=true` overrides it, for the rare case of deliberately
+ * rebuilding a shared development database.
+ */
+async function refuseIfDatabaseHasRealData() {
+  if (process.env.SEED_ALLOW_DESTRUCTIVE === 'true') {
+    console.warn('SEED_ALLOW_DESTRUCTIVE=true — proceeding even though data may be lost.\n');
+    return;
+  }
+
+  const [withPassword, projects] = await Promise.all([
+    prisma.user.count({ where: { passwordHash: { not: null } } }).catch(() => 0),
+    prisma.project.count().catch(() => 0),
+  ]);
+
+  if (withPassword === 0) return;
+
+  console.error(
+    [
+      '',
+      'Refusing to seed: this database is in use.',
+      '',
+      `  ${withPassword} account(s) have a password set`,
+      `  ${projects} project(s) exist`,
+      '',
+      'Seeding deletes every user, project, task, milestone and role before it',
+      'runs. That would destroy the above.',
+      '',
+      'If this really is a development database you want to rebuild:',
+      '',
+      '  SEED_ALLOW_DESTRUCTIVE=true npx prisma db seed',
+      '',
+    ].join('\n'),
+  );
+  process.exit(1);
+}
+
 async function main() {
+  await refuseIfDatabaseHasRealData();
+
   console.log(`Clearing existing data to ensure a clean seed...`);
   // Delete records in an order that respects foreign key constraints.
   await prisma.payment.deleteMany();
@@ -280,8 +332,12 @@ async function main() {
           update: {},
           create: {
             id: blocker.id,
+            // The sample data predates titles; take the first line of the
+            // description, as the migration does for existing rows.
+            title: blocker.description.split('\n')[0].trim().slice(0, 120) || 'Untitled issue',
             description: blocker.description,
-            status: blocker.status,
+            // The seed literals are plain strings; the columns are enums now.
+            status: blocker.status as BlockerStatus,
             createdAt: new Date(blocker.createdAt),
             resolvedAt: blocker.resolvedAt ? new Date(blocker.resolvedAt) : undefined,
             resolution: blocker.resolution,
@@ -321,7 +377,7 @@ async function main() {
             id: task.id,
             title: task.title,
             description: task.description,
-            status: task.status,
+            status: task.status as TaskStatus,
             startDate: new Date(task.startDate),
             endDate: new Date(task.endDate),
             weight: task.weight,
@@ -345,7 +401,7 @@ async function main() {
                 create: {
                     id: update.id,
                     text: update.text,
-                    type: update.type,
+                    type: update.type as TaskUpdateType,
                     progressPercentage: 50, // Default progress for seed
                     createdAt: new Date(update.createdAt),
                     authorId: authorId,
@@ -376,8 +432,9 @@ async function main() {
       create: {
         id: team.id,
         name: team.name,
-        projectId: team.projectId,
         teamLeadId: teamLeadId,
+        // Teams are linked to projects rather than owned by one.
+        projects: { create: [{ projectId: team.projectId }] },
         members: {
           connect: memberIds.map(id => ({ id }))
         }

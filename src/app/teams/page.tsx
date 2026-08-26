@@ -5,45 +5,37 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { TeamsManagement } from "@/components/teams/teams-management";
 import { getTeamsPageData } from "./actions";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import type { Project as PrismaProject, Team as PrismaTeam, User as PrismaUser } from '@prisma/client';
 import { useRouter } from "next/navigation";
+import { useFirstLoad } from "@/hooks/use-first-load";
 
-type UserWithRoles = PrismaUser & { pmoDivisionId?: string | null, roles: { name: string }[] };
-
-type TeamWithRelations = PrismaTeam & {
-    project: PrismaProject;
-    teamLead: UserWithRoles;
-    members: UserWithRoles[];
-    memberIds: string[];
-};
-
-type TeamsPageData = {
-    teams: TeamWithRelations[];
-    projects: PrismaProject[];
-    users: UserWithRoles[];
-}
+// Derived from the action rather than restated. Three files each declared
+// their own TeamWithRelations, which is why adding the project links broke
+// them in three different ways.
+type TeamsPageData = Awaited<ReturnType<typeof getTeamsPageData>>;
 
 function LoadingSkeleton() {
     return (
-        <div className="p-4 sm:p-6">
-            <Card>
-                <CardHeader className="flex-row items-center justify-between">
-                    <div>
-                        <Skeleton className="h-8 w-48" />
-                        <Skeleton className="h-4 w-96 mt-2" />
-                    </div>
-                    <Skeleton className="h-10 w-36" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-24 w-full" />
-                </CardContent>
-            </Card>
-        </div>
+        <LoadingRegion label="Loading teams">
+          <div className="p-4 sm:p-6">
+              <Card>
+                  <CardHeader className="flex-row items-center justify-between">
+                      <div>
+                          <Skeleton className="h-8 w-48" />
+                          <Skeleton className="h-4 w-96 mt-2" />
+                      </div>
+                      <Skeleton className="h-10 w-36" />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-24 w-full" />
+                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-24 w-full" />
+                  </CardContent>
+              </Card>
+          </div>
+        </LoadingRegion>
     );
 }
 
@@ -80,9 +72,12 @@ export default function TeamsPage() {
                 setIsLoading(false);
             }
         }
-    }, [localUser, authLoading, hasPermission, router, fetchData]);
+    }, [localUser, authLoading, hasPermission, router, fetchData]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
 
-    if (isLoading || authLoading) {
+    if (showSkeleton || authLoading) {
         return <LoadingSkeleton />;
     }
 

@@ -41,119 +41,41 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent } from "../ui/card";
 import { Separator } from "../ui/separator";
-import type { User, Department, ProjectStatus, PmoDivision } from "@prisma/client";
+import type { Department, ProjectStatus, PmoDivision } from "@prisma/client";
+import type { UserWithRoles } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
 import { Switch } from "../ui/switch";
 import { useAuth } from "@/context/auth-context";
+import { ProjectFormMilestones } from "./project-form-milestones";
+import { ProjectFormCost } from "./project-form-cost";
+import {
+  projectSchema,
+  type ProjectFormValues,
+  type ProjectFormInitialValues,
+} from "./project-form-schema";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "../ui/alert-dialog";
+import type { Serialized } from '@/lib/serialize';
 
-
-const milestoneSchema = z.object({
-  id: z.string().optional(),
-  title: z.string().min(3, "Title must be at least 3 characters."),
-  description: z.string().min(10, "Description must be at least 10 characters."),
-  startDate: z.date(),
-  dueDate: z.date(),
-  weight: z.coerce.number().min(0, "Weight must be a positive number.").max(100, "Weight must be between 0 and 100."),
-}).refine(data => data.dueDate >= data.startDate, {
-    message: "Due date must be on or after the start date.",
-    path: ["dueDate"],
-});
-
-const paymentSchema = z.object({
-    id: z.string().optional(),
-    title: z.string().min(3, "Payment title is required."),
-    description: z.string().optional(),
-    amount: z.coerce.number().positive("Amount must be a positive number."),
-    paymentDate: z.date({ required_error: "A payment date is required." }),
-});
-
-const projectSchema = z.object({
-  name: z.string().min(3, "Project name must be at least 3 characters."),
-  description: z.string().min(10, "Description must be at least 10 characters."),
-  startDate: z.date({ required_error: "A start date is required."}),
-  endDate: z.date({ required_error: "An end date is required."}),
-  workingYear: z.string().nonempty("An active working year must be set on the Settings page."),
-  statusId: z.string().nonempty("Please select a project status."),
-  pmoDivisionId: z.string().nonempty("Please select an EPMO division."),
-  projectManagerId: z.string().nonempty("Please select a project manager."),
-  responsibleDepartmentIds: z.array(z.string()).nonempty({ message: "At least one department must be responsible." }),
-  hasMilestones: z.boolean().default(false),
-  hasCost: z.boolean().default(false),
-  currency: z.string(),
-  totalCost: z.coerce.number().optional(),
-  milestones: z.array(milestoneSchema).optional(),
-  payments: z.array(paymentSchema).optional(),
-  timelineChangeReason: z.string().optional(),
-}).refine(data => data.endDate > data.startDate, {
-    message: "End date must be after start date.",
-    path: ["endDate"],
-}).refine(data => {
-    if (!data.hasMilestones || !data.milestones || data.milestones.length === 0) return true;
-    const totalWeight = data.milestones.reduce((sum, m) => sum + m.weight, 0);
-    return totalWeight === 100;
-}, {
-    message: "If milestones are provided, their total weight must sum to exactly 100.",
-    path: ["milestones"],
-}).superRefine((data, ctx) => {
-    if (data.hasMilestones && data.milestones) {
-        data.milestones.forEach((milestone, index) => {
-            if (milestone.startDate < data.startDate) {
-                ctx.addIssue({
-                    path: [`milestones.${index}.startDate`],
-                    message: "Start date cannot be before the project's start date.",
-                    code: z.ZodIssueCode.custom
-                });
-            }
-            if (milestone.dueDate > data.endDate) {
-                ctx.addIssue({
-                    path: [`milestones.${index}.dueDate`],
-                    message: "Due date cannot be after the project's end date.",
-                    code: z.ZodIssueCode.custom
-                });
-            }
-        });
-    }
-
-    if (data.hasCost && data.payments && data.payments.length > 0) {
-        const paymentTotal = data.payments.reduce((sum, p) => sum + p.amount, 0);
-        if (data.totalCost !== paymentTotal) {
-            const currencySymbol = data.currency === 'USD' ? '$' : 'ETB';
-            ctx.addIssue({
-                path: ["totalCost"],
-                message: `The sum of payment items (${currencySymbol} ${paymentTotal.toLocaleString()}) must equal the total project cost (${currencySymbol} ${(data.totalCost || 0).toLocaleString()}).`,
-                code: z.ZodIssueCode.custom
-            });
-        }
-    }
-});
-
-type ProjectFormValues = z.infer<typeof projectSchema>;
-
-type UserWithRoles = User & { roles: { name: string }[] };
 
 type ProjectFormProps = {
   mode: 'create' | 'edit';
-  initialData?: ProjectFormValues;
+  initialData?: ProjectFormInitialValues;
   users: UserWithRoles[];
-  pmoDivisions: PmoDivision[];
-  departments: Department[];
-  projectStatuses: ProjectStatus[];
+  pmoDivisions: Serialized<PmoDivision>[];
+  departments: Serialized<Department>[];
+  projectStatuses: Serialized<ProjectStatus>[];
   onSubmit: (data: ProjectFormValues) => Promise<any>;
-}
-
-const formatCurrency = (value: number | string | undefined) => {
-    if (value === undefined || value === null) return '';
-    const num = Number(String(value).replace(/,/g, ''));
-    if (isNaN(num)) return '';
-    return new Intl.NumberFormat('en-US').format(num);
 };
 
-const unformatCurrency = (value: string) => {
-    return value.replace(/,/g, '');
-}
-
+/**
+ * The form itself: state, submission, and the three sections it composes.
+ *
+ * The schema and the two long sections were extracted because this file had
+ * grown to nearly nine hundred lines. Nothing was shared between the
+ * milestones markup and the payments markup, so keeping them together bought
+ * nothing and made either one hard to find.
+ */
 export function ProjectForm({ mode, initialData, users, pmoDivisions, departments, projectStatuses, onSubmit }: ProjectFormProps) {
   const router = useRouter();
   const { hasPermission } = useAuth();
@@ -227,15 +149,10 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
     }
   }, [initialData, isEditMode, form]);
 
-  const { fields: milestoneFields, append: appendMilestone, remove: removeMilestone } = useFieldArray({
-    control: form.control,
-    name: "milestones",
-  });
-
-  const { fields: paymentFields, append: appendPayment, remove: removePayment } = useFieldArray({
-    control: form.control,
-    name: "payments",
-  });
+  // Passed whole to the section that owns each list, rather than destructured
+  // here and threaded through as six separate props.
+  const milestoneArray = useFieldArray({ control: form.control, name: "milestones" });
+  const paymentArray = useFieldArray({ control: form.control, name: "payments" });
 
   const milestonesError = form.formState.errors.milestones?.root;
 
@@ -495,339 +412,22 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
         </div>
 
         <Separator />
-        
-        <div className="space-y-4">
-             <FormField
-                control={form.control}
-                name="hasMilestones"
-                render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                    <FormLabel className="text-base">This project has milestones</FormLabel>
-                    <FormDescription>
-                        Enable to define the major milestones for this project.
-                    </FormDescription>
-                    </div>
-                    <FormControl>
-                    <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                    />
-                    </FormControl>
-                </FormItem>
-                )}
-            />
-            {hasMilestones && (
-                <div className="space-y-4 p-4 border rounded-lg">
-                    <div>
-                        <h3 className="text-lg font-medium">Milestones</h3>
-                        <p className="text-sm text-muted-foreground">Define the major milestones for this project. The sum of all milestone weights must equal 100%.</p>
-                    </div>
-                    {milestoneFields.map((field, index) => (
-                    <Card key={field.id} className="relative">
-                        <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => removeMilestone(index)}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                        <CardContent className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-4">
-                            <FormField
-                                control={form.control}
-                                name={`milestones.${index}.title`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Milestone Title</FormLabel>
-                                    <FormControl>
-                                        <Input placeholder="e.g., Q1 Goals" {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                            
-                            <FormField
-                                control={form.control}
-                                name={`milestones.${index}.description`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Milestone Description</FormLabel>
-                                    <FormControl>
-                                        <Textarea placeholder="Describe the milestone goals and deliverables." {...field} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                        <div className="space-y-4">
-                            <div className="grid grid-cols-2 gap-4">
-                                <FormField
-                                    control={form.control}
-                                    name={`milestones.${index}.startDate`}
-                                    render={({ field: dateField }) => (
-                                    <FormItem className="flex flex-col">
-                                        <FormLabel>Start Date</FormLabel>
-                                        <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                            <Button
-                                                variant={"outline"}
-                                                className={cn("w-full pl-3 text-left font-normal", !dateField.value && "text-muted-foreground")}
-                                            >
-                                                {dateField.value ? format(dateField.value, "PPP") : <span>Pick a date</span>}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar mode="single" selected={dateField.value} onSelect={dateField.onChange} initialFocus />
-                                        </PopoverContent>
-                                        </Popover>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                                <FormField
-                                    control={form.control}
-                                    name={`milestones.${index}.dueDate`}
-                                    render={({ field: dateField }) => (
-                                    <FormItem className="flex flex-col">
-                                        <FormLabel>Due Date</FormLabel>
-                                        <Popover>
-                                        <PopoverTrigger asChild>
-                                            <FormControl>
-                                            <Button
-                                                variant={"outline"}
-                                                className={cn("w-full pl-3 text-left font-normal", !dateField.value && "text-muted-foreground")}
-                                            >
-                                                {dateField.value ? format(dateField.value, "PPP") : <span>Pick a date</span>}
-                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                            </Button>
-                                            </FormControl>
-                                        </PopoverTrigger>
-                                        <PopoverContent className="w-auto p-0" align="start">
-                                            <Calendar mode="single" selected={dateField.value} onSelect={dateField.onChange} initialFocus />
-                                        </PopoverContent>
-                                        </Popover>
-                                        <FormMessage />
-                                    </FormItem>
-                                    )}
-                                />
-                            </div>
-                            
-                            <FormField
-                                control={form.control}
-                                name={`milestones.${index}.weight`}
-                                render={({ field }) => (
-                                    <FormItem>
-                                    <FormLabel>Milestone Weight (%)</FormLabel>
-                                    <FormControl>
-                                        <Input type="number" placeholder="e.g., 25" {...field} onChange={e => field.onChange(parseInt(e.target.value, 10) || 0)} />
-                                    </FormControl>
-                                    <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
-                        </div>
-                        </CardContent>
-                    </Card>
-                    ))}
 
-                    <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => appendMilestone({ title: '', description: '', startDate: new Date(), dueDate: new Date(), weight: 20 })}
-                    >
-                        <PlusCircle className="w-4 h-4 mr-2" />
-                        Add Milestone
-                    </Button>
-                    {milestonesError && (
-                        <p className="text-sm font-medium text-destructive">{milestonesError.message}</p>
-                    )}
-                </div>
-            )}
-        </div>
+        <ProjectFormMilestones
+          form={form}
+          fieldArray={milestoneArray}
+          enabled={hasMilestones}
+          weightError={milestonesError}
+        />
 
         <Separator />
-         <div className="space-y-4">
-            <FormField
-                control={form.control}
-                name="hasCost"
-                render={({ field }) => (
-                <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-                    <div className="space-y-0.5">
-                    <FormLabel className="text-base">This project has a cost</FormLabel>
-                    <FormDescription>
-                        Enable to add financial tracking and define a payment schedule.
-                    </FormDescription>
-                    </div>
-                    <FormControl>
-                    <Switch
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                    />
-                    </FormControl>
-                </FormItem>
-                )}
-            />
-            {hasCost && (
-                <div className="space-y-4 p-4 border rounded-lg">
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                         <FormField
-                            control={form.control}
-                            name="currency"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Currency</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                    <FormControl>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select a currency" />
-                                    </SelectTrigger>
-                                    </FormControl>
-                                    <SelectContent>
-                                    <SelectItem value="ETB">ETB</SelectItem>
-                                    <SelectItem value="USD">USD</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                         />
-                         <FormField
-                            control={form.control}
-                            name="totalCost"
-                            render={({ field }) => (
-                                <FormItem>
-                                <FormLabel>Total Project Cost</FormLabel>
-                                <FormControl>
-                                    <div className="relative">
-                                        <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currencySymbol}</span>
-                                        <Input 
-                                          type="text" 
-                                          className={cn("pl-8", currency === 'ETB' && "pl-10")}
-                                          placeholder="50,000"
-                                          value={field.value === undefined ? '' : formatCurrency(String(field.value))}
-                                          onChange={(e) => {
-                                            const unformattedValue = unformatCurrency(e.target.value);
-                                            const numberValue = parseFloat(unformattedValue);
-                                            field.onChange(isNaN(numberValue) ? undefined : numberValue);
-                                          }}
-                                          onBlur={(e) => {
-                                            const formatted = formatCurrency(e.target.value);
-                                            e.target.value = formatted;
-                                          }}
-                                        />
-                                    </div>
-                                </FormControl>
-                                <FormMessage />
-                                </FormItem>
-                            )}
-                        />
-                    </div>
-                    
-                    <Separator />
-                    
-                    <div>
-                        <h4 className="font-medium">Payment Schedule</h4>
-                        <p className="text-sm text-muted-foreground">Define the payment items for this project. The sum must equal the total project cost.</p>
-                    </div>
 
-                     {paymentFields.map((field, index) => (
-                        <Card key={field.id} className="relative bg-muted/50">
-                            <Button type="button" variant="ghost" size="icon" className="absolute top-2 right-2" onClick={() => removePayment(index)}>
-                                <X className="h-4 w-4" />
-                            </Button>
-                            <CardContent className="p-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-4">
-                                     <FormField
-                                        control={form.control}
-                                        name={`payments.${index}.title`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Payment Title</FormLabel>
-                                            <FormControl><Input placeholder="e.g., Initial Deposit" {...field} /></FormControl>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name={`payments.${index}.description`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Description (Optional)</FormLabel>
-                                            <FormControl><Textarea placeholder="Payment for Phase 1 deliverables" {...field} /></FormControl>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </div>
-                                 <div className="space-y-4">
-                                     <FormField
-                                        control={form.control}
-                                        name={`payments.${index}.amount`}
-                                        render={({ field }) => (
-                                            <FormItem>
-                                            <FormLabel>Amount</FormLabel>
-                                             <FormControl>
-                                                <div className="relative">
-                                                    <span className="absolute left-3 top-2.5 text-sm text-muted-foreground">{currencySymbol}</span>
-                                                    <Input 
-                                                      type="text" 
-                                                      className={cn("pl-8", currency === 'ETB' && "pl-10")}
-                                                      placeholder="10,000" 
-                                                      value={field.value === undefined ? '' : formatCurrency(String(field.value))}
-                                                      onChange={(e) => {
-                                                        const unformattedValue = unformatCurrency(e.target.value);
-                                                        const numberValue = parseFloat(unformattedValue);
-                                                        field.onChange(isNaN(numberValue) ? undefined : numberValue);
-                                                      }}
-                                                      onBlur={(e) => {
-                                                        const formatted = formatCurrency(e.target.value);
-                                                        e.target.value = formatted;
-                                                      }}
-                                                    />
-                                                </div>
-                                            </FormControl>
-                                            <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                    <FormField
-                                        control={form.control}
-                                        name={`payments.${index}.paymentDate`}
-                                        render={({ field: dateField }) => (
-                                        <FormItem className="flex flex-col">
-                                            <FormLabel>Payment Date</FormLabel>
-                                            <Popover>
-                                                <PopoverTrigger asChild>
-                                                    <FormControl><Button variant={"outline"} className={cn("w-full pl-3 text-left font-normal", !dateField.value && "text-muted-foreground")}>{dateField.value ? format(dateField.value, "PPP") : <span>Pick a date</span>}<CalendarIcon className="ml-auto h-4 w-4 opacity-50" /></Button></FormControl>
-                                                </PopoverTrigger>
-                                                <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={dateField.value} onSelect={dateField.onChange} initialFocus /></PopoverContent>
-                                            </Popover>
-                                            <FormMessage />
-                                        </FormItem>
-                                        )}
-                                    />
-                                 </div>
-                            </CardContent>
-                        </Card>
-                     ))}
-
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="w-full"
-                        onClick={() => appendPayment({ title: '', description: '', amount: 0, paymentDate: new Date() })}
-                    >
-                        <PlusCircle className="w-4 h-4 mr-2" />
-                        Add Payment Item
-                    </Button>
-                </div>
-            )}
-         </div>
-
+        <ProjectFormCost
+          form={form}
+          fieldArray={paymentArray}
+          enabled={hasCost}
+          currencySymbol={currencySymbol}
+        />
         <Separator />
         <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={() => router.back()} disabled={isSubmitting}>Cancel</Button>

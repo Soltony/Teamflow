@@ -4,17 +4,21 @@
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import type { Department } from '@prisma/client';
+import { requirePermission } from "@/lib/auth/guard";
+import { serialize } from '@/lib/serialize';
 
 export async function getDepartmentsData() {
+    await requirePermission('departments:read');
   const departments = await prisma.department.findMany({
     orderBy: {
       name: 'asc',
     },
   });
-  return JSON.parse(JSON.stringify(departments));
+  return serialize(departments);
 }
 
-export async function createDepartment(data: Omit<Department, 'id'>) {
+export async function createDepartment(data: { name: string }) {
+    await requirePermission('departments:create');
     if (!data.name.trim()) {
         return { success: false, error: "Department name cannot be empty." };
     }
@@ -30,7 +34,8 @@ export async function createDepartment(data: Omit<Department, 'id'>) {
     }
 }
 
-export async function updateDepartment(id: string, data: Omit<Department, 'id'>) {
+export async function updateDepartment(id: string, data: { name: string }) {
+    await requirePermission('departments:update');
     if (!data.name.trim()) {
         return { success: false, error: "Department name cannot be empty." };
     }
@@ -45,6 +50,7 @@ export async function updateDepartment(id: string, data: Omit<Department, 'id'>)
 }
 
 export async function deleteDepartment(id: string) {
+    await requirePermission('departments:delete');
     try {
         const projectsWithDept = await prisma.project.count({ 
             where: { responsibleDepartments: { some: { id } } } 

@@ -15,7 +15,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { PlusCircle, Pencil, Trash2, ChevronDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Role } from "@prisma/client";
+// From lib/types, not the Prisma row: these render names and role badges,
+// and the queries behind them select a deliberately narrow set of columns.
+import type { Role } from "@/lib/types";
 import {
   AlertDialog,
   AlertDialogAction,

@@ -20,12 +20,17 @@ const config = {
     },
     extend: {
       fontFamily: {
+        // --font-sans is defined by next/font in app/layout.tsx. The
+        // body and headline aliases named "Inter" directly, which resolved
+        // to nothing because the font was never loaded; they now point at
+        // the same loaded family so all three agree.
         sans: ["var(--font-sans)", ...fontFamily.sans],
-        body: ["Inter", "sans-serif"],
-        headline: ["Inter", "sans-serif"],
+        body: ["var(--font-sans)", ...fontFamily.sans],
+        headline: ["var(--font-sans)", ...fontFamily.sans],
       },
       colors: {
         border: "hsl(var(--border))",
+        "switch-off": "hsl(var(--switch-off))",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",

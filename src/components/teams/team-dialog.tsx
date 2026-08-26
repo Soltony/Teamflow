@@ -37,7 +37,10 @@ import type { Project, Team, User, Role } from "@/lib/types";
 
 const teamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters."),
-  projectId: z.string(),
+  // A team can serve several projects. This dialog is opened from one of
+  // them, so it carries the whole set through rather than replacing it with
+  // the project you happen to be looking at.
+  projectIds: z.array(z.string()).nonempty(),
   teamLeadId: z.string().nonempty("Please select a team lead."),
   memberIds: z.array(z.string()).nonempty("A team must have at least one member."),
 });
@@ -78,16 +81,22 @@ export function TeamDialog({ isOpen, onOpenChange, team, project, allUsers, onSu
   useEffect(() => {
     if (isOpen) {
         if (team) {
+            // Keep the team on every project it already serves, and make
+            // sure the one being edited from is among them.
+            const existing: string[] = (team as any).projectIds ?? [];
+            const projectIds = existing.includes(project.id)
+                ? existing
+                : [...existing, project.id];
             form.reset({
                 name: team.name,
-                projectId: project.id,
+                projectIds: projectIds as [string, ...string[]],
                 teamLeadId: team.teamLeadId,
                 memberIds: (team as any).members?.map((m: User) => m.id) || team.memberIds || [],
             });
         } else {
             form.reset({
                 name: "",
-                projectId: project.id,
+                projectIds: [project.id],
                 teamLeadId: "",
                 memberIds: [],
             });

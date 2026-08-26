@@ -1,0 +1,121 @@
+name: CI
+
+# Runs the checks that used to be skipped: `ignoreBuildErrors` was true and
+# there was no test framework, so a type error or a broken metric could reach
+# production unnoticed. Both are fixed; this keeps them fixed.
+
+on:
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: nibteam_ci
+        ports: ['5432:5432']
+        # Without this the steps can start before Postgres accepts connections.
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nibteam_ci
+      SHADOW_DATABASE_URL: postgresql://postgres:postgres@localhost:5432/nibteam_ci_shadow
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      - name: Typecheck
+        run: npx tsc --noEmit
+
+      - name: Unit tests
+        run: npx vitest run
+
+      # Proves the migrations build a database from nothing, which is what
+      # broke before: the migration folders were recorded but empty, so the
+      # build fell back to `prisma db push`.
+      - name: Apply migrations to an empty database
+        run: npx prisma migrate deploy
+
+      - name: Build
+        run: npx next build
+
+      # The suites below need a running server and a seeded database. They are
+      # the ones that would have caught the redirect loop and the unguarded
+      # server actions, so they are worth the extra minute.
+      - name: Seed reference data
+        run: npx prisma db seed
+        continue-on-error: true
+
+      - name: Start the application
+        run: |
+          npx next start -p 3399 &
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null http://localhost:3399/login; then
+              echo "ready"; exit 0
+            fi
+            sleep 1
+          done
+          echo "server did not become ready"; exit 1
+
+      - name: Pagination
+        run: npx tsx scripts/test-pagination.ts
+
+      - name: Session handling
+        run: npx tsx scripts/test-stale-session.ts http://localhost:3399
+
+      - name: Authentication end to end
+        run: npx tsx scripts/test-auth-e2e.ts http://localhost:3399
+
+      - name: Server-action authorization
+        run: npx tsx scripts/test-action-authz.ts http://localhost:3399
+
+      - name: Administrator flows
+        run: npx tsx scripts/test-admin-flows.ts
+
+      - name: Project documents
+        run: npx tsx scripts/test-documents.ts http://localhost:3399
+
+      - name: Issue register and team model
+        run: npx tsx scripts/test-issues-teams.ts
+
+      - name: Interface and accessibility
+        run: npx tsx scripts/test-ui.ts
+
+      - name: Teams from a project card
+        run: npx tsx scripts/test-team-from-project.ts
+
+      - name: Settings registry
+        run: npx tsx scripts/test-settings.ts
+
+      - name: Password reset
+        run: npx tsx scripts/test-password-reset.ts
+
+      - name: Remove test accounts
+        if: always()
+        run: npx tsx scripts/cleanup-test-accounts.ts

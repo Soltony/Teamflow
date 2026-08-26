@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/context/auth-context';
 import { getTaskDetails, type TaskDetails } from './actions';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import Link from 'next/link';
 import { ArrowLeft, CheckCircle, Clock, AlertTriangle, Target, Award, User as UserIcon, XCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -34,23 +34,26 @@ import { addTaskUpdateAction } from '@/app/my-tasks/actions';
 import { approveTaskAction, declineTaskAction } from '@/app/team-view/actions';
 import { DeclineTaskDialog } from '@/components/tasks/decline-task-dialog';
 import type { TeamViewTask } from '@/app/team-view/page';
+import { useFirstLoad } from "@/hooks/use-first-load";
 
 
 function LoadingSkeleton() {
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-        <Skeleton className="h-6 w-48 mb-4" />
-        <Skeleton className="h-48 w-full" />
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <Skeleton className="h-64 w-full" />
-            </div>
-            <div className="space-y-6">
-              <Skeleton className="h-48 w-full" />
-              <Skeleton className="h-48 w-full" />
-            </div>
-        </div>
-    </div>
+    <LoadingRegion label="Loading task">
+      <div className="p-4 sm:p-6 space-y-6">
+          <Skeleton className="h-6 w-48 mb-4" />
+          <Skeleton className="h-48 w-full" />
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-6">
+                <Skeleton className="h-64 w-full" />
+              </div>
+              <div className="space-y-6">
+                <Skeleton className="h-48 w-full" />
+                <Skeleton className="h-48 w-full" />
+              </div>
+          </div>
+      </div>
+    </LoadingRegion>
   )
 }
 
@@ -67,7 +70,7 @@ export default function TaskDetailsPage() {
     const { localUser, loading: authLoading } = useAuth();
     const router = useRouter();
     const { toast } = useToast();
-    
+  
     const [data, setData] = useState<TaskDetails | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [taskToDecline, setTaskToDecline] = useState<TeamViewTask | null>(null);
@@ -96,7 +99,7 @@ export default function TaskDetailsPage() {
             fetchTask();
         }
     }, [authLoading, fetchTask]);
-    
+  
     const { task, allUsers } = data || {};
     const userMap = useMemo(() => new Map(allUsers?.map(u => [u.id, u])), [allUsers]);
 
@@ -156,11 +159,17 @@ export default function TaskDetailsPage() {
         setTaskToDecline(null);
     };
 
-    if (isLoading || authLoading || !task) {
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
+
+    if (showSkeleton || authLoading || !task) {
         return <LoadingSkeleton />;
     }
 
-    const assignees = task.assignedUserIds.map(id => userMap.get(id)).filter(Boolean);
+    const assignees = task.assignedUserIds
+        .map((id: string) => userMap.get(id))
+        .filter((u): u is NonNullable<typeof u> => Boolean(u));
 
     const isPendingReview = task.status === 'PENDING_REVIEW';
     const canReview = isPendingReview && isTeamLeadOrManager;
@@ -215,7 +224,7 @@ export default function TaskDetailsPage() {
                                             return (
                                                 <div key={update.id} className="flex items-start gap-3">
                                                     <Avatar className="w-8 h-8 border">
-                                                        <AvatarImage src={author?.avatar} alt={author?.name} />
+                                                        <AvatarImage src={author?.avatar ?? undefined} alt={author?.name} />
                                                         <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
                                                     </Avatar>
                                                     <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
@@ -260,7 +269,7 @@ export default function TaskDetailsPage() {
                                         {assignees.map(user => (
                                             <div key={user.id} className="flex items-center gap-2">
                                                 <Avatar className="w-6 h-6 border">
-                                                    <AvatarImage src={user?.avatar} />
+                                                    <AvatarImage src={user?.avatar ?? undefined} />
                                                     <AvatarFallback>{user?.name.charAt(0)}</AvatarFallback>
                                                 </Avatar>
                                                 <span className="text-sm">{user?.name}</span>
@@ -302,7 +311,7 @@ export default function TaskDetailsPage() {
                              <Card>
                                 <CardHeader><CardTitle>Review Task</CardTitle></CardHeader>
                                 <CardContent className="flex justify-end gap-2">
-                                    <Button variant="outline" onClick={() => setTaskToDecline(task as TeamViewTask)}>
+                                    <Button variant="outline" onClick={() => setTaskToDecline(task as unknown as TeamViewTask)}>
                                         <XCircle className="mr-2 h-4 w-4" /> Decline
                                     </Button>
                                     <Button onClick={handleApprove}>

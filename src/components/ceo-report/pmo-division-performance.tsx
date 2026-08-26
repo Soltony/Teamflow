@@ -10,10 +10,21 @@ import Link from 'next/link';
 import { isPast, max as dateMax, parseISO, isAfter } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
+import { isClosedStatus, summarizeSchedule, type ProjectScheduleLike, type StatusLike } from '@/lib/metrics';
 
-type ProjectWithRelations = Project & {
-    status: ProjectStatus;
-    milestones: { tasks: { endDate: string; completedAt: string | null }[] }[];
+/**
+ * Only what this table reads.
+ *
+ * It extends ProjectScheduleLike so the schedule metrics can be computed
+ * from it directly, rather than being cast into shape — the cast was hiding
+ * the fact that the declared type had no endDate at all.
+ */
+type ProjectWithRelations = ProjectScheduleLike & {
+    id: string;
+    name: string;
+    pmoDivisionId: string;
+    statusId: string;
+    status: StatusLike;
 };
 
 type PmoDivisionPerformanceProps = {
@@ -28,26 +39,20 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
     const completedStatusId = useMemo(() => projectStatuses.find(s => s.name === 'Completed')?.id, [projectStatuses]);
 
     const pmoDivisionPerformance = useMemo(() => {
-        const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
-        
         return pmoDivisions
             .map(div => {
                 const divisionProjects = projects.filter(p => p.pmoDivisionId === div.id);
-                const divCompletedProjects = divisionProjects.filter(p => p.statusId === completedStatusId);
-                
-                const divOnTimeCount = divCompletedProjects.filter(project => {
-                    const allTaskEndDates = project.milestones.flatMap(m => m.tasks.map(t => t.completedAt ? parseISO(t.completedAt) : new Date(0)));
-                    if (allTaskEndDates.length === 0) return true;
-                    const lastTaskDate = dateMax(allTaskEndDates);
-                    return !isAfter(lastTaskDate, parseISO(project.endDate as unknown as string));
-                }).length;
 
-                const divCompletionRate = divCompletedProjects.length > 0 ? (divOnTimeCount / divCompletedProjects.length) * 100 : 0;
-                
-                const divOverdueCount = divisionProjects.filter(p => 
-                    nonArchivedStatusNames.includes(p.status.name) && isPast(parseISO(p.endDate as unknown as string))
-                ).length;
-                
+                // Shared metrics, so this card agrees with the KPI row above it.
+                // Its own rule mapped incomplete tasks to the epoch and then took
+                // a maximum, which meant a division with unfinished work still
+                // showed a 100% completion rate.
+                const divSchedule = summarizeSchedule(divisionProjects);
+
+                const divCompletedProjects = divisionProjects.filter(p => isClosedStatus(p.status));
+                const divCompletionRate = divSchedule.onTimeRate;
+                const divOverdueCount = divSchedule.overdue;
+
                 const projectsByStatus = divisionProjects.reduce((acc, project) => {
                     const statusName = statusMap.get(project.statusId) || 'Unknown';
                     if (!acc[statusName]) {

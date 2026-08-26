@@ -12,11 +12,38 @@ export type User = {
   firstName: string;
   lastName: string;
   email: string;
-  avatar: string;
-  phoneNumber?: string;
+  /** Null for users who have never set one; the UI falls back to initials. */
+  avatar?: string | null;
+  phoneNumber?: string | null;
   roles?: Role[];
   pmoDivisionId?: string | null;
   departmentId?: string | null;
+};
+
+/**
+ * A user loaded together with their roles.
+ *
+ * Ten components each declared their own version of this, which is why the page
+ * state and the component props kept disagreeing: `User.roles` is optional
+ * (not every query selects it) while anything doing a role check needs it
+ * present. Use this type wherever roles are actually required, and it will be
+ * a compile error to pass a user that was loaded without them.
+ */
+export type UserWithRoles = User & { roles: Role[] };
+
+/**
+ * The subset of a user needed to show who someone is.
+ *
+ * Queries that feed avatars, assignee pickers and mention lists select only
+ * these fields, rather than shipping every colleague's phone number and
+ * password metadata to the browser. Components that merely display a person
+ * should ask for this, not for the whole record.
+ */
+export type UserSummary = {
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string | null;
 };
 
 export type Team = {
@@ -49,6 +76,8 @@ export type Task = {
   endDate: string;
   weight: number;
   progress: number;
+  /** The milestone this task hangs off. Always present; see services/milestones.ts. */
+  milestoneId: string;
   assignedUserIds: string[];
   updates?: TaskUpdate[];
   completedAt?: string | null;
@@ -84,12 +113,42 @@ export type ProjectStatus = {
   name: string;
 };
 
-export type BlockerStatus = 'OPEN' | 'RESOLVED';
+export type BlockerStatus = 'OPEN' | 'IN_PROGRESS' | 'ESCALATED' | 'RESOLVED' | 'CLOSED';
+export type BlockerSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type BlockerCategory =
+  | 'RESOURCE'
+  | 'TECHNICAL'
+  | 'VENDOR'
+  | 'FINANCIAL'
+  | 'DEPENDENCY'
+  | 'REGULATORY'
+  | 'SCOPE'
+  | 'OTHER';
 
+/**
+ * An issue blocking a project, as the browser sees it.
+ *
+ * Dates are strings here: this is the shape after the value has crossed the
+ * server/client boundary.
+ */
 export type Blocker = {
   id: string;
+  title: string;
   description: string;
+  category: BlockerCategory;
+  severity: BlockerSeverity;
   status: BlockerStatus;
+  impact?: string | null;
+  dueDate?: string | null;
+  ownerId?: string | null;
+  owner?: { id: string; name: string } | null;
+  raisedById?: string | null;
+  raisedBy?: { id: string; name: string } | null;
+  resolvedById?: string | null;
+  escalatedToId?: string | null;
+  escalatedTo?: { id: string; name: string } | null;
+  escalatedAt?: string | null;
+  escalationReason?: string | null;
   createdAt: string;
   resolvedAt?: string | null;
   resolution?: string | null;

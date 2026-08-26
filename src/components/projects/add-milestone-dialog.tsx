@@ -65,12 +65,14 @@ export function AddMilestoneDialog({ isOpen, onOpenChange, projectStartDate, pro
 
         if (data.startDate < parseISO(projectStartDate)) {
             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
                 path: ['startDate'],
                 message: `Must be on or after project start: ${format(parseISO(projectStartDate), 'MMM d, yyyy')}.`
             });
         }
         if (data.dueDate > parseISO(projectEndDate)) {
             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
                 path: ['dueDate'],
                 message: `Must be on or before project end date: ${format(parseISO(projectEndDate), 'MMM d, yyyy')}.`
             });

@@ -27,7 +27,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import type { Task, User, TaskUpdate, TaskStatus } from "@/lib/types";
+import type { Task, User, TaskUpdate, TaskStatus, UserSummary } from "@/lib/types";
 import { format, formatDistanceToNow, isPast, parseISO, differenceInDays, isAfter, endOfDay, isToday } from "date-fns";
 import { CheckCircle, XCircle, AlertTriangle, Clock, Check, Target, Award, CalendarCheck } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
@@ -44,7 +44,7 @@ const taskUpdateSchema = (taskProgress: number) => z.object({
 type TaskUpdateFormValues = z.infer<ReturnType<typeof taskUpdateSchema>>;
 
 type MyTasksManagementProps = {
-    allUsers: User[];
+    allUsers: UserSummary[];
     currentUser: User;
     initialTasks: UserTask[];
     onDataChange: () => void;
@@ -62,7 +62,7 @@ const TaskItem = ({
     onUpdateSubmit,
 }: { 
     task: UserTask; 
-    userMap: Map<string, User>;
+    userMap: Map<string, UserSummary>;
     onStatusChange: (newStatus: TaskStatus) => void;
     onUpdateSubmit: (data: TaskUpdateFormValues) => void;
 }) => {
@@ -146,7 +146,7 @@ const TaskItem = ({
                                     return (
                                         <div key={update.id} className="flex items-start gap-3">
                                             <Avatar className="w-8 h-8 border">
-                                                <AvatarImage src={author?.avatar} alt={author?.name} />
+                                                <AvatarImage src={author?.avatar ?? undefined} alt={author?.name} />
                                                 <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
@@ -221,7 +221,7 @@ const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubm
     title: string;
     icon: React.ReactNode;
     tasks: UserTask[];
-    userMap: Map<string, User>;
+    userMap: Map<string, UserSummary>;
     onStatusChange: (task: UserTask, newStatus: TaskStatus) => void;
     onUpdateSubmit: (task: UserTask, data: TaskUpdateFormValues) => void;
     expandedTaskId: string | null;

@@ -33,22 +33,15 @@ import {
 } from "@/components/ui/table";
 import { useToast } from "@/hooks/use-toast";
 import { approveTimelineChange, rejectTimelineChange } from "@/app/timeline-approvals/actions";
+import type { getPendingTimelineChanges } from "@/app/timeline-approvals/actions";
 import { useAuth } from "@/context/auth-context";
 import { format } from "date-fns";
-import type { TimelineChangeRequest } from "@prisma/client";
 import { Badge } from "../ui/badge";
 import { ArrowRight } from "lucide-react";
 
-type PendingRequestWithRelations = TimelineChangeRequest & { 
-    project: {
-        id: string;
-        name: string;
-    };
-    requestedBy: {
-        id: string;
-        name: string;
-    }
-};
+// Derived from the action, so the dates cannot be declared as Dates when
+// what actually arrives from the server is an ISO string.
+type PendingRequestWithRelations = Awaited<ReturnType<typeof getPendingTimelineChanges>>[number];
 
 type TimelineApprovalManagementProps = {
   initialRequests: PendingRequestWithRelations[];
@@ -108,7 +101,7 @@ export function TimelineApprovalManagement({ initialRequests, onDataChange }: Ti
 
   return (
     <>
-      <Table>
+      <Table scrollLabel="Timeline changes awaiting approval">
         <TableHeader>
           <TableRow>
             <TableHead>Project</TableHead>

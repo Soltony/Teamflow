@@ -35,15 +35,12 @@ import { useToast } from "@/hooks/use-toast";
 import { approvePayment, rejectPayment } from "@/app/payment-approvals/actions";
 import { useAuth } from "@/context/auth-context";
 import { format } from "date-fns";
-import type { Payment } from "@prisma/client";
+// Derived from the action that fills this list. Restating the Prisma row
+// here declared `amount` as a Decimal and the dates as Dates, when what
+// arrives is a decimal string and ISO strings.
+import type { getPendingPayments } from '@/app/payment-approvals/actions';
 
-type PendingPaymentWithRelations = Payment & { 
-    project: {
-        id: string;
-        name: string;
-        currency: 'ETB' | 'USD';
-    } 
-};
+type PendingPaymentWithRelations = Awaited<ReturnType<typeof getPendingPayments>>[number];
 
 type PaymentApprovalManagementProps = {
   initialPayments: PendingPaymentWithRelations[];
@@ -102,7 +99,7 @@ export function PaymentApprovalManagement({ initialPayments, onDataChange }: Pay
 
   return (
     <>
-      <Table>
+      <Table scrollLabel="Payments awaiting approval">
         <TableHeader>
           <TableRow>
             <TableHead>Project</TableHead>

@@ -1,127 +1,89 @@
-
 'use server';
 
 import { revalidatePath } from 'next/cache';
+
 import prisma from '@/lib/db';
-import axios from 'axios';
+import { requireUser } from '@/lib/auth/guard';
+import { normalizePhoneNumber } from '@/lib/auth/phone';
+import { changePasswordAction } from '@/app/auth/actions';
 
-interface ChangePasswordPayload {
-    phoneNumber: string;
-    currentPassword?: string;
-    newPassword?: string;
+/**
+ * Profile management. Previously these actions forwarded to an external
+ * identity service; email, phone, and password now live in this system's own
+ * User table.
+ */
+
+/**
+ * Updates the signed-in user's own contact details.
+ *
+ * The user id is taken from the session, never from the caller: the previous
+ * version accepted it as an argument, which let anyone edit anyone's profile.
+ * The parameter is retained so existing call sites keep compiling, but its
+ * value is ignored.
+ */
+export async function updateUserProfile(
+  _userId: string | undefined,
+  data: { email: string; phoneNumber: string },
+): Promise<{ success: true } | { success: false; error: string }> {
+  let user;
+  try {
+    user = await requireUser();
+  } catch {
+    return { success: false, error: 'You are not signed in.' };
+  }
+
+  const email = (data?.email ?? '').trim().toLowerCase();
+  const phoneNumber = normalizePhoneNumber(data?.phoneNumber);
+
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return { success: false, error: 'Enter a valid email address.' };
+  }
+  if (!phoneNumber) {
+    return {
+      success: false,
+      error: 'Enter a valid Ethiopian phone number, for example 0912345678.',
+    };
+  }
+
+  const clash = await prisma.user.findFirst({
+    where: {
+      id: { not: user.id },
+      OR: [{ email }, { phoneNumber }],
+    },
+    select: { email: true, phoneNumber: true },
+  });
+
+  if (clash) {
+    return {
+      success: false,
+      error:
+        clash.email === email
+          ? 'That email address is already used by another account.'
+          : 'That phone number is already used by another account.',
+    };
+  }
+
+  await prisma.user.update({
+    where: { id: user.id },
+    data: { email, phoneNumber },
+  });
+
+  revalidatePath('/profile');
+  return { success: true };
 }
 
-const formatPhoneNumber = (phone: string | null | undefined): string => {
-    if (!phone) return '';
-    // If it starts with '0', replace with +251. Otherwise, assume it's already formatted.
-    if (phone.startsWith('0')) {
-        return `+251${phone.substring(1)}`;
-    }
-    return phone;
-};
-
-
-export async function updateUserProfile(userId: string, data: { email: string, phoneNumber: string }, accessToken: string) {
-    try {
-        const currentUser = await prisma.user.findUnique({ where: { id: userId } });
-        if (!currentUser) {
-            return { success: false, error: "User not found." };
-        }
-
-        const emailChanged = data.email !== currentUser.email;
-        const phoneChanged = data.phoneNumber !== currentUser.phoneNumber;
-
-        if (emailChanged) {
-             const changeEmailUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-email`;
-             const emailPayload = {
-                 currentEmail: currentUser.email,
-                 newEmail: data.email,
-             };
-             await axios.post(changeEmailUrl, emailPayload, {
-                 headers: { 'Authorization': `Bearer ${accessToken}` }
-             });
-        }
-        
-        if (phoneChanged) {
-            const changePhoneUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-phone-number`;
-            
-            const payload = { 
-                currentPhoneNumber: formatPhoneNumber(currentUser.phoneNumber), 
-                newPhoneNumber: formatPhoneNumber(data.phoneNumber) 
-            };
-
-            await axios.post(changePhoneUrl, payload, {
-                headers: { 'Authorization': `Bearer ${accessToken}` }
-            });
-        }
-
-        if (emailChanged || phoneChanged) {
-            await prisma.user.update({
-                where: { id: userId },
-                data: {
-                    email: data.email,
-                    phoneNumber: data.phoneNumber,
-                },
-            });
-        }
-        
-        revalidatePath('/profile');
-        return { success: true };
-    } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            console.error("Auth service profile update failed. Response:", error.response.status, error.response.data);
-            const responseData = error.response.data as any;
-            const errorValue = responseData.errors || responseData.message;
-            let errorMessage = 'An unexpected error occurred during the profile update.';
-            if (Array.isArray(errorValue)) {
-                errorMessage = errorValue.join(', ');
-            } else if (typeof errorValue === 'string') {
-                errorMessage = errorValue;
-            }
-            return { success: false, error: errorMessage };
-        }
-        console.error("Failed to update user profile:", error);
-        return { success: false, error: "Failed to update profile. The email or phone number may already be in use." };
-    }
-}
-
-
-export async function changePassword(data: ChangePasswordPayload, accessToken: string) {
-    try {
-        const authApiUrl = `${process.env.NEXT_PUBLIC_AUTH_API_BASE_URL}/api/Auth/change-password`;
-        
-        const payload = {
-            phoneNumber: formatPhoneNumber(data.phoneNumber),
-            currentPassword: data.currentPassword,
-            newPassword: data.newPassword,
-        };
-
-        const response = await axios.post(authApiUrl, payload, {
-            headers: {
-                'Authorization': `Bearer ${accessToken}`,
-            },
-        });
-        
-        if (response.data?.isSuccess || response.status === 200 || response.status === 204) {
-            return { success: true };
-        } else {
-            const errorMessage = Array.isArray(response.data.errors) ? response.data.errors.join(', ') : 'An unknown error occurred.';
-            return { success: false, error: errorMessage };
-        }
-    } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-            console.error("Auth service password change failed. Response:", error.response.status, error.response.data);
-             const responseData = error.response.data as any;
-             const errorValue = responseData.errors;
-             let errorMessage = 'An unexpected error occurred during password change.';
-             if (Array.isArray(errorValue)) {
-                 errorMessage = errorValue.join(', ');
-             } else if (typeof errorValue === 'string') {
-                 errorMessage = errorValue;
-             }
-            return { success: false, error: errorMessage };
-        }
-        console.error("Failed to change password:", error);
-        return { success: false, error: 'Could not connect to the authentication service.' };
-    }
+/**
+ * Changes the signed-in user's password.
+ *
+ * Delegates to the shared action so there is one implementation of the rule
+ * that a password change revokes every session.
+ */
+export async function changePassword(data: {
+  currentPassword?: string;
+  newPassword?: string;
+}): Promise<{ success: true } | { success: false; error: string }> {
+  return changePasswordAction({
+    currentPassword: data?.currentPassword ?? '',
+    newPassword: data?.newPassword ?? '',
+  });
 }

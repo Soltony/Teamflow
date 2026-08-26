@@ -1,3 +1,4 @@
+import type { UserWithRoles } from '@/lib/types';
 
 'use client';
 
@@ -7,40 +8,38 @@ import { useAuth } from "@/context/auth-context";
 import { useToast } from "@/hooks/use-toast";
 import { ProjectForm } from "@/components/projects/project-form";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import { getProjectForEdit, updateProject } from "../../actions";
 import type { User, Department, ProjectStatus, PmoDivision } from "@prisma/client";
 import { parseISO } from "date-fns";
 
-type EditProjectData = {
-  project: any;
-  users: User[];
-  pmoDivisions: PmoDivision[];
-  departments: Department[];
-  projectStatuses: ProjectStatus[];
-};
+// Derived from the action: the shape the browser receives, including the
+// narrowed user columns. `project: any` hid the same disagreement.
+type EditProjectData = NonNullable<Awaited<ReturnType<typeof getProjectForEdit>>>;
 
 function LoadingSkeleton() {
   return (
-    <div className="p-4 sm:p-6">
-      <Card className="max-w-4xl mx-auto">
-        <CardHeader>
-          <Skeleton className="h-8 w-64" />
-          <Skeleton className="h-4 w-96 mt-2" />
-        </CardHeader>
-        <CardContent className="space-y-8">
-          <div className="space-y-4">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-20 w-full" />
-            <div className="grid grid-cols-2 gap-4">
+        <LoadingRegion label="Loading">
+      <div className="p-4 sm:p-6">
+        <Card className="max-w-4xl mx-auto">
+          <CardHeader>
+            <Skeleton className="h-8 w-64" />
+            <Skeleton className="h-4 w-96 mt-2" />
+          </CardHeader>
+          <CardContent className="space-y-8">
+            <div className="space-y-4">
               <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-20 w-full" />
+              <div className="grid grid-cols-2 gap-4">
+                <Skeleton className="h-10 w-full" />
+                <Skeleton className="h-10 w-full" />
+              </div>
             </div>
-          </div>
-          <Skeleton className="h-48 w-full" />
-        </CardContent>
-      </Card>
-    </div>
+            <Skeleton className="h-48 w-full" />
+          </CardContent>
+        </Card>
+      </div>
+        </LoadingRegion>
   );
 }
 

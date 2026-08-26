@@ -31,6 +31,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { createProjectStatus, updateProjectStatus, deleteProjectStatus } from "@/app/settings/actions";
+import type { Serialized } from '@/lib/serialize';
 
 const statusSchema = z.object({
   name: z.string().min(3, "Status name must be at least 3 characters."),
@@ -39,15 +40,15 @@ const statusSchema = z.object({
 type StatusFormValues = z.infer<typeof statusSchema>;
 
 type ProjectStatusManagementProps = {
-  initialStatuses: ProjectStatus[];
+  initialStatuses: Serialized<ProjectStatus>[];
   onDataChange: () => void;
 };
 
 export function ProjectStatusManagement({ initialStatuses, onDataChange }: ProjectStatusManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const [editingStatus, setEditingStatus] = useState<ProjectStatus | null>(null);
-  const [statusToDelete, setStatusToDelete] = useState<ProjectStatus | null>(null);
+  const [editingStatus, setEditingStatus] = useState<Serialized<ProjectStatus> | null>(null);
+  const [statusToDelete, setStatusToDelete] = useState<Serialized<ProjectStatus> | null>(null);
 
   const form = useForm<StatusFormValues>({
     resolver: zodResolver(statusSchema),
@@ -76,7 +77,7 @@ export function ProjectStatusManagement({ initialStatuses, onDataChange }: Proje
     });
   }
 
-  function handleEdit(status: ProjectStatus) {
+  function handleEdit(status: Serialized<ProjectStatus>) {
     setEditingStatus(status);
     form.reset({ name: status.name });
   }

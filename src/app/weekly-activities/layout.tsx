@@ -1,10 +1,9 @@
+import { protectedLayout } from '@/components/protected-shell';
+import { titleForRoute } from '@/lib/auth/route-permissions';
 
-import { AppShellProvider } from "@/components/app-shell";
+// Who may open this route is declared in src/lib/auth/route-permissions.ts.
+export default protectedLayout('/weekly-activities');
 
-export default function WeeklyActivitiesLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  return <AppShellProvider>{children}</AppShellProvider>;
-}
+// Fills the "%s | NIB EPMO" template declared in the root layout, so this
+// route's browser tab is distinguishable from every other one.
+export const metadata = { title: titleForRoute('/weekly-activities') };

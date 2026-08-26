@@ -89,7 +89,7 @@ export function PaymentsManagement({ initialProjects, onDataChange }: PaymentsMa
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-4 pt-0">
-              <Table>
+              <Table scrollLabel="Project payments">
                 <TableHeader>
                   <TableRow>
                     <TableHead>Payment</TableHead>

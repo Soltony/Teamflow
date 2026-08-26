@@ -30,7 +30,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import type { Milestone, Project, Task, User, TaskStatus, Team } from "@/lib/types";
+import type { Milestone, Project, Task, User, TaskStatus, Team, UserWithRoles } from "@/lib/types";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -47,11 +47,10 @@ import {
 } from "@/components/ui/select";
 import { useMemo, useEffect } from "react";
 
-const taskStatuses: TaskStatus[] = ['TODO', 'IN_PROGRESS', 'PENDING_REVIEW', 'DONE'];
+const taskStatuses = ['TODO', 'IN_PROGRESS', 'PENDING_REVIEW', 'DONE'] as const satisfies readonly TaskStatus[];
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const formatStatus = (s: string) => capitalize(s.replace(/_/g, ' ').toLowerCase());
 
-type UserWithRoles = User & { roles: { name: string }[] };
 type ProjectWithTeamsAndMilestones = Project & { 
     teams: (Team & { members: User[], teamLead: User })[];
     milestones: (Milestone & {tasks: Task[]})[]; 
@@ -85,9 +84,9 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, task: Task, ha
     if (hasMilestones) {
         if (!data.milestoneId) {
             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
                 path: ['milestoneId'],
-                message: 'A milestone must be selected for this project.',
-                code: z.ZodIssueCode.custom
+                message: 'A milestone must be selected for this project.'
             });
             return;
         }
@@ -102,6 +101,7 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, task: Task, ha
 
             if (data.weight > maxWeightForThisTask + 1e-6) {
                 ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
                     path: ["weight"],
                     message: `Weight exceeds remaining ${maxWeightForThisTask}% for milestone tasks.`,
                 });
@@ -109,12 +109,14 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, task: Task, ha
 
             if (selectedMilestone.startDate && data.startDate < parseISO(selectedMilestone.startDate)) {
                 ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
                     path: ['startDate'],
                     message: `Must be on or after milestone start: ${format(parseISO(selectedMilestone.startDate), 'MMM d')}.`
                 });
             }
             if (selectedMilestone.dueDate && data.endDate > parseISO(selectedMilestone.dueDate)) {
                 ctx.addIssue({
+                    code: z.ZodIssueCode.custom,
                     path: ['endDate'],
                     message: `Must be on or before milestone due date: ${format(parseISO(selectedMilestone.dueDate), 'MMM d')}.`
                 });
@@ -130,6 +132,7 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, task: Task, ha
 
         if (data.weight > remainingForProject + 1e-6) {
             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
                 path: ["weight"],
                 message: `Weight for all project-level tasks cannot exceed 100%. Remaining: ${remainingForProject}%.`,
             });
@@ -219,7 +222,7 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
   );
   
   async function onSubmit(data: z.infer<ReturnType<typeof createTaskSchema>>) {
-    const updatedTask: Task = {
+    const updatedTask = {
       ...task,
       ...data,
       startDate: data.startDate.toISOString(),

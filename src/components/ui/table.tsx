@@ -2,11 +2,28 @@ import * as React from "react"
 
 import { cn } from "@/lib/utils"
 
+/**
+ * A table, in a container that can be scrolled sideways on a narrow screen.
+ *
+ * The container was already scrollable, but only with a mouse or a finger:
+ * a scrollable div is not keyboard-reachable unless something focusable is
+ * inside it, and several of these tables are read-only text. tabIndex makes
+ * the region focusable so the arrow keys work, and the role and label stop
+ * that focus stop from being an unexplained one.
+ */
 const Table = React.forwardRef<
   HTMLTableElement,
-  React.HTMLAttributes<HTMLTableElement>
->(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+  React.HTMLAttributes<HTMLTableElement> & {
+    /** Describes the table for anyone who lands on the scroll region. */
+    scrollLabel?: string
+  }
+>(({ className, scrollLabel = "Table", ...props }, ref) => (
+  <div
+    className="relative w-full overflow-auto focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+    tabIndex={0}
+    role="region"
+    aria-label={scrollLabel}
+  >
     <table
       ref={ref}
       className={cn("w-full caption-bottom text-sm", className)}

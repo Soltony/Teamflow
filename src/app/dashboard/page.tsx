@@ -2,6 +2,10 @@
 import React from 'react';
 import prisma from "@/lib/db";
 import { DashboardClient } from "@/components/dashboard/dashboard-client";
+import { requirePermissionOrRedirect } from "@/lib/auth/guard";
+import { serialize } from '@/lib/serialize';
+import { OPEN_BLOCKER_STATUSES } from '@/lib/validation/blocker';
+import { USER_DISPLAY_SELECT } from '@/lib/queries/user-select';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,11 +35,35 @@ function generateWorkingYears() {
     return Array.from(years);
 }
 
-export default async function DashboardPage() {
+type DashboardSearchParams = { year?: string; division?: string };
+
+export default async function DashboardPage({
+    searchParams,
+}: {
+    searchParams: Promise<DashboardSearchParams>;
+}) {
+    await requirePermissionOrRedirect('dashboard:view');
+
     const activeYear = await getCurrentWorkingYear();
+    const params = await searchParams;
+
+    // The year and division filters run in the query rather than over an array
+    // the browser already holds. The page previously loaded every project in
+    // the bank — with its milestones, tasks and blockers — and then discarded
+    // most of them client-side to show one year of one division.
+    const selectedYear = params?.year ?? activeYear;
+    const selectedDivision = params?.division;
+
+    const projectWhere = {
+        ...(selectedYear && selectedYear !== 'all' ? { workingYear: selectedYear } : {}),
+        ...(selectedDivision && selectedDivision !== 'all'
+            ? { pmoDivisionId: selectedDivision }
+            : {}),
+    };
 
     const [allProjects, projectStatuses, pmoDivisions, departments, teams, distinctYears] = await Promise.all([
         prisma.project.findMany({
+            where: projectWhere,
             include: {
                 status: true,
                 pmoDivision: true,
@@ -48,7 +76,7 @@ export default async function DashboardPage() {
                 },
                 blockers: {
                     where: {
-                        status: 'OPEN'
+                        status: { in: [...OPEN_BLOCKER_STATUSES] }
                     }
                 },
             },
@@ -57,10 +85,12 @@ export default async function DashboardPage() {
         prisma.pmoDivision.findMany(),
         prisma.department.findMany(),
         prisma.team.findMany({
+            // A team is reached through its project links now.
+            where: { projects: { some: { project: projectWhere } } },
             include: {
-                teamLead: true,
-                project: true,
-                members: true, // Include team members
+                teamLead: { select: USER_DISPLAY_SELECT },
+                projects: { include: { project: { select: { id: true, name: true } } } },
+                members: { select: USER_DISPLAY_SELECT },
             },
             orderBy: {
                 name: 'asc'
@@ -82,11 +112,11 @@ export default async function DashboardPage() {
     
     return (
         <DashboardClient
-            initialProjects={JSON.parse(JSON.stringify(allProjects))}
-            projectStatuses={JSON.parse(JSON.stringify(projectStatuses))}
-            pmoDivisions={JSON.parse(JSON.stringify(pmoDivisions))}
-            departments={JSON.parse(JSON.stringify(departments))}
-            teams={JSON.parse(JSON.stringify(teams))}
+            initialProjects={serialize(allProjects)}
+            projectStatuses={serialize(projectStatuses)}
+            pmoDivisions={serialize(pmoDivisions)}
+            departments={serialize(departments)}
+            teams={serialize(teams)}
             availableYears={availableYears}
             currentWorkingYear={activeYear}
         />

@@ -27,7 +27,7 @@ export const users = [
   { id: 'user-6', name: 'Fiona Garcia', firstName: 'Fiona', lastName: 'Garcia', email: 'fiona.garcia@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-6', phoneNumber: '0912345675' },
   { id: 'user-7', name: 'George Harris', firstName: 'George', lastName: 'Harris', email: 'george.harris@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-7', phoneNumber: '0912345676' },
   { id: 'user-8', name: 'Helen Clark', firstName: 'Helen', lastName: 'Clark', email: 'helen.clark@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-8', phoneNumber: '0912345677' },
-  { id: 'user-9', name: 'Ian King', firstName: 'Ian', lastName: 'King', email: 'ian.king@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-9', phoneNumber: '0912345678' },
+  { id: 'user-9', name: 'Ian King', firstName: 'Ian', lastName: 'King', email: 'ian.king@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-9', phoneNumber: '0912345670' },
   { id: 'user-10', name: 'Jane Wright', firstName: 'Jane', lastName: 'Wright', email: 'jane.wright@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-10', phoneNumber: '0912345679' },
   { id: 'user-11', name: 'Kevin Scott', firstName: 'Kevin', lastName: 'Scott', email: 'kevin.scott@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-11', phoneNumber: '0912345680' },
   { id: 'user-12', name: 'Laura Green', firstName: 'Laura', lastName: 'Green', email: 'laura.green@teamflow.com', avatar: 'https://i.pravatar.cc/150?u=user-12', phoneNumber: '0912345681' },
@@ -71,7 +71,69 @@ export const projectStatusesData = [
   { name: 'Completed' },
 ];
 
-export const projectsData = [
+/**
+ * Shapes for the seed fixtures.
+ *
+ * Without these, TypeScript infers a union from the literals — some tasks carry
+ * completedAt or updates and others do not — and reading either field becomes
+ * an error on the members that omit it.
+ */
+export interface SeedTaskUpdate {
+  id: string;
+  text: string;
+  userEmail: string;
+  createdAt: string;
+  type: string;
+}
+
+export interface SeedTask {
+  id: string;
+  title: string;
+  description: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  weight: number;
+  assignedUserEmails: string[];
+  completedAt?: string;
+  updates?: SeedTaskUpdate[];
+}
+
+export interface SeedMilestone {
+  id: string;
+  title: string;
+  description: string;
+  startDate: string;
+  dueDate: string;
+  weight: number;
+  tasks: SeedTask[];
+}
+
+export interface SeedBlocker {
+  id: string;
+  description: string;
+  status: string;
+  createdAt: string;
+  resolvedAt?: string;
+  resolution?: string;
+}
+
+export interface SeedProject {
+  id: string;
+  name: string;
+  description: string;
+  startDate: string;
+  endDate: string;
+  workingYear: string;
+  statusName: string;
+  pmoDivisionName: string;
+  projectManagerEmail: string;
+  responsibleDepartmentNames: string[];
+  milestones: SeedMilestone[];
+  blockers: SeedBlocker[];
+}
+
+export const projectsData: SeedProject[] = [
   {
     id: 'proj-1',
     name: 'E-commerce Platform Relaunch',

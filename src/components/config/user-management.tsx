@@ -44,7 +44,9 @@ import {
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "../ui/form";
 import { Input } from "../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Role, User, PmoDivision } from "@prisma/client";
+// From lib/types, not the Prisma row: these render names and role badges,
+// and the queries behind them select a deliberately narrow set of columns.
+import type { Role, UserWithRoles } from "@/lib/types";
 import { updateUser, createUser, deleteUser } from "@/app/config/actions";
 import { Badge } from "../ui/badge";
 import {
@@ -56,12 +58,11 @@ import {
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/auth-context";
 
-type UserWithRoles = User & { roles: Role[] };
 
 type UserManagementProps = {
   initialUsers: UserWithRoles[];
   initialRoles: Role[];
-  initialPmoDivisions: PmoDivision[];
+  initialPmoDivisions: { id: string; name: string }[];
   onDataChange: () => void;
 };
 
@@ -91,7 +92,7 @@ type AddUserFormValues = z.infer<typeof addUserSchema>;
 export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions, onDataChange }: UserManagementProps) {
   const { toast } = useToast();
   const [isPending, startTransition] = useTransition();
-  const { accessToken, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   
   const canManageUsers = hasPermission('config:manage-users');
 
@@ -170,13 +171,13 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
 
   const onAddUserSubmit = (data: AddUserFormValues) => {
     startTransition(async () => {
-        if (!accessToken) {
-            toast({ title: "Authentication Error", description: "You are not authenticated. Please log in again.", variant: "destructive" });
-            return;
-        }
-        const result = await createUser({ ...data, roleIds: data.roleIds || [] }, accessToken);
+        const result = await createUser({ ...data, roleIds: data.roleIds || [] });
         if (result.success) {
-            toast({ title: "User Created", description: `User ${data.firstName} ${data.lastName} has been created.` });
+            toast({
+                title: "User Created",
+                description: `Temporary password for ${data.firstName} ${data.lastName}: ${result.temporaryPassword} — give this to them directly. It is shown only once.`,
+                duration: 30000,
+            });
             handleCloseAddUserDialog();
             onDataChange();
         } else {
@@ -221,7 +222,7 @@ export function UserManagement({ initialUsers, initialRoles, initialPmoDivisions
           </div>
         </CardHeader>
         <CardContent>
-          <Table>
+          <Table scrollLabel="User accounts">
             <TableHeader>
               <TableRow>
                 <TableHead>Name</TableHead>

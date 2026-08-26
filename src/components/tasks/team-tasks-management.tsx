@@ -23,47 +23,12 @@ import { approveTaskAction, declineTaskAction } from "@/app/team-view/actions";
 import { Progress } from "../ui/progress";
 import { DeclineTaskDialog } from "./decline-task-dialog";
 import { cn } from "@/lib/utils";
+import {
+  milestoneProgress as calculateMilestoneProgress,
+  projectProgress as calculateProjectProgress,
+} from '@/lib/metrics';
 
 const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
-
-const calculateMilestoneProgress = (milestone: any) => {
-    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
-    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-        const taskProgress = task.progress || 0;
-        return acc + (taskProgress * (task.weight / 100));
-    }, 0);
-    return totalProgress;
-};
-
-const calculateProjectProgress = (project: any) => {
-if (!project.milestones || project.milestones.length === 0) {
-    return 0;
-}
-
-const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
-
-if (weightedMilestones.length > 0) {
-    return weightedMilestones.reduce((acc: number, milestone: any) => {
-    const milestoneProgress = calculateMilestoneProgress(milestone);
-    return acc + (milestoneProgress * (milestone.weight / 100));
-    }, 0);
-} else {
-    const allTasks = project.milestones.flatMap((m: any) => m.tasks);
-    if (allTasks.length === 0) return 0;
-
-    const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-    if (totalTaskWeight === 0) {
-        const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
-        return allTasks.length > 0 ? totalProgress / allTasks.length : 0;
-    }
-    
-    const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
-    return acc + ((task.progress || 0) * task.weight);
-    }, 0);
-
-    return totalWeightedTaskProgress / totalTaskWeight;
-}
-};
 
 const TaskCollapsible = ({
   task,
@@ -132,7 +97,7 @@ const TaskCollapsible = ({
                         return (
                             <div key={update.id} className="flex items-start gap-3">
                                 <Avatar className="w-8 h-8 border">
-                                    <AvatarImage src={author?.avatar} alt={author?.name} />
+                                    <AvatarImage src={author?.avatar ?? undefined} alt={author?.name} />
                                     <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
                                 </Avatar>
                                 <div className="flex-1 text-sm bg-muted/50 p-3 rounded-md">
@@ -184,13 +149,18 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<string | null>(null);
 
-  const userMap = useMemo(() => new Map(allUsers.map((u: any) => [u.id, u])), [allUsers]);
+  const userMap = useMemo(
+    () => new Map<string, User>(allUsers.map((u: any) => [u.id as string, u as User])),
+    [allUsers],
+  );
 
   const { projectsByStatus, orderedStatuses, projectsClosingThisMonthCount, projectsWithPendingApprovalsCount, projectsClosingThisMonthIds, projectsWithPendingApprovalsIds } = useMemo(() => {
     if (!projectStatuses || !initialTasksByProject) return { projectsByStatus: {}, orderedStatuses: [], projectsClosingThisMonthCount: 0, projectsWithPendingApprovalsCount: 0, projectsClosingThisMonthIds: [], projectsWithPendingApprovalsIds: [] };
 
     const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
-    const statusIdToName = new Map(projectStatuses.map((s: any) => [s.id, s.name]));
+    const statusIdToName = new Map<string, string>(
+      projectStatuses.map((s: any) => [s.id as string, s.name as string]),
+    );
 
     let closingThisMonthCount = 0;
     const closingIds: string[] = [];

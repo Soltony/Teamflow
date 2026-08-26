@@ -2,22 +2,21 @@
 'use server';
 
 import prisma from "@/lib/db";
+import { notifyMany } from "@/lib/notifications/notify";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from "@prisma/client";
 import type { TaskStatus } from "@/lib/types";
+import { requirePermission, isAdmin as userIsAdmin } from "@/lib/auth/guard";
+import { auditAction } from "@/lib/auth/audit-context";
+import { AUDIT_ACTIONS } from "@/lib/audit-log";
+import { serialize } from '@/lib/serialize';
 
-export async function getPendingReviewTasks(userId: string) {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { roles: true }
-    });
+/** Identity comes from the session; `_userId` is ignored (see archive/actions.ts). */
+export async function getPendingReviewTasks(_userId?: string) {
+    const user = await requirePermission('tasks:approve');
+    const userId = user.id;
 
-    if (!user) return [];
-    
-    const canApprove = user.roles.some(role => role.permissions.includes('tasks:approve'));
-    if (!canApprove) return [];
-
-    const isAdmin = user.roles.some(role => role.name === 'Admin');
+    const isAdmin = userIsAdmin(user);
 
     let whereClause: Prisma.TaskWhereInput = {
         status: 'PENDING_REVIEW'
@@ -101,17 +100,28 @@ export async function getPendingReviewTasks(userId: string) {
         }
     });
 
-    return JSON.parse(JSON.stringify(tasks));
+    return serialize(tasks);
 }
 
-export async function approveTask(taskId: string, reviewerId: string) {
+/**
+ * Approves a task update. The reviewer is the session user, and may not be one
+ * of the task's own assignees — previously anyone could call this with any
+ * reviewer id, including their own, and approve their own work.
+ */
+export async function approveTask(taskId: string, _reviewerId?: string) {
     try {
-        const task = await prisma.task.findUnique({ 
+        const reviewer = await requirePermission('tasks:approve');
+        const reviewerId = reviewer.id;
+
+        const task = await prisma.task.findUnique({
             where: { id: taskId },
             include: { assignees: true }
         });
         if (!task) {
             return { success: false, error: "Task not found." };
+        }
+        if (task.assignees.some(a => a.id === reviewerId)) {
+            return { success: false, error: "You cannot approve your own work on this task." };
         }
 
         const isComplete = task.progress === 100;
@@ -145,14 +155,25 @@ export async function approveTask(taskId: string, reviewerId: string) {
         // Notify assignees
         const message = `Your work on task "${task.title}" was approved. Status is now "${newStatus.replace('_', ' ')}".`;
         const link = `/tasks/${task.id}`;
-        for (const assignee of task.assignees) {
-            if (assignee.id !== reviewerId) {
-                await prisma.notification.create({
-                    data: { message, link, recipientId: assignee.id, senderId: reviewerId }
-                });
-            }
-        }
+        await notifyMany(
+            prisma,
+            { message, link, senderId: reviewerId },
+            task.assignees.map((a) => a.id),
+        );
 
+
+        await auditAction(reviewer, {
+            action: AUDIT_ACTIONS.TASK_APPROVED,
+            entity: 'Task',
+            entityId: task.id,
+            details: {
+                title: task.title,
+                progress: task.progress,
+                from: task.status,
+                to: newStatus,
+                assignees: task.assignees.map((a) => a.id),
+            },
+        });
 
         revalidatePath('/task-approvals');
         revalidatePath('/team-view');
@@ -165,8 +186,11 @@ export async function approveTask(taskId: string, reviewerId: string) {
     }
 }
 
-export async function rejectTask(taskId: string, reviewerId: string, reason: string) {
+export async function rejectTask(taskId: string, _reviewerId: string | undefined, reason: string) {
     try {
+        const reviewer = await requirePermission('tasks:approve');
+        const reviewerId = reviewer.id;
+
         const task = await prisma.task.findUnique({
             where: { id: taskId },
             include: { assignees: true }
@@ -174,7 +198,10 @@ export async function rejectTask(taskId: string, reviewerId: string, reason: str
         if (!task) {
             return { success: false, error: "Task not found." };
         }
-        
+        if (task.assignees.some(a => a.id === reviewerId)) {
+            return { success: false, error: "You cannot review your own work on this task." };
+        }
+
         await prisma.task.update({
             where: { id: taskId },
             data: {
@@ -192,13 +219,18 @@ export async function rejectTask(taskId: string, reviewerId: string, reason: str
         // Notify assignees
         const message = `Your update for task "${task.title}" was declined. Reason: ${reason}`;
         const link = `/tasks/${task.id}`;
-        for (const assignee of task.assignees) {
-            if (assignee.id !== reviewerId) {
-                await prisma.notification.create({
-                    data: { message, link, recipientId: assignee.id, senderId: reviewerId }
-                });
-            }
-        }
+        await notifyMany(
+            prisma,
+            { message, link, senderId: reviewerId },
+            task.assignees.map((a) => a.id),
+        );
+
+        await auditAction(reviewer, {
+            action: AUDIT_ACTIONS.TASK_REJECTED,
+            entity: 'Task',
+            entityId: task.id,
+            details: { title: task.title, from: task.status, to: 'IN_PROGRESS', reason },
+        });
 
         revalidatePath('/task-approvals');
         revalidatePath('/team-view');

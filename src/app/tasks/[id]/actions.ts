@@ -3,13 +3,20 @@
 
 import prisma from "@/lib/db";
 import { TaskStatus, TaskUpdate as PrismaTaskUpdate, User as PrismaUser } from "@prisma/client";
+import { requireUser, userHasPermission } from "@/lib/auth/guard";
+import { serialize } from "@/lib/serialize";
+import { USER_DISPLAY_SELECT } from '@/lib/queries/user-select';
 
 type TaskUpdate = Omit<PrismaTaskUpdate, 'type'> & { type: 'COMMENT' | 'STATUS_CHANGE' };
 type User = Omit<PrismaUser, 'emailVerified'>;
 
 export type TaskDetails = Awaited<ReturnType<typeof getTaskDetails>>;
 
-export async function getTaskDetails(taskId: string, userId: string) {
+/** Identity comes from the session; `_userId` is ignored (see archive/actions.ts). */
+export async function getTaskDetails(taskId: string, _userId?: string) {
+    const user = await requireUser();
+    const userId = user.id;
+
     const task = await prisma.task.findUnique({
         where: { id: taskId },
         include: {
@@ -27,13 +34,13 @@ export async function getTaskDetails(taskId: string, userId: string) {
             },
             updates: {
                 include: {
-                    author: true
+                    author: { select: USER_DISPLAY_SELECT }
                 },
                 orderBy: {
                     createdAt: 'desc'
                 }
             },
-            assignees: true
+            assignees: { select: USER_DISPLAY_SELECT }
         }
     });
 
@@ -42,28 +49,31 @@ export async function getTaskDetails(taskId: string, userId: string) {
     }
     
     // Authorization Check
-    const user = await prisma.user.findUnique({ where: { id: userId }, include: { roles: true }});
-    if (!user) return null;
-
     const isAssignee = task.assignees.some(assignee => assignee.id === userId);
-    const hasApprovalPermission = user.roles.some(role => role.permissions.includes('tasks:approve'));
+    const hasApprovalPermission = userHasPermission(user, 'tasks:approve');
 
     // Allow access if the user is an assignee OR has approval permissions
     if (!isAssignee && !hasApprovalPermission) {
         return null;
     }
 
-    const allUsers = await prisma.user.findMany();
+    // Only the fields this page renders, not every user's contact details.
+    const allUsers = await prisma.user.findMany({
+        select: { id: true, name: true, avatar: true, email: true },
+    });
 
     const normalizedTask = {
         ...task,
         status: task.status as TaskStatus,
-        updates: task.updates.map(u => ({...u, author: u.author as User, type: u.type as TaskUpdate['type'], progressPercentage: u.progressPercentage})),
+        updates: task.updates.map(u => ({ ...u, type: u.type as TaskUpdate['type'] })),
         assignedUserIds: task.assignees.map(a => a.id),
     };
 
+    // Typed serialisation: the page infers real field types from this instead
+    // of the `any` that JSON.parse produced, which is what made every callback
+    // parameter on the detail page implicitly any.
     return {
-        task: JSON.parse(JSON.stringify(normalizedTask)),
-        allUsers: JSON.parse(JSON.stringify(allUsers))
+        task: serialize(normalizedTask),
+        allUsers: serialize(allUsers),
     };
 }

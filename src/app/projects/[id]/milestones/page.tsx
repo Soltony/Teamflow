@@ -7,23 +7,26 @@ import { notFound, useRouter, useParams } from "next/navigation";
 import { ProjectMilestones } from "@/components/projects/project-milestones";
 import { getProjectMilestonesForUser } from "../../actions";
 import { useAuth } from "@/context/auth-context";
-import { TaskStatus } from "@/lib/types";
-import { Skeleton } from "@/components/ui/skeleton";
-import type { User, Department } from "@/lib/types";
+import { TaskStatus, UserWithRoles } from "@/lib/types";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
+import type { Department } from "@/lib/types";
+import { useFirstLoad } from "@/hooks/use-first-load";
 
 type PageData = {
     project: any;
-    users: User[];
+    users: UserWithRoles[];
     departments: Department[];
 };
 
 function LoadingSkeleton() {
      return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <Skeleton className="h-6 w-48 mb-4" />
-            <Skeleton className="h-48 w-full" />
-            <Skeleton className="h-64 w-full" />
-        </div>
+        <LoadingRegion label="Loading">
+          <div className="p-4 sm:p-6 space-y-6">
+              <Skeleton className="h-6 w-48 mb-4" />
+              <Skeleton className="h-48 w-full" />
+              <Skeleton className="h-64 w-full" />
+          </div>
+        </LoadingRegion>
     );
 }
 
@@ -83,9 +86,12 @@ export default function ProjectMilestonesPage() {
             }
             fetchData();
         }
-    }, [authLoading, hasPermission, router, fetchData]);
+    }, [authLoading, hasPermission, router, fetchData]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
 
-    if (isLoading || authLoading) {
+    if (showSkeleton || authLoading) {
         return <LoadingSkeleton />;
     }
 

@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -45,30 +46,32 @@ import {
 import { cn } from "@/lib/utils";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../ui/accordion";
 import { createTeam, updateTeam, deleteTeam } from "@/app/teams/actions";
-import type { Project as PrismaProject, Team as PrismaTeam, User as PrismaUser } from '@prisma/client';
+import type { getTeamsPageData } from "@/app/teams/actions";
 import { useAuth } from "@/context/auth-context";
+import { EmptyState } from "@/components/ui/empty-state";
 
 const teamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters."),
-  projectId: z.string().nonempty("Please select a project."),
+  description: z.string().optional(),
+  // A standing team may exist before it is put on anything, so an empty
+  // list is valid — unlike the single project this used to require.
+  projectIds: z.array(z.string()),
   teamLeadId: z.string().nonempty("Please select a team lead."),
   memberIds: z.array(z.string()).nonempty("A team must have at least one member."),
 });
 
 type TeamFormValues = z.infer<typeof teamSchema>;
 
-type UserWithRoles = PrismaUser & { pmoDivisionId?: string | null, roles: { name: string }[] };
-
-type TeamWithRelations = PrismaTeam & {
-    project: PrismaProject;
-    teamLead: UserWithRoles;
-    members: UserWithRoles[];
-    memberIds: string[];
-};
+// Derived from the action that fills this component, so the shape cannot
+// drift from the query the way three hand-written copies did.
+type TeamsPageData = Awaited<ReturnType<typeof getTeamsPageData>>;
+type TeamWithRelations = TeamsPageData["teams"][number];
+type UserWithRoles = TeamsPageData["users"][number];
+type ProjectOption = TeamsPageData["projects"][number];
 
 type TeamsManagementProps = {
   initialTeams: TeamWithRelations[];
-  allProjects: PrismaProject[];
+  allProjects: ProjectOption[];
   allUsers: UserWithRoles[];
   onDataChange: () => void;
 }
@@ -94,7 +97,8 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
     resolver: zodResolver(teamSchema),
     defaultValues: {
       name: "",
-      projectId: "",
+      description: "",
+      projectIds: [],
       teamLeadId: "",
       memberIds: [],
     },
@@ -102,43 +106,54 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
 
   const isEditing = editingTeam !== null;
 
-  const selectedProjectId = form.watch("projectId");
+  const selectedProjectIds = form.watch("projectIds");
 
   const { availableLeads, availableMembers } = useMemo(() => {
     const usersToFilter = nonAdminUsers;
-    if (!selectedProjectId) {
+    if (!selectedProjectIds?.length) {
         return { availableLeads: usersToFilter, availableMembers: usersToFilter };
     }
-    const project = allProjects.find(p => p.id === selectedProjectId);
-    if (!project?.pmoDivisionId) {
+    // A team spanning several projects can draw on any of their divisions,
+    // so this is the union rather than one project’s division.
+    const divisions = new Set(
+        allProjects
+            .filter(p => selectedProjectIds.includes(p.id))
+            .map(p => p.pmoDivisionId)
+            .filter((id): id is string => Boolean(id)),
+    );
+    if (divisions.size === 0) {
         return { availableLeads: usersToFilter, availableMembers: usersToFilter };
     }
-    const filteredUsers = usersToFilter.filter(u => u.pmoDivisionId === project.pmoDivisionId);
+    const filteredUsers = usersToFilter.filter(
+        u => u.pmoDivisionId && divisions.has(u.pmoDivisionId),
+    );
     return { availableLeads: filteredUsers, availableMembers: filteredUsers };
-  }, [selectedProjectId, allProjects, nonAdminUsers]);
+  }, [selectedProjectIds, allProjects, nonAdminUsers]);
 
   useEffect(() => {
     if (isDialogOpen) {
       if (editingTeam) {
         form.reset({
             name: editingTeam.name,
-            projectId: editingTeam.projectId,
+            description: editingTeam.description ?? "",
+            projectIds: editingTeam.projectIds,
             teamLeadId: editingTeam.teamLeadId,
             memberIds: editingTeam.memberIds,
         });
       } else {
-        form.reset({ name: "", projectId: "", teamLeadId: "", memberIds: [] });
+        form.reset({ name: "", description: "", projectIds: [], teamLeadId: "", memberIds: [] });
       }
     }
   }, [isDialogOpen, editingTeam, form]);
 
   const teamsByProject = useMemo(() => {
+    // A team can appear under more than one project now, which is the point.
     return initialTeams.reduce((acc, team) => {
-      const projectName = team.project.name || 'Unknown Project';
-      if (!acc[projectName]) {
-        acc[projectName] = [];
+      const names = team.projectNames.length ? team.projectNames : ['Not on a project'];
+      for (const projectName of names) {
+        if (!acc[projectName]) acc[projectName] = [];
+        acc[projectName].push(team);
       }
-      acc[projectName].push(team);
       return acc;
     }, {} as Record<string, TeamWithRelations[]>);
   }, [initialTeams]);
@@ -215,10 +230,21 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
         </CardHeader>
         <CardContent>
           {Object.keys(teamsByProject).length === 0 ? (
-             <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-                <p>No teams have been created yet.</p>
-                <p className="text-sm">Click "Add New Team" to get started.</p>
-            </div>
+            <EmptyState
+              title="No teams yet"
+              description={
+                canCreate
+                  ? "A team can work across several projects, so you only need to set it up once."
+                  : "No teams have been set up yet."
+              }
+              action={
+                canCreate ? (
+                  <Button onClick={() => { setEditingTeam(null); setIsDialogOpen(true); }}>
+                    New team
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
             <Accordion type="multiple" className="w-full">
               {Object.entries(teamsByProject).map(([projectName, projectTeams]) => (
@@ -289,21 +315,58 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 py-4">
                 <FormField
                   control={form.control}
-                  name="projectId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Project</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value || ""}>
-                          <FormControl>
-                              <SelectTrigger><SelectValue placeholder="Select a project" /></SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                              {allProjects.map(proj => <SelectItem key={proj.id} value={proj.id}>{proj.name}</SelectItem>)}
-                          </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                  name="projectIds"
+                  render={({ field }) => {
+                    const selected = allProjects.filter(p => field.value?.includes(p.id));
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Projects</FormLabel>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn("w-full justify-start", !field.value?.length && "text-muted-foreground")}
+                              >
+                                <span className="truncate">
+                                  {selected.length === 0
+                                    ? "Not on a project yet"
+                                    : selected.length === 1
+                                      ? selected[0].name
+                                      : `${selected.length} projects selected`}
+                                </span>
+                                <ChevronDown className="ml-auto h-4 w-4" />
+                              </Button>
+                            </FormControl>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width] max-h-60 overflow-y-auto">
+                            {allProjects.map((proj) => (
+                              <DropdownMenuCheckboxItem
+                                key={proj.id}
+                                checked={field.value?.includes(proj.id)}
+                                onCheckedChange={(checked) => {
+                                  const next = field.value ? [...field.value] : [];
+                                  if (checked) next.push(proj.id);
+                                  else {
+                                    const at = next.indexOf(proj.id);
+                                    if (at > -1) next.splice(at, 1);
+                                  }
+                                  field.onChange(next);
+                                }}
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {proj.name}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <FormDescription>
+                          A team can work on several projects, and can exist before it is on any.
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 <FormField
                   control={form.control}

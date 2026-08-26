@@ -5,15 +5,17 @@ import { useAuth } from "@/context/auth-context";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { UserManagement } from "@/components/config/user-management";
 import { RoleManagement } from "@/components/config/role-management";
-import type { Role, User, PmoDivision } from "@prisma/client";
+// UserWithRoles and Role come from lib/types: the shape the browser actually
+// receives. Rebuilding them from the Prisma row declared a passwordHash on
+// data the queries deliberately never select.
+import type { Role, UserWithRoles } from "@/lib/types";
 import { Skeleton } from "../ui/skeleton";
 
-type UserWithRoles = User & { roles: Role[] };
 
 type ConfigTabsProps = {
     users: UserWithRoles[];
     roles: Role[];
-    pmoDivisions: PmoDivision[];
+    pmoDivisions: { id: string; name: string }[];
     onDataChange: () => void;
 };
 

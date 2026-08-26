@@ -39,7 +39,7 @@ export function TaskList({ tasks, onEditTask, onDeleteTask, users, canManageTask
 
   return (
     <TooltipProvider>
-      <Table>
+      <Table scrollLabel="Tasks">
         <TableHeader>
           <TableRow>
             <TableHead className="w-[80px]">Status</TableHead>

@@ -6,33 +6,32 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/context/auth-context";
 import { PaymentApprovalManagement } from "@/components/payment-approvals/payment-approvals-management";
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import { getPendingPayments } from "./actions";
 import type { Payment } from '@prisma/client';
+import { useFirstLoad } from "@/hooks/use-first-load";
 
-type PendingPaymentWithRelations = Payment & { 
-    project: {
-        id: string;
-        name: string;
-        currency: 'ETB' | 'USD';
-    } 
-};
+// Derived from the action, for the same reason as above: the restated type
+// disagreed with the value on every date field and needed a cast to hide it.
+type PendingPaymentWithRelations = Awaited<ReturnType<typeof getPendingPayments>>[number];
 
 function LoadingSkeleton() {
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-4 w-96 mt-2" />
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                    <Skeleton className="h-12 w-full" />
-                </CardContent>
-            </Card>
-        </div>
+        <LoadingRegion label="Loading payment approvals">
+          <div className="p-4 sm:p-6 space-y-6">
+              <Card>
+                  <CardHeader>
+                      <Skeleton className="h-8 w-64" />
+                      <Skeleton className="h-4 w-96 mt-2" />
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-12 w-full" />
+                      <Skeleton className="h-12 w-full" />
+                  </CardContent>
+              </Card>
+          </div>
+        </LoadingRegion>
     );
 }
 
@@ -46,7 +45,7 @@ export default function PaymentApprovalsPage() {
         setIsLoading(true);
         try {
             const data = await getPendingPayments();
-            setPendingPayments(data as PendingPaymentWithRelations[]);
+            setPendingPayments(data);
         } catch (error) {
             console.error("Failed to fetch pending payments", error);
         } finally {
@@ -62,9 +61,12 @@ export default function PaymentApprovalsPage() {
                 fetchData();
             }
         }
-    }, [authLoading, hasPermission, router, fetchData]);
+    }, [authLoading, hasPermission, router, fetchData]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
 
-    if (isLoading || authLoading) {
+    if (showSkeleton || authLoading) {
         return <LoadingSkeleton />;
     }
 

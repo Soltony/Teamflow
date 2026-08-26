@@ -5,24 +5,37 @@
 import { useEffect, useState, useCallback } from "react";
 import { notFound, useRouter, useParams } from "next/navigation";
 import { ProjectView } from "@/components/projects/project-view";
-import { getProjectDetailsForUser, addBlocker, resolveBlocker, deleteBlocker, updateBlocker, deleteProject } from "../actions";
+import {
+  getProjectDetailsForUser,
+  getBlockerOwnerOptions,
+  addBlocker,
+  resolveBlocker,
+  escalateBlocker,
+  deleteBlocker,
+  updateBlocker,
+  deleteProject,
+} from "../actions";
+import type { CreateBlockerInput, EscalateBlockerInput } from "@/lib/validation/blocker";
 import { useAuth } from "@/context/auth-context";
 import { BlockerStatus, TaskStatus, type Blocker, type Project } from "@/lib/types";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
+import { useFirstLoad } from "@/hooks/use-first-load";
 
 type ProjectWithRelations = any;
 
 function LoadingSkeleton() {
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <Skeleton className="h-6 w-48 mb-4" />
-            <Skeleton className="h-48 w-full" />
-            <div className="grid grid-cols-2 gap-4">
-                <Skeleton className="h-64 w-full" />
-                <Skeleton className="h-64 w-full" />
-            </div>
-        </div>
+        <LoadingRegion label="Loading">
+          <div className="p-4 sm:p-6 space-y-6">
+              <Skeleton className="h-6 w-48 mb-4" />
+              <Skeleton className="h-48 w-full" />
+              <div className="grid grid-cols-2 gap-4">
+                  <Skeleton className="h-64 w-full" />
+                  <Skeleton className="h-64 w-full" />
+              </div>
+          </div>
+        </LoadingRegion>
     );
 }
 
@@ -40,6 +53,8 @@ export default function ProjectDetailsPage() {
   const [resolvingBlocker, setResolvingBlocker] = useState<Blocker | null>(null);
   const [blockerToDelete, setBlockerToDelete] = useState<Blocker | null>(null);
   const [editingBlocker, setEditingBlocker] = useState<Blocker | null>(null);
+  const [escalatingBlocker, setEscalatingBlocker] = useState<Blocker | null>(null);
+  const [blockerOwners, setBlockerOwners] = useState<{ id: string; name: string }[]>([]);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
 
   const canUpdateProject = hasPermission('projects:update');
@@ -49,7 +64,13 @@ export default function ProjectDetailsPage() {
       if (!localUser?.id || !id) return;
       
       setIsLoading(true);
-      const data = await getProjectDetailsForUser(id, localUser.id);
+      const [data, owners] = await Promise.all([
+        getProjectDetailsForUser(id, localUser.id),
+        // Needed by the issue dialogs; fetched with the project so opening
+        // one does not wait on a round trip.
+        getBlockerOwnerOptions(),
+      ]);
+      setBlockerOwners(owners);
       if (data) {
           const normalizedProject = {
               ...data,
@@ -84,47 +105,52 @@ export default function ProjectDetailsPage() {
     }
   }, [id, localUser, authLoading, hasPermission, router, fetchProjectData]);
 
-  const handleBlockerAdd = async (data: { description: string }) => {
+  /** Every issue action reports failure rather than throwing, so surface it. */
+  const report = (result: { success: boolean; error?: string }, ok: string) => {
+    if (result.success) {
+      toast({ title: ok });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "That did not work",
+        description: result.error ?? "Please try again.",
+      });
+    }
+    return result.success;
+  };
+
+  const handleBlockerAdd = async (data: CreateBlockerInput) => {
     if (!project) return;
     setAddingBlocker(false);
-    await addBlocker(project.id, data.description);
-    toast({
-      title: "Blocker Added",
-      description: "The project blocker has been recorded.",
-    });
+    report(await addBlocker(project.id, data), "Issue raised");
     await fetchProjectData();
   };
 
   const handleBlockerResolve = async (blockerId: string, resolution: string) => {
     if (!project) return;
     setResolvingBlocker(null);
-    await resolveBlocker(blockerId, resolution, project.id);
-    toast({
-      title: "Blocker Resolved",
-      description: "The blocker has been marked as resolved.",
-    });
+    report(await resolveBlocker(blockerId, resolution, project.id), "Issue resolved");
     await fetchProjectData();
   };
 
-  const handleBlockerUpdate = async (blockerId: string, description: string) => {
+  const handleBlockerUpdate = async (blockerId: string, values: CreateBlockerInput) => {
     if (!project) return;
     setEditingBlocker(null);
-    await updateBlocker(blockerId, description, project.id);
-    toast({
-      title: "Blocker Updated",
-      description: "The blocker description has been updated.",
-    });
+    report(await updateBlocker(blockerId, project.id, values), "Issue updated");
     await fetchProjectData();
   };
 
+  const handleBlockerEscalate = async (blockerId: string, values: EscalateBlockerInput) => {
+    if (!project) return;
+    setEscalatingBlocker(null);
+    report(await escalateBlocker(blockerId, project.id, values), "Issue escalated");
+    await fetchProjectData();
+  };
   const handleBlockerDelete = async () => {
     if (!project || !blockerToDelete) return;
-    await deleteBlocker(blockerToDelete.id, project.id);
+    const result = await deleteBlocker(blockerToDelete.id, project.id);
     setBlockerToDelete(null);
-    toast({
-      title: "Blocker Deleted",
-      description: "The blocker has been permanently removed.",
-    });
+    report(result, "Issue deleted");
     await fetchProjectData();
   };
 
@@ -145,9 +171,12 @@ export default function ProjectDetailsPage() {
       });
     }
     setProjectToDelete(null);
-  };
+  };
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
   
-  if (isLoading || authLoading) {
+  if (showSkeleton || authLoading) {
       return <LoadingSkeleton />;
   }
   
@@ -168,6 +197,11 @@ export default function ProjectDetailsPage() {
         onResolveBlocker={(blocker) => setResolvingBlocker(blocker)}
         onEditBlocker={(blocker) => setEditingBlocker(blocker)}
         onDeleteBlocker={(blocker) => setBlockerToDelete(blocker)}
+        onEscalateBlocker={(blocker) => setEscalatingBlocker(blocker)}
+        blockerOwners={blockerOwners}
+        escalatingBlocker={escalatingBlocker}
+        onEscalateBlockerOpenChange={setEscalatingBlocker}
+        onBlockerEscalateSubmit={handleBlockerEscalate}
         onDeleteProject={(project) => setProjectToDelete(project)}
         isAddingBlocker={isAddingBlocker}
         onAddBlockerOpenChange={setAddingBlocker}

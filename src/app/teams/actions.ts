@@ -4,17 +4,36 @@
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
 import type { Prisma } from '@prisma/client';
+import { requirePermission, canSeeAllProjects } from "@/lib/auth/guard";
+import { resolvePage, type PageRequest } from "@/lib/pagination";
+import { serialize } from '@/lib/serialize';
 
-export async function createTeam(data: { name: string; projectId: string; teamLeadId: string; memberIds: string[] }) {
+/**
+ * A team can now serve several projects, so the caller passes a list.
+ *
+ * Creating one with no projects is allowed and useful: a standing team can
+ * exist before it is put on anything.
+ */
+export async function createTeam(data: {
+    name: string;
+    description?: string;
+    projectIds: string[];
+    teamLeadId: string;
+    memberIds: string[];
+}) {
+    await requirePermission('teams:create');
     try {
         await prisma.team.create({
             data: {
                 name: data.name,
-                projectId: data.projectId,
+                description: data.description || null,
                 teamLeadId: data.teamLeadId,
                 members: {
                     connect: data.memberIds.map(id => ({ id }))
-                }
+                },
+                projects: {
+                    create: data.projectIds.map(projectId => ({ projectId })),
+                },
             }
         });
         revalidatePath('/projects');
@@ -27,17 +46,50 @@ export async function createTeam(data: { name: string; projectId: string; teamLe
     }
 }
 
-export async function updateTeam(teamId: string, data: { name: string; projectId: string; teamLeadId: string; memberIds: string[] }) {
+export async function updateTeam(teamId: string, data: {
+    name: string;
+    description?: string;
+    projectIds: string[];
+    teamLeadId: string;
+    memberIds: string[];
+}) {
+    await requirePermission('teams:update');
     try {
-        await prisma.team.update({
-            where: { id: teamId },
-            data: {
-                name: data.name,
-                projectId: data.projectId,
-                teamLeadId: data.teamLeadId,
-                members: {
-                    set: data.memberIds.map(id => ({ id }))
+        await prisma.$transaction(async (tx) => {
+            await tx.team.update({
+                where: { id: teamId },
+                data: {
+                    name: data.name,
+                    description: data.description || null,
+                    teamLeadId: data.teamLeadId,
+                    members: {
+                        set: data.memberIds.map(id => ({ id }))
+                    },
                 }
+            });
+
+            // Replace the project links rather than clearing and rebuilding
+            // them all, so the createdAt on an unchanged link survives.
+            const existing = await tx.projectTeam.findMany({
+                where: { teamId },
+                select: { projectId: true },
+            });
+            const before = new Set(existing.map(e => e.projectId));
+            const after = new Set(data.projectIds);
+
+            const removed = [...before].filter(id => !after.has(id));
+            const added = [...after].filter(id => !before.has(id));
+
+            if (removed.length) {
+                await tx.projectTeam.deleteMany({
+                    where: { teamId, projectId: { in: removed } },
+                });
+            }
+            if (added.length) {
+                await tx.projectTeam.createMany({
+                    data: added.map(projectId => ({ teamId, projectId })),
+                    skipDuplicates: true,
+                });
             }
         });
         revalidatePath('/projects');
@@ -51,6 +103,7 @@ export async function updateTeam(teamId: string, data: { name: string; projectId
 }
 
 export async function deleteTeam(teamId: string) {
+    await requirePermission('teams:delete');
     try {
         await prisma.team.delete({
             where: { id: teamId }
@@ -66,22 +119,19 @@ export async function deleteTeam(teamId: string) {
 }
 
 
-export async function getTeamsPageData(userId: string) {
-    const user = await prisma.user.findUnique({
-        where: { id: userId },
-        include: { roles: true },
-    });
+/** Identity comes from the session; `_userId` is ignored (see archive/actions.ts). */
+export async function getTeamsPageData(_userId?: string, pageRequest: PageRequest = {}) {
+    const user = await requirePermission('teams:read');
+    const userId = user.id;
 
     if (!user) {
         return { teams: [], projects: [], users: [] };
     }
 
-    // Check if user has admin-level permissions (can see all teams)
-    const hasAdminPermissions = user.roles.some(role => 
-        role.permissions.includes('teams:read') && 
-        role.permissions.includes('teams:update') && 
-        role.permissions.includes('teams:delete')
-    );
+    // Whoever sees the whole portfolio sees every team in it. Inferring this
+    // from teams:read + update + delete meant granting delete rights silently
+    // granted visibility of every team in the bank.
+    const hasAdminPermissions = canSeeAllProjects(user);
     
     let whereClause: Prisma.TeamWhereInput = {};
 
@@ -94,9 +144,14 @@ export async function getTeamsPageData(userId: string) {
         };
     }
 
+    const totalCount = await prisma.team.count({ where: whereClause });
+    const { page, pageSize, skip, totalPages } = resolvePage(pageRequest, totalCount);
+
     const [teams, projects, users] = await Promise.all([
         prisma.team.findMany({
             where: whereClause,
+            skip,
+            take: pageSize,
             include: {
                 members: {
                     include: {
@@ -112,7 +167,9 @@ export async function getTeamsPageData(userId: string) {
                         }
                     }
                 },
-                project: true,
+                projects: {
+                    include: { project: { select: { id: true, name: true } } },
+                },
             },
             orderBy: {
                 name: 'asc'
@@ -138,11 +195,19 @@ export async function getTeamsPageData(userId: string) {
     const normalizedTeams = teams.map(team => ({
         ...team,
         memberIds: team.members.map(member => member.id),
+        // Flattened for the UI, which cares about the projects rather than
+        // the join rows that connect them.
+        projectIds: team.projects.map(link => link.projectId),
+        projectNames: team.projects.map(link => link.project.name),
     }));
 
     return {
-        teams: JSON.parse(JSON.stringify(normalizedTeams)),
-        projects: JSON.parse(JSON.stringify(projects)),
-        users: JSON.parse(JSON.stringify(users)),
+        teams: serialize(normalizedTeams),
+        projects: serialize(projects),
+        users: serialize(users),
+        page,
+        pageSize,
+        totalCount,
+        totalPages,
     };
 }

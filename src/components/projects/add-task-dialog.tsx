@@ -30,7 +30,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format, parseISO } from "date-fns";
-import type { Milestone, Project, Task, User, TaskStatus, Team } from "@/lib/types";
+import type { Milestone, Project, Task, User, TaskStatus, Team, UserWithRoles } from "@/lib/types";
 import { Slider } from "../ui/slider";
 import {
   DropdownMenu,
@@ -42,7 +42,6 @@ import { useMemo, useEffect } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
 import { useToast } from "@/hooks/use-toast";
 
-type UserWithRoles = User & { roles: { name: string }[] };
 type ProjectWithTeamsAndMilestones = Project & { 
     teams: (Team & { members: User[], teamLead: User })[];
     milestones: (Milestone & { tasks: Task[] })[]; 
@@ -73,9 +72,9 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, hasMilestones:
       if (hasMilestones) {
           if (!data.milestoneId) {
             ctx.addIssue({
+                code: z.ZodIssueCode.custom,
                 path: ['milestoneId'],
-                message: 'A milestone must be selected for this project.',
-                code: z.ZodIssueCode.custom
+                message: 'A milestone must be selected for this project.'
             });
             return;
           }
@@ -86,6 +85,7 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, hasMilestones:
 
               if (data.weight > remainingWeight) {
                   ctx.addIssue({
+                      code: z.ZodIssueCode.custom,
                       path: ['weight'],
                       message: `Total task weight for this milestone cannot exceed 100%. Remaining: ${remainingWeight}%.`,
                   });
@@ -93,12 +93,14 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, hasMilestones:
               
               if (milestone.startDate && data.startDate < parseISO(milestone.startDate)) {
                   ctx.addIssue({
+                      code: z.ZodIssueCode.custom,
                       path: ['startDate'],
                       message: `Must be on or after milestone start: ${format(parseISO(milestone.startDate), 'MMM d')}.`
                   });
               }
               if (milestone.dueDate && data.endDate > parseISO(milestone.dueDate)) {
                   ctx.addIssue({
+                      code: z.ZodIssueCode.custom,
                       path: ['endDate'],
                       message: `Must be on or before milestone due date: ${format(parseISO(milestone.dueDate), 'MMM d')}.`
                   });
@@ -111,6 +113,7 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, hasMilestones:
 
         if (data.weight > remainingWeight) {
              ctx.addIssue({
+                  code: z.ZodIssueCode.custom,
                   path: ['weight'],
                   message: `Total project-level task weight cannot exceed 100%. Remaining: ${remainingWeight}%.`,
               });
@@ -118,12 +121,14 @@ function createTaskSchema(project: ProjectWithTeamsAndMilestones, hasMilestones:
 
         if (project.startDate && data.startDate < parseISO(project.startDate)) {
           ctx.addIssue({
+            code: z.ZodIssueCode.custom,
             path: ['startDate'],
             message: `Must be on or after project start date: ${format(parseISO(project.startDate), 'MMM d')}.`
           });
         }
         if (project.endDate && data.endDate > parseISO(project.endDate)) {
           ctx.addIssue({
+            code: z.ZodIssueCode.custom,
             path: ['endDate'],
             message: `Must be on or before project end date: ${format(parseISO(project.endDate), 'MMM d')}.`
           });

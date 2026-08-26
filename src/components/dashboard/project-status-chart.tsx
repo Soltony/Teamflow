@@ -10,9 +10,18 @@ import {
   ChartLegendContent,
   type ChartConfig,
 } from "@/components/ui/chart";
-import type { Project, ProjectStatus } from "@/lib/types";
 
-export function ProjectStatusChart({ projects, projectStatuses }: { projects: Project[], projectStatuses: ProjectStatus[] }) {
+/**
+ * Asks for what it counts, not for a whole project.
+ *
+ * Declaring Project[] meant every caller had to produce a full record —
+ * including fields the query does not select — to render a pie chart that
+ * reads one column.
+ */
+type ChartProject = { statusId: string };
+type ChartStatus = { id: string; name: string };
+
+export function ProjectStatusChart({ projects, projectStatuses }: { projects: ChartProject[], projectStatuses: ChartStatus[] }) {
   if (!projects || !projectStatuses) {
     return (
       <div className="flex h-[300px] w-full items-center justify-center rounded-lg border border-dashed text-muted-foreground">

@@ -4,17 +4,21 @@
 import prisma from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import type { PmoDivision } from '@prisma/client';
+import { requirePermission } from "@/lib/auth/guard";
 
+import { serialize } from '@/lib/serialize';
 export async function getPmoDivisionsData() {
+    await requirePermission('pmo-divisions:view');
   const pmoDivisions = await prisma.pmoDivision.findMany({
     orderBy: {
       name: 'asc',
     },
   });
-  return JSON.parse(JSON.stringify(pmoDivisions));
+  return serialize(pmoDivisions);
 }
 
 export async function createPmoDivision(data: Omit<PmoDivision, 'id' | 'createdAt' | 'updatedAt'>) {
+    await requirePermission('pmo-divisions:create');
     if (!data.name.trim()) {
         return { success: false, error: "Division name cannot be empty." };
     }
@@ -31,6 +35,7 @@ export async function createPmoDivision(data: Omit<PmoDivision, 'id' | 'createdA
 }
 
 export async function updatePmoDivision(id: string, data: Omit<PmoDivision, 'id' | 'createdAt' | 'updatedAt'>) {
+    await requirePermission('pmo-divisions:update');
     if (!data.name.trim()) {
         return { success: false, error: "Division name cannot be empty." };
     }
@@ -45,6 +50,7 @@ export async function updatePmoDivision(id: string, data: Omit<PmoDivision, 'id'
 }
 
 export async function deletePmoDivision(id: string) {
+    await requirePermission('pmo-divisions:delete');
     try {
          const projectsWithDivision = await prisma.project.count({ where: { pmoDivisionId: id }});
         if (projectsWithDivision > 0) {

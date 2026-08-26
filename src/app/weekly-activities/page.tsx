@@ -7,7 +7,7 @@ import { useAuth } from '@/context/auth-context';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { getWeeklyTasks } from './actions';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import type { Task, User, TaskUpdate } from '@prisma/client';
@@ -23,6 +23,11 @@ import { cn } from '@/lib/utils';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
+import { useFirstLoad } from "@/hooks/use-first-load";
+import {
+  milestoneProgress as calculateMilestoneProgress,
+  projectProgress as calculateProjectProgress,
+} from '@/lib/metrics';
 
 type TaskWithRelations = Task & { 
     assignees: User[],
@@ -58,13 +63,15 @@ type ProjectWithTasks = {
 
 function LoadingSkeleton() {
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div className="flex justify-between items-center mb-6">
-        <Skeleton className="h-8 w-48" />
+        <LoadingRegion label="Loading this week">
+      <div className="p-4 sm:p-6 space-y-6">
+        <div className="flex justify-between items-center mb-6">
+          <Skeleton className="h-8 w-48" />
+        </div>
+        <Skeleton className="h-48" />
+        <Skeleton className="h-48" />
       </div>
-      <Skeleton className="h-48" />
-      <Skeleton className="h-48" />
-    </div>
+        </LoadingRegion>
   );
 }
 
@@ -131,7 +138,7 @@ const TaskItem = ({ task, weekInterval, userMap }: { task: TaskWithRelations, we
                                     return (
                                         <div key={update.id} className="flex items-start gap-3">
                                             <Avatar className="w-6 h-6 border">
-                                                <AvatarImage src={author?.avatar} alt={author?.name} />
+                                                <AvatarImage src={author?.avatar ?? undefined} alt={author?.name} />
                                                 <AvatarFallback>{author?.name.charAt(0)}</AvatarFallback>
                                             </Avatar>
                                             <div className="flex-1 text-xs bg-muted/50 p-2 rounded-md">
@@ -161,32 +168,6 @@ const ProjectAccordion = ({ project, weekInterval, userMap }: {
     const totalTasks = project.tasks.length;
     const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
 
-    const calculateMilestoneProgress = (milestone: any) => {
-        if (!milestone.tasks || milestone.tasks.length === 0) return 0;
-        const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-            const taskProgress = task.progress || 0;
-            return acc + (taskProgress * (task.weight / 100));
-        }, 0);
-        return totalProgress;
-    };
-
-    const calculateProjectProgress = (proj: any) => {
-        if (!proj.milestones || proj.milestones.length === 0) return 0;
-        const weightedMilestones = proj.milestones.filter((m: any) => m.weight > 0);
-        if (weightedMilestones.length > 0) {
-            return weightedMilestones.reduce((acc: number, milestone: any) => acc + (calculateMilestoneProgress(milestone) * (milestone.weight / 100)), 0);
-        } else {
-            const allTasks = proj.milestones.flatMap((m: any) => m.tasks);
-            if (allTasks.length === 0) return 0;
-            const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-            if (totalTaskWeight === 0) {
-                const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
-                return totalProgress / allTasks.length;
-            }
-            const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => acc + ((task.progress || 0) * task.weight), 0);
-            return totalWeightedTaskProgress / totalTaskWeight;
-        }
-    };
     
     const projectProgress = calculateProjectProgress(project);
 
@@ -302,9 +283,12 @@ export default function WeeklyActivitiesPage() {
       setExpandedProjectId(null);
   }, [searchQuery, date]);
 
-  const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
+  const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
   
-  if (isLoading || authLoading) {
+  if (showSkeleton || authLoading) {
       return <LoadingSkeleton />;
   }
   

@@ -43,3 +43,23 @@ next-env.d.ts
 # firebase
 firebase-debug.log
 firestore-debug.log
+# Credentials extracted from the legacy TeamAuthDb backup for the one-time
+# authentication migration. Contains real password hashes: treat as a secret,
+# never commit. See docs/authentication.md.
+/scripts/data/legacy-auth-users.json
+
+# One-time migration artefact extracted from the legacy TeamAuthDb backup.
+# Contains real password hashes, emails and phone numbers — never commit it,
+# and delete it once the credential import has been run in each environment.
+/scripts/data/legacy-auth-users.json
+
+# Uploaded project documents. Deliberately outside the web root so they are
+# never served as static assets; see src/lib/documents/storage.ts.
+/.document-storage/
+scratch/
+.tmpwork/
+
+# Database exports from scripts/db-export.ts. These carry real password
+# hashes and must never be committed.
+*.dump
+*.sql.gz

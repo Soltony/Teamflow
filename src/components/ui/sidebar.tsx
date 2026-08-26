@@ -177,8 +177,10 @@ const SidebarMenuButton = React.forwardRef<
 >(({ className, icon, isActive, children, href, ...props }, ref) => {
   const { isOpen, isMobile } = useSidebar()
 
+  const variant: "secondary" | "ghost" = isActive ? "secondary" : "ghost";
+
   const commonProps = {
-    variant: isActive ? "secondary" : "ghost" as const,
+    variant,
     className: cn(
       "h-10 w-full justify-start gap-3",
       !isOpen && !isMobile && "h-10 w-10 justify-center p-0",

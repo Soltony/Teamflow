@@ -14,8 +14,13 @@ import { Button } from "@/components/ui/button";
 import { AddBlockerDialog } from "./add-blocker-dialog";
 import { ResolveBlockerDialog } from "./resolve-blocker-dialog";
 import { EditBlockerDialog } from './edit-blocker-dialog';
+import { EscalateBlockerDialog } from './escalate-blocker-dialog';
+import { ProjectBlockers } from './project-blockers';
+import type { OwnerOption } from './blocker-form-fields';
+import type { CreateBlockerInput, EscalateBlockerInput } from '@/lib/validation/blocker';
 import { Separator } from "../ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ProjectDocuments } from "@/components/projects/project-documents";
 import {
   Accordion,
   AccordionContent,
@@ -40,25 +45,36 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  milestoneProgress as calculateMilestoneProgress,
+  projectProgress as calculateProjectProgress,
+  isArchivedStatus,
+} from '@/lib/metrics';
 
 type ProjectViewProps = {
   project: any;
   canUpdateProject: boolean;
   canDeleteProject: boolean;
   onAddBlocker: () => void;
+  onEscalateBlocker: (blocker: Blocker) => void;
+  /** Who may be given an issue to own, or have one escalated to them. */
+  blockerOwners: OwnerOption[];
   onResolveBlocker: (blocker: Blocker) => void;
   onEditBlocker: (blocker: Blocker) => void;
   onDeleteBlocker: (blocker: Blocker) => void;
   onDeleteProject: (project: Project) => void;
   isAddingBlocker: boolean;
   onAddBlockerOpenChange: (open: boolean) => void;
-  onBlockerAddSubmit: (data: { description: string }) => void;
+  onBlockerAddSubmit: (data: CreateBlockerInput) => void;
   resolvingBlocker: Blocker | null;
   onResolveBlockerOpenChange: (blocker: Blocker | null) => void;
   onBlockerResolveSubmit: (blockerId: string, resolution: string) => void;
   editingBlocker: Blocker | null;
+  escalatingBlocker: Blocker | null;
+  onEscalateBlockerOpenChange: (blocker: Blocker | null) => void;
+  onBlockerEscalateSubmit: (blockerId: string, values: EscalateBlockerInput) => void;
   onEditBlockerOpenChange: (blocker: Blocker | null) => void;
-  onBlockerUpdateSubmit: (blockerId: string, description: string) => void;
+  onBlockerUpdateSubmit: (blockerId: string, values: CreateBlockerInput) => void;
   blockerToDelete: Blocker | null;
   onDeleteBlockerOpenChange: (blocker: Blocker | null) => void;
   onBlockerDeleteSubmit: () => void;
@@ -100,6 +116,8 @@ export function ProjectView({
     canUpdateProject,
     canDeleteProject,
     onAddBlocker,
+    onEscalateBlocker,
+    blockerOwners,
     onResolveBlocker,
     onEditBlocker,
     onDeleteBlocker,
@@ -111,6 +129,9 @@ export function ProjectView({
     onResolveBlockerOpenChange,
     onBlockerResolveSubmit,
     editingBlocker,
+    escalatingBlocker,
+    onEscalateBlockerOpenChange,
+    onBlockerEscalateSubmit,
     onEditBlockerOpenChange,
     onBlockerUpdateSubmit,
     blockerToDelete,
@@ -125,54 +146,14 @@ export function ProjectView({
   const router = useRouter();
   const defaultTab = searchParams.get('tab') || 'milestones';
   
-  const calculateMilestoneProgress = (milestone: any) => {
-    if (!milestone.tasks || milestone.tasks.length === 0) return 0;
-    const totalProgress = milestone.tasks.reduce((acc: number, task: any) => {
-      const taskProgress = task.progress || 0;
-      return acc + (taskProgress * (task.weight / 100));
-    }, 0);
-    return totalProgress;
-  };
   
-  const calculateProjectProgress = (project: any) => {
-    if (!project.milestones || project.milestones.length === 0) {
-      return 0;
-    }
-    
-    const weightedMilestones = project.milestones.filter((m: any) => m.weight > 0);
-
-    if (weightedMilestones.length > 0) {
-      // Standard weighted calculation if there are weighted milestones
-      return weightedMilestones.reduce((acc: number, milestone: any) => {
-        const milestoneProgress = calculateMilestoneProgress(milestone);
-        return acc + (milestoneProgress * (milestone.weight / 100));
-      }, 0);
-    } else {
-      // If no weighted milestones, calculate based on task weights directly
-      const allTasks = project.milestones.flatMap((m: any) => m.tasks);
-      if (allTasks.length === 0) return 0;
-
-      const totalTaskWeight = allTasks.reduce((sum: number, task: any) => sum + task.weight, 0);
-      if (totalTaskWeight === 0) {
-          // If tasks have no weight, calculate simple average of progress
-          const totalProgress = allTasks.reduce((sum: number, task: any) => sum + (task.progress || 0), 0);
-          return totalProgress / allTasks.length;
-      }
-      
-      const totalWeightedTaskProgress = allTasks.reduce((acc: number, task: any) => {
-        return acc + ((task.progress || 0) * task.weight);
-      }, 0);
-
-      return totalWeightedTaskProgress / totalTaskWeight;
-    }
-  };
 
   const weightedProgress = calculateProjectProgress(project);
 
   const allResponsibleDepartments = project.responsibleDepartments?.map((d: any) => d.name) || [];
 
   const renderTimelineStatus = () => {
-    const isProjectComplete = project.status.name === 'Completed' || project.status.name === 'On Handover';
+    const isProjectComplete = isArchivedStatus(project.status);
     const endDate = parseISO(project.endDate);
     
     if (isProjectComplete) {
@@ -201,7 +182,6 @@ export function ProjectView({
       </>
     );
   };
-
 
   return (
     <div className="p-4 sm:p-6 space-y-6">
@@ -281,9 +261,10 @@ export function ProjectView({
       </Card>
       
       <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3 mb-4">
+        <TabsList className="grid w-full grid-cols-4 mb-4">
             <TabsTrigger value="milestones">Milestones & Tasks</TabsTrigger>
             <TabsTrigger value="blockers">Blockers</TabsTrigger>
+            <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="timeline">Timeline History</TabsTrigger>
         </TabsList>
         <TabsContent value="milestones">
@@ -321,7 +302,7 @@ export function ProjectView({
                                     </AccordionTrigger>
                                     <AccordionContent className="pt-2 pb-4">
                                         {milestone.tasks.length > 0 ? (
-                                            <Table>
+                                            <Table scrollLabel="Milestones and tasks">
                                                 <TableHeader>
                                                     <TableRow>
                                                         <TableHead>Task</TableHead>
@@ -365,78 +346,19 @@ export function ProjectView({
             </Card>
         </TabsContent>
         <TabsContent value="blockers">
-            <Card>
-                <CardHeader>
-                <div className="flex items-center justify-between">
-                    <CardTitle>Project Blockers</CardTitle>
-                    {canUpdateProject && (
-                      <Button onClick={onAddBlocker}>
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Blocker
-                      </Button>
-                    )}
-                </div>
-                <CardDescription>
-                    Issues that are impeding progress and require higher management attention.
-                </CardDescription>
-                </CardHeader>
-                <CardContent>
-                <div className="space-y-4">
-                    {!project.blockers || project.blockers.length === 0 ? (
-                    <p className="text-muted-foreground text-sm">No blockers have been reported for this project.</p>
-                    ) : (
-                    project.blockers.map((blocker: any, index: number) => (
-                        <div key={blocker.id}>
-                        <div className="flex items-start gap-4">
-                            <div>
-                            {blocker.status === 'OPEN' ? (
-                                <ShieldAlert className="h-5 w-5 text-destructive mt-1" />
-                            ) : (
-                                <ShieldCheck className="h-5 w-5 text-green-600 mt-1" />
-                            )}
-                            </div>
-                            <div className="flex-1">
-                            <div className="flex justify-between items-center">
-                                <p className="font-semibold">{blocker.status === 'OPEN' ? 'Open Blocker' : 'Resolved Blocker'}</p>
-                                <p className="text-xs text-muted-foreground">
-                                {blocker.status === 'OPEN' ? 'Created: ' : 'Resolved: '} 
-                                {format(parseISO(blocker.resolvedAt || blocker.createdAt), 'MMM dd, yyyy')}
-                                </p>
-                            </div>
-                            <p className="text-sm text-muted-foreground mt-1">{blocker.description}</p>
-                            {blocker.status === 'RESOLVED' && (
-                                <div className="mt-2 text-sm bg-muted/50 p-3 rounded-md border">
-                                    <p className="font-semibold text-xs">Resolution:</p>
-                                    <p className="text-muted-foreground">{blocker.resolution}</p>
-                                </div>
-                            )}
-                            </div>
-                            <div className="flex items-center gap-1">
-                                {blocker.status === 'OPEN' && canUpdateProject && (
-                                  <>
-                                    <Button variant="ghost" size="icon" onClick={() => onEditBlocker(blocker)}>
-                                        <Pencil className="w-4 h-4" />
-                                        <span className="sr-only">Edit Blocker</span>
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => onResolveBlocker(blocker)}>
-                                        Resolve
-                                    </Button>
-                                  </>
-                                )}
-                                {canUpdateProject && (
-                                    <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive" onClick={() => onDeleteBlocker(blocker)}>
-                                        <Trash2 className="w-4 h-4" />
-                                        <span className="sr-only">Delete Blocker</span>
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                        {index < project.blockers.length - 1 && <Separator className="my-4" />}
-                        </div>
-                    ))
-                    )}
-                </div>
-                </CardContent>
-            </Card>
+            <ProjectBlockers
+                blockers={(project.blockers ?? []) as Blocker[]}
+                owners={blockerOwners}
+                canUpdate={canUpdateProject}
+                onAdd={onAddBlocker}
+                onEdit={onEditBlocker}
+                onResolve={onResolveBlocker}
+                onEscalate={onEscalateBlocker}
+                onDelete={onDeleteBlocker}
+            />
+        </TabsContent>
+        <TabsContent value="documents">
+            <ProjectDocuments projectId={project.id} />
         </TabsContent>
         <TabsContent value="timeline">
             <Card>
@@ -446,7 +368,7 @@ export function ProjectView({
                 </CardHeader>
                 <CardContent>
                      {project.timelineChangeRequests.length > 0 ? (
-                        <Table>
+                        <Table scrollLabel="Timeline change requests">
                             <TableHeader>
                                 <TableRow>
                                     <TableHead>Requested On</TableHead>
@@ -484,12 +406,12 @@ export function ProjectView({
         </TabsContent>
       </Tabs>
 
-
       {isAddingBlocker && (
         <AddBlockerDialog
           isOpen={isAddingBlocker}
           onOpenChange={onAddBlockerOpenChange}
           onBlockerAdd={onBlockerAddSubmit}
+          owners={blockerOwners}
         />
       )}
       
@@ -508,6 +430,17 @@ export function ProjectView({
           onOpenChange={(open) => !open && onEditBlockerOpenChange(null)}
           blocker={editingBlocker}
           onBlockerUpdate={onBlockerUpdateSubmit}
+          owners={blockerOwners}
+        />
+      )}
+
+      {escalatingBlocker && (
+        <EscalateBlockerDialog
+          isOpen={!!escalatingBlocker}
+          onOpenChange={(open) => !open && onEscalateBlockerOpenChange(null)}
+          blocker={escalatingBlocker}
+          onEscalate={onBlockerEscalateSubmit}
+          recipients={blockerOwners}
         />
       )}
 

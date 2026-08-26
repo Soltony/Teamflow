@@ -3,8 +3,14 @@
 
 import prisma from "@/lib/db";
 import { revalidatePath } from "next/cache";
+import { requirePermission } from "@/lib/auth/guard";
+import { serialize } from '@/lib/serialize';
 
 export async function getPaymentsPageData() {
+    // Contract values and payment schedules were previously returned to any
+    // caller, with only the sidebar hiding the page.
+    await requirePermission('payments:view');
+
     const projectsWithCost = await prisma.project.findMany({
         where: {
             totalCost: {
@@ -23,11 +29,12 @@ export async function getPaymentsPageData() {
         }
     });
 
-    return JSON.parse(JSON.stringify(projectsWithCost));
+    return serialize(projectsWithCost);
 }
 
 export async function requestPayment(paymentId: string) {
     try {
+        await requirePermission('payments:view');
         await prisma.payment.update({
             where: { id: paymentId },
             data: {

@@ -5,9 +5,10 @@ import { useEffect, useState, useCallback } from "react";
 import { useAuth } from "@/context/auth-context";
 import { TeamTasksManagement } from "@/components/tasks/team-tasks-management";
 import { getTeamViewData } from "./actions";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import type { Task, User, Team, ProjectStatus, TaskUpdate, TaskStatus as TaskStatusType, Project } from "@/lib/types";
 import { useRouter } from "next/navigation";
+import { useFirstLoad } from "@/hooks/use-first-load";
 
 
 export type TeamViewTask = Task & {
@@ -42,18 +43,22 @@ type TeamViewData = {
 
 function LoadingSkeleton() {
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-        <Skeleton className="h-24 w-full" />
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-48 w-full" />
-    </div>
+    <LoadingRegion label="Loading team view">
+      <div className="p-4 sm:p-6 space-y-6">
+          <Skeleton className="h-24 w-full" />
+          <Skeleton className="h-48 w-full" />
+          <Skeleton className="h-48 w-full" />
+      </div>
+    </LoadingRegion>
   )
 }
 
 export default function TeamViewPage() {
     const { localUser, loading: authLoading, hasPermission } = useAuth();
     const router = useRouter();
-    const [viewData, setViewData] = useState<TeamViewData | null>(null);
+    /** Follows getTeamViewData rather than restating its shape by hand. */
+    type LoadedTeamViewData = Awaited<ReturnType<typeof getTeamViewData>>;
+    const [viewData, setViewData] = useState<LoadedTeamViewData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
     const fetchTeamData = useCallback(async () => {
@@ -83,9 +88,12 @@ export default function TeamViewPage() {
                 setIsLoading(false);
             }
         }
-    }, [localUser, authLoading, hasPermission, router, fetchTeamData]);
+    }, [localUser, authLoading, hasPermission, router, fetchTeamData]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
 
-    if (isLoading || authLoading) {
+    if (showSkeleton || authLoading) {
         return <LoadingSkeleton />;
     }
 

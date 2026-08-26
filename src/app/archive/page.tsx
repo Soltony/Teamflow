@@ -6,52 +6,71 @@ import { useAuth } from "@/context/auth-context";
 import { ProjectCard } from "@/components/projects/project-card";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
 import { getArchivedProjects } from "./actions";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import type { ProjectStatus } from "@prisma/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, X } from "lucide-react";
+import type { Serialized } from '@/lib/serialize';
+import { EmptyState } from "@/components/ui/empty-state";
+import { anyFilterActive } from "@/lib/ui/empty-state";
+import { useFirstLoad } from "@/hooks/use-first-load";
 
 function LoadingSkeleton() {
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between">
-                    <div>
-                        <Skeleton className="h-8 w-48" />
-                        <Skeleton className="h-4 w-96 mt-2" />
-                    </div>
-                </CardHeader>
-                <CardContent>
-                    <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                        <Skeleton className="h-64" />
-                        <Skeleton className="h-64" />
-                        <Skeleton className="h-64" />
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
+        <LoadingRegion label="Loading archive">
+          <div className="p-4 sm:p-6 space-y-6">
+              <Card>
+                  <CardHeader className="flex flex-row items-center justify-between">
+                      <div>
+                          <Skeleton className="h-8 w-48" />
+                          <Skeleton className="h-4 w-96 mt-2" />
+                      </div>
+                  </CardHeader>
+                  <CardContent>
+                      <div className="grid gap-6 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                          <Skeleton className="h-64" />
+                          <Skeleton className="h-64" />
+                          <Skeleton className="h-64" />
+                      </div>
+                  </CardContent>
+              </Card>
+          </div>
+        </LoadingRegion>
     )
 }
 
 export default function ArchivePage() {
     const { localUser, loading: authLoading } = useAuth();
     const [projects, setProjects] = useState<any[]>([]);
-    const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
+    const [statuses, setStatuses] = useState<Serialized<ProjectStatus>[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
+    /** Searching runs in the database now, so wait for a pause before querying. */
+    const [debouncedSearch, setDebouncedSearch] = useState('');
+    useEffect(() => {
+        const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
+        return () => clearTimeout(timer);
+    }, [searchQuery]);
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalPages, setTotalPages] = useState(1);
     const projectsPerPage = 12;
 
     const fetchProjects = useCallback(async () => {
         if (localUser?.id) {
             setIsLoading(true);
             try {
-                const data = await getArchivedProjects(localUser.id);
+                const data = await getArchivedProjects(localUser.id, {
+                    page: currentPage,
+                    pageSize: projectsPerPage,
+                    search: debouncedSearch,
+                    status: selectedStatus,
+                });
                 setProjects(data.projects);
                 setStatuses(data.statuses);
+                setTotalPages(data.totalPages ?? 1);
             } catch (error) {
                 console.error("Failed to fetch archived projects", error);
                 setProjects([]);
@@ -60,7 +79,7 @@ export default function ArchivePage() {
                 setIsLoading(false);
             }
         }
-    }, [localUser?.id]);
+    }, [localUser?.id, currentPage, debouncedSearch, selectedStatus]);
 
     useEffect(() => {
         if (localUser?.id) {
@@ -70,29 +89,18 @@ export default function ArchivePage() {
         }
     }, [localUser, authLoading, fetchProjects]);
 
-    const filteredProjects = useMemo(() => {
-        let filtered = projects;
-        if (selectedStatus) {
-            filtered = filtered.filter(p => p.statusId === selectedStatus);
-        }
-        if (searchQuery) {
-            filtered = filtered.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
-        }
-        return filtered;
-    }, [projects, selectedStatus, searchQuery]);
-    
+    const paginatedProjects = projects;
+  
     useEffect(() => {
         setCurrentPage(1);
-    }, [selectedStatus, searchQuery]);
+    }, [selectedStatus, debouncedSearch]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
 
-    const totalPages = Math.ceil(filteredProjects.length / projectsPerPage);
-    const paginatedProjects = useMemo(() => {
-        const startIndex = (currentPage - 1) * projectsPerPage;
-        const endIndex = startIndex + projectsPerPage;
-        return filteredProjects.slice(startIndex, endIndex);
-    }, [filteredProjects, currentPage, projectsPerPage]);
 
-    if (isLoading || authLoading) {
+
+    if (showSkeleton || authLoading) {
         return <LoadingSkeleton />;
     }
 
@@ -155,11 +163,19 @@ export default function ArchivePage() {
                             ))}
                         </div>
                     ) : (
-                        <div className="text-center py-12">
-                            <p className="text-muted-foreground">
-                                No archived projects found.
-                            </p>
-                        </div>
+                        <EmptyState
+                            variant={anyFilterActive(debouncedSearch, selectedStatus) ? "no-match" : "empty"}
+                            title={
+                                anyFilterActive(debouncedSearch, selectedStatus)
+                                    ? "No archived projects match your search"
+                                    : "Nothing has been archived"
+                            }
+                            description={
+                                anyFilterActive(debouncedSearch, selectedStatus)
+                                    ? "There are archived projects — none of them fit the filters you have set."
+                                    : "Projects appear here once their status is set to an archived one."
+                            }
+                        />
                     )}
                 </CardContent>
                 {totalPages > 1 && (

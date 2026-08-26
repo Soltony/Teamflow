@@ -4,32 +4,37 @@
 import { useEffect, useState, useCallback } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfigTabs } from "@/components/config/config-tabs";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import { getUsersData, getRolesData, getPmoDivisionsData } from "./actions";
-import type { Role, User, PmoDivision } from "@prisma/client";
+
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
+import { useFirstLoad } from "@/hooks/use-first-load";
 
-type UserWithRoles = User & { roles: Role[] };
+// Derived from the actions rather than restated here: the queries select a
+// deliberately narrow set of columns, and the previous local definition
+// claimed the whole user record including its password hash.
 
 type ConfigData = {
-    users: UserWithRoles[];
-    roles: Role[];
-    pmoDivisions: PmoDivision[];
+    users: Awaited<ReturnType<typeof getUsersData>>;
+    roles: Awaited<ReturnType<typeof getRolesData>>;
+    pmoDivisions: Awaited<ReturnType<typeof getPmoDivisionsData>>;
 };
 
 function LoadingSkeleton() {
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <Card>
-                <CardHeader>
-                    <Skeleton className="h-8 w-64" />
-                    <Skeleton className="h-4 w-96 mt-2" />
-                </CardHeader>
-            </Card>
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-96 w-full" />
-        </div>
+        <LoadingRegion label="Loading configuration">
+          <div className="p-4 sm:p-6 space-y-6">
+              <Card>
+                  <CardHeader>
+                      <Skeleton className="h-8 w-64" />
+                      <Skeleton className="h-4 w-96 mt-2" />
+                  </CardHeader>
+              </Card>
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-96 w-full" />
+          </div>
+        </LoadingRegion>
     );
 }
 
@@ -66,9 +71,12 @@ export default function ConfigPage() {
                 fetchData();
             }
         }
-    }, [authLoading, canViewPage, router, fetchData]);
+    }, [authLoading, canViewPage, router, fetchData]);
+    // Only on the very first load. Rendering the skeleton on every refresh
+    // unmounted the page body, destroying any dialog that was open.
+    const showSkeleton = useFirstLoad(isLoading);
 
-    if (isLoading || authLoading) {
+    if (showSkeleton || authLoading) {
         return <LoadingSkeleton />;
     }
 

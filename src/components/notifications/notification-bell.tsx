@@ -22,9 +22,17 @@ import {
 import { useAuth } from '@/context/auth-context';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/lib/utils';
-import type { Notification, User } from '@prisma/client';
 
-type NotificationWithSender = Notification & { sender: User | null };
+/**
+ * Derived from the action rather than declared alongside it.
+ *
+ * The previous declaration was `Notification & { sender: User | null }`, but
+ * the query selects only the sender's id, name and avatar — the bell has no
+ * use for the rest, and fetching a whole user record per notification would
+ * pull password hashes into a dropdown. Deriving the type means it cannot
+ * drift from the query again.
+ */
+type NotificationWithSender = Awaited<ReturnType<typeof getNotifications>>[number];
 
 export function NotificationBell() {
   const { localUser } = useAuth();
