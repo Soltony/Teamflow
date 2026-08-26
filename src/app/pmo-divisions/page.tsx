@@ -11,6 +11,8 @@ import { getPmoDivisionsData } from "./actions";
 import type { PmoDivision } from '@prisma/client';
 import type { Serialized } from '@/lib/serialize';
 import { useFirstLoad } from "@/hooks/use-first-load";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageHeader, PageShell } from "@/components/ui/page-header";
 
 function LoadingSkeleton() {
     return (
@@ -42,15 +44,18 @@ export default function PmoDivisionsPage() {
     const router = useRouter();
     const [pmoDivisions, setPmoDivisions] = useState<Serialized<PmoDivision>[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
+        setLoadError(null);
         try {
             const data = await getPmoDivisionsData();
             setPmoDivisions(data);
         } catch (error) {
-            console.error("Failed to fetch PMO divisions", error);
-            setPmoDivisions([]);
+            // Was swallowed to an empty array, which reads as "there are no
+            // divisions" rather than "we could not ask".
+            setLoadError(error instanceof Error ? error.message : "The request did not complete.");
         } finally {
             setIsLoading(false);
         }
@@ -64,13 +69,30 @@ export default function PmoDivisionsPage() {
                 fetchData();
             }
         }
-    }, [authLoading, hasPermission, router, fetchData]);
+    }, [authLoading, hasPermission, router, fetchData]);
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
 
     if (showSkeleton || authLoading) {
         return <LoadingSkeleton />;
+    }
+
+    if (loadError) {
+        return (
+            <PageShell>
+              <PageHeader
+                title="EPMO divisions"
+                description="The divisions that own and run projects."
+              />
+              <ErrorState
+                variant="load"
+                title="We could not load the EPMO divisions"
+                detail={loadError}
+                onRetry={fetchData}
+              />
+            </PageShell>
+        );
     }
 
     return (
@@ -83,9 +105,9 @@ export default function PmoDivisionsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PmoDivisionManagement 
-                initialPmoDivisions={pmoDivisions} 
-                onDataChange={fetchData} 
+              <PmoDivisionManagement
+                initialPmoDivisions={pmoDivisions}
+                onDataChange={fetchData}
               />
             </CardContent>
           </Card>

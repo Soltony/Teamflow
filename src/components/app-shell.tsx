@@ -73,7 +73,7 @@ function AppSidebar({ className }: { className?: string }) {
   const groups = visibleGroups(NAV_GROUPS, hasPermission);
 
   return (
-    <Sidebar className={cn(className, "sidebar text-sidebar-foreground")}>
+    <Sidebar id="main-navigation" className={cn(className, "sidebar text-sidebar-foreground")}>
       <SidebarHeader>
         <div className="flex items-center gap-2">
           <NibLogo className="w-8 h-8" />
@@ -174,13 +174,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
              'bg-background'
           )}
         >
+          {/*
+            `aria-expanded` and a label that says which way it goes: this was
+            "Toggle Menu" with no indication of the current state, so a screen
+            reader user could not tell whether pressing it would open or close
+            the navigation.
+          */}
           <Button
             variant="ghost"
             size="icon"
             onClick={toggleSidebar}
+            aria-expanded={isOpen}
+            aria-controls="main-navigation"
+            aria-label={isOpen ? "Collapse navigation" : "Expand navigation"}
           >
-            <PanelLeft className="w-6 h-6" />
-            <span className="sr-only">Toggle Menu</span>
+            <PanelLeft className="w-6 h-6" aria-hidden="true" />
           </Button>
            <div className="flex items-center gap-4 ml-auto">
               <NotificationBell />

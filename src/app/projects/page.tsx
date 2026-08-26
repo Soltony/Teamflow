@@ -1,44 +1,60 @@
-
-
 'use client';
 
-import { useEffect, useState, useCallback, useMemo } from "react";
-import { useAuth } from "@/context/auth-context";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+
+import { useAuth } from "@/context/auth-context";
 import { EmptyState } from "@/components/ui/empty-state";
+import { ErrorState } from "@/components/ui/error-state";
 import { anyFilterActive } from "@/lib/ui/empty-state";
 import { ProjectListItem } from "@/components/projects/project-card";
 import { CreateProjectButton } from "@/components/projects/create-project-button";
 import { getProjectsPageData, addTask, updateTask, deleteTask } from "./actions";
 import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
-import { Input } from "@/components/ui/input";
-import { Search, X } from "lucide-react";
-import type { Task as TaskType, User, Project, Milestone, ProjectStatus, PmoDivision, Team, UserWithRoles } from "@/lib/types";
+import { DataToolbar, ALL } from "@/components/ui/data-toolbar";
+import { PageHeader, PageShell } from "@/components/ui/page-header";
+import type { Task as TaskType, Project, Milestone, ProjectStatus, PmoDivision, Team, UserWithRoles } from "@/lib/types";
 import { AddTaskDialog } from "@/components/projects/add-task-dialog";
 import { EditTaskDialog } from "@/components/projects/edit-task-dialog";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
-import { CardFooter } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { TeamDialog } from "@/components/teams/team-dialog";
 import { createTeam, updateTeam, deleteTeam } from "@/app/teams/actions";
 import { useFirstLoad } from "@/hooks/use-first-load";
 
+/**
+ * Orderings this list offers.
+ *
+ * Only what the database can order by — see PROJECT_LIST_ORDER in the action.
+ * "Most at risk" belongs on Reports, where the whole set is in hand rather
+ * than one page of nine.
+ */
+const SORT_OPTIONS = [
+  { value: 'created', label: 'Newest first' },
+  { value: 'deadline', label: 'Deadline, soonest first' },
+  { value: 'deadline-desc', label: 'Deadline, latest first' },
+  { value: 'recent', label: 'Recently updated' },
+  { value: 'name', label: 'Name, A to Z' },
+];
 
 function LoadingSkeleton() {
     return (
         <LoadingRegion label="Loading projects">
-          <div className="p-4 sm:p-6 space-y-6">
-              <div className="flex justify-between items-center mb-6">
-                  <Skeleton className="h-8 w-48" />
-                  <Skeleton className="h-10 w-36" />
+          <PageShell>
+              <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-9 w-48" />
+                  <Skeleton className="h-4 w-72" />
+                </div>
+                <Skeleton className="h-10 w-36" />
               </div>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+              <Skeleton className="h-10 w-full" />
+              <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                   <Skeleton className="h-64" />
                   <Skeleton className="h-64" />
                   <Skeleton className="h-64" />
               </div>
-          </div>
+          </PageShell>
         </LoadingRegion>
     )
 }
@@ -51,6 +67,7 @@ export default function ProjectsPage() {
     const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
     const [pmoDivisions, setPmoDivisions] = useState<PmoDivision[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const [totalPages, setTotalPages] = useState(1);
     const [totalCount, setTotalCount] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
@@ -65,9 +82,10 @@ export default function ProjectsPage() {
     }, [searchQuery]);
     const [currentPage, setCurrentPage] = useState(1);
     const projectsPerPage = 9;
-  
-    const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
-    const [selectedPmoDivision, setSelectedPmoDivision] = useState<string | null>(null);
+
+    const [selectedStatus, setSelectedStatus] = useState<string>(ALL);
+    const [selectedPmoDivision, setSelectedPmoDivision] = useState<string>(ALL);
+    const [sort, setSort] = useState('created');
 
     const [expandedItem, setExpandedItem] = useState<{ projectId: string; section: 'tasks' | 'teams' } | null>(null);
 
@@ -84,6 +102,8 @@ export default function ProjectsPage() {
 
     const canCreateTeams = hasPermission('teams:create');
     const canCreateProjects = hasPermission('projects:create');
+    const canUpdateTeams = hasPermission('teams:update');
+    const canDeleteTeams = hasPermission('teams:delete');
 
     // Whether the list is empty because nothing exists, or because a filter
     // is hiding it. The two need opposite advice.
@@ -91,37 +111,38 @@ export default function ProjectsPage() {
 
     const clearFilters = () => {
         setSearchQuery('');
-        setSelectedStatus(null);
-        setSelectedPmoDivision(null);
+        setSelectedStatus(ALL);
+        setSelectedPmoDivision(ALL);
     };
-    const canUpdateTeams = hasPermission('teams:update');
-    const canDeleteTeams = hasPermission('teams:delete');
-
 
     const fetchData = useCallback(async () => {
-        if (localUser?.id) {
-            setIsLoading(true);
-            try {
-                const data = await getProjectsPageData(localUser.id, {
-                    status: selectedStatus,
-                    pmoDivisionId: selectedPmoDivision,
-                    search: debouncedSearch,
-                    page: currentPage,
-                    pageSize: projectsPerPage,
-                });
-                setProjects(data.projects);
-                setStatuses(data.statuses);
-                setAllUsers(data.users || []);
-                setPmoDivisions(data.pmoDivisions || []);
-                setTotalPages(data.totalPages ?? 1);
-                setTotalCount(data.totalCount ?? 0);
-            } catch (error) {
-                console.error("Failed to fetch projects", error);
-            } finally {
-                setIsLoading(false);
-            }
+        if (!localUser?.id) return;
+
+        setIsLoading(true);
+        setLoadError(null);
+        try {
+            const data = await getProjectsPageData(localUser.id, {
+                status: selectedStatus === ALL ? null : selectedStatus,
+                pmoDivisionId: selectedPmoDivision === ALL ? null : selectedPmoDivision,
+                search: debouncedSearch,
+                page: currentPage,
+                pageSize: projectsPerPage,
+                sort,
+            });
+            setProjects(data.projects);
+            setStatuses(data.statuses);
+            setAllUsers(data.users || []);
+            setPmoDivisions(data.pmoDivisions || []);
+            setTotalPages(data.totalPages ?? 1);
+            setTotalCount(data.totalCount ?? 0);
+        } catch (error) {
+            // Previously logged to the console, leaving the page showing an
+            // empty grid and telling the reader to create their first project.
+            setLoadError(error instanceof Error ? error.message : 'The request did not complete.');
+        } finally {
+            setIsLoading(false);
         }
-    }, [localUser?.id, selectedStatus, selectedPmoDivision, debouncedSearch, currentPage]);
+    }, [localUser?.id, selectedStatus, selectedPmoDivision, debouncedSearch, currentPage, sort]);
 
     useEffect(() => {
         if (localUser?.id) {
@@ -131,24 +152,23 @@ export default function ProjectsPage() {
         }
     }, [localUser, authLoading, fetchData]);
 
-    // The server returns exactly this page, already filtered and searched.
+    // The server returns exactly this page, already filtered, searched and
+    // ordered.
     const paginatedProjects = projects;
 
     useEffect(() => {
         setCurrentPage(1);
         setExpandedItem(null);
-    }, [debouncedSearch, selectedStatus, selectedPmoDivision]);
-
-
+    }, [debouncedSearch, selectedStatus, selectedPmoDivision, sort]);
 
     const handleTaskAdd = async (data: any, milestoneId?: string) => {
         if (!addingTaskToProject || !localUser) {
-             toast({ title: "Error", description: "Could not find the parent project for this task.", variant: "destructive" });
+             toast({ title: "That did not work", description: "Could not find the parent project for this task.", variant: "destructive" });
              return;
         }
-  
+
         await addTask(addingTaskToProject.id, milestoneId || null, localUser.id, data);
-        toast({ title: "Task Added!", description: `The task "${data.title}" has been added.` });
+        toast({ title: "Task added", description: `"${data.title}" is now on the project.` });
         setAddingTaskToProject(null);
         await fetchData();
     };
@@ -158,22 +178,22 @@ export default function ProjectsPage() {
 
         const { id, ...dataToUpdate } = updatedTask;
         await updateTask(id, projectId, localUser.id, dataToUpdate);
-        toast({ title: "Task Updated!", description: "The task has been successfully updated." });
+        toast({ title: "Task updated" });
         setEditingTaskInfo(null);
         await fetchData();
     };
 
     const handleTaskDelete = async () => {
         if (!taskToDelete) return;
-      
+
         const projectForTask = projects.find(p => p.milestones.some((m: Milestone) => m.tasks.some((t: TaskType) => t.id === taskToDelete.id)));
 
         const result = await deleteTask(taskToDelete.id, projectForTask?.id || '');
         if (result.success) {
-            toast({ title: "Task Deleted!", description: `The task "${taskToDelete.title}" has been removed.` });
+            toast({ title: "Task deleted", description: `"${taskToDelete.title}" has been removed.` });
             await fetchData();
         } else {
-            toast({ title: "Error", description: result.error, variant: "destructive" });
+            toast({ title: "That did not work", description: result.error, variant: "destructive" });
         }
         setTaskToDelete(null);
     };
@@ -182,43 +202,32 @@ export default function ProjectsPage() {
     // createTeam, so when that action changed shape the mismatch was invisible
     // to the compiler and only showed up as a crash in the browser.
     const handleTeamSubmit = async (data: Parameters<typeof createTeam>[0]) => {
-        const result = editingTeam 
+        const result = editingTeam
             ? await updateTeam(editingTeam.team.id, data)
             : await createTeam(data);
 
         if (result.success) {
             toast({
-                title: editingTeam ? "Team Updated" : "Team Created",
-                description: `The team "${data.name}" has been saved.`
+                title: editingTeam ? "Team updated" : "Team created",
+                description: `"${data.name}" has been saved.`
             });
             setIsTeamDialogOpen(false);
             setEditingTeam(null);
             setAddingTeamToProject(null);
             fetchData();
         } else {
-            toast({
-                title: "Error",
-                description: result.error,
-                variant: "destructive"
-            });
+            toast({ title: "That did not work", description: result.error, variant: "destructive" });
         }
     };
-  
+
     const handleTeamDelete = async () => {
         if (!teamToDelete) return;
         const result = await deleteTeam(teamToDelete.id);
         if (result.success) {
-            toast({
-                title: "Team Deleted",
-                description: `Team "${teamToDelete.name}" has been removed.`
-            });
+            toast({ title: "Team deleted", description: `"${teamToDelete.name}" has been removed.` });
             fetchData();
         } else {
-            toast({
-                title: "Error",
-                description: result.error,
-                variant: "destructive"
-            });
+            toast({ title: "That did not work", description: result.error, variant: "destructive" });
         }
         setTeamToDelete(null);
     };
@@ -244,12 +253,13 @@ export default function ProjectsPage() {
         setEditingTeam(null);
         setIsTeamDialogOpen(true);
     };
-  
+
     const handleEditTeam = (team: Team, project: Project) => {
         setEditingTeam({ team, project });
         setAddingTeamToProject(null);
         setIsTeamDialogOpen(true);
-    };
+    };
+
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
@@ -260,65 +270,74 @@ export default function ProjectsPage() {
 
     if (!localUser) {
         return (
-            <div className="p-4 sm:p-6"><p>Could not load projects. Please try logging in again.</p></div>
-        )
+            <PageShell>
+                <ErrorState
+                    variant="permission"
+                    title="Your session has ended"
+                    description="Sign in again to see the projects you have access to."
+                    href="/login"
+                    hrefLabel="Sign in"
+                />
+            </PageShell>
+        );
     }
-  
+
     const teamDialogData = editingTeam || (addingTeamToProject ? { project: addingTeamToProject } : null);
 
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold">Projects</h1>
-                    <p className="text-muted-foreground">An overview of all active projects and their tasks.</p>
-                </div>
-                 <div className="flex flex-col-reverse sm:flex-row items-center gap-2 w-full md:w-auto">
-                    <div className="relative w-full sm:w-auto">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            type="search"
-                            placeholder="Search projects..."
-                            className="w-full rounded-lg bg-background pl-8 sm:w-[200px] lg:w-[300px]"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                    <Select onValueChange={(value) => setSelectedStatus(value === 'all' ? null : value)} value={selectedStatus || 'all'}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="Filter by status" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Statuses</SelectItem>
-                            {statuses.map(status => (
-                                <SelectItem key={status.id} value={status.id}>
-                                    {status.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <Select onValueChange={(value) => setSelectedPmoDivision(value === 'all' ? null : value)} value={selectedPmoDivision || 'all'}>
-                        <SelectTrigger className="w-full sm:w-[180px]">
-                            <SelectValue placeholder="Filter by division" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All EPMO Divisions</SelectItem>
-                            {pmoDivisions.map(division => (
-                                <SelectItem key={division.id} value={division.id}>
-                                    {division.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                    <CreateProjectButton />
-                </div>
-            </div>
-          
-            {paginatedProjects.length > 0 ? (
-                <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <PageShell>
+            <PageHeader
+                title="Projects"
+                description="Everything currently in delivery. Completed and handed-over projects live in the Archive."
+                actions={<CreateProjectButton />}
+            />
+
+            <DataToolbar
+                search={{
+                    value: searchQuery,
+                    onChange: setSearchQuery,
+                    placeholder: 'Search projects…',
+                    label: 'Search projects by name or description',
+                }}
+                filters={[
+                    {
+                        id: 'status',
+                        label: 'Status',
+                        value: selectedStatus,
+                        onChange: setSelectedStatus,
+                        options: statuses.map((s) => ({ value: s.id, label: s.name })),
+                        allLabel: 'All statuses',
+                    },
+                    {
+                        id: 'division',
+                        label: 'EPMO division',
+                        value: selectedPmoDivision,
+                        onChange: setSelectedPmoDivision,
+                        options: pmoDivisions.map((d) => ({ value: d.id, label: d.name })),
+                        allLabel: 'All EPMO divisions',
+                    },
+                ]}
+                sort={{ value: sort, onChange: setSort, options: SORT_OPTIONS }}
+                count={{
+                    showing: paginatedProjects.length,
+                    total: totalCount,
+                    noun: 'projects',
+                }}
+                onClearAll={clearFilters}
+            />
+
+            {loadError ? (
+                <ErrorState
+                    variant="load"
+                    title="We could not load your projects"
+                    detail={loadError}
+                    onRetry={fetchData}
+                />
+            ) : paginatedProjects.length > 0 ? (
+                <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
                     {paginatedProjects.map((project: any) => (
-                        <ProjectListItem 
-                            key={project.id} 
+                        <ProjectListItem
+                            key={project.id}
                             project={project}
                             users={allUsers}
                             onAddTask={(project) => setAddingTaskToProject(project)}
@@ -366,9 +385,12 @@ export default function ProjectsPage() {
                     }
                 />
             )}
-          
-            {totalPages > 1 && (
-                <CardFooter className="flex justify-center items-center gap-4 mt-6">
+
+            {totalPages > 1 && !loadError && (
+                <nav
+                    aria-label="Projects pagination"
+                    className="flex flex-wrap items-center justify-center gap-4"
+                >
                     <Button
                         variant="outline"
                         onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
@@ -376,7 +398,7 @@ export default function ProjectsPage() {
                     >
                         Previous
                     </Button>
-                    <span className="text-sm text-muted-foreground">
+                    <span className="text-sm text-muted-foreground tabular-nums" aria-live="polite">
                         Page {currentPage} of {totalPages}
                     </span>
                     <Button
@@ -386,7 +408,7 @@ export default function ProjectsPage() {
                     >
                         Next
                     </Button>
-                </CardFooter>
+                </nav>
             )}
 
             {addingTaskToProject && (
@@ -409,7 +431,7 @@ export default function ProjectsPage() {
                     onTaskUpdate={(updatedTask) => handleTaskUpdate(editingTaskInfo.project.id, updatedTask)}
                 />
             )}
-          
+
             {teamDialogData && (
                  <TeamDialog
                     isOpen={isTeamDialogOpen}
@@ -420,6 +442,6 @@ export default function ProjectsPage() {
                     onSubmit={handleTeamSubmit}
                 />
             )}
-        </div>
+        </PageShell>
     );
 }

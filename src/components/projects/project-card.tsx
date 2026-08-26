@@ -33,9 +33,14 @@ import { isOpenBlocker } from '@/lib/validation/blocker';
 import { ProjectCardTeams } from './project-card-teams';
 import { ProjectCardTasks } from './project-card-tasks';
 import {
+  displayProgress,
+  isArchivedStatus,
+  isOverdue,
   milestoneProgress as calculateMilestoneProgress,
   projectProgress as calculateProjectProgress,
 } from '@/lib/metrics';
+import { daysUntil, projectRisks } from '@/lib/ui/health';
+import { ProjectHealthyBadge, ProjectRiskBadge } from './project-summary';
 
 type ProjectListItemProps = {
   project: any;
@@ -164,8 +169,15 @@ export function ProjectListItem({
   const progress = calculateProjectProgress(project);
   const projectManager = users.find(u => u.id === project.projectManagerId);
   
-  const nonArchivedStatusNames = ['Active', 'Pending', 'Parked'];
-  const isProjectOverdue = nonArchivedStatusNames.includes(project.status.name) && isAfter(new Date(), endOfDay(parseISO(project.endDate)));
+  /*
+   * Was a hard-coded list of status *names* — ['Active', 'Pending', 'Parked'] —
+   * which is the exact failure the metrics module exists to prevent: statuses
+   * are renameable in Settings, so renaming "Parked" to "On hold" silently
+   * stopped those projects ever reading as overdue. `isOverdue` decides from
+   * the immutable category and applies the same end-of-day boundary the
+   * dashboard and the reports use.
+   */
+  const isProjectOverdue = isOverdue(project);
   const openBlockersCount = project.blockers?.length || 0;
   
   const TaskRow = ({task}: {task: any}) => {
@@ -179,7 +191,13 @@ export function ProjectListItem({
               <div className="flex-1 min-w-0">
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <p className="text-sm font-medium pr-2 block truncate max-w-14">
+                    {/*
+                      `max-w-14` is 3.5rem — about four characters — so every
+                      task in this list rendered as an ellipsis and a tooltip.
+                      The row already constrains the width; truncate alone does
+                      the job.
+                    */}
+                    <p className="block truncate pr-2 text-sm font-medium">
                         {task.title}
                     </p>
                   </TooltipTrigger>
@@ -315,43 +333,63 @@ export function ProjectListItem({
   );
 }
 
+/**
+ * A project as a card, for the report grids and the archive.
+ *
+ * It used to carry a name, a description, a progress bar, a status and a date —
+ * and a red "Blocker" badge that fired for any open issue, however trivial. So
+ * a project with one low-severity question outstanding looked exactly as alarming
+ * as one three weeks past its deadline with a critical issue unowned.
+ *
+ * The badge is now the project's worst actual risk, which distinguishes those
+ * two, and says on hover why it is flagged. A project with nothing wrong says
+ * so, rather than saying nothing.
+ */
 export function ProjectCard({ project, href }: { project: any, href?: string }) {
 
     const progress = calculateProjectProgress(project);
-    const hasOpenBlockers = project.blockers && project.blockers.some((b: any) => isOpenBlocker(b.status));
-
-    const cardContent = (
-      <Card className="flex flex-col h-full hover:shadow-md transition-shadow">
-          <CardHeader>
-              <div className="flex justify-between items-start">
-                <CardTitle className="truncate">{project.name}</CardTitle>
-                {hasOpenBlockers && (
-                  <Badge variant="destructive" className="flex items-center gap-1">
-                    <ShieldAlert className="w-3 h-3"/> Blocker
-                  </Badge>
-                )}
-              </div>
-              <CardDescription className="line-clamp-2">{project.description}</CardDescription>
-          </CardHeader>
-          <CardContent className="flex-grow">
-               <div className="space-y-1">
-                  <div className="flex justify-between text-sm text-muted-foreground">
-                      <span>Progress</span>
-                      <span>{Math.round(progress)}%</span>
-                  </div>
-                  <Progress value={progress} />
-              </div>
-          </CardContent>
-          <CardFooter className="flex justify-between text-xs text-muted-foreground">
-              <span>{project.status.name}</span>
-              <span>Closing Date: {format(parseISO(project.endDate), 'MMM dd, yyyy')}</span>
-          </CardFooter>
-      </Card>
-    );
+    const remaining = daysUntil({ endDate: project.endDate });
+    const closed = isArchivedStatus(project.status);
+    const risk = closed ? null : projectRisks(project)[0];
 
     return (
-      <Link href={href || `/projects/${project.id}`} className="h-full">
-        {cardContent}
+      <Link
+        href={href || `/projects/${project.id}`}
+        className="group h-full rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+      >
+        <Card className="flex h-full flex-col transition-shadow group-hover:shadow-md">
+            <CardHeader className="space-y-2">
+                <div className="flex items-start justify-between gap-2">
+                  <CardTitle className="min-w-0 truncate text-base">{project.name}</CardTitle>
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {risk ? <ProjectRiskBadge project={project} /> : !closed ? <ProjectHealthyBadge /> : null}
+                </div>
+                <CardDescription className="line-clamp-2">{project.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="flex-grow">
+                 <div className="space-y-1">
+                    <div className="flex justify-between text-sm">
+                        <span className="text-muted-foreground">Progress</span>
+                        <span className="font-medium tabular-nums">{displayProgress(progress)}%</span>
+                    </div>
+                    <Progress
+                      value={progress}
+                      aria-label={`${project.name}: ${displayProgress(progress)}% complete`}
+                    />
+                </div>
+            </CardContent>
+            <CardFooter className="flex flex-wrap justify-between gap-2 text-xs text-muted-foreground">
+                <span>{project.status?.name}</span>
+                <span>
+                  {closed || remaining === null
+                    ? `Closed ${format(parseISO(project.endDate), 'd MMM yyyy')}`
+                    : remaining < 0
+                      ? `${Math.abs(remaining)} days overdue`
+                      : `Due ${format(parseISO(project.endDate), 'd MMM yyyy')}`}
+                </span>
+            </CardFooter>
+        </Card>
       </Link>
     )
 }

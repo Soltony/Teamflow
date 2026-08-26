@@ -11,6 +11,8 @@ import { getPaymentsPageData } from "./actions";
 import type { Project } from '@prisma/client';
 import type { Serialized } from '@/lib/serialize';
 import { useFirstLoad } from "@/hooks/use-first-load";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageHeader, PageShell } from "@/components/ui/page-header";
 
 function LoadingSkeleton() {
     return (
@@ -37,14 +39,19 @@ export default function PaymentsPage() {
     const router = useRouter();
     const [projects, setProjects] = useState<Serialized<Project>[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
+        setLoadError(null);
         try {
             const data = await getPaymentsPageData();
             setProjects(data);
         } catch (error) {
-            console.error("Failed to fetch payments data", error);
+            // Money screens especially must not fail silently: an empty list
+            // here previously meant either "nothing to pay" or "we could not
+            // ask", with nothing on screen to tell them apart.
+            setLoadError(error instanceof Error ? error.message : "The request did not complete.");
         } finally {
             setIsLoading(false);
         }
@@ -58,13 +65,30 @@ export default function PaymentsPage() {
                 fetchData();
             }
         }
-    }, [authLoading, hasPermission, router, fetchData]);
+    }, [authLoading, hasPermission, router, fetchData]);
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
 
     if (showSkeleton || authLoading) {
         return <LoadingSkeleton />;
+    }
+
+    if (loadError) {
+        return (
+            <PageShell>
+              <PageHeader
+                title="Payments"
+                description="Payments recorded against projects."
+              />
+              <ErrorState
+                variant="load"
+                title="We could not load the payments"
+                detail={loadError}
+                onRetry={fetchData}
+              />
+            </PageShell>
+        );
     }
 
     return (
@@ -77,8 +101,8 @@ export default function PaymentsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <PaymentsManagement 
-                initialProjects={projects} 
+              <PaymentsManagement
+                initialProjects={projects}
                 onDataChange={fetchData}
               />
             </CardContent>

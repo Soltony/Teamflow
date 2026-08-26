@@ -915,12 +915,38 @@ export async function deleteTask(taskId: string, projectId: string) {
 export interface ProjectsPageFilters {
     status?: string | null;
     pmoDivisionId?: string | null;
-    /** Matched against the project name, case-insensitively. */
+    /** Matched against the project name and description, case-insensitively. */
     search?: string | null;
     /** 1-based. */
     page?: number | null;
     pageSize?: number | null;
+    /** See PROJECT_LIST_ORDER. Anything unrecognised falls back to newest first. */
+    sort?: string | null;
 }
+
+/**
+ * How a paged project list may be ordered.
+ *
+ * Confined to what the database can order by, and deliberately so. Sorting by
+ * risk or by progress would mean computing both for every project in the
+ * portfolio and then paging the result — otherwise the sort applies to nine
+ * rows that were themselves chosen by a different rule, and "most at risk"
+ * silently means "most at risk out of an arbitrary nine". The Reports screen
+ * offers those orderings instead, where the whole set is in hand.
+ *
+ * Not exported: this file carries 'use server', and such a module may only
+ * export async functions. Exporting this table made every import of the module
+ * fail at render — which is what took the whole Projects page down — and
+ * TypeScript cannot see the rule, so `tsc` stayed clean. The client lists the
+ * matching labels itself; the keys below are the contract between them.
+ */
+const PROJECT_LIST_ORDER: Record<string, Prisma.ProjectOrderByWithRelationInput> = {
+    deadline: { endDate: 'asc' },
+    'deadline-desc': { endDate: 'desc' },
+    name: { name: 'asc' },
+    recent: { updatedAt: 'desc' },
+    created: { createdAt: 'desc' },
+};
 
 
 export async function getProjectsPageData(_userId: string | undefined, filters: ProjectsPageFilters) {
@@ -960,7 +986,22 @@ export async function getProjectsPageData(_userId: string | undefined, filters: 
             // browser already holds: the point of paging is not to send the
             // rest in the first place.
             ...(filters.search?.trim()
-                ? [{ name: { contains: filters.search.trim(), mode: 'insensitive' as const } }]
+                ? [
+                      {
+                          OR: [
+                              { name: { contains: filters.search.trim(), mode: 'insensitive' as const } },
+                              // Also the description: people search for what a
+                              // project is about at least as often as for the
+                              // words somebody happened to name it with.
+                              {
+                                  description: {
+                                      contains: filters.search.trim(),
+                                      mode: 'insensitive' as const,
+                                  },
+                              },
+                          ],
+                      },
+                  ]
                 : []),
         ],
     };
@@ -1012,9 +1053,10 @@ export async function getProjectsPageData(_userId: string | undefined, filters: 
                 }
             }
         },
-        orderBy: {
-            createdAt: 'desc'
-        },
+        // Ordered in the database, so the sort and the paging agree. Sorting
+        // the nine rows a page happened to contain would order an arbitrary
+        // slice and present it as an ordering of the whole list.
+        orderBy: PROJECT_LIST_ORDER[filters.sort ?? ''] ?? PROJECT_LIST_ORDER.created,
         skip,
         take: pageSize,
     });

@@ -36,7 +36,6 @@ type PmoDivisionPerformanceProps = {
 export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses }: PmoDivisionPerformanceProps) {
 
     const statusMap = useMemo(() => new Map(projectStatuses.map(s => [s.id, s.name])), [projectStatuses]);
-    const completedStatusId = useMemo(() => projectStatuses.find(s => s.name === 'Completed')?.id, [projectStatuses]);
 
     const pmoDivisionPerformance = useMemo(() => {
         return pmoDivisions
@@ -71,7 +70,7 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
                     projectsByStatus
                 };
             });
-    }, [projects, pmoDivisions, statusMap, completedStatusId]);
+    }, [projects, pmoDivisions, statusMap]);
 
     const defaultOpenAccordionItems = useMemo(() => {
         return pmoDivisionPerformance.filter(div => div.totalProjects > 0).map(div => div.id);

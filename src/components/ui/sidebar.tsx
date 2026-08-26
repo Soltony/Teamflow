@@ -7,9 +7,30 @@ import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 
+/**
+ * Three sizes, not two.
+ *
+ * The old split was "mobile below 768, desktop above", which left every tablet
+ * — the 768–1024 band, where a good deal of this system is actually read —
+ * being treated as a desktop and given a 280px fixed rail. On a 768px screen
+ * that is 36% of the viewport spent on navigation, and the content beside it
+ * had 488px to fit tables that assume far more.
+ *
+ * A tablet now gets the icon rail by default: the same navigation, 56px wide,
+ * expandable on demand.
+ */
+type Viewport = "mobile" | "tablet" | "desktop"
+
+function viewportOf(width: number): Viewport {
+  if (width < 768) return "mobile"
+  if (width < 1024) return "tablet"
+  return "desktop"
+}
+
 type SidebarContextProps = {
   isOpen: boolean
   isMobile: boolean
+  viewport: Viewport
   toggleSidebar: () => void
   setIsOpen: React.Dispatch<React.SetStateAction<boolean>>
   mounted: boolean
@@ -29,28 +50,44 @@ export function useSidebar() {
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
   const [isOpen, setIsOpen] = React.useState(true)
-  const [isMobile, setIsMobile] = React.useState(false)
+  const [viewport, setViewport] = React.useState<Viewport>("desktop")
   const [mounted, setMounted] = React.useState(false)
 
   React.useEffect(() => {
-    setMounted(true);
-    const checkIsMobile = () => {
-      const mobile = window.innerWidth < 768
-      setIsMobile(mobile)
-      setIsOpen(!mobile)
+    setMounted(true)
+
+    // The last band we settled on. Compared against on every resize so the
+    // sidebar is only reset when the viewport genuinely crosses a boundary —
+    // the previous version called setIsOpen on *every* resize event, so a
+    // reader who collapsed the rail had it spring back open the moment they
+    // nudged the window, opened dev tools, or zoomed.
+    let current: Viewport | null = null
+
+    const apply = () => {
+      const next = viewportOf(window.innerWidth)
+      if (next === current) return
+      current = next
+      setViewport(next)
+      setIsOpen(next === "desktop")
     }
-    checkIsMobile()
-    window.addEventListener("resize", checkIsMobile)
-    return () => window.removeEventListener("resize", checkIsMobile)
+
+    apply()
+    window.addEventListener("resize", apply)
+    return () => window.removeEventListener("resize", apply)
   }, [])
 
-  const toggleSidebar = () => {
-    setIsOpen(!isOpen)
-  }
+  const toggleSidebar = () => setIsOpen((open) => !open)
 
   return (
     <SidebarContext.Provider
-      value={{ isOpen, isMobile, toggleSidebar, setIsOpen, mounted }}
+      value={{
+        isOpen,
+        isMobile: viewport === "mobile",
+        viewport,
+        toggleSidebar,
+        setIsOpen,
+        mounted,
+      }}
     >
       {children}
     </SidebarContext.Provider>
@@ -178,12 +215,29 @@ const SidebarMenuButton = React.forwardRef<
   const { isOpen, isMobile } = useSidebar()
 
   const variant: "secondary" | "ghost" = isActive ? "secondary" : "ghost";
+  const collapsed = !isOpen && !isMobile
+
+  /**
+   * The label survives the collapse.
+   *
+   * Collapsed, these rendered as an icon and nothing else — no text, no label —
+   * so every one of the eighteen nav items announced as an unnamed button, and
+   * the whole rail was unusable by screen reader. The visible text is hidden
+   * rather than dropped, and `title` gives sighted readers the same thing on
+   * hover, which the icon-only rail also lacked.
+   */
+  const label = typeof children === "string" ? children : undefined
 
   const commonProps = {
     variant,
+    title: collapsed ? label : undefined,
+    "aria-label": collapsed ? label : undefined,
+    // Marks the current page for assistive technology, which colour alone
+    // could not: the active item was distinguishable only by its background.
+    "aria-current": isActive ? ("page" as const) : undefined,
     className: cn(
       "h-10 w-full justify-start gap-3",
-      !isOpen && !isMobile && "h-10 w-10 justify-center p-0",
+      collapsed && "h-10 w-10 justify-center p-0",
       className
     ),
     ...props
@@ -192,7 +246,7 @@ const SidebarMenuButton = React.forwardRef<
   const buttonContent = (
     <>
       {icon && React.cloneElement(icon, { className: "h-5 w-5 shrink-0" })}
-      {(isOpen || isMobile) && <span className="truncate">{children}</span>}
+      <span className={cn("truncate", collapsed && "sr-only")}>{children}</span>
     </>
   );
 

@@ -9,6 +9,8 @@ import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { useRouter } from "next/navigation";
 import { useFirstLoad } from "@/hooks/use-first-load";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageShell } from "@/components/ui/page-header";
 
 // Derived from the action rather than restated. Three files each declared
 // their own TeamWithRelations, which is why adding the project links broke
@@ -44,16 +46,19 @@ export default function TeamsPage() {
     const router = useRouter();
     const [data, setData] = useState<TeamsPageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         if (!localUser?.id) return;
         setIsLoading(true);
+        setLoadError(null);
         try {
             const fetchedData = await getTeamsPageData(localUser.id);
             setData(fetchedData as any);
         } catch (error) {
-            console.error("Failed to fetch teams data", error);
-            setData({ teams: [], projects: [], users: [] });
+            // Was swallowed to the console and replaced with empty arrays, so a
+            // failed request looked exactly like an organisation with no teams.
+            setLoadError(error instanceof Error ? error.message : "The request did not complete.");
         } finally {
             setIsLoading(false);
         }
@@ -72,7 +77,7 @@ export default function TeamsPage() {
                 setIsLoading(false);
             }
         }
-    }, [localUser, authLoading, hasPermission, router, fetchData]);
+    }, [localUser, authLoading, hasPermission, router, fetchData]);
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
@@ -81,11 +86,30 @@ export default function TeamsPage() {
         return <LoadingSkeleton />;
     }
 
-    if (!localUser || !data) {
+    if (!localUser) {
         return (
-            <div className="p-4 sm:p-6">
-                <p>Could not load teams. Please try logging in again.</p>
-            </div>
+            <PageShell>
+                <ErrorState
+                    variant="permission"
+                    title="Your session has ended"
+                    description="Sign in again to manage teams."
+                    href="/login"
+                    hrefLabel="Sign in"
+                />
+            </PageShell>
+        );
+    }
+
+    if (loadError || !data) {
+        return (
+            <PageShell>
+                <ErrorState
+                    variant="load"
+                    title="We could not load the teams"
+                    detail={loadError}
+                    onRetry={fetchData}
+                />
+            </PageShell>
         );
     }
 

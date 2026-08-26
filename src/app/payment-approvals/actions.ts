@@ -21,6 +21,10 @@ export async function getPendingPayments() {
                     id: true,
                     name: true,
                     currency: true,
+                    // So the queue can say what share of the project's budget a
+                    // payment represents. An amount on its own does not tell an
+                    // approver whether it is a deposit or the whole contract.
+                    totalCost: true,
                 }
             }
         },

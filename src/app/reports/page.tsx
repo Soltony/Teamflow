@@ -1,11 +1,8 @@
-
-import Link from 'next/link';
-import { ArrowLeft } from 'lucide-react';
-import { ProjectCard } from "@/components/projects/project-card";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { isPast, parseISO, max as dateMax, endOfDay, isAfter } from 'date-fns';
-import type { Project } from '@prisma/client';
 import { Suspense } from 'react';
+
+import { ReportsClient } from '@/components/reports/reports-client';
+import { PageShell } from '@/components/ui/page-header';
+import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import prisma from '@/lib/db';
 import { requirePermissionOrRedirect } from '@/lib/auth/guard';
 import { isLate, isOnTime, isOverdue } from '@/lib/metrics';
@@ -17,6 +14,32 @@ export const dynamic = 'force-dynamic';
 
 type ReportSearchParams = { type?: string; year?: string; division?: string };
 
+const REPORT_COPY: Record<string, { title: string; description: string }> = {
+  'on-time': {
+    title: 'Completed on time',
+    description:
+      'Closed projects whose last task finished on or before the deadline they were originally committed to.',
+  },
+  late: {
+    title: 'Completed late',
+    description:
+      'Closed projects delivered after the deadline they were originally committed to. Measured against the baseline, not against an extension.',
+  },
+  overdue: {
+    title: 'Overdue projects',
+    description:
+      'Projects still running whose current deadline has passed. A finished project is never overdue — it is on time or late.',
+  },
+  'active-blockers': {
+    title: 'Projects with open issues',
+    description: 'Projects carrying unresolved issues that are holding delivery up.',
+  },
+  all: {
+    title: 'All projects',
+    description: 'Every project in the selected working year and EPMO division.',
+  },
+};
+
 async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSearchParams> }) {
     // This page previously read every project in the portfolio with no
     // permission check of any kind.
@@ -24,112 +47,98 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
 
     // Next 15 hands these over as a promise.
     const params = await searchParams;
-    const type = params?.type;
-    const year = params?.year;
-    const division = params?.division;
+    const type = params?.type && REPORT_COPY[params.type] ? params.type : 'all';
+    const year = params?.year ?? 'all';
+    const division = params?.division ?? 'all';
 
-    let title = "Projects Report";
-    let description = "A list of projects based on the selected filter.";
-
-    const allProjectStatuses = await prisma.projectStatus.findMany();
-
-    const allProjectsQuery = prisma.project.findMany({
+    const [allProjects, pmoDivisions, distinctYears] = await Promise.all([
+      prisma.project.findMany({
         // Both filters, because the dashboard cards were counted under both.
         // Honouring only the year is what made a card read 7 and its list 19.
         where: {
             ...(year && year !== 'all' ? { workingYear: year } : {}),
-            ...(division ? { pmoDivisionId: division } : {}),
+            ...(division && division !== 'all' ? { pmoDivisionId: division } : {}),
         },
-        include: { 
+        include: {
             status: true,
-            milestones: {
-                include: {
-                    tasks: true
-                }
-            },
-            blockers: true
-        }
-    });
+            milestones: { include: { tasks: true } },
+            blockers: true,
+        },
+      }),
+      // The filter controls need these; the page previously had no controls at
+      // all, so the only way to change a report was to go back and re-click a
+      // dashboard card.
+      prisma.pmoDivision.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+      prisma.project.findMany({
+        select: { workingYear: true },
+        distinct: ['workingYear'],
+        orderBy: { workingYear: 'desc' },
+      }),
+    ]);
 
-    const [allProjects] = await Promise.all([allProjectsQuery]);
+    // Same predicates the dashboard and CEO report use, so a drill-down always
+    // lists exactly the projects the card counted. These filters previously
+    // used planned task dates while the cards used actual completion, so the
+    // number and the list disagreed.
+    const hasOpenBlocker = (p: (typeof allProjects)[number]) =>
+      p.blockers?.some((b) => isOpenBlocker(b.status)) ?? false;
 
-    let filteredProjects: any[] = [];
+    const byType: Record<string, typeof allProjects> = {
+      'on-time': allProjects.filter(isOnTime),
+      late: allProjects.filter(isLate),
+      overdue: allProjects.filter((p) => isOverdue(p)),
+      'active-blockers': allProjects.filter(hasOpenBlocker),
+      all: allProjects,
+    };
 
-    if (type) {
-        // Same predicates the dashboard and CEO report use, so a drill-down
-        // always lists exactly the projects the card counted. These filters
-        // previously used planned task dates while the cards used actual
-        // completion, so the number and the list disagreed.
-        switch (type) {
-            case 'on-time':
-                title = "On-Time Completion Projects";
-                description = "Completed projects delivered on or before their committed deadline.";
-                filteredProjects = allProjects.filter(isOnTime);
-                break;
-            case 'late':
-                title = "Late Completion Projects";
-                description = "Completed projects delivered after their committed deadline.";
-                filteredProjects = allProjects.filter(isLate);
-                break;
-            case 'overdue':
-                title = "Overdue Projects";
-                description = "Projects still running that are past their deadline.";
-                filteredProjects = allProjects.filter(p => isOverdue(p));
-                break;
-            case 'active-blockers':
-                title = "Projects with Active Blockers";
-                description = "Projects that have open issues requiring attention.";
-                filteredProjects = allProjects.filter(p => p.blockers?.some(b => isOpenBlocker(b.status)));
-                break;
-            default:
-                title = "All Projects";
-                description = "A list of all projects.";
-                filteredProjects = allProjects;
-        }
-    } else {
-        title = "All Projects";
-        description = "A list of all projects.";
-        filteredProjects = allProjects;
-    }
-    
-    const serializableProjects = serialize(filteredProjects);
+    const copy = REPORT_COPY[type];
 
     return (
-        <div className="p-4 sm:p-6 space-y-6">
-            <Link href="/dashboard" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
-                <ArrowLeft className="w-4 h-4" />
-                Back to Dashboard
-            </Link>
-            <Card>
-                <CardHeader>
-                    <CardTitle>{title}</CardTitle>
-                    <CardDescription>{description}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    {serializableProjects.length > 0 ? (
-                        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                            {serializableProjects.map((project: any) => (
-                                <ProjectCard 
-                                    key={project.id} 
-                                    project={project}
-                                    href={type === 'active-blockers' ? `/projects/${project.id}?tab=blockers` : `/projects/${project.id}`}
-                                />
-                            ))}
-                        </div>
-                    ) : (
-                        <div className="text-center py-12">
-                            <p className="text-muted-foreground">No projects match the current filter.</p>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
+      <ReportsClient
+        projects={serialize(byType[type])}
+        counts={{
+          onTime: byType['on-time'].length,
+          late: byType.late.length,
+          overdue: byType.overdue.length,
+          blockers: byType['active-blockers'].length,
+          all: allProjects.length,
+        }}
+        pmoDivisions={pmoDivisions}
+        workingYears={distinctYears.map((p) => p.workingYear)}
+        type={type}
+        year={year}
+        division={division}
+        title={copy.title}
+        description={copy.description}
+      />
+    );
+}
+
+/** Matches the shape of the report, so nothing jumps when the data lands. */
+function ReportsSkeleton() {
+    return (
+        <LoadingRegion label="Loading report">
+          <PageShell>
+            <Skeleton className="h-4 w-48" />
+            <div className="space-y-2">
+              <Skeleton className="h-9 w-64" />
+              <Skeleton className="h-4 w-96" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-28 w-full" />
+              <Skeleton className="h-28 w-full" />
+            </div>
+            <Skeleton className="h-96 w-full" />
+          </PageShell>
+        </LoadingRegion>
     );
 }
 
 export default async function ReportsPage({ searchParams }: { searchParams: Promise<ReportSearchParams> }) {
     return (
-        <Suspense fallback={<div className="p-4 sm:p-6">Loading...</div>}>
+        <Suspense fallback={<ReportsSkeleton />}>
             <ReportsContent searchParams={searchParams} />
         </Suspense>
     );

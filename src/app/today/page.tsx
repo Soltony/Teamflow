@@ -24,6 +24,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { useFirstLoad } from "@/hooks/use-first-load";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageShell } from "@/components/ui/page-header";
 import {
   milestoneProgress as calculateMilestoneProgress,
   projectProgress as calculateProjectProgress,
@@ -224,6 +226,7 @@ export default function TodayPage() {
 
   const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[], stats: any}>({projects: [], users: [], stats: { projectsActive: 0, tasksRemaining: 0, tasksCompleted: 0, tasksWithActivity: 0 }});
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   
@@ -243,11 +246,15 @@ export default function TodayPage() {
   const fetchData = useCallback(async (targetDate: Date) => {
     if (localUser?.id) {
       setIsLoading(true);
+      setLoadError(null);
       try {
         const fetchedData = await getTodaysTasks(localUser.id, targetDate);
         setData(fetchedData as any);
       } catch (error) {
-        console.error("Failed to fetch today's tasks", error);
+        // A failed fetch left the previous day's data on screen under the new
+        // date, which is worse than showing nothing: it is wrong and looks
+        // right.
+        setLoadError(error instanceof Error ? error.message : "The request did not complete.");
       } finally {
         setIsLoading(false);
       }
@@ -281,7 +288,7 @@ export default function TodayPage() {
     setExpandedProjectId(null);
   }, [searchQuery, date]);
 
-  const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
+  const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
@@ -289,7 +296,20 @@ export default function TodayPage() {
   if (showSkeleton || authLoading) {
     return <LoadingSkeleton />;
   }
-  
+
+  if (loadError) {
+    return (
+      <PageShell>
+        <ErrorState
+          variant="load"
+          title="We could not load this day"
+          detail={loadError}
+          onRetry={() => fetchData(date)}
+        />
+      </PageShell>
+    );
+  }
+
   return (
     <div className="p-4 sm:p-6 space-y-6">
       <div className="space-y-4">

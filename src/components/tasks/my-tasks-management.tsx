@@ -35,6 +35,11 @@ import type { UserTask } from "@/app/my-tasks/actions";
 import { addTaskUpdateAction, updateTaskStatusAction } from "@/app/my-tasks/actions";
 import { Slider } from "../ui/slider";
 import { cn } from "@/lib/utils";
+import { DataToolbar } from "@/components/ui/data-toolbar";
+import { EmptyState } from "@/components/ui/empty-state";
+import { PageHeader, PageShell } from "@/components/ui/page-header";
+import { StatCard, StatCardGrid } from "@/components/ui/stat-card";
+import { TaskStatusPill } from "@/components/ui/status-pill";
 
 const taskUpdateSchema = (taskProgress: number) => z.object({
   text: z.string().min(10, "Update must be at least 10 characters.").max(500, "Update cannot exceed 500 characters."),
@@ -77,11 +82,29 @@ const TaskItem = ({
     return (
         <Card>
             <AccordionTrigger className="p-4 hover:no-underline [&[data-state=open]]:border-b">
-                <div className="flex-1 text-left">
-                    <p className="font-semibold">{task.title}</p>
-                    <p className="text-sm text-muted-foreground">
-                        In Project: {task.projectName} / {task.milestoneTitle}
-                    </p>
+                <div className="flex flex-1 flex-col gap-3 pr-2 text-left sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0 space-y-1">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <span className="font-semibold">{task.title}</span>
+                            {/* The same status pill used on the task page, the
+                                project page and the review queue, rather than a
+                                fourth rendering of the same four values. */}
+                            <TaskStatusPill status={task.status} />
+                        </div>
+                        <p className="text-sm font-normal text-muted-foreground">
+                            {task.projectName} / {task.milestoneTitle}
+                        </p>
+                    </div>
+                    <div className="flex w-full items-center gap-3 sm:w-40 sm:shrink-0">
+                        <Progress
+                            value={currentProgress}
+                            className="h-2 flex-1"
+                            aria-label={`${task.title}: ${currentProgress}% complete`}
+                        />
+                        <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums">
+                            {currentProgress}%
+                        </span>
+                    </div>
                 </div>
             </AccordionTrigger>
             <AccordionContent className="p-4 pt-0">
@@ -105,13 +128,12 @@ const TaskItem = ({
                         </div>
                     </div>
                     <p className="text-sm text-muted-foreground">{task.description}</p>
-                    <div className="flex flex-wrap items-center gap-4 text-sm">
-                        <Badge variant="outline">Due: {format(new Date(task.endDate), 'MMM dd, yyyy')}</Badge>
-                        <Badge variant="secondary">Weight: {task.weight}%</Badge>
-                        <div className="flex-grow">
-                            <Progress value={currentProgress} className="h-2" />
-                        </div>
-                        <span className="text-xs font-semibold">{currentProgress}% Complete</span>
+                    {/* Progress moved to the row header, where it can be read
+                        without expanding the task. Repeating it here was the
+                        same bar twice on one screen. */}
+                    <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <Badge variant="outline">Due {format(new Date(task.endDate), 'd MMM yyyy')}</Badge>
+                        <Badge variant="secondary">Weight {task.weight}%</Badge>
                     </div>
                     <Separator />
                     <div>
@@ -217,7 +239,7 @@ const TaskItem = ({
     );
 }
 
-const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubmit, expandedTaskId, setExpandedTaskId, show }: {
+const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubmit, expandedTaskId, setExpandedTaskId, show, emptyMatters, searching }: {
     title: string;
     icon: React.ReactNode;
     tasks: UserTask[];
@@ -227,8 +249,17 @@ const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubm
     expandedTaskId: string | null;
     setExpandedTaskId: (id: string | null) => void;
     show: boolean;
+    /** True when this section is the only one showing, so empty must be said. */
+    emptyMatters?: boolean;
+    searching?: boolean;
 }) => {
     if (!show) return null;
+
+    // A section with nothing in it is not worth a card of its own while the
+    // unfiltered view is showing every section at once — four headings over
+    // four "no tasks in this category" lines is noise, not information.
+    if (tasks.length === 0 && !emptyMatters) return null;
+
     return (
         <Card>
             <CardHeader className="flex flex-row items-center gap-4">
@@ -240,7 +271,7 @@ const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubm
                     {tasks.length > 0 ? (
                         tasks.map(task => (
                             <AccordionItem value={task.id} key={task.id} className="border-b-0">
-                                <TaskItem 
+                                <TaskItem
                                     task={task}
                                     userMap={userMap}
                                     onStatusChange={(newStatus) => onStatusChange(task, newStatus)}
@@ -249,7 +280,11 @@ const TaskSection = ({ title, icon, tasks, userMap, onStatusChange, onUpdateSubm
                             </AccordionItem>
                         ))
                     ) : (
-                        <p className="text-sm text-muted-foreground pl-4">No tasks in this category.</p>
+                        <EmptyState
+                            variant={searching ? 'no-match' : 'none-yours'}
+                            title={searching ? 'Nothing here matches your search' : `Nothing ${title.toLowerCase()}`}
+                            compact
+                        />
                     )}
                 </Accordion>
             </CardContent>
@@ -262,6 +297,7 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
   const userMap = useMemo(() => new Map(allUsers.map(u => [u.id, u])), [allUsers]);
   const [expandedTaskId, setExpandedTaskId] = useState<string | null>(null);
   const [filter, setFilter] = useState<'overdue' | 'active' | 'accomplished' | 'today' | null>(null);
+  const [search, setSearch] = useState('');
 
   const { overdueTasks, activeTasks, accomplishedThisWeek, onTimePerformance, completedTasksCount, todaysTasks } = useMemo(() => {
     const overdue: UserTask[] = [];
@@ -377,110 +413,156 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
       setFilter(currentFilter => currentFilter === newFilter ? null : newFilter);
   }
 
-  return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <div className="space-y-1">
-        <h1 className="text-2xl font-bold">My Tasks</h1>
-        <p className="text-muted-foreground">
-          Your personal dashboard for managing all assigned tasks and tracking performance.
-        </p>
-      </div>
-      
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        <Card onClick={() => handleFilterClick('overdue')} className={cn("cursor-pointer transition-colors hover:bg-muted/50", filter === 'overdue' && "bg-primary/10 border-primary")}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{overdueTasks.length}</div>
-              <p className="text-xs text-muted-foreground">Tasks past their due date</p>
-            </CardContent>
-        </Card>
-        <Card onClick={() => handleFilterClick('today')} className={cn("cursor-pointer transition-colors hover:bg-muted/50", filter === 'today' && "bg-primary/10 border-primary")}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Tasks Due Today</CardTitle>
-              <CalendarCheck className="h-4 w-4 text-orange-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{todaysTasksCount}</div>
-              <p className="text-xs text-muted-foreground">Tasks due by end of day</p>
-            </CardContent>
-        </Card>
-        <Card onClick={() => handleFilterClick('active')} className={cn("cursor-pointer transition-colors hover:bg-muted/50", filter === 'active' && "bg-primary/10 border-primary")}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
-              <Clock className="h-4 w-4 text-blue-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{activeTasks.length}</div>
-              <p className="text-xs text-muted-foreground">Upcoming or in-progress</p>
-            </CardContent>
-        </Card>
-        <Card onClick={() => handleFilterClick('accomplished')} className={cn("cursor-pointer transition-colors hover:bg-muted/50", filter === 'accomplished' && "bg-primary/10 border-primary")}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">Accomplished (Week)</CardTitle>
-              <Award className="h-4 w-4 text-green-500" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{accomplishedThisWeek.length}</div>
-               <p className="text-xs text-muted-foreground">Tasks completed in the last 7 days</p>
-            </CardContent>
-        </Card>
-        <Card>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">On-Time Performance</CardTitle>
-              <Target className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">
-                 {completedTasksCount > 0 ? `${Math.round(onTimePerformance)}%` : 'N/A'}
-              </div>
-              <Progress value={onTimePerformance} className="h-2 mt-2" />
-               <p className="text-xs text-muted-foreground">
-                  {completedTasksCount > 0 ? 'Based on all completed tasks' : 'No tasks completed yet'}
-               </p>
-            </CardContent>
-        </Card>
-      </div>
+  /**
+   * Searching narrows every section at once.
+   *
+   * Deliberately applied after the sections are worked out rather than before:
+   * a search that emptied the "Overdue" bucket would otherwise make the count
+   * on the card change too, and the cards are meant to report the standing
+   * position, not the search result.
+   */
+  const query = search.trim().toLowerCase();
+  const narrow = (tasks: UserTask[]) =>
+    query
+      ? tasks.filter(
+          (t) =>
+            String(t.title ?? '').toLowerCase().includes(query) ||
+            String(t.projectName ?? '').toLowerCase().includes(query) ||
+            String(t.milestoneTitle ?? '').toLowerCase().includes(query),
+        )
+      : tasks;
 
-      {(filter === null && overdueTasks.length === 0 && activeTasks.length === 0 && accomplishedThisWeek.length === 0) ? (
-        <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg">
-            <p className="text-lg font-semibold">No tasks assigned to you!</p>
-            <p>Your task list is empty. Enjoy the peace and quiet.</p>
-        </div>
+  const nothingAssigned =
+    overdueTasks.length === 0 && activeTasks.length === 0 && accomplishedThisWeek.length === 0;
+
+  return (
+    <PageShell>
+      <PageHeader
+        title="My tasks"
+        description="Everything assigned to you, what is late, and how you are tracking."
+      />
+
+      <StatCardGrid columns={4} className="xl:grid-cols-5">
+        <StatCard
+          label="Overdue"
+          icon={AlertTriangle}
+          tone={overdueTasks.length > 0 ? 'critical' : 'positive'}
+          value={overdueTasks.length}
+          hint="past their due date"
+          onClick={() => handleFilterClick('overdue')}
+          selected={filter === 'overdue'}
+        />
+        <StatCard
+          label="Due today"
+          icon={CalendarCheck}
+          tone={todaysTasksCount > 0 ? 'warning' : 'neutral'}
+          value={todaysTasksCount}
+          hint="due by end of day"
+          onClick={() => handleFilterClick('today')}
+          selected={filter === 'today'}
+        />
+        <StatCard
+          label="Active"
+          icon={Clock}
+          value={activeTasks.length}
+          hint="upcoming or in progress"
+          onClick={() => handleFilterClick('active')}
+          selected={filter === 'active'}
+        />
+        <StatCard
+          label="Done this week"
+          icon={Award}
+          tone="positive"
+          value={accomplishedThisWeek.length}
+          hint="completed in the last 7 days"
+          onClick={() => handleFilterClick('accomplished')}
+          selected={filter === 'accomplished'}
+        />
+        <StatCard
+          label="On-time performance"
+          icon={Target}
+          value={completedTasksCount > 0 ? `${Math.round(onTimePerformance)}%` : 'N/A'}
+          progress={completedTasksCount > 0 ? onTimePerformance : undefined}
+          hint={
+            completedTasksCount > 0
+              ? `across ${completedTasksCount} completed task${completedTasksCount === 1 ? '' : 's'}`
+              : 'nothing completed yet'
+          }
+          interactive={false}
+        />
+      </StatCardGrid>
+
+      {nothingAssigned ? (
+        <EmptyState
+          variant="none-yours"
+          title="No tasks are assigned to you"
+          description="When somebody assigns you work it will appear here, grouped by what needs doing first."
+        />
       ) : (
         <>
-            <TaskSection 
-                title="Overdue"
-                icon={<AlertTriangle className="w-6 h-6 text-destructive" />}
-                tasks={overdueTasks}
-                show={filter === null || filter === 'overdue'}
-                {...commonTaskSectionProps}
-            />
-            <TaskSection 
-                title="Today's Tasks"
-                icon={<CalendarCheck className="w-6 h-6 text-orange-500" />}
-                tasks={todaysTasks}
-                show={filter === 'today'}
-                {...commonTaskSectionProps}
-            />
-            <TaskSection 
-                title="Active"
-                icon={<Clock className="w-6 h-6 text-blue-500" />}
-                tasks={activeTasks}
-                show={filter === null || filter === 'active'}
-                {...commonTaskSectionProps}
-            />
-            <TaskSection 
-                title="Accomplished This Week"
-                icon={<Check className="w-6 h-6 text-green-500" />}
-                tasks={accomplishedThisWeek}
-                show={filter === null || filter === 'accomplished'}
-                {...commonTaskSectionProps}
-            />
+          <DataToolbar
+            search={{
+              value: search,
+              onChange: setSearch,
+              placeholder: 'Search your tasks…',
+              label: 'Search your tasks by title, project or milestone',
+            }}
+            count={{
+              showing: narrow([...overdueTasks, ...activeTasks, ...accomplishedThisWeek]).length,
+              total: overdueTasks.length + activeTasks.length + accomplishedThisWeek.length,
+              noun: 'tasks',
+            }}
+            onClearAll={() => {
+              setSearch('');
+              setFilter(null);
+            }}
+            actions={
+              filter && (
+                <Button variant="outline" size="sm" onClick={() => setFilter(null)}>
+                  Show all sections
+                </Button>
+              )
+            }
+          />
+
+          <TaskSection
+              title="Overdue"
+              icon={<AlertTriangle className="w-6 h-6 text-destructive" />}
+              tasks={narrow(overdueTasks)}
+              show={filter === null || filter === 'overdue'}
+              emptyMatters={filter === 'overdue'}
+              searching={Boolean(query)}
+              {...commonTaskSectionProps}
+          />
+          <TaskSection
+              title="Due today"
+              icon={<CalendarCheck className="w-6 h-6 text-amber-600" />}
+              tasks={narrow(todaysTasks)}
+              show={filter === 'today'}
+              emptyMatters={filter === 'today'}
+              searching={Boolean(query)}
+              {...commonTaskSectionProps}
+          />
+          <TaskSection
+              title="Active"
+              icon={<Clock className="w-6 h-6 text-blue-600" />}
+              tasks={narrow(activeTasks)}
+              show={filter === null || filter === 'active'}
+              emptyMatters={filter === 'active'}
+              searching={Boolean(query)}
+              {...commonTaskSectionProps}
+          />
+          <TaskSection
+              title="Accomplished this week"
+              icon={<Check className="w-6 h-6 text-green-700" />}
+              tasks={narrow(accomplishedThisWeek)}
+              show={filter === null || filter === 'accomplished'}
+              emptyMatters={filter === 'accomplished'}
+              searching={Boolean(query)}
+              {...commonTaskSectionProps}
+          />
         </>
       )}
-    </div>
+    </PageShell>
   );
 }

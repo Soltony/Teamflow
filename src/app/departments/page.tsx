@@ -11,6 +11,8 @@ import { getDepartmentsData } from "./actions";
 import type { Department } from '@prisma/client';
 import type { Serialized } from '@/lib/serialize';
 import { useFirstLoad } from "@/hooks/use-first-load";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageHeader, PageShell } from "@/components/ui/page-header";
 
 function LoadingSkeleton() {
     return (
@@ -42,15 +44,18 @@ export default function DepartmentsPage() {
     const router = useRouter();
     const [departments, setDepartments] = useState<Serialized<Department>[]>([]);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
+        setLoadError(null);
         try {
             const data = await getDepartmentsData();
             setDepartments(data);
         } catch (error) {
-            console.error("Failed to fetch departments", error);
-            setDepartments([]);
+            // Was swallowed to an empty array, which is indistinguishable from
+            // an organisation that has no departments.
+            setLoadError(error instanceof Error ? error.message : "The request did not complete.");
         } finally {
             setIsLoading(false);
         }
@@ -64,7 +69,7 @@ export default function DepartmentsPage() {
                 fetchData();
             }
         }
-    }, [authLoading, hasPermission, router, fetchData]);
+    }, [authLoading, hasPermission, router, fetchData]);
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
@@ -74,21 +79,28 @@ export default function DepartmentsPage() {
     }
 
     return (
-        <div className="p-4 sm:p-6">
-           <Card>
-            <CardHeader>
-              <CardTitle>Department Management</CardTitle>
-              <CardDescription>
-                Add, view, and manage the departments within the organization.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <DepartmentsManagement 
-                initialDepartments={departments} 
-                onDataChange={fetchData} 
-              />
-            </CardContent>
-          </Card>
-        </div>
+        <PageShell>
+          <PageHeader
+            title="Departments"
+            description="The business departments projects are delivered for. Every project names at least one."
+          />
+          {loadError ? (
+            <ErrorState
+              variant="load"
+              title="We could not load the departments"
+              detail={loadError}
+              onRetry={fetchData}
+            />
+          ) : (
+            <Card>
+              <CardContent className="pt-6">
+                <DepartmentsManagement
+                  initialDepartments={departments}
+                  onDataChange={fetchData}
+                />
+              </CardContent>
+            </Card>
+          )}
+        </PageShell>
     );
 }

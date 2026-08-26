@@ -10,6 +10,8 @@ import { getUsersData, getRolesData, getPmoDivisionsData } from "./actions";
 import { useAuth } from '@/context/auth-context';
 import { useRouter } from 'next/navigation';
 import { useFirstLoad } from "@/hooks/use-first-load";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageShell } from "@/components/ui/page-header";
 
 // Derived from the actions rather than restated here: the queries select a
 // deliberately narrow set of columns, and the previous local definition
@@ -43,11 +45,13 @@ export default function ConfigPage() {
     const router = useRouter();
     const [data, setData] = useState<ConfigData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const canViewPage = hasPermission(['config:manage-users', 'config:manage-roles']);
 
     const fetchData = useCallback(async () => {
         setIsLoading(true);
+        setLoadError(null);
         try {
             const [usersData, rolesData, pmoDivisionsData] = await Promise.all([
                 getUsersData(),
@@ -56,8 +60,9 @@ export default function ConfigPage() {
             ]);
             setData({ users: usersData, roles: rolesData, pmoDivisions: pmoDivisionsData });
         } catch (error) {
-            console.error("Failed to fetch config data", error);
-            setData({ users: [], roles: [], pmoDivisions: [] });
+            // Replacing the failure with empty arrays showed an administrator a
+            // system with no users and no roles, which is alarming and untrue.
+            setLoadError(error instanceof Error ? error.message : "The request did not complete.");
         } finally {
             setIsLoading(false);
         }
@@ -71,7 +76,7 @@ export default function ConfigPage() {
                 fetchData();
             }
         }
-    }, [authLoading, canViewPage, router, fetchData]);
+    }, [authLoading, canViewPage, router, fetchData]);
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
@@ -80,11 +85,16 @@ export default function ConfigPage() {
         return <LoadingSkeleton />;
     }
 
-    if (!data) {
+    if (loadError || !data) {
         return (
-            <div className="p-4 sm:p-6 text-center">
-                Could not load configuration data. Please try again later.
-            </div>
+            <PageShell>
+                <ErrorState
+                    variant="load"
+                    title="We could not load the configuration"
+                    detail={loadError}
+                    onRetry={fetchData}
+                />
+            </PageShell>
         );
     }
 

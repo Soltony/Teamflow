@@ -24,9 +24,28 @@ import { Progress } from "../ui/progress";
 import { DeclineTaskDialog } from "./decline-task-dialog";
 import { cn } from "@/lib/utils";
 import {
+  isArchivedStatus,
   milestoneProgress as calculateMilestoneProgress,
   projectProgress as calculateProjectProgress,
+  statusCategory,
+  type StatusCategory,
 } from '@/lib/metrics';
+
+/**
+ * The order status groups are shown in: live work first, finished work last.
+ *
+ * Keyed on the immutable category rather than on status names. The previous
+ * version listed the five seeded names literally, so renaming any status in
+ * Settings dropped its whole group to the bottom of the page — and renaming
+ * "Completed" also stopped its projects being badged as closed.
+ */
+const CATEGORY_ORDER: Record<StatusCategory, number> = {
+  ACTIVE: 0,
+  ON_HOLD: 1,
+  HANDOVER: 2,
+  CLOSED: 3,
+  UNKNOWN: 4,
+};
 
 const formatStatus = (s: string) => s.charAt(0).toUpperCase() + s.slice(1).replace(/_/g, ' ').toLowerCase();
 
@@ -154,12 +173,28 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
     [allUsers],
   );
 
+  /**
+   * The status row behind each id.
+   *
+   * The projects in this view carry `statusId` but not the status relation, so
+   * anything that needs the *category* — which is the only safe basis for
+   * deciding whether a project is finished — has to look it up here.
+   */
+  const statusById = useMemo(
+    () => new Map<string, any>((projectStatuses ?? []).map((s: any) => [s.id as string, s])),
+    [projectStatuses],
+  );
+
   const { projectsByStatus, orderedStatuses, projectsClosingThisMonthCount, projectsWithPendingApprovalsCount, projectsClosingThisMonthIds, projectsWithPendingApprovalsIds } = useMemo(() => {
     if (!projectStatuses || !initialTasksByProject) return { projectsByStatus: {}, orderedStatuses: [], projectsClosingThisMonthCount: 0, projectsWithPendingApprovalsCount: 0, projectsClosingThisMonthIds: [], projectsWithPendingApprovalsIds: [] };
 
-    const statusOrder = ['Active', 'Pending', 'Parked', 'On Handover', 'Completed'];
     const statusIdToName = new Map<string, string>(
       projectStatuses.map((s: any) => [s.id as string, s.name as string]),
+    );
+    // Name → the status row, so the group heading can still read as the name
+    // while the ordering and the closed test use the category behind it.
+    const statusByName = new Map<string, any>(
+      projectStatuses.map((s: any) => [s.name as string, s]),
     );
 
     let closingThisMonthCount = 0;
@@ -201,12 +236,12 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
       grouped[status].sort((a: any, b: any) => new Date(b.project.createdAt).getTime() - new Date(a.project.createdAt).getTime());
     }
 
-    const finalOrderedStatuses = statusOrder.filter(status => grouped[status] && grouped[status].length > 0);
-    
-    Object.keys(grouped).forEach(statusName => {
-        if (!finalOrderedStatuses.includes(statusName)) {
-            finalOrderedStatuses.push(statusName);
-        }
+    // Live work first, finished work last, alphabetical within a category so
+    // two statuses of the same kind keep a stable order.
+    const finalOrderedStatuses = Object.keys(grouped).sort((a, b) => {
+        const rankA = CATEGORY_ORDER[statusCategory(statusByName.get(a) ?? a)];
+        const rankB = CATEGORY_ORDER[statusCategory(statusByName.get(b) ?? b)];
+        return rankA - rankB || a.localeCompare(b);
     });
 
     return { 
@@ -376,12 +411,16 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
                                 <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || ""} onValueChange={handleProjectAccordionChange}>
                                     {projects.map(({ project, tasks, stats }: ProjectWithTasksAndStats) => {
                                         const projectProgress = calculateProjectProgress(project);
-                                        const completedStatusNames = ['Completed', 'On Handover'];
-                                        
+
                                         const isClosingThisMonth = isSameMonth(new Date(), parseISO(project.endDate as unknown as string)) && isSameYear(new Date(), parseISO(project.endDate as unknown as string));
 
                                         let statusBadge;
-                                        const isProjectClosed = completedStatusNames.includes(statusName);
+                                        // Category, not name: renaming "Completed"
+                                        // in Settings used to stop its projects
+                                        // ever badging as closed.
+                                        const isProjectClosed = isArchivedStatus(
+                                          statusById.get(project.statusId ?? '') ?? statusName,
+                                        );
                                         const allTasksDone = stats.done === stats.total && stats.total > 0;
 
                                         if (isProjectClosed) {

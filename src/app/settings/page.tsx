@@ -10,6 +10,8 @@ import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import { getSettingsPageData } from './actions';
 import type { ProjectStatus, Project, Setting, User, Role, PmoDivision } from '@prisma/client';
 import { useFirstLoad } from "@/hooks/use-first-load";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageShell } from "@/components/ui/page-header";
 
 type UserWithRoles = User & { roles: Role[] };
 
@@ -51,17 +53,18 @@ export default function SettingsPage() {
   const router = useRouter();
   const [data, setData] = useState<SettingsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const canViewPage = hasPermission(['settings:manage', 'config:manage-users', 'config:manage-roles']);
 
   const fetchSettingsData = useCallback(async () => {
     setIsLoading(true);
+    setLoadError(null);
     try {
         const fetchedData = await getSettingsPageData();
         setData(fetchedData);
     } catch (error) {
-        console.error("Failed to fetch settings", error);
-        setData(null);
+        setLoadError(error instanceof Error ? error.message : "The request did not complete.");
     } finally {
         setIsLoading(false);
     }
@@ -75,13 +78,31 @@ export default function SettingsPage() {
         fetchSettingsData();
       }
     }
-  }, [authLoading, canViewPage, router, fetchSettingsData]);
+  }, [authLoading, canViewPage, router, fetchSettingsData]);
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
 
-  if (showSkeleton || authLoading || !data) {
+  if (showSkeleton || authLoading) {
     return <LoadingSkeleton />;
+  }
+
+  /*
+   * `!data` used to fall through to the skeleton, so a failed fetch left this
+   * page loading for ever — there was no state in which it could stop, because
+   * nothing would ever set `data`. It reports the failure and offers a retry.
+   */
+  if (loadError || !data) {
+    return (
+      <PageShell>
+        <ErrorState
+          variant="load"
+          title="We could not load your settings"
+          detail={loadError}
+          onRetry={fetchSettingsData}
+        />
+      </PageShell>
+    );
   }
   
   const existingYears = new Set(data.projects.map(p => p.workingYear));

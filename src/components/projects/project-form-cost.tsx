@@ -31,6 +31,54 @@ import { cn } from "@/lib/utils";
 import type { ProjectFormValues } from "./project-form-schema";
 import { formatCurrency, unformatCurrency } from "./project-form-schema";
 
+/**
+ * Whether the payment schedule adds up to the project cost.
+ *
+ * Shown live rather than as a submit-time rejection, and it names the
+ * shortfall: "ETB 40,000 left to schedule" is actionable in a way that "the
+ * sum of payment items must equal the total project cost" is not.
+ */
+function PaymentTotal({
+  form,
+  currencySymbol,
+  count,
+}: {
+  form: UseFormReturn<ProjectFormValues>;
+  currencySymbol: string;
+  count: number;
+}) {
+  const payments = form.watch("payments") ?? [];
+  const totalCost = Number(form.watch("totalCost") ?? 0);
+  const scheduled = payments.reduce((sum, p) => sum + Number(p?.amount ?? 0), 0);
+  const difference = Math.round((totalCost - scheduled) * 100) / 100;
+  const matches = difference === 0;
+
+  const money = (amount: number) =>
+    `${currencySymbol} ${new Intl.NumberFormat("en-US").format(amount)}`;
+
+  return (
+    <div
+      className={cn(
+        "flex flex-wrap items-baseline justify-between gap-2 rounded-md border p-3 text-sm",
+        matches
+          ? "border-green-700/30 bg-green-700/10"
+          : "border-amber-600/40 bg-amber-500/10",
+      )}
+    >
+      <span className="font-medium">
+        {count} payment{count === 1 ? "" : "s"} scheduled, {money(scheduled)} of {money(totalCost)}
+      </span>
+      <span className={cn("tabular-nums", matches ? "text-green-800" : "text-amber-800")}>
+        {matches
+          ? "Matches the project cost"
+          : difference > 0
+            ? `${money(difference)} left to schedule`
+            : `${money(Math.abs(difference))} over budget`}
+      </span>
+    </div>
+  );
+}
+
 /** The cost and payment-schedule half of the project form. */
 export function ProjectFormCost({
   form,
@@ -130,9 +178,19 @@ export function ProjectFormCost({
                     <Separator />
                     
                     <div>
-                        <h4 className="font-medium">Payment Schedule</h4>
-                        <p className="text-sm text-muted-foreground">Define the payment items for this project. The sum must equal the total project cost.</p>
+                        <h4 className="font-medium">Payment schedule</h4>
+                        <p className="text-sm text-muted-foreground">The scheduled payments must add up to exactly the total cost above.</p>
                     </div>
+
+                    {/*
+                      The running total. Same reasoning as the milestone weight
+                      meter: the rule is arithmetic across repeated blocks, and
+                      without this it could only be checked by adding the
+                      amounts up by hand and submitting to find out.
+                    */}
+                    {paymentFields.length > 0 && (
+                      <PaymentTotal form={form} currencySymbol={currencySymbol} count={paymentFields.length} />
+                    )}
 
                      {paymentFields.map((field, index) => (
                         <Card key={field.id} className="relative bg-muted/50">

@@ -1,5 +1,4 @@
 
-
 'use client';
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
@@ -24,6 +23,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { useFirstLoad } from "@/hooks/use-first-load";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageShell } from "@/components/ui/page-header";
 import {
   milestoneProgress as calculateMilestoneProgress,
   projectProgress as calculateProjectProgress,
@@ -224,6 +225,7 @@ export default function WeeklyActivitiesPage() {
 
   const [data, setData] = useState<{projects: ProjectWithTasks[], users: User[], stats: any}>({projects: [], users: [], stats: { projectsActive: 0, tasksWithActivity: 0, tasksRemaining: 0, tasksCompleted: 0 }});
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
   const [date, setDate] = useState<Date>(() => {
@@ -245,11 +247,14 @@ export default function WeeklyActivitiesPage() {
   const fetchData = useCallback(async (targetDate: Date) => {
       if (localUser?.id) {
           setIsLoading(true);
+          setLoadError(null);
           try {
               const fetchedData = await getWeeklyTasks(localUser.id, targetDate);
               setData(fetchedData as any);
           } catch (error) {
-              console.error("Failed to fetch weekly tasks", error);
+              // A failed fetch left the previous week's data on screen under
+              // the new week's heading — wrong, and it looks right.
+              setLoadError(error instanceof Error ? error.message : "The request did not complete.");
           } finally {
               setIsLoading(false);
           }
@@ -283,7 +288,7 @@ export default function WeeklyActivitiesPage() {
       setExpandedProjectId(null);
   }, [searchQuery, date]);
 
-  const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
+  const userMap = useMemo(() => new Map(data.users.map(u => [u.id, u])), [data.users]);
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
@@ -291,7 +296,20 @@ export default function WeeklyActivitiesPage() {
   if (showSkeleton || authLoading) {
       return <LoadingSkeleton />;
   }
-  
+
+  if (loadError) {
+      return (
+          <PageShell>
+              <ErrorState
+                  variant="load"
+                  title="We could not load this week"
+                  detail={loadError}
+                  onRetry={() => fetchData(date)}
+              />
+          </PageShell>
+      );
+  }
+
   return (
       <div className="p-4 sm:p-6 space-y-6">
           <div className="space-y-4">

@@ -1,32 +1,32 @@
-
-
 "use client";
 
+import * as React from 'react';
 import Link from 'next/link';
-import { useSearchParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Building, Calendar, Layers, UserCircle, ShieldAlert, ShieldCheck, PlusCircle, ExternalLink, Pencil, Trash2, Library, CircleDot, AlertTriangle, ArrowRight } from "lucide-react";
-import { format, differenceInDays, parseISO, isAfter, endOfDay } from "date-fns";
-import type { Blocker, TaskStatus, Project } from "@/lib/types";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Button } from "@/components/ui/button";
-import { AddBlockerDialog } from "./add-blocker-dialog";
-import { ResolveBlockerDialog } from "./resolve-blocker-dialog";
-import { EditBlockerDialog } from './edit-blocker-dialog';
-import { EscalateBlockerDialog } from './escalate-blocker-dialog';
-import { ProjectBlockers } from './project-blockers';
-import type { OwnerOption } from './blocker-form-fields';
-import type { CreateBlockerInput, EscalateBlockerInput } from '@/lib/validation/blocker';
-import { Separator } from "../ui/separator";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ProjectDocuments } from "@/components/projects/project-documents";
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion"
+  ArrowRight,
+  Building,
+  CalendarDays,
+  Clock,
+  ExternalLink,
+  FileText,
+  Layers,
+  Library,
+  Pencil,
+  ShieldAlert,
+  Trash2,
+  UserCircle,
+} from 'lucide-react';
+import { format, parseISO } from 'date-fns';
+
+import type { Blocker, Project } from '@/lib/types';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { EmptyState } from '@/components/ui/empty-state';
+import { PageHeader, PageMeta, PageShell } from '@/components/ui/page-header';
+import { SectionLayout, SectionNav, SectionPanel, type Section } from '@/components/ui/section-nav';
+import { DecisionPill } from '@/components/ui/status-pill';
 import {
   Table,
   TableBody,
@@ -34,7 +34,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table"
+} from '@/components/ui/table';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -44,12 +44,36 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
-  milestoneProgress as calculateMilestoneProgress,
-  projectProgress as calculateProjectProgress,
-  isArchivedStatus,
-} from '@/lib/metrics';
+} from '@/components/ui/alert-dialog';
+import { AddBlockerDialog } from './add-blocker-dialog';
+import { ResolveBlockerDialog } from './resolve-blocker-dialog';
+import { EditBlockerDialog } from './edit-blocker-dialog';
+import { EscalateBlockerDialog } from './escalate-blocker-dialog';
+import { ProjectBlockers } from './project-blockers';
+import { ProjectDocuments } from './project-documents';
+import { ProjectMilestonesSection } from './project-milestones-section';
+import { ProjectRiskPanel, ProjectSummaryCards } from './project-summary';
+import type { OwnerOption } from './blocker-form-fields';
+import type { CreateBlockerInput, EscalateBlockerInput } from '@/lib/validation/blocker';
+import { isOpenBlocker } from '@/lib/validation/blocker';
+
+/**
+ * A project, in full.
+ *
+ * The screen this replaces opened with a single card carrying the name, the
+ * description, six lines of grey metadata and one progress bar, then handed off
+ * to four tabs in a `grid-cols-4` strip. Two problems followed from that:
+ *
+ *  - the header answered "what is this project" but never "how is it going",
+ *    so the state of delivery had to be inferred from a percentage;
+ *  - the tab strip could not say what was behind it. Finding out whether a
+ *    project had open issues meant clicking Blockers and looking.
+ *
+ * Now: summary cards and a risk panel above the fold, and a section rail whose
+ * entries carry their own counts. The `?tab=` parameter is unchanged, so every
+ * existing deep link — the dashboard's blockers drill-down included — still
+ * lands where it did.
+ */
 
 type ProjectViewProps = {
   project: any;
@@ -81,330 +105,204 @@ type ProjectViewProps = {
   projectToDelete: Project | null;
   onDeleteProjectOpenChange: (project: Project | null) => void;
   onProjectDeleteSubmit: () => void;
-}
+};
 
-const getStatusBadge = (status: TaskStatus) => {
-    switch (status) {
-        case 'TODO':
-            return <Badge variant="outline">To Do</Badge>;
-        case 'IN_PROGRESS':
-            return <Badge className="bg-blue-500 hover:bg-blue-500/90 text-primary-foreground">In Progress</Badge>;
-        case 'PENDING_REVIEW':
-            return <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending Review</Badge>;
-        case 'DONE':
-            return <Badge className="bg-green-600 hover:bg-green-600/90 text-primary-foreground">Done</Badge>;
-        default:
-            return <Badge variant="secondary">Unknown</Badge>;
-    }
-}
+/** The section ids double as `?tab=` values, so old links keep working. */
+const SECTION_IDS = ['milestones', 'blockers', 'documents', 'timeline'] as const;
 
-const getTimelineStatusBadge = (status: 'PENDING' | 'APPROVED' | 'REJECTED') => {
-    switch (status) {
-        case 'PENDING':
-            return <Badge variant="secondary" className="bg-amber-500/80 text-white">Pending</Badge>;
-        case 'APPROVED':
-            return <Badge variant="secondary" className="bg-green-600 text-white">Approved</Badge>;
-        case 'REJECTED':
-            return <Badge variant="destructive">Rejected</Badge>;
-        default:
-            return <Badge variant="outline">Unknown</Badge>;
-    }
-}
-
-export function ProjectView({ 
-    project, 
-    canUpdateProject,
-    canDeleteProject,
-    onAddBlocker,
-    onEscalateBlocker,
-    blockerOwners,
-    onResolveBlocker,
-    onEditBlocker,
-    onDeleteBlocker,
-    onDeleteProject,
-    isAddingBlocker,
-    onAddBlockerOpenChange,
-    onBlockerAddSubmit,
-    resolvingBlocker,
-    onResolveBlockerOpenChange,
-    onBlockerResolveSubmit,
-    editingBlocker,
-    escalatingBlocker,
-    onEscalateBlockerOpenChange,
-    onBlockerEscalateSubmit,
-    onEditBlockerOpenChange,
-    onBlockerUpdateSubmit,
-    blockerToDelete,
-    onDeleteBlockerOpenChange,
-    onBlockerDeleteSubmit,
-    projectToDelete,
-    onDeleteProjectOpenChange,
-    onProjectDeleteSubmit,
+export function ProjectView({
+  project,
+  canUpdateProject,
+  canDeleteProject,
+  onAddBlocker,
+  onEscalateBlocker,
+  blockerOwners,
+  onResolveBlocker,
+  onEditBlocker,
+  onDeleteBlocker,
+  onDeleteProject,
+  isAddingBlocker,
+  onAddBlockerOpenChange,
+  onBlockerAddSubmit,
+  resolvingBlocker,
+  onResolveBlockerOpenChange,
+  onBlockerResolveSubmit,
+  editingBlocker,
+  escalatingBlocker,
+  onEscalateBlockerOpenChange,
+  onBlockerEscalateSubmit,
+  onEditBlockerOpenChange,
+  onBlockerUpdateSubmit,
+  blockerToDelete,
+  onDeleteBlockerOpenChange,
+  onBlockerDeleteSubmit,
+  projectToDelete,
+  onDeleteProjectOpenChange,
+  onProjectDeleteSubmit,
 }: ProjectViewProps) {
-  
   const searchParams = useSearchParams();
+  const pathname = usePathname();
   const router = useRouter();
-  const defaultTab = searchParams.get('tab') || 'milestones';
-  
-  
 
-  const weightedProgress = calculateProjectProgress(project);
+  const requested = searchParams.get('tab');
+  const [section, setSection] = React.useState<string>(
+    SECTION_IDS.includes(requested as never) ? requested! : 'milestones',
+  );
 
-  const allResponsibleDepartments = project.responsibleDepartments?.map((d: any) => d.name) || [];
+  /**
+   * The section lives in the URL, so a reader can send somebody "look at the
+   * issues on this project" and have it open there. `replace` rather than
+   * `push`: flicking between sections should not fill the back button with
+   * steps out of a single page.
+   */
+  const selectSection = React.useCallback(
+    (next: string) => {
+      setSection(next);
+      const params = new URLSearchParams(searchParams.toString());
+      params.set('tab', next);
+      router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+    },
+    [pathname, router, searchParams],
+  );
 
-  const renderTimelineStatus = () => {
-    const isProjectComplete = isArchivedStatus(project.status);
-    const endDate = parseISO(project.endDate);
-    
-    if (isProjectComplete) {
-      return (
-        <>
-          <ShieldCheck className="w-4 h-4 text-green-600" />
-          <span>{project.status.name}: {format(endDate, "MMM d, yyyy")}</span>
-        </>
-      );
-    }
-    
-    const isOverdue = isAfter(new Date(), endOfDay(endDate));
-    if (isOverdue) {
-      return (
-        <>
-          <AlertTriangle className="w-4 h-4 text-destructive" />
-          <span className="text-destructive">Overdue</span>
-        </>
-      );
-    }
+  const blockers: any[] = project.blockers ?? [];
+  const openBlockers = blockers.filter((b: any) => isOpenBlocker(b.status));
+  const timelineRequests: any[] = project.timelineChangeRequests ?? [];
+  const pendingTimeline = timelineRequests.filter((r: any) => r.status === 'PENDING');
+  const departments = (project.responsibleDepartments ?? []).map((d: any) => d.name);
 
-    return (
-      <>
-        <CircleDot className="w-4 h-4" />
-        <span>{differenceInDays(endDate, new Date())} days left</span>
-      </>
-    );
-  };
+  const sections: Section[] = [
+    {
+      id: 'milestones',
+      label: 'Milestones and tasks',
+      icon: Layers,
+      count: project.milestones?.length ?? 0,
+      description: 'The plan and how far through it we are',
+    },
+    {
+      id: 'blockers',
+      label: 'Issue register',
+      icon: ShieldAlert,
+      count: openBlockers.length,
+      attention: openBlockers.length > 0,
+      description: 'What is holding the project up',
+    },
+    {
+      id: 'documents',
+      label: 'Documents',
+      icon: FileText,
+      description: 'Charters, reports and sign-offs',
+    },
+    {
+      id: 'timeline',
+      label: 'Timeline changes',
+      icon: Clock,
+      count: pendingTimeline.length,
+      attention: pendingTimeline.length > 0,
+      description: 'Requested and approved deadline moves',
+    },
+  ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6">
-      <Link href="/projects" className="inline-flex items-center gap-2 text-sm font-medium text-muted-foreground hover:text-primary">
-        <ArrowLeft className="w-4 h-4" />
-        Back to Projects
-      </Link>
-      
-      <Card>
-        <CardHeader>
-          <div className="flex flex-wrap items-start justify-between gap-4">
-            <div>
-                <CardTitle className="text-3xl">{project.name}</CardTitle>
-                <CardDescription>{project.description}</CardDescription>
-            </div>
-            <div className="flex items-center gap-2 flex-shrink-0">
-                {project.status && <Badge className="text-base" variant="secondary">{project.status.name}</Badge>}
-                 {canUpdateProject && (
-                  <>
-                    <Button asChild variant="outline">
-                      <Link href={`/projects/${project.id}/edit`}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Edit Project
-                      </Link>
-                    </Button>
-                    <Button asChild variant="outline">
-                        <Link href={`/projects/${project.id}/milestones`}>
-                            Manage Milestones
-                            <ExternalLink className="ml-2 h-4 w-4" />
-                        </Link>
-                    </Button>
-                  </>
-                )}
-                {canDeleteProject && (
-                  <Button variant="destructive" onClick={() => onDeleteProject(project)}>
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </Button>
-                )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-sm text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <Calendar className="w-4 h-4" />
-              <span>{format(parseISO(project.startDate), "MMM d, yyyy")} - {format(parseISO(project.endDate), "MMM d, yyyy")}</span>
-            </div>
-             <div className="flex items-center gap-2">
-                <Library className="w-4 h-4" />
-                <span>Owning EPMO Division: {project.pmoDivision?.name || 'N/A'}</span>
-            </div>
-             <div className="flex items-center gap-2">
-                <UserCircle className="w-4 h-4" />
-                <span>PM: {project.projectManager?.name || 'N/A'}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Building className="w-4 h-4" />
-              <span>For: {allResponsibleDepartments.join(', ')}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <Layers className="w-4 h-4" />
-              <span>{project.milestones.length} Milestones</span>
-            </div>
-             <div className="flex items-center gap-2">
-                {renderTimelineStatus()}
-            </div>
-          </div>
-          <div>
-            <div className="flex justify-between mb-1">
-              <span className="text-sm font-medium">Overall Progress</span>
-              <span className="text-sm font-medium text-primary">{Math.round(weightedProgress)}%</span>
-            </div>
-            <Progress value={weightedProgress} className="h-2.5" />
-          </div>
-        </CardContent>
-      </Card>
-      
-      <Tabs defaultValue={defaultTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 mb-4">
-            <TabsTrigger value="milestones">Milestones & Tasks</TabsTrigger>
-            <TabsTrigger value="blockers">Blockers</TabsTrigger>
-            <TabsTrigger value="documents">Documents</TabsTrigger>
-            <TabsTrigger value="timeline">Timeline History</TabsTrigger>
-        </TabsList>
-        <TabsContent value="milestones">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Milestones & Tasks</CardTitle>
-                    <CardDescription>A breakdown of all milestones and their associated tasks for this project.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {(!project.milestones || project.milestones.length === 0) ? (
-                    <div className="text-center py-12 text-muted-foreground">
-                      No milestones have been created for this project yet.
-                    </div>
-                  ) : (
-                    <Accordion type="multiple" className="w-full space-y-2">
-                        {project.milestones.map((milestone: any) => {
-                            const milestoneProgress = calculateMilestoneProgress(milestone);
-                            return (
-                                <AccordionItem value={milestone.id} key={milestone.id} className="border rounded-md px-4">
-                                    <AccordionTrigger className="hover:no-underline">
-                                        <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-2">
-                                            <div className="flex-1 text-left">
-                                                <p className="font-semibold text-base">{milestone.title}</p>
-                                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                                    <span>Due: {format(parseISO(milestone.dueDate), 'MMM dd, yyyy')}</span>
-                                                    <span>&bull;</span>
-                                                    <span>Weight: {milestone.weight}%</span>
-                                                </div>
-                                            </div>
-                                            <div className="flex items-center gap-4 w-full md:w-auto">
-                                                <Progress value={milestoneProgress} className="w-full md:w-32 h-2" />
-                                                <span className="text-xs font-semibold">{Math.round(milestoneProgress)}%</span>
-                                            </div>
-                                        </div>
-                                    </AccordionTrigger>
-                                    <AccordionContent className="pt-2 pb-4">
-                                        {milestone.tasks.length > 0 ? (
-                                            <Table scrollLabel="Milestones and tasks">
-                                                <TableHeader>
-                                                    <TableRow>
-                                                        <TableHead>Task</TableHead>
-                                                        <TableHead>Status</TableHead>
-                                                        <TableHead>Progress</TableHead>
-                                                        <TableHead>Due Date</TableHead>
-                                                        <TableHead className="text-right">Weight</TableHead>
-                                                    </TableRow>
-                                                </TableHeader>
-                                                <TableBody>
-                                                    {milestone.tasks.map((task: any) => (
-                                                        <TableRow 
-                                                            key={task.id} 
-                                                            onClick={() => router.push(`/tasks/${task.id}`)}
-                                                            className="cursor-pointer"
-                                                        >
-                                                            <TableCell className="font-medium">{task.title}</TableCell>
-                                                            <TableCell>{getStatusBadge(task.status)}</TableCell>
-                                                            <TableCell>
-                                                                <div className="flex items-center gap-2">
-                                                                    <Progress value={task.progress || 0} className="h-2 w-20" />
-                                                                    <span>{task.progress || 0}%</span>
-                                                                </div>
-                                                            </TableCell>
-                                                            <TableCell>{format(parseISO(task.endDate), 'MMM dd, yyyy')}</TableCell>
-                                                            <TableCell className="text-right">{task.weight}%</TableCell>
-                                                        </TableRow>
-                                                    ))}
-                                                </TableBody>
-                                            </Table>
-                                        ) : (
-                                            <p className="text-center text-sm text-muted-foreground py-4">No tasks in this milestone.</p>
-                                        )}
-                                    </AccordionContent>
-                                </AccordionItem>
-                            )
-                        })}
-                    </Accordion>
-                    )}
-                </CardContent>
-            </Card>
-        </TabsContent>
-        <TabsContent value="blockers">
-            <ProjectBlockers
-                blockers={(project.blockers ?? []) as Blocker[]}
-                owners={blockerOwners}
-                canUpdate={canUpdateProject}
-                onAdd={onAddBlocker}
-                onEdit={onEditBlocker}
-                onResolve={onResolveBlocker}
-                onEscalate={onEscalateBlocker}
-                onDelete={onDeleteBlocker}
-            />
-        </TabsContent>
-        <TabsContent value="documents">
-            <ProjectDocuments projectId={project.id} />
-        </TabsContent>
-        <TabsContent value="timeline">
-            <Card>
-                 <CardHeader>
-                    <CardTitle>Timeline Change History</CardTitle>
-                    <CardDescription>A log of all requested and completed changes to the project deadline.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                     {project.timelineChangeRequests.length > 0 ? (
-                        <Table scrollLabel="Timeline change requests">
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Requested On</TableHead>
-                                    <TableHead>Requested By</TableHead>
-                                    <TableHead>Deadline Change</TableHead>
-                                    <TableHead>Reason</TableHead>
-                                    <TableHead>Status</TableHead>
-                                    <TableHead>Reviewed By</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {project.timelineChangeRequests.map((req: any) => (
-                                    <TableRow key={req.id}>
-                                        <TableCell>{format(parseISO(req.createdAt), 'MMM dd, yyyy')}</TableCell>
-                                        <TableCell>{req.requestedBy?.name ?? 'N/A'}</TableCell>
-                                        <TableCell>
-                                            <div className="flex items-center gap-2">
-                                                <Badge variant="outline">{format(parseISO(req.oldEndDate), 'MMM dd, yy')}</Badge>
-                                                <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                                                <Badge variant="default">{format(parseISO(req.newEndDate), 'MMM dd, yy')}</Badge>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="max-w-xs truncate">{req.reason}</TableCell>
-                                        <TableCell>{getTimelineStatusBadge(req.status)}</TableCell>
-                                        <TableCell>{req.reviewedBy?.name ?? 'N/A'}</TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    ) : (
-                        <p className="text-center text-sm text-muted-foreground py-8">No timeline change requests have been made for this project.</p>
-                    )}
-                </CardContent>
-            </Card>
-        </TabsContent>
-      </Tabs>
+    <PageShell>
+      <PageHeader
+        breadcrumbs={[
+          { label: 'Projects', href: '/projects' },
+          { label: project.name },
+        ]}
+        title={project.name}
+        description={project.description}
+        meta={
+          <>
+            {project.status && (
+              <Badge variant="secondary" className="font-medium">
+                {project.status.name}
+              </Badge>
+            )}
+            <PageMeta icon={CalendarDays}>
+              {format(parseISO(project.startDate), 'd MMM yyyy')} –{' '}
+              {format(parseISO(project.endDate), 'd MMM yyyy')}
+            </PageMeta>
+            <PageMeta icon={UserCircle} label="Manager">
+              {project.projectManager?.name || 'Unassigned'}
+            </PageMeta>
+            <PageMeta icon={Library} label="EPMO division">
+              {project.pmoDivision?.name || 'None'}
+            </PageMeta>
+            {departments.length > 0 && (
+              <PageMeta icon={Building} label="For">
+                {departments.join(', ')}
+              </PageMeta>
+            )}
+          </>
+        }
+        actions={
+          <>
+            {canUpdateProject && (
+              <>
+                <Button asChild variant="outline">
+                  <Link href={`/projects/${project.id}/edit`}>
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                    Edit project
+                  </Link>
+                </Button>
+                <Button asChild variant="outline">
+                  <Link href={`/projects/${project.id}/milestones`}>
+                    Manage milestones
+                    <ExternalLink className="h-4 w-4" aria-hidden="true" />
+                  </Link>
+                </Button>
+              </>
+            )}
+            {canDeleteProject && (
+              <Button variant="destructive" onClick={() => onDeleteProject(project)}>
+                <Trash2 className="h-4 w-4" aria-hidden="true" />
+                Delete
+              </Button>
+            )}
+          </>
+        }
+      />
+
+      <ProjectSummaryCards project={project} />
+
+      <ProjectRiskPanel project={project} onNavigate={selectSection} />
+
+      <SectionLayout
+        nav={
+          <SectionNav
+            sections={sections}
+            value={section}
+            onValueChange={selectSection}
+            label="Project sections"
+          />
+        }
+      >
+        <SectionPanel id="milestones" active={section === 'milestones'}>
+          <ProjectMilestonesSection project={project} />
+        </SectionPanel>
+
+        <SectionPanel id="blockers" active={section === 'blockers'}>
+          <ProjectBlockers
+            blockers={blockers as Blocker[]}
+            owners={blockerOwners}
+            canUpdate={canUpdateProject}
+            onAdd={onAddBlocker}
+            onEdit={onEditBlocker}
+            onResolve={onResolveBlocker}
+            onEscalate={onEscalateBlocker}
+            onDelete={onDeleteBlocker}
+          />
+        </SectionPanel>
+
+        <SectionPanel id="documents" active={section === 'documents'}>
+          <ProjectDocuments projectId={project.id} />
+        </SectionPanel>
+
+        <SectionPanel id="timeline" active={section === 'timeline'}>
+          <TimelineHistory requests={timelineRequests} />
+        </SectionPanel>
+      </SectionLayout>
 
       {isAddingBlocker && (
         <AddBlockerDialog
@@ -414,7 +312,7 @@ export function ProjectView({
           owners={blockerOwners}
         />
       )}
-      
+
       {resolvingBlocker && (
         <ResolveBlockerDialog
           isOpen={!!resolvingBlocker}
@@ -446,53 +344,128 @@ export function ProjectView({
 
       {blockerToDelete && (
         <AlertDialog
-            open={!!blockerToDelete}
-            onOpenChange={(open) => !open && onDeleteBlockerOpenChange(null)}
+          open={!!blockerToDelete}
+          onOpenChange={(open) => !open && onDeleteBlockerOpenChange(null)}
         >
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the blocker.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => onDeleteBlockerOpenChange(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={onBlockerDeleteSubmit}
-                    >
-                        Delete
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete this issue?</AlertDialogTitle>
+              <AlertDialogDescription>
+                {/* Naming the thing beats "are you absolutely sure": the reader
+                    can check they are deleting what they meant to. */}
+                &ldquo;{blockerToDelete.title}&rdquo; will be removed permanently, along with its
+                history. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => onDeleteBlockerOpenChange(null)}>
+                Keep it
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={onBlockerDeleteSubmit}
+              >
+                Delete issue
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </AlertDialog>
       )}
 
       {projectToDelete && (
         <AlertDialog
-            open={!!projectToDelete}
-            onOpenChange={(open) => !open && onDeleteProjectOpenChange(null)}
+          open={!!projectToDelete}
+          onOpenChange={(open) => !open && onDeleteProjectOpenChange(null)}
         >
-            <AlertDialogContent>
-                <AlertDialogHeader>
-                    <AlertDialogTitle>Are you sure you want to delete this project?</AlertDialogTitle>
-                    <AlertDialogDescription>
-                        This action cannot be undone. This will permanently delete the project <span className="font-semibold">"{projectToDelete.name}"</span> and all of its associated milestones, tasks, and blockers.
-                    </AlertDialogDescription>
-                </AlertDialogHeader>
-                <AlertDialogFooter>
-                    <AlertDialogCancel onClick={() => onDeleteProjectOpenChange(null)}>Cancel</AlertDialogCancel>
-                    <AlertDialogAction
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        onClick={onProjectDeleteSubmit}
-                    >
-                        Delete Project
-                    </AlertDialogAction>
-                </AlertDialogFooter>
-            </AlertDialogContent>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete &ldquo;{projectToDelete.name}&rdquo;?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This removes the project and everything under it —{' '}
+                {project.milestones?.length ?? 0} milestone
+                {(project.milestones?.length ?? 0) === 1 ? '' : 's'}, all of their tasks, and{' '}
+                {blockers.length} issue{blockers.length === 1 ? '' : 's'}. This cannot be undone.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel onClick={() => onDeleteProjectOpenChange(null)}>
+                Keep it
+              </AlertDialogCancel>
+              <AlertDialogAction
+                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                onClick={onProjectDeleteSubmit}
+              >
+                Delete project
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
         </AlertDialog>
       )}
-    </div>
+    </PageShell>
+  );
+}
+
+/** Every deadline move that has been asked for, and what came of it. */
+function TimelineHistory({ requests }: { requests: any[] }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Timeline changes</CardTitle>
+        <CardDescription>
+          Every request to move this project&rsquo;s deadline, who asked, why, and what was
+          decided.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        {requests.length === 0 ? (
+          <EmptyState
+            title="The deadline has never been moved"
+            description="Requests to change the project end date will be listed here once one is made."
+            compact
+          />
+        ) : (
+          <Table scrollLabel="Timeline change requests">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Requested</TableHead>
+                <TableHead>By</TableHead>
+                <TableHead>Deadline change</TableHead>
+                <TableHead>Reason</TableHead>
+                <TableHead>Outcome</TableHead>
+                <TableHead>Reviewed by</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {requests.map((req: any) => (
+                <TableRow key={req.id}>
+                  <TableCell className="whitespace-nowrap">
+                    {format(parseISO(req.createdAt), 'd MMM yyyy')}
+                  </TableCell>
+                  <TableCell>{req.requestedBy?.name ?? 'Unknown'}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 whitespace-nowrap">
+                      <span className="text-muted-foreground line-through">
+                        {format(parseISO(req.oldEndDate), 'd MMM yy')}
+                      </span>
+                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground" aria-hidden="true" />
+                      <span className="font-medium">
+                        {format(parseISO(req.newEndDate), 'd MMM yy')}
+                      </span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="max-w-xs">
+                    <span className="line-clamp-2">{req.reason}</span>
+                  </TableCell>
+                  <TableCell>
+                    <DecisionPill status={req.status} />
+                  </TableCell>
+                  <TableCell>{req.reviewedBy?.name ?? '—'}</TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        )}
+      </CardContent>
+    </Card>
   );
 }

@@ -1,29 +1,33 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+
 import { useAuth } from '@/context/auth-context';
 import { MyTasksManagement } from "@/components/tasks/my-tasks-management";
 import { getMyTasks } from './actions';
-import type { UserTask } from './actions';
-import type { User } from '@/lib/types';
 import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
+import { ErrorState } from '@/components/ui/error-state';
+import { PageShell } from '@/components/ui/page-header';
 import { useFirstLoad } from "@/hooks/use-first-load";
 
 function LoadingSkeleton() {
   return (
-    <LoadingRegion label="Loading my tasks">
-      <div className="p-4 sm:p-6 space-y-6">
-          <Skeleton className="h-8 w-48" />
-          <Skeleton className="h-6 w-96" />
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Skeleton className="h-24" />
-              <Skeleton className="h-24" />
-              <Skeleton className="h-24" />
-              <Skeleton className="h-24" />
+    <LoadingRegion label="Loading your tasks">
+      <PageShell>
+          <div className="space-y-2">
+            <Skeleton className="h-9 w-40" />
+            <Skeleton className="h-4 w-80" />
           </div>
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+              <Skeleton className="h-28" />
+              <Skeleton className="h-28" />
+              <Skeleton className="h-28" />
+              <Skeleton className="h-28" />
+              <Skeleton className="h-28" />
+          </div>
+          <Skeleton className="h-10 w-full" />
           <Skeleton className="h-64 w-full" />
-      </div>
+      </PageShell>
     </LoadingRegion>
   )
 }
@@ -34,12 +38,21 @@ export default function MyTasksPage() {
     type MyTasksData = Awaited<ReturnType<typeof getMyTasks>>;
     const [tasksData, setTasksData] = useState<MyTasksData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const fetchTasks = useCallback(async () => {
-        if (localUser?.id) {
-            setIsLoading(true);
-            const data = await getMyTasks(localUser.id);
-            setTasksData(data);
+        if (!localUser?.id) return;
+
+        setIsLoading(true);
+        setLoadError(null);
+        try {
+            setTasksData(await getMyTasks(localUser.id));
+        } catch (error) {
+            // A thrown fetch used to leave the page saying "Could not load
+            // tasks. Please try logging in again." — advice that is wrong for
+            // every cause except an expired session.
+            setLoadError(error instanceof Error ? error.message : 'The request did not complete.');
+        } finally {
             setIsLoading(false);
         }
     }, [localUser?.id]);
@@ -50,7 +63,8 @@ export default function MyTasksPage() {
         } else if (!authLoading) {
             setIsLoading(false);
         }
-    }, [localUser, authLoading, fetchTasks]);
+    }, [localUser, authLoading, fetchTasks]);
+
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
@@ -59,12 +73,31 @@ export default function MyTasksPage() {
         return <LoadingSkeleton />;
     }
 
-    if (!localUser || !tasksData) {
+    if (!localUser) {
         return (
-             <div className="p-4 sm:p-6">
-                <p>Could not load tasks. Please try logging in again.</p>
-            </div>
-        )
+            <PageShell>
+                <ErrorState
+                    variant="permission"
+                    title="Your session has ended"
+                    description="Sign in again to see the tasks assigned to you."
+                    href="/login"
+                    hrefLabel="Sign in"
+                />
+            </PageShell>
+        );
+    }
+
+    if (loadError || !tasksData) {
+        return (
+            <PageShell>
+                <ErrorState
+                    variant="load"
+                    title="We could not load your tasks"
+                    detail={loadError}
+                    onRetry={fetchTasks}
+                />
+            </PageShell>
+        );
     }
 
     return (

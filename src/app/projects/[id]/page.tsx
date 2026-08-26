@@ -19,20 +19,41 @@ import type { CreateBlockerInput, EscalateBlockerInput } from "@/lib/validation/
 import { useAuth } from "@/context/auth-context";
 import { BlockerStatus, TaskStatus, type Blocker, type Project } from "@/lib/types";
 import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageShell } from "@/components/ui/page-header";
 import { useToast } from "@/hooks/use-toast";
 import { useFirstLoad } from "@/hooks/use-first-load";
 
 type ProjectWithRelations = any;
 
+/**
+ * Shaped like the page it stands in for: a header, a row of four summary
+ * cards, then a rail beside a panel. A skeleton that does not match its screen
+ * makes the content jump when it arrives, which is worse than a spinner.
+ */
 function LoadingSkeleton() {
     return (
-        <LoadingRegion label="Loading">
+        <LoadingRegion label="Loading project">
           <div className="p-4 sm:p-6 space-y-6">
-              <Skeleton className="h-6 w-48 mb-4" />
-              <Skeleton className="h-48 w-full" />
-              <div className="grid grid-cols-2 gap-4">
-                  <Skeleton className="h-64 w-full" />
-                  <Skeleton className="h-64 w-full" />
+              <Skeleton className="h-4 w-56" />
+              <div className="flex flex-col gap-4 lg:flex-row lg:justify-between">
+                <div className="space-y-2">
+                  <Skeleton className="h-9 w-72" />
+                  <Skeleton className="h-4 w-96" />
+                  <Skeleton className="h-4 w-80" />
+                </div>
+                <Skeleton className="h-10 w-64" />
+              </div>
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-32 w-full" />
+              </div>
+              <Skeleton className="h-28 w-full" />
+              <div className="flex flex-col gap-6 lg:flex-row">
+                  <Skeleton className="h-64 w-full lg:w-[260px] lg:shrink-0" />
+                  <Skeleton className="h-96 flex-1" />
               </div>
           </div>
         </LoadingRegion>
@@ -56,42 +77,53 @@ export default function ProjectDetailsPage() {
   const [escalatingBlocker, setEscalatingBlocker] = useState<Blocker | null>(null);
   const [blockerOwners, setBlockerOwners] = useState<{ id: string; name: string }[]>([]);
   const [projectToDelete, setProjectToDelete] = useState<Project | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
 
   const canUpdateProject = hasPermission('projects:update');
   const canDeleteProject = hasPermission('projects:delete');
 
   const fetchProjectData = useCallback(async () => {
       if (!localUser?.id || !id) return;
-      
+
       setIsLoading(true);
-      const [data, owners] = await Promise.all([
-        getProjectDetailsForUser(id, localUser.id),
-        // Needed by the issue dialogs; fetched with the project so opening
-        // one does not wait on a round trip.
-        getBlockerOwnerOptions(),
-      ]);
-      setBlockerOwners(owners);
-      if (data) {
-          const normalizedProject = {
-              ...data,
-              milestones: data.milestones.map((m: any) => ({
-                  ...m,
-                  tasks: m.tasks.map((t: any) => ({
-                      ...t,
-                      status: t.status as TaskStatus,
-                      assignedUserIds: t.assignees.map((a: any) => a.id),
-                  }))
-              })),
-              blockers: data.blockers.map((b: any) => ({
-                  ...b,
-                  status: b.status as BlockerStatus,
-              }))
-          };
-          setProject(normalizedProject);
-      } else {
-          notFound();
+      // A failed fetch used to fall through to `project === null`, which the
+      // page reported as "could not load, or you have no permission" — two
+      // different problems with two different remedies, stated as one sentence
+      // offering neither.
+      setLoadError(null);
+      try {
+        const [data, owners] = await Promise.all([
+          getProjectDetailsForUser(id, localUser.id),
+          // Needed by the issue dialogs; fetched with the project so opening
+          // one does not wait on a round trip.
+          getBlockerOwnerOptions(),
+        ]);
+        setBlockerOwners(owners);
+        if (data) {
+            const normalizedProject = {
+                ...data,
+                milestones: data.milestones.map((m: any) => ({
+                    ...m,
+                    tasks: m.tasks.map((t: any) => ({
+                        ...t,
+                        status: t.status as TaskStatus,
+                        assignedUserIds: t.assignees.map((a: any) => a.id),
+                    }))
+                })),
+                blockers: data.blockers.map((b: any) => ({
+                    ...b,
+                    status: b.status as BlockerStatus,
+                }))
+            };
+            setProject(normalizedProject);
+        } else {
+            notFound();
+        }
+      } catch (error) {
+        setLoadError(error instanceof Error ? error.message : 'The request did not complete.');
+      } finally {
+        setIsLoading(false);
       }
-      setIsLoading(false);
   }, [id, localUser?.id]);
 
 
@@ -171,7 +203,7 @@ export default function ProjectDetailsPage() {
       });
     }
     setProjectToDelete(null);
-  };
+  };
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
@@ -180,11 +212,32 @@ export default function ProjectDetailsPage() {
       return <LoadingSkeleton />;
   }
   
+  if (loadError) {
+      return (
+        <PageShell>
+          <ErrorState
+            variant="load"
+            title="We could not load this project"
+            detail={loadError}
+            onRetry={fetchProjectData}
+            href="/projects"
+            hrefLabel="Back to projects"
+          />
+        </PageShell>
+      );
+  }
+
   if (!project) {
       return (
-        <div className="p-4 sm:p-6">
-            <p>Could not load project data or you do not have permission to view it.</p>
-        </div>
+        <PageShell>
+          <ErrorState
+            variant="permission"
+            title="You cannot view this project"
+            description="Your account is not on this project and does not have portfolio-wide read access. Ask the project manager to add you, or your administrator to widen your permissions."
+            href="/projects"
+            hrefLabel="Back to projects"
+          />
+        </PageShell>
       );
   }
 

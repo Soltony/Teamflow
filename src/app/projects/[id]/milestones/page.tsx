@@ -11,6 +11,8 @@ import { TaskStatus, UserWithRoles } from "@/lib/types";
 import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import type { Department } from "@/lib/types";
 import { useFirstLoad } from "@/hooks/use-first-load";
+import { ErrorState } from "@/components/ui/error-state";
+import { PageShell } from "@/components/ui/page-header";
 
 type PageData = {
     project: any;
@@ -38,11 +40,13 @@ export default function ProjectMilestonesPage() {
     const router = useRouter();
     const [pageData, setPageData] = useState<PageData | null>(null);
     const [isLoading, setIsLoading] = useState(true);
+    const [loadError, setLoadError] = useState<string | null>(null);
 
     const fetchData = useCallback(async () => {
         if (!localUser?.id || !id) return;
 
         setIsLoading(true);
+        setLoadError(null);
         try {
             const data = await getProjectMilestonesForUser(id, localUser.id);
             if (data) {
@@ -70,8 +74,7 @@ export default function ProjectMilestonesPage() {
                 notFound();
             }
         } catch (error) {
-            console.error("Failed to fetch project milestones data:", error);
-            setPageData(null);
+            setLoadError(error instanceof Error ? error.message : "The request did not complete.");
         } finally {
             setIsLoading(false);
         }
@@ -86,7 +89,7 @@ export default function ProjectMilestonesPage() {
             }
             fetchData();
         }
-    }, [authLoading, hasPermission, router, fetchData]);
+    }, [authLoading, hasPermission, router, fetchData]);
     // Only on the very first load. Rendering the skeleton on every refresh
     // unmounted the page body, destroying any dialog that was open.
     const showSkeleton = useFirstLoad(isLoading);
@@ -95,8 +98,21 @@ export default function ProjectMilestonesPage() {
         return <LoadingSkeleton />;
     }
 
-    if (!pageData) {
-        return null;
+    // `return null` rendered a blank white page whenever the fetch failed,
+    // with nothing to say what had happened or how to get out of it.
+    if (loadError || !pageData) {
+        return (
+            <PageShell>
+                <ErrorState
+                    variant="load"
+                    title="We could not load these milestones"
+                    detail={loadError}
+                    onRetry={fetchData}
+                    href={`/projects/${id}`}
+                    hrefLabel="Back to the project"
+                />
+            </PageShell>
+        );
     }
 
     return (
