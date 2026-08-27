@@ -37,8 +37,10 @@ import type { OwnerOption } from "./blocker-form-fields";
 
 const SEVERITY_STYLE: Record<BlockerSeverity, string> = {
   CRITICAL: "bg-destructive text-destructive-foreground",
-  HIGH: "bg-orange-500 text-white",
-  MEDIUM: "bg-yellow-500 text-black",
+  // Four steps need four appearances. Orange is the palette's urgency colour
+  // and sits between red and amber, which is exactly where HIGH belongs.
+  HIGH: "bg-accent text-accent-foreground",
+  MEDIUM: "bg-warning text-warning-foreground",
   LOW: "bg-muted text-muted-foreground",
 };
 
@@ -146,7 +148,7 @@ export function ProjectBlockers({
               </Badge>
             )}
             {unmanagedCount > 0 && (
-              <Badge variant="outline" className="gap-1 border-orange-500 text-orange-600">
+              <Badge variant="outline" className="gap-1 border-warning text-warning-strong">
                 <UserX className="h-3 w-3" />
                 {unmanagedCount} without an owner or a date
               </Badge>
@@ -202,7 +204,7 @@ export function ProjectBlockers({
                           )}
                         />
                       ) : (
-                        <ShieldCheck className="mt-1 h-5 w-5 text-green-600" />
+                        <ShieldCheck className="mt-1 h-5 w-5 text-success" />
                       )}
                     </div>
 
@@ -237,7 +239,7 @@ export function ProjectBlockers({
                           Owner:{" "}
                           {blocker.owner?.name ??
                             (blocker.ownerId ? ownerName.get(blocker.ownerId) : null) ?? (
-                              <span className="font-medium text-orange-600">nobody</span>
+                              <span className="font-medium text-warning-strong">nobody</span>
                             )}
                         </span>
                         <span>
@@ -245,14 +247,14 @@ export function ProjectBlockers({
                           {blocker.dueDate ? (
                             format(parseISO(blocker.dueDate), "dd MMM yyyy")
                           ) : (
-                            <span className="font-medium text-orange-600">no date agreed</span>
+                            <span className="font-medium text-warning-strong">no date agreed</span>
                           )}
                         </span>
                         <span>Raised {format(parseISO(blocker.createdAt), "dd MMM yyyy")}</span>
                       </div>
 
                       {blocker.status === "ESCALATED" && blocker.escalatedAt && (
-                        <div className="mt-2 rounded-md border border-orange-200 bg-orange-50 p-3 text-sm dark:border-orange-900 dark:bg-orange-950/30">
+                        <div className="mt-2 rounded-md border border-warning/40 bg-warning-soft p-3 text-sm">
                           <p className="text-xs font-semibold">
                             Escalated to {blocker.escalatedTo?.name ?? "someone"} on{" "}
                             {format(parseISO(blocker.escalatedAt), "dd MMM yyyy")}

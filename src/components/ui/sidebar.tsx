@@ -107,7 +107,7 @@ const Sidebar = React.forwardRef<
   if (isMobile) {
     return (
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
-        <SheetContent side="left" className="w-[280px] p-0 bg-sidebar border-r">
+        <SheetContent side="left" className="w-[280px] border-r border-sidebar-border bg-sidebar p-0">
           <SheetHeader className="sr-only">
             <SheetTitle>Navigation Menu</SheetTitle>
           </SheetHeader>
@@ -123,7 +123,7 @@ const Sidebar = React.forwardRef<
     <aside
       ref={ref}
       className={cn(
-        "fixed left-0 top-0 z-20 h-screen border-r bg-sidebar transition-[width] duration-300 ease-in-out",
+        "fixed left-0 top-0 z-20 h-screen border-r border-sidebar-border bg-sidebar transition-[width] duration-300 ease-in-out",
         isOpen ? "w-[280px]" : "w-[56px]",
         className
       )}
@@ -141,7 +141,7 @@ const SidebarHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div
     ref={ref}
-    className={cn("flex h-16 shrink-0 items-center border-b px-4", className)}
+    className={cn("flex h-16 shrink-0 items-center border-b border-sidebar-border px-4", className)}
     {...props}
   />
 ))
@@ -168,7 +168,7 @@ const SidebarFooter = React.forwardRef<
         <div
         ref={ref}
         className={cn(
-            "mt-auto shrink-0 border-t p-4 transition-all",
+            "mt-auto shrink-0 border-t border-sidebar-border p-4 transition-all",
             !isOpen && !isMobile && "p-2",
             className
         )}
@@ -218,7 +218,6 @@ const SidebarMenuButton = React.forwardRef<
 >(({ className, icon, isActive, children, href, badge, badgeLabel, ...props }, ref) => {
   const { isOpen, isMobile } = useSidebar()
 
-  const variant: "secondary" | "ghost" = isActive ? "secondary" : "ghost";
   const collapsed = !isOpen && !isMobile
   const hasBadge = typeof badge === "number" && badge > 0
 
@@ -234,7 +233,11 @@ const SidebarMenuButton = React.forwardRef<
   const label = typeof children === "string" ? children : undefined
 
   const commonProps = {
-    variant,
+    // Always ghost, with the active state painted below. The old
+    // active/inactive split was secondary-vs-ghost, which on this palette is
+    // two barely different greys; the current page now takes the brand gold,
+    // the way a primary button does.
+    variant: "ghost" as const,
     title: collapsed ? [label, badgeLabel].filter(Boolean).join(" — ") : undefined,
     // Collapsed, the count has no room to render, so it has to go in the name
     // or it is lost entirely.
@@ -245,7 +248,10 @@ const SidebarMenuButton = React.forwardRef<
     // could not: the active item was distinguishable only by its background.
     "aria-current": isActive ? ("page" as const) : undefined,
     className: cn(
-      "h-10 w-full justify-start gap-3",
+      "h-10 w-full justify-start gap-3 rounded-lg px-3 text-sm font-medium",
+      isActive
+        ? "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 hover:text-sidebar-primary-foreground"
+        : "text-muted-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
       collapsed && "h-10 w-10 justify-center p-0",
       className
     ),
@@ -271,7 +277,15 @@ const SidebarMenuButton = React.forwardRef<
       <span className={cn("truncate", collapsed && "sr-only")}>{children}</span>
       {hasBadge && !collapsed && (
         <span
-          className="ml-auto shrink-0 rounded-full bg-destructive px-1.5 py-0.5 text-xs font-semibold tabular-nums text-destructive-foreground"
+          className={cn(
+            "ml-auto shrink-0 rounded-full px-1.5 py-0.5 text-xs font-semibold tabular-nums",
+            // On the gold active row a red chip has almost nothing to sit
+            // against; ink does, and the row itself is already carrying the
+            // "you are here" signal.
+            isActive
+              ? "bg-ink text-ink-foreground"
+              : "bg-destructive text-destructive-foreground"
+          )}
           aria-hidden="true"
         >
           {badge > 99 ? "99+" : badge}

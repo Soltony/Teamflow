@@ -89,17 +89,17 @@ const TaskItem = ({ task, date, userMap }: { task: TaskWithRelations, date: Date
                         </Link>
                          <div className="flex flex-wrap gap-1">
                           {isSameDay(parseISO(task.endDate as unknown as string), date) && task.status !== 'DONE' && (
-                                <Badge className="flex items-center gap-1 text-xs bg-red-100 text-red-800 border-red-200 hover:bg-red-200">
+                                <Badge variant="soft-destructive" className="flex items-center gap-1 text-xs">
                                     <Clock className="w-3 h-3" /> Due Today
                                 </Badge>
                             )}
                             {task.updates?.some(update => isSameDay(parseISO(update.createdAt as unknown as string), date)) && !(task.completedAt && isSameDay(parseISO(task.completedAt as unknown as string), date)) && (
-                                <Badge className="flex items-center gap-1 text-xs bg-orange-100 text-orange-800 border-orange-200 hover:bg-orange-200">
+                                <Badge variant="soft-warning" className="flex items-center gap-1 text-xs">
                                     <Edit3 className="w-3 h-3" /> Updated
                                 </Badge>
                             )}
                             {task.completedAt && isSameDay(parseISO(task.completedAt as unknown as string), date) && (
-                                <Badge className="flex items-center gap-1 text-xs bg-blue-100 text-blue-800 border-blue-200 hover:bg-blue-200">
+                                <Badge variant="soft-info" className="flex items-center gap-1 text-xs">
                                     <CheckCircle className="w-3 h-3" /> Completed
                                 </Badge>
                             )}
@@ -128,7 +128,7 @@ const TaskItem = ({ task, date, userMap }: { task: TaskWithRelations, date: Date
                                         return (
                                             <div key={update.id} className="flex items-start gap-3">
                                                 <div className="w-6 h-6 flex-shrink-0 flex items-center justify-center">
-                                                    {isApproval ? <CheckCircle className="w-5 h-5 text-green-500" /> : <XCircle className="w-5 h-5 text-destructive" />}
+                                                    {isApproval ? <CheckCircle className="w-5 h-5 text-success" /> : <XCircle className="w-5 h-5 text-destructive" />}
                                                 </div>
                                                 <div className="flex-1 text-xs bg-muted/50 p-2 rounded-md">
                                                     <p className="text-muted-foreground italic">{update.text} by <span className="font-semibold">{author?.name}</span></p>

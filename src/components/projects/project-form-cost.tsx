@@ -61,14 +61,14 @@ function PaymentTotal({
       className={cn(
         "flex flex-wrap items-baseline justify-between gap-2 rounded-md border p-3 text-sm",
         matches
-          ? "border-green-700/30 bg-green-700/10"
-          : "border-amber-600/40 bg-amber-500/10",
+          ? "border-success/30 bg-success-soft"
+          : "border-warning/40 bg-warning-soft",
       )}
     >
       <span className="font-medium">
         {count} payment{count === 1 ? "" : "s"} scheduled, {money(scheduled)} of {money(totalCost)}
       </span>
-      <span className={cn("tabular-nums", matches ? "text-green-800" : "text-amber-800")}>
+      <span className={cn("tabular-nums", matches ? "text-success-strong" : "text-warning-strong")}>
         {matches
           ? "Matches the project cost"
           : difference > 0

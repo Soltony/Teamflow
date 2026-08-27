@@ -34,9 +34,9 @@ const TONE: Record<
 > = {
   action: {
     icon: AlertTriangle,
-    container: 'border-amber-600/40 bg-amber-500/10',
-    icon_: 'text-amber-700',
-    heading: 'text-amber-900',
+    container: 'border-warning/40 bg-warning-soft',
+    icon_: 'text-warning-strong',
+    heading: 'text-warning-strong',
   },
   waiting: {
     icon: Info,
@@ -46,9 +46,9 @@ const TONE: Record<
   },
   done: {
     icon: CheckCircle2,
-    container: 'border-green-700/30 bg-green-700/10',
-    icon_: 'text-green-700',
-    heading: 'text-green-900',
+    container: 'border-success/30 bg-success-soft',
+    icon_: 'text-success-strong',
+    heading: 'text-success-strong',
   },
   info: {
     icon: Info,

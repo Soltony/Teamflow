@@ -1,19 +1,19 @@
 {
-  "name": "NIB PMO",
-  "short_name": "NIB PMO",
+  "name": "NIB EPMO",
+  "short_name": "NIB EPMO",
   "description": "A project management solution to assign tasks and manage activity online.",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#f0e8c2",
-  "theme_color": "#733f19",
+  "background_color": "#F6F7F9",
+  "theme_color": "#0C1222",
   "icons": [
     {
-      "src": "https://play-lh.googleusercontent.com/bXqMt9ROsGd0H9vPhib5hG-0NB-EJcAwZy6UUDhvlP-ykE595IMQtzr14R6IRWtJiGTh",
+      "src": "/img/logo.png",
       "sizes": "192x192",
       "type": "image/png"
     },
     {
-      "src": "https://play-lh.googleusercontent.com/bXqMt9ROsGd0H9vPhib5hG-0NB-EJcAwZy6UUDhvlP-ykE595IMQtzr14R6IRWtJiGTh",
+      "src": "/img/logo.png",
       "sizes": "512x512",
       "type": "image/png"
     }

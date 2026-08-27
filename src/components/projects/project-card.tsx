@@ -65,16 +65,28 @@ type ProjectListItemProps = {
 
 const ProgressBadge = ({ progress, isOverdue }: { progress: number, isOverdue: boolean }) => {
     const isComplete = progress >= 100;
-    const badgeColor = isComplete ? 'bg-green-600' : isOverdue ? 'bg-red-600' : 'bg-primary';
-    const textColor = 'text-primary-foreground';
-  
+    /*
+     * Each fill brings its own label colour. They all used to take
+     * `text-primary-foreground`, which is the black that pairs with gold — on
+     * the green and red fills that is a black label on a dark ground.
+     */
+    const tone = isComplete
+      ? 'bg-success text-success-foreground'
+      : isOverdue
+        ? 'bg-destructive text-destructive-foreground'
+        : 'bg-primary text-primary-foreground';
+
     return (
       <div className={cn(
         "relative inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-semibold transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 h-6",
-        badgeColor,
-        textColor
+        tone
       )}>
-        <div className="absolute left-0 top-0 h-full rounded-full bg-white/20" style={{ width: `${progress}%` }}/>
+        {/*
+          The fill indicator tracks the label colour rather than being a fixed
+          white wash, so it stays visible on the light gold badge as well as on
+          the dark green and red ones.
+        */}
+        <div className="absolute left-0 top-0 h-full rounded-full bg-current opacity-20" style={{ width: `${progress}%` }}/>
         <span className="relative">{Math.round(progress)}% Done</span>
       </div>
     );
@@ -183,7 +195,7 @@ export function ProjectListItem({
   const TaskRow = ({task}: {task: any}) => {
     const isTaskDone = task.status === 'DONE';
     const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
-    const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-destructive' : 'bg-primary';
+    const indicatorClassName = isTaskDone ? 'bg-success' : isTaskOverdue ? 'bg-destructive' : 'bg-primary';
 
     return (
         <div key={task.id} className="space-y-1.5 group">

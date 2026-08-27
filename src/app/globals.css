@@ -1,60 +1,180 @@
-
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /*
+ * NIB EPMO design tokens.
+ *
+ * The palette is the GuessLow family: brand gold as the action colour, warm
+ * orange for urgency, and a deep ink surface for chrome and headline panels.
+ * Gold is dull against white, so it earns its presence by sitting on either a
+ * cool near-white page or the ink — that contrast is what carries the identity.
+ *
  * Typography is set by next/font in app/layout.tsx, which defines --font-sans
- * and is picked up by Tailwind's font-sans. The Arial rule that used to live
- * here overrode it on every page, so the blueprint's Inter never applied.
+ * and is picked up by Tailwind's font-sans.
+ *
+ * Several tokens sit a few points darker than the reference palette. Each one
+ * is a contrast correction, asserted in src/lib/theme/contrast.test.ts against
+ * this file: --border and --input were invisible at the reference lightness,
+ * gold at 47% could not serve as a focus ring, and white on the reference red
+ * measured 3.76:1. The hues are unchanged, so the family reads the same.
  */
 
 @layer base {
   :root {
-    --background: 47 58% 85%; /* #f0e8c2 */
-    --foreground: 26 30% 25%; /* Darker Brown */
-    --card: 50 64% 95%; /* #faf7e8 */
-    --card-foreground: 26 30% 25%;
-    --popover: 50 64% 95%; /* #faf7e8 */
-    --popover-foreground: 26 30% 25%;
-    --primary: 45 90% 55%;
-    --primary-foreground: 45 90% 5%;
-    --secondary: 47 40% 92%;
-    --secondary-foreground: 26 30% 25%;
-    --muted: 47 40% 92%;
-    /* Was 45%, which put secondary text at 3.7:1 on the page background —
-     * below the 4.5:1 needed to read it. Most dates, counts and descriptions
-     * in this system use this token. */
-    --muted-foreground: 26 20% 38%;
-    --accent: 47 40% 92%;
-    --accent-foreground: 26 30% 25%;
-    /* Was 60.2%: white label on it measured 3.6:1, so every Delete button
-     * failed. */
-    --destructive: 0 72% 42%;
-    --destructive-foreground: 0 0% 98%;
-    /* Was 88% — 1.01:1 against the background, which is to say invisible.
-     * Card edges and table rules had no perceptible separation. */
-    --border: 40 25% 68%;
+    --background: 220 20% 97%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    /* Brand gold — always pairs with black text. */
+    --primary: 45 93% 47%;
+    --primary-foreground: 0 0% 0%;
+    --primary-soft: 45 95% 92%;
+    --primary-strong: 40 95% 27%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+    --muted: 210 40% 96.1%;
+    /* 46.9% in the reference, which measured 4.34:1 on a muted surface. Most
+     * dates, counts and descriptions in this system use this token. */
+    --muted-foreground: 215 16% 45%;
+
+    /* Warm orange — urgency, live states. Darkened from the reference 45%,
+     * where white-on-orange measured 3.50:1. */
+    --accent: 25 90% 38%;
+    --accent-foreground: 0 0% 100%;
+    --accent-soft: 28 92% 94%;
+    --accent-strong: 24 88% 30%;
+
+    /* The reference red is 60.2%: white on it measured 3.76:1, so every Delete
+     * button failed. */
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 0 84% 96%;
+    --destructive-strong: 0 72% 36%;
+
+    --success: 152 62% 31%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 152 48% 94%;
+    --success-strong: 152 68% 24%;
+
+    /* Amber carries dark text as a fill; as a *label* it needs the darker
+     * -strong pair, which is why both exist. */
+    --warning: 38 95% 48%;
+    --warning-foreground: 30 60% 12%;
+    --warning-soft: 40 92% 92%;
+    --warning-strong: 30 88% 27%;
+
+    /* The neutral informational state — in progress, scheduled, queued. */
+    --info: 210 88% 42%;
+    --info-foreground: 0 0% 100%;
+    --info-soft: 210 90% 95%;
+    --info-strong: 212 88% 31%;
+
+    /* 91.4% in the reference is 1.15:1 against this page — card edges and
+     * table rules would have no perceptible separation. */
+    --border: 215 20% 84%;
     /* A control boundary, not a decoration: this is the only thing marking
      * where a text field is, so it carries the 3:1 requirement. */
-    --input: 40 30% 45%;
-    /* The keyboard focus indicator. It was the same gold as --primary, at
-     * 1.35:1 against the background — anyone navigating by keyboard could not
-     * see where they were. Brand brown instead, which is the sidebar colour. */
-    --ring: 26 64% 33%;
+    --input: 215 16% 50%;
+    /* The keyboard focus indicator. Brand gold, but deep enough to be seen: at
+     * the reference 47% it sits at 1.98:1 on a card, so anyone navigating by
+     * keyboard could not tell where they were. */
+    --ring: 45 93% 35%;
     /* The off track of a switch. Distinct from both --primary (on) and the
      * card behind it, so the state is never ambiguous. */
-    --switch-off: 30 12% 42%;
-    --chart-1: 45 90% 55%;
-    --chart-2: 160 70% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 70% 60%;
-    --chart-5: 210 80% 55%;
+    --switch-off: 215 20% 40%;
+
+    /* Deep surfaces used by the chrome and headline panels. */
+    --ink: 224 47% 9%;
+    --ink-raised: 223 40% 15%;
+    --ink-foreground: 210 40% 98%;
+    --ink-muted: 215 22% 68%;
+
+    --chart-1: 45 93% 47%;
+    --chart-2: 25 90% 45%;
+    --chart-3: 210 60% 45%;
+    --chart-4: 152 55% 38%;
+    --chart-5: 271 55% 52%;
+
     --radius: 0.5rem;
 
-    /* Sidebar specific colors */
-    --sidebar-background: 26 64% 28%; /* #733f19 */
-    --sidebar-foreground: 47 58% 95%;
+    /* The navigation rail sits on the card surface, so its gold active state
+     * reads against it the same way a primary button does on a page. */
+    --sidebar-background: 0 0% 100%;
+    --sidebar-foreground: 222.2 84% 4.9%;
+    --sidebar-primary: 45 93% 47%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 210 40% 96.1%;
+    --sidebar-accent-foreground: 222.2 47.4% 11.2%;
+    --sidebar-border: 215 20% 84%;
+    --sidebar-ring: 45 93% 35%;
+  }
+
+  .dark {
+    --background: 224 47% 7%;
+    --foreground: 210 40% 98%;
+    --card: 223 40% 11%;
+    --card-foreground: 210 40% 98%;
+    --popover: 223 40% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 45 93% 52%;
+    --primary-foreground: 0 0% 0%;
+    --primary-soft: 45 80% 16%;
+    --primary-strong: 45 93% 62%;
+
+    --secondary: 217.2 32.6% 17.5%;
+    --secondary-foreground: 210 40% 98%;
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 70%;
+
+    --accent: 25 100% 52%;
+    --accent-foreground: 0 0% 100%;
+    --accent-soft: 25 70% 16%;
+    --accent-strong: 25 100% 66%;
+
+    --destructive: 0 62.8% 48%;
+    --destructive-foreground: 0 0% 100%;
+    --destructive-soft: 0 55% 16%;
+    --destructive-strong: 0 85% 72%;
+
+    --success: 152 55% 40%;
+    --success-foreground: 0 0% 100%;
+    --success-soft: 152 45% 14%;
+    --success-strong: 152 60% 62%;
+
+    --warning: 38 92% 55%;
+    --warning-foreground: 30 60% 12%;
+    --warning-soft: 38 55% 16%;
+    --warning-strong: 38 92% 66%;
+
+    --info: 210 88% 55%;
+    --info-foreground: 0 0% 0%;
+    --info-soft: 210 60% 16%;
+    --info-strong: 210 90% 70%;
+
+    --border: 217.2 32.6% 22%;
+    --input: 215 18% 55%;
+    --ring: 45 93% 52%;
+    --switch-off: 215 16% 45%;
+
+    --ink: 224 47% 6%;
+    --ink-raised: 223 40% 13%;
+    --ink-foreground: 210 40% 98%;
+    --ink-muted: 215 22% 66%;
+
+    --sidebar-background: 223 40% 11%;
+    --sidebar-foreground: 210 40% 98%;
+    --sidebar-primary: 45 93% 52%;
+    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-accent: 217.2 32.6% 17.5%;
+    --sidebar-accent-foreground: 210 40% 98%;
+    --sidebar-border: 217.2 32.6% 22%;
+    --sidebar-ring: 45 93% 52%;
   }
 }
 
@@ -71,6 +191,7 @@
      * a single-storey l, so 1 / l / I stay distinguishable in ids and amounts.
      */
     font-feature-settings: "tnum" 1, "cv11" 1;
+    -webkit-tap-highlight-color: transparent;
   }
 
   /*
@@ -80,29 +201,197 @@
   .prose-numerals {
     font-feature-settings: "tnum" 0;
   }
-  .sidebar {
-    --secondary: 26 64% 43%;
-    --secondary-foreground: 47 58% 98%;
-    --accent: 26 64% 43%;
-    --accent-foreground: 47 58% 98%;
-    --muted: 26 64% 23%;
-    --muted-foreground: 47 58% 95%;
+
+  /* Numeric fields here are amounts and counts; the native spinners are noise. */
+  input[type="number"]::-webkit-outer-spin-button,
+  input[type="number"]::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+}
+
+@layer components {
+  /* ---------- Surfaces ---------- */
+
+  .gl-ink {
+    background-color: hsl(var(--ink));
+    color: hsl(var(--ink-foreground));
   }
 
-  /* Custom Sidebar Scrollbar */
+  /* Gold spotlight thrown from the top of a dark section. */
+  .gl-spotlight {
+    position: relative;
+    isolation: isolate;
+  }
+  .gl-spotlight::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background:
+      radial-gradient(90% 70% at 78% -10%, hsl(var(--primary) / 0.3), transparent 62%),
+      radial-gradient(70% 60% at 8% 8%, hsl(var(--accent) / 0.16), transparent 60%);
+  }
+
+  /* Fine dot texture, keeps large dark areas from reading as flat. */
+  .gl-dots {
+    background-image: radial-gradient(hsl(var(--ink-foreground) / 0.07) 1px, transparent 1px);
+    background-size: 15px 15px;
+  }
+
+  /* Elevated content card. */
+  .gl-card {
+    @apply rounded-2xl border border-border bg-card;
+    box-shadow:
+      0 1px 2px hsl(224 47% 9% / 0.05),
+      0 10px 28px -14px hsl(224 47% 9% / 0.18);
+    transition:
+      transform 0.22s ease,
+      box-shadow 0.22s ease,
+      border-color 0.22s ease;
+  }
+  .gl-card-interactive:hover {
+    transform: translateY(-2px);
+    border-color: hsl(var(--primary) / 0.55);
+    box-shadow:
+      0 1px 2px hsl(224 47% 9% / 0.06),
+      0 18px 40px -18px hsl(224 47% 9% / 0.3);
+  }
+
+  /* Flat panel for dense lists and tables, where elevation would be noisy. */
+  .gl-panel {
+    @apply rounded-xl border border-border bg-card;
+  }
+
+  /* ---------- Accents ---------- */
+
+  .gl-gold {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 8px 22px -10px hsl(var(--primary) / 0.85);
+    transition:
+      filter 0.18s ease,
+      box-shadow 0.18s ease,
+      transform 0.12s ease;
+  }
+  .gl-gold:hover:not(:disabled) {
+    filter: brightness(1.06);
+    box-shadow: 0 12px 28px -10px hsl(var(--primary) / 0.95);
+  }
+  .gl-gold:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  /* Live indicator with a haloed pulse. */
+  .gl-live-dot {
+    @apply relative inline-block h-1.5 w-1.5 rounded-full;
+    background-color: hsl(var(--accent));
+  }
+  .gl-live-dot::after {
+    content: "";
+    position: absolute;
+    inset: -3px;
+    border-radius: 9999px;
+    background-color: hsl(var(--accent) / 0.35);
+    animation: gl-ping 1.9s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+
+  .gl-pill {
+    @apply inline-flex items-center gap-1 rounded-full border border-border bg-card px-2.5 py-1 text-xs font-medium;
+  }
+
+  /* Chip that sits on a dark surface. */
+  .gl-chip-dark {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium;
+    background-color: hsl(var(--ink-foreground) / 0.1);
+    color: hsl(var(--ink-foreground));
+    backdrop-filter: blur(6px);
+  }
+
+  /* Section opener rule. */
+  .gl-section-rule {
+    @apply border-l-[3px] border-primary pl-3;
+  }
+
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  /* Staggered entrance for list items. */
+  .gl-rise {
+    animation: gl-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+
+  /* ---------- Navigation rail ---------- */
+
+  /*
+   * The rail is a card surface now, so its scrollbar reads as one too — a thin
+   * neutral thumb, rather than the painted honey-brown track it used to carry.
+   */
+  .sidebar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--border)) transparent;
+  }
+  .sidebar ::-webkit-scrollbar,
   .sidebar::-webkit-scrollbar {
     width: 6px;
   }
+  .sidebar ::-webkit-scrollbar-track,
   .sidebar::-webkit-scrollbar-track {
-    background-color: #B87333; /* Honey Brown */
-    border-radius: 10px;
+    background-color: transparent;
   }
+  .sidebar ::-webkit-scrollbar-thumb,
   .sidebar::-webkit-scrollbar-thumb {
-    background-color: #FFF8DC; /* Light Yellowish (Cornsilk) */
-    border-radius: 10px;
-    transition: background-color 0.3s ease;
+    background-color: hsl(var(--border));
+    border-radius: 9999px;
   }
+  .sidebar ::-webkit-scrollbar-thumb:hover,
   .sidebar::-webkit-scrollbar-thumb:hover {
-    background-color: #f8eeb8; /* Slightly darker yellow on hover */
+    background-color: hsl(var(--muted-foreground) / 0.6);
+  }
+}
+
+@keyframes gl-ping {
+  0% {
+    transform: scale(1);
+    opacity: 0.7;
+  }
+  70%,
+  100% {
+    transform: scale(2.4);
+    opacity: 0;
+  }
+}
+
+@keyframes gl-rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* Motion is decoration here; never impose it on people who opt out. */
+@media (prefers-reduced-motion: reduce) {
+  .gl-rise,
+  .gl-live-dot::after {
+    animation: none;
+  }
+  .gl-card,
+  .gl-gold {
+    transition: none;
+  }
+  .gl-card-interactive:hover {
+    transform: none;
   }
 }

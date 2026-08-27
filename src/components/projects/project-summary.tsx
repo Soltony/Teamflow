@@ -134,11 +134,11 @@ export function ProjectRiskPanel({ project, onNavigate, className }: ProjectSumm
 
   if (risks.length === 0) {
     return (
-      <Card className={cn('border-green-700/30 bg-green-700/5', className)}>
+      <Card className={cn('border-success/30 bg-success-soft', className)}>
         <CardContent className="flex items-center gap-3 py-4">
-          <ShieldCheck className="h-5 w-5 shrink-0 text-green-700" aria-hidden="true" />
+          <ShieldCheck className="h-5 w-5 shrink-0 text-success-strong" aria-hidden="true" />
           <div>
-            <p className="font-medium text-green-900">No risks flagged</p>
+            <p className="font-medium text-success-strong">No risks flagged</p>
             <p className="text-sm text-muted-foreground">
               The schedule, the milestones and the issue register all look healthy.
             </p>
@@ -155,7 +155,7 @@ export function ProjectRiskPanel({ project, onNavigate, className }: ProjectSumm
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <AlertTriangle
-            className={cn('h-4 w-4', critical > 0 ? 'text-destructive' : 'text-amber-700')}
+            className={cn('h-4 w-4', critical > 0 ? 'text-destructive' : 'text-warning-strong')}
             aria-hidden="true"
           />
           Risk indicators
@@ -252,7 +252,7 @@ export function ProjectRiskBadge({ project }: { project: any }) {
 /** A green tick, for the same slot when nothing is wrong. */
 export function ProjectHealthyBadge() {
   return (
-    <span className="inline-flex items-center gap-1 rounded-full border border-green-700/30 bg-green-700/10 px-2 py-0.5 text-xs font-medium text-green-800">
+    <span className="inline-flex items-center gap-1 rounded-full border border-success/30 bg-success-soft px-2 py-0.5 text-xs font-medium text-success-strong">
       <CheckCircle2 className="h-3 w-3 shrink-0" aria-hidden="true" />
       On track
     </span>

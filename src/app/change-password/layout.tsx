@@ -14,7 +14,7 @@ export default async function ChangePasswordLayout({ children }: { children: Rea
   if (!user) redirect('/login');
 
   return (
-    <main className="flex min-h-screen flex-col items-center bg-muted/40 p-8 py-12">{children}</main>
+    <main className="flex min-h-screen flex-col items-center bg-secondary/40 p-4 py-12">{children}</main>
   );
 }
 

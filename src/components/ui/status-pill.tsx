@@ -35,22 +35,22 @@ const HEALTH_PRESET: Record<Health, { label: string; icon: LucideIcon; className
   COMPLETE: {
     label: 'Complete',
     icon: CheckCircle2,
-    className: 'border-green-700/30 bg-green-700/10 text-green-800',
+    className: 'border-success/30 bg-success-soft text-success-strong',
   },
   ON_TRACK: {
     label: 'On track',
     icon: CircleDot,
-    className: 'border-green-700/30 bg-green-700/10 text-green-800',
+    className: 'border-success/30 bg-success-soft text-success-strong',
   },
   AT_RISK: {
     label: 'Behind schedule',
     icon: AlertTriangle,
-    className: 'border-amber-600/40 bg-amber-500/15 text-amber-800',
+    className: 'border-warning/40 bg-warning-soft text-warning-strong',
   },
   OVERDUE: {
     label: 'Overdue',
     icon: Clock,
-    className: 'border-destructive/40 bg-destructive/10 text-destructive',
+    className: 'border-destructive/30 bg-destructive-soft text-destructive-strong',
   },
   NOT_STARTED: {
     label: 'Not started',
@@ -100,17 +100,17 @@ const TASK_PRESET: Record<string, { label: string; icon: LucideIcon; className: 
   IN_PROGRESS: {
     label: 'In progress',
     icon: CircleDot,
-    className: 'border-blue-700/30 bg-blue-700/10 text-blue-800',
+    className: 'border-info/30 bg-info-soft text-info-strong',
   },
   PENDING_REVIEW: {
     label: 'Awaiting review',
     icon: Clock,
-    className: 'border-amber-600/40 bg-amber-500/15 text-amber-800',
+    className: 'border-warning/40 bg-warning-soft text-warning-strong',
   },
   DONE: {
     label: 'Done',
     icon: CheckCircle2,
-    className: 'border-green-700/30 bg-green-700/10 text-green-800',
+    className: 'border-success/30 bg-success-soft text-success-strong',
   },
   // Work that will not be done. Deliberately grey rather than red: it is a
   // decision somebody made, not a failure.
@@ -145,17 +145,17 @@ const DECISION_PRESET: Record<string, { label: string; icon: LucideIcon; classNa
   PENDING: {
     label: 'Awaiting decision',
     icon: Clock,
-    className: 'border-amber-600/40 bg-amber-500/15 text-amber-800',
+    className: 'border-warning/40 bg-warning-soft text-warning-strong',
   },
   APPROVED: {
     label: 'Approved',
     icon: CheckCircle2,
-    className: 'border-green-700/30 bg-green-700/10 text-green-800',
+    className: 'border-success/30 bg-success-soft text-success-strong',
   },
   REJECTED: {
     label: 'Rejected',
     icon: AlertTriangle,
-    className: 'border-destructive/40 bg-destructive/10 text-destructive',
+    className: 'border-destructive/30 bg-destructive-soft text-destructive-strong',
   },
 };
 
@@ -197,12 +197,12 @@ const SLA_PRESET: Record<
   DUE_SOON: {
     label: 'Due soon',
     icon: Clock,
-    className: 'border-amber-600/40 bg-amber-500/15 text-amber-800',
+    className: 'border-warning/40 bg-warning-soft text-warning-strong',
   },
   BREACHED: {
     label: 'Overdue',
     icon: AlertTriangle,
-    className: 'border-destructive/40 bg-destructive/10 text-destructive',
+    className: 'border-destructive/30 bg-destructive-soft text-destructive-strong',
   },
 };
 
@@ -241,17 +241,17 @@ const RAG_PRESET: Record<Rag, { label: string; icon: LucideIcon; className: stri
   GREEN: {
     label: 'On track',
     icon: CircleDot,
-    className: 'border-green-700/30 bg-green-700/10 text-green-800',
+    className: 'border-success/30 bg-success-soft text-success-strong',
   },
   AMBER: {
     label: 'At risk',
     icon: AlertTriangle,
-    className: 'border-amber-600/40 bg-amber-500/15 text-amber-800',
+    className: 'border-warning/40 bg-warning-soft text-warning-strong',
   },
   RED: {
     label: 'In trouble',
     icon: AlertTriangle,
-    className: 'border-destructive/40 bg-destructive/10 text-destructive',
+    className: 'border-destructive/30 bg-destructive-soft text-destructive-strong',
   },
   COMPLETE: {
     label: 'Complete',
@@ -285,8 +285,8 @@ export function RagPill({
 }
 
 export const RISK_CLASS: Record<RiskSeverity, string> = {
-  critical: 'border-destructive/40 bg-destructive/10 text-destructive',
-  warning: 'border-amber-600/40 bg-amber-500/15 text-amber-800',
+  critical: 'border-destructive/30 bg-destructive-soft text-destructive-strong',
+  warning: 'border-warning/40 bg-warning-soft text-warning-strong',
   info: 'border-border bg-muted text-muted-foreground',
 };
 

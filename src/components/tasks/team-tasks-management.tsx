@@ -99,7 +99,7 @@ const TaskCollapsible = ({
                                 <div key={update.id} className="flex items-start gap-3">
                                     <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
                                         {isApproval ? (
-                                            <CheckCircle className="w-6 h-6 text-green-500" />
+                                            <CheckCircle className="w-6 h-6 text-success" />
                                         ) : (
                                             <XCircle className="w-6 h-6 text-destructive" />
                                         )}

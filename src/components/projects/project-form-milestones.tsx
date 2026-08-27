@@ -48,15 +48,15 @@ function WeightMeter({
       className={cn(
         "rounded-md border p-3",
         isComplete
-          ? "border-green-700/30 bg-green-700/10"
-          : "border-amber-600/40 bg-amber-500/10",
+          ? "border-success/30 bg-success-soft"
+          : "border-warning/40 bg-warning-soft",
       )}
     >
       <div className="mb-2 flex flex-wrap items-baseline justify-between gap-2 text-sm">
         <span className="font-medium">
           {count} milestone{count === 1 ? "" : "s"}, {total}% allocated
         </span>
-        <span className={cn("tabular-nums", isComplete ? "text-green-800" : "text-amber-800")}>
+        <span className={cn("tabular-nums", isComplete ? "text-success-strong" : "text-warning-strong")}>
           {isComplete
             ? "Totals 100% — ready"
             : remaining > 0

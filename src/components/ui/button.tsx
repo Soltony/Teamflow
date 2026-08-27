@@ -12,12 +12,19 @@ const buttonVariants = cva(
         default: "bg-primary text-primary-foreground hover:bg-primary/90",
         destructive:
           "bg-destructive text-destructive-foreground hover:bg-destructive/90",
+        // A gold wash rather than `bg-accent`: accent is the warm orange this
+        // palette reserves for urgency, so using it as the neutral hover made
+        // every quiet button shout.
         outline:
-          "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+          "border border-input bg-background hover:bg-primary/10 hover:text-foreground",
         secondary:
           "bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        ghost: "hover:bg-accent hover:text-accent-foreground",
-        link: "text-primary underline-offset-4 hover:underline",
+        ghost: "hover:bg-primary/10 hover:text-foreground",
+        link: "text-primary-strong underline-offset-4 hover:underline",
+        // Solid ink, for the one action on a page that outranks a gold button —
+        // and for actions sitting on a gold surface, where gold-on-gold has
+        // nothing to separate it.
+        ink: "bg-ink text-ink-foreground hover:bg-ink-raised",
       },
       size: {
         default: "h-10 px-4 py-2",

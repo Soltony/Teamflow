@@ -608,11 +608,11 @@ function AttentionPanel({
 
   if (items.length === 0) {
     return (
-      <Card className="border-green-700/30 bg-green-700/5">
+      <Card className="border-success/30 bg-success-soft">
         <CardContent className="flex items-center gap-3 py-4">
-          <CheckCircle className="h-5 w-5 shrink-0 text-green-700" aria-hidden="true" />
+          <CheckCircle className="h-5 w-5 shrink-0 text-success-strong" aria-hidden="true" />
           <div>
-            <p className="font-medium text-green-900">Nothing needs attention</p>
+            <p className="font-medium text-success-strong">Nothing needs attention</p>
             <p className="text-sm text-muted-foreground">
               All {activeCount} active project{activeCount === 1 ? "" : "s"} are on schedule with no
               open issues.

@@ -244,8 +244,8 @@ export function EditTaskDialog({ isOpen, onOpenChange, project, task, users, onT
           <DialogDescription>
             Modify details and reassign members if needed.
             {(!task.assignedUserIds || task.assignedUserIds.length === 0) && (
-              <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                <p className="text-sm text-amber-800">
+              <div className="mt-2 p-2 bg-warning-soft border border-warning/40 rounded-md">
+                <p className="text-sm text-warning-strong">
                   ⚠️ This task currently has no assigned members. Please assign at least one member before saving.
                 </p>
               </div>

@@ -488,7 +488,7 @@ export default function TaskDetailsPage() {
                           <li key={update.id} className="flex items-start gap-3">
                             <div className="flex h-8 w-8 shrink-0 items-center justify-center">
                               {isApproval ? (
-                                <CheckCircle className="h-6 w-6 text-green-700" aria-hidden="true" />
+                                <CheckCircle className="h-6 w-6 text-success-strong" aria-hidden="true" />
                               ) : (
                                 <XCircle className="h-6 w-6 text-destructive" aria-hidden="true" />
                               )}

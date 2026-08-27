@@ -151,7 +151,7 @@ const TaskItem = ({
                                             <div key={update.id} className="flex items-start gap-3">
                                                 <div className="w-8 h-8 flex-shrink-0 flex items-center justify-center">
                                                     {isApproval ? (
-                                                        <CheckCircle className="w-6 h-6 text-green-500" />
+                                                        <CheckCircle className="w-6 h-6 text-success" />
                                                     ) : (
                                                         <XCircle className="w-6 h-6 text-destructive" />
                                                     )}
@@ -193,7 +193,7 @@ const TaskItem = ({
                     </div>
                     <div>
                         {task.status === 'DONE' ? (
-                            <div className="text-sm text-green-700 font-medium p-3 bg-green-50 rounded-md border border-green-200 mt-4 dark:bg-green-900/30 dark:text-green-400 dark:border-green-800">
+                            <div className="text-sm text-success-strong font-medium p-3 bg-success-soft rounded-md border border-success/30 mt-4">
                                 This task has been completed and approved. No further updates can be made.
                             </div>
                         ) : (

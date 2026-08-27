@@ -92,7 +92,7 @@ export function ProjectCardTasks({
   const TaskRow = ({task}: {task: any}) => {
     const isTaskDone = task.status === 'DONE';
     const isTaskOverdue = isAfter(new Date(), endOfDay(parseISO(task.endDate))) && !isTaskDone;
-    const indicatorClassName = isTaskDone ? 'bg-green-600' : isTaskOverdue ? 'bg-destructive' : 'bg-primary';
+    const indicatorClassName = isTaskDone ? 'bg-success' : isTaskOverdue ? 'bg-destructive' : 'bg-primary';
 
     return (
         <div key={task.id} className="space-y-1.5 group">
@@ -144,8 +144,8 @@ export function ProjectCardTasks({
                 }}
             >
                 <div className="flex items-center gap-2">
-                  <CheckSquare className="h-4 w-4 text-green-600" />
-                  <h4 className="font-semibold text-green-700">Tasks ({completedTasksCount}/{allTasks.length})</h4>
+                  <CheckSquare className="h-4 w-4 text-success" />
+                  <h4 className="font-semibold text-success-strong">Tasks ({completedTasksCount}/{allTasks.length})</h4>
                 </div>
                 <div className="flex items-center gap-2">
                     {canManageTasks && (
@@ -155,13 +155,13 @@ export function ProjectCardTasks({
                         </Button>
                     )}
                     <div className="cursor-pointer p-1">
-                        <ChevronDown className={cn("h-5 w-5 transition-transform text-green-600", isTasksExpanded && "rotate-180")} />
+                        <ChevronDown className={cn("h-5 w-5 transition-transform text-success", isTasksExpanded && "rotate-180")} />
                     </div>
                 </div>
             </div>
           
           {isTasksExpanded && (
-            <div className="ml-6 space-y-3 border-l-2 border-green-200 pl-4">
+            <div className="ml-6 space-y-3 border-l-2 border-success/30 pl-4">
               {allTasks.length > 0 ? (
                 <Tabs defaultValue="today" className="w-full">
                     <TabsList className="grid w-full grid-cols-2">
@@ -176,7 +176,7 @@ export function ProjectCardTasks({
                           </div>
                         </ScrollArea>
                       ) : (
-                         <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
+                         <div className="text-center text-sm text-success py-4 border-2 border-dashed border-success/30 rounded-lg bg-success-soft">
                             No tasks were created today.
                          </div>
                       )}
@@ -203,7 +203,7 @@ export function ProjectCardTasks({
                     </TabsContent>
                 </Tabs>
               ) : (
-                   <div className="text-center text-sm text-green-600 py-4 border-2 border-dashed border-green-200 rounded-lg bg-green-50">
+                   <div className="text-center text-sm text-success py-4 border-2 border-dashed border-success/30 rounded-lg bg-success-soft">
                       No tasks yet for this project.
                   </div>
               )}

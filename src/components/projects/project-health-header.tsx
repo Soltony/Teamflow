@@ -99,7 +99,7 @@ export function ProjectHealthHeader({
                   <span
                     className={cn(
                       'font-medium',
-                      rag.scheduleVariance! >= 0 ? 'text-green-700' : 'text-destructive',
+                      rag.scheduleVariance! >= 0 ? 'text-success-strong' : 'text-destructive',
                     )}
                   >
                     {rag.scheduleVariance! >= 0 ? 'ahead' : 'behind'} by{' '}
@@ -196,7 +196,7 @@ export function ProjectHealthHeader({
 
         {rag.reasons.length > 1 && (
           <p className="mt-4 flex items-start gap-2 border-t pt-3 text-sm text-muted-foreground">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-strong" aria-hidden="true" />
             <span>Also: {rag.reasons.slice(1).join('; ')}.</span>
           </p>
         )}
@@ -225,7 +225,7 @@ function HeaderCell({
           className={cn(
             'h-3.5 w-3.5 shrink-0',
             tone === 'critical' && 'text-destructive',
-            tone === 'warning' && 'text-amber-700',
+            tone === 'warning' && 'text-warning-strong',
           )}
         />
         {label}

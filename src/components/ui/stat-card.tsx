@@ -28,15 +28,15 @@ export type StatTone = 'neutral' | 'positive' | 'warning' | 'critical';
 
 const TONE_VALUE: Record<StatTone, string> = {
   neutral: 'text-foreground',
-  positive: 'text-green-700',
-  warning: 'text-amber-700',
+  positive: 'text-success-strong',
+  warning: 'text-warning-strong',
   critical: 'text-destructive',
 };
 
 const TONE_ICON: Record<StatTone, string> = {
   neutral: 'text-muted-foreground',
-  positive: 'text-green-700',
-  warning: 'text-amber-700',
+  positive: 'text-success-strong',
+  warning: 'text-warning-strong',
   critical: 'text-destructive',
 };
 
@@ -98,14 +98,19 @@ export function StatCard({
         className,
       )}
     >
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="flex items-center gap-1.5 text-sm font-medium text-muted-foreground">
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 p-4 pb-2">
+        {/*
+          Small caps rather than sentence case: the label is a column heading
+          for the figure below it, and setting it apart in weight and case is
+          what stops a reader parsing it as the first line of the value.
+        */}
+        <CardTitle className="flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide text-muted-foreground">
           {label}
           {metric && <MetricInfo metric={metric} />}
         </CardTitle>
         {Icon && <Icon className={cn('h-4 w-4 shrink-0', TONE_ICON[tone])} aria-hidden="true" />}
       </CardHeader>
-      <CardContent className="space-y-2">
+      <CardContent className="space-y-2 p-4 pt-0">
         <div className={cn('text-2xl font-bold tabular-nums', TONE_VALUE[tone])}>{value}</div>
         {typeof progress === 'number' && (
           <Progress value={progress} className="h-2" aria-label={`${label}: ${Math.round(progress)}%`} />
@@ -155,8 +160,11 @@ export function StatCard({
 /**
  * The row a set of stat cards sits in.
  *
- * Two across on a tablet rather than four, because four 2xl numbers in a 768px
- * row wrap their captions to three lines each.
+ * Two across from the smallest screen up, then widening. A single column of
+ * KPI cards on a phone pushes the actual content below three or four scrolls
+ * of headline figures; paired, the same set reads as one block. Four 2xl
+ * numbers in a 768px row is the other failure — their captions wrap to three
+ * lines each — so the four-up step waits for xl.
  */
 export function StatCardGrid({
   children,
@@ -170,10 +178,9 @@ export function StatCardGrid({
   return (
     <div
       className={cn(
-        'grid gap-4',
-        columns === 2 && 'sm:grid-cols-2',
-        columns === 3 && 'sm:grid-cols-2 lg:grid-cols-3',
-        columns === 4 && 'sm:grid-cols-2 xl:grid-cols-4',
+        'grid grid-cols-2 gap-3 sm:gap-4',
+        columns === 3 && 'lg:grid-cols-3',
+        columns === 4 && 'xl:grid-cols-4',
         className,
       )}
     >

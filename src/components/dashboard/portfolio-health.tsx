@@ -41,8 +41,8 @@ export function PortfolioHealth({
   const segments = (
     [
       { key: 'RED' as const, count: rag.red, className: 'bg-destructive' },
-      { key: 'AMBER' as const, count: rag.amber, className: 'bg-amber-500' },
-      { key: 'GREEN' as const, count: rag.green, className: 'bg-green-600' },
+      { key: 'AMBER' as const, count: rag.amber, className: 'bg-warning' },
+      { key: 'GREEN' as const, count: rag.green, className: 'bg-success' },
       { key: 'COMPLETE' as const, count: rag.complete, className: 'bg-muted-foreground/40' },
     ] as const
   ).filter((s) => s.count > 0);
@@ -175,7 +175,7 @@ function Variance({
           <p
             className={cn(
               'mt-1 flex items-center gap-2 text-2xl font-bold tabular-nums',
-              ahead ? 'text-green-700' : 'text-destructive',
+              ahead ? 'text-success-strong' : 'text-destructive',
             )}
           >
             <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />
@@ -217,7 +217,7 @@ function DeliveryTrend({ weeks }: { weeks: number[] }) {
         {lastWeek > 0 || thisWeek > 0 ? (
           <>
             {' · '}
-            <span className={cn('font-medium', up ? 'text-green-700' : 'text-destructive')}>
+            <span className={cn('font-medium', up ? 'text-success-strong' : 'text-destructive')}>
               {up ? '+' : '−'}
               {Math.abs(change)}
             </span>{' '}
@@ -294,11 +294,11 @@ export function NeedsAttention({
 
   if (items.length === 0) {
     return (
-      <Card className={cn('border-green-700/30 bg-green-700/5', className)}>
+      <Card className={cn('border-success/30 bg-success-soft', className)}>
         <CardContent className="flex items-center gap-3 py-4">
           <RagPill rag="GREEN" />
           <div>
-            <p className="font-medium text-green-900">Nothing needs you right now</p>
+            <p className="font-medium text-success-strong">Nothing needs you right now</p>
             <p className="text-sm text-muted-foreground">
               No approvals waiting, no overdue tasks of your own, and no open issues.
             </p>

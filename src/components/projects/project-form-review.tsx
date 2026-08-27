@@ -217,7 +217,7 @@ function Check({ ok, message }: { ok: boolean; message: string }) {
       className={cn(
         'flex items-start gap-2 rounded-md border p-2.5 text-sm',
         ok
-          ? 'border-green-700/30 bg-green-700/10 text-green-900'
+          ? 'border-success/30 bg-success-soft text-success-strong'
           : 'border-destructive/40 bg-destructive/10 text-destructive',
       )}
     >

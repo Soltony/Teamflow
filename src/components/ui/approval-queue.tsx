@@ -183,8 +183,8 @@ export function BulkApproveDialog({
           </DialogTitle>
           <DialogDescription>{consequence}</DialogDescription>
         </DialogHeader>
-        <p className="flex items-start gap-2 rounded-md border border-amber-600/40 bg-amber-500/10 p-3 text-sm">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-700" aria-hidden="true" />
+        <p className="flex items-start gap-2 rounded-md border border-warning/40 bg-warning-soft p-3 text-sm">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warning-strong" aria-hidden="true" />
           <span>This happens to all {count} at once and cannot be undone from here.</span>
         </p>
         <DialogFooter>

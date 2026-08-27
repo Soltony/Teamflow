@@ -446,7 +446,7 @@ export function ProjectBudgetTab({ project }: { project: any }) {
                 <p
                   className={cn(
                     'text-xs font-medium',
-                    rag.budgetVariance >= 0 ? 'text-green-700' : 'text-destructive',
+                    rag.budgetVariance >= 0 ? 'text-success-strong' : 'text-destructive',
                   )}
                 >
                   {rag.budgetVariance >= 0

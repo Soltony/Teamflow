@@ -3,7 +3,7 @@
 
 import * as React from "react";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import {
   FolderKanban,
   GanttChartSquare,
@@ -25,6 +25,8 @@ import {
   Clock,
   ThumbsUp,
   CalendarDays,
+  KeyRound,
+  LogOut,
 } from "lucide-react";
 import { useAuth } from "@/context/auth-context";
 
@@ -36,7 +38,6 @@ import {
   SidebarMenu,
   SidebarMenuItem,
   SidebarMenuButton,
-  SidebarFooter,
   useSidebar,
 } from "@/components/ui/sidebar";
 import { Button } from "@/components/ui/button";
@@ -60,26 +61,22 @@ import { useApprovalCount } from "@/hooks/use-approval-count";
 function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { isOpen, isMobile } = useSidebar();
-  const { localUser, logout, hasPermission } = useAuth();
+  const { hasPermission } = useAuth();
   const approvalCount = useApprovalCount();
-  const router = useRouter();
-  
-  const userInitials = localUser
-    ? `${localUser.firstName?.[0] ?? ''}${localUser.lastName?.[0] ?? ''}`.toUpperCase()
-    : '...';
-  
-  const userName = localUser?.name ?? 'Loading...';
-  const userEmail = localUser?.email ?? '...';
-  
+
   // Groups whose every item is hidden by permission drop out entirely.
   const groups = visibleGroups(NAV_GROUPS, hasPermission);
 
   return (
     <Sidebar id="main-navigation" className={cn(className, "sidebar text-sidebar-foreground")}>
       <SidebarHeader>
-        <div className="flex items-center gap-2">
-          <NibLogo className="w-8 h-8" />
-          {(isOpen || isMobile) && <h1 className="text-xl font-semibold text-sidebar-foreground truncate">NIB EPMO</h1>}
+        <div className="flex items-center gap-2.5">
+          <NibLogo className="h-8 w-8" />
+          {(isOpen || isMobile) && (
+            <h1 className="truncate text-lg font-semibold tracking-tight text-sidebar-foreground">
+              NIB EPMO
+            </h1>
+          )}
         </div>
       </SidebarHeader>
       <SidebarContent>
@@ -90,7 +87,7 @@ function AppSidebar({ className }: { className?: string }) {
               there is no room for it — the grouping still shows as spacing.
             */}
             {(isOpen || isMobile) && (
-              <p className="px-3 pt-2 pb-1 text-xs font-semibold uppercase tracking-wider text-sidebar-foreground/60">
+              <p className="px-4 pb-1 pt-2 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground">
                 {group.label}
               </p>
             )}
@@ -118,37 +115,91 @@ function AppSidebar({ className }: { className?: string }) {
           </div>
         ))}
       </SidebarContent>
-      <SidebarFooter>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="justify-start w-full gap-2 px-2">
-              <Avatar className="w-8 h-8">
-                 <AvatarImage src={localUser?.avatar ?? undefined} />
-                 <AvatarFallback>{userInitials}</AvatarFallback>
-              </Avatar>
-              {(isOpen || isMobile) && <span className="text-sm font-medium truncate">{userName}</span>}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent className="w-56" align="end" forceMount>
-            <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
-                <p className="text-sm font-medium leading-none">{userName}</p>
-                <p className="text-xs leading-none text-muted-foreground">
-                  {userEmail}
-                </p>
-              </div>
-            </DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => router.push('/profile')}>
-              <User className="mr-2 h-4 w-4" />
-              <span>Profile</span>
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={logout}>Log out</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </SidebarFooter>
     </Sidebar>
+  );
+}
+
+/**
+ * Who you are signed in as, and the things you can do about it.
+ *
+ * This lived in the sidebar footer, which put it behind a collapse: on a
+ * tablet the rail defaults to 56px, and on a phone it sat inside a drawer you
+ * had to open first. The top bar is the one piece of chrome present at every
+ * width, so the account controls live there and stay one action away.
+ */
+function UserMenu() {
+  const { localUser, logout } = useAuth();
+
+  const userName = localUser?.name ?? "Loading...";
+  const userEmail = localUser?.email ?? "...";
+  const userInitials = localUser
+    ? `${localUser.firstName?.[0] ?? ""}${localUser.lastName?.[0] ?? ""}`.toUpperCase()
+    : "...";
+  // Someone can hold more than one role, and which ones they hold is the thing
+  // that explains what they can see — so list them rather than picking one.
+  const roleLabel = localUser?.roles?.map((role) => role.name).join(", ") || "No role assigned";
+
+  return (
+    <DropdownMenu>
+      {/*
+        The avatar alone. It sits beside the notification bell, so it takes the
+        same 40px icon-button footprint — a name and role spelled out next to a
+        bare bell read as two unrelated controls rather than one row of chrome.
+        Who you are is one click away, in the menu's own header.
+      */}
+      <DropdownMenuTrigger className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md outline-none transition-colors hover:bg-primary/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
+        <Avatar className="h-8 w-8">
+          <AvatarImage src={localUser?.avatar ?? undefined} alt="" />
+          <AvatarFallback className="bg-primary/15 text-xs font-semibold text-primary-strong">
+            {userInitials}
+          </AvatarFallback>
+        </Avatar>
+        {/* The initials are decorative; this is the button's actual name. */}
+        <span className="sr-only">Account menu for {userName}</span>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="font-normal">
+          <p className="text-sm font-medium leading-none">{userName}</p>
+          {/*
+            The role moved down here with the trigger's text. It was the one
+            thing the header showed that the menu did not, so dropping the
+            label without rehoming it would have lost it entirely.
+          */}
+          <p className="mt-1 truncate text-xs font-normal leading-none text-muted-foreground">
+            {roleLabel}
+          </p>
+          <p className="mt-1 truncate text-xs font-normal leading-none text-muted-foreground">
+            {userEmail}
+          </p>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        {/*
+          Real links rather than router.push on click: these are navigations,
+          so they should open in a new tab on a middle click and be reachable
+          the way every other link in the system is.
+        */}
+        <DropdownMenuItem asChild>
+          <Link href="/profile">
+            <User className="mr-2 h-4 w-4" aria-hidden="true" />
+            Profile
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link href="/change-password">
+            <KeyRound className="mr-2 h-4 w-4" aria-hidden="true" />
+            Change password
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={logout}
+          className="text-destructive focus:text-destructive"
+        >
+          <LogOut className="mr-2 h-4 w-4" aria-hidden="true" />
+          Sign out
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }
 
@@ -178,10 +229,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         !isMobile && (isOpen ? "pl-[280px]" : "pl-[56px]"),
         "transition-all duration-300 ease-in-out"
       )}>
+        {/*
+          The chrome sits on the card surface rather than the page, so the rail
+          and the top bar read as one continuous frame around the content —
+          and the translucent blur keeps that frame legible while a long table
+          scrolls under it.
+        */}
         <header
           className={cn(
-            "sticky top-0 z-10 flex items-center h-16 gap-4 px-4 border-b shrink-0 sm:px-6",
-             'bg-background'
+            "sticky top-0 z-10 flex h-16 shrink-0 items-center gap-4 border-b border-border px-4 sm:px-6",
+            "bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80"
           )}
         >
           {/*
@@ -200,9 +257,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           >
             <PanelLeft className="w-6 h-6" aria-hidden="true" />
           </Button>
-           <div className="flex items-center gap-4 ml-auto">
-              <NotificationBell />
-            </div>
+          <div className="ml-auto flex items-center gap-1 sm:gap-2">
+            <NotificationBell />
+            <UserMenu />
+          </div>
         </header>
         {/* tabIndex -1 so the skip link can move focus here, not just scroll. */}
         <div

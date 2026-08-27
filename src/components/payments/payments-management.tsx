@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/dialog";
 import {
   Table,
+  TableCard,
   TableBody,
   TableCell,
   TableHead,
@@ -55,9 +56,9 @@ export function PaymentsManagement({ initialProjects, onDataChange }: PaymentsMa
   const getStatusBadge = (status: string) => {
     switch (status) {
         case 'PENDING':
-            return <Badge variant="secondary" className="bg-amber-500/80 text-white"><Clock className="mr-1 h-3 w-3"/>Pending</Badge>;
+            return <Badge variant="secondary" className="bg-warning text-warning-foreground"><Clock className="mr-1 h-3 w-3"/>Pending</Badge>;
         case 'APPROVED':
-            return <Badge variant="secondary" className="bg-green-600 text-white"><CheckCircle className="mr-1 h-3 w-3"/>Approved</Badge>;
+            return <Badge variant="secondary" className="bg-success text-success-foreground"><CheckCircle className="mr-1 h-3 w-3"/>Approved</Badge>;
         case 'REJECTED':
             return <Badge variant="destructive"><XCircle className="mr-1 h-3 w-3"/>Rejected</Badge>;
         default:
@@ -89,32 +90,34 @@ export function PaymentsManagement({ initialProjects, onDataChange }: PaymentsMa
               </div>
             </AccordionTrigger>
             <AccordionContent className="p-4 pt-0">
-              <Table scrollLabel="Project payments">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Payment</TableHead>
-                    <TableHead>Date</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Amount</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {project.payments.length > 0 ? project.payments.map((payment: Payment) => (
-                      <TableRow key={payment.id}>
-                        <TableCell className="font-medium">{payment.title}</TableCell>
-                        <TableCell>{format(new Date(payment.paymentDate), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell>{getStatusBadge(payment.status)}</TableCell>
-                        <TableCell className="text-right">{currencySymbol} {parseFloat(payment.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                      </TableRow>
-                  )) : (
+              <TableCard>
+                <Table scrollLabel="Project payments">
+                  <TableHeader>
                     <TableRow>
-                        <TableCell colSpan={4} className="h-24 text-center">
-                            No payment schedule defined for this project.
-                        </TableCell>
+                      <TableHead>Payment</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">Amount</TableHead>
                     </TableRow>
-                  )}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {project.payments.length > 0 ? project.payments.map((payment: Payment) => (
+                        <TableRow key={payment.id}>
+                          <TableCell className="font-medium">{payment.title}</TableCell>
+                          <TableCell>{format(new Date(payment.paymentDate), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell>{getStatusBadge(payment.status)}</TableCell>
+                          <TableCell className="text-right">{currencySymbol} {parseFloat(payment.amount.toString()).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                        </TableRow>
+                    )) : (
+                      <TableRow>
+                          <TableCell colSpan={4} className="h-24 text-center">
+                              No payment schedule defined for this project.
+                          </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </TableCard>
             </AccordionContent>
           </AccordionItem>
         )})}

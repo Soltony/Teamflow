@@ -129,7 +129,7 @@ export function SystemSettingsForm({
                           {definition.label}
                         </Label>
                         {definition.sensitive && (
-                          <Badge variant="outline" className="gap-1 border-orange-500 text-orange-600">
+                          <Badge variant="outline" className="gap-1 border-warning text-warning-strong">
                             <ShieldAlert className="h-3 w-3" />
                             Security control
                           </Badge>
@@ -188,7 +188,7 @@ export function SystemSettingsForm({
         >
           <div className="text-sm">
             {changedSensitive.length > 0 ? (
-              <span className="flex items-center gap-2 font-medium text-orange-600">
+              <span className="flex items-center gap-2 font-medium text-warning-strong">
                 <AlertTriangle className="h-4 w-4" />
                 {changedSensitive.length} security control
                 {changedSensitive.length === 1 ? "" : "s"} changed. This is recorded against your

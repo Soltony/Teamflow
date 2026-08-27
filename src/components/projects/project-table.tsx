@@ -10,6 +10,7 @@ import { Progress } from '@/components/ui/progress';
 import { RagPill } from '@/components/ui/status-pill';
 import {
   Table,
+  TableCard,
   TableBody,
   TableCell,
   TableHead,
@@ -172,151 +173,153 @@ export function ProjectTable({
   };
 
   return (
-    <Table scrollLabel="Projects" className={className}>
-      <TableHeader>
-        <TableRow>
-          {shown.map((column) => {
-            const active = sort.column === column.id;
-            const Icon = !active ? ArrowUpDown : sort.direction === 'asc' ? ChevronUp : ChevronDown;
-            return (
-              <TableHead
-                key={column.id}
-                className={cn(column.numeric && 'text-right')}
-                // Announces the current ordering, which colour and a chevron
-                // alone do not.
-                aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
-              >
-                <button
-                  type="button"
-                  onClick={() => toggleSort(column.id)}
-                  className={cn(
-                    'inline-flex items-center gap-1.5 rounded-sm font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
-                    column.numeric && 'flex-row-reverse',
-                    active && 'text-foreground',
-                  )}
+    <TableCard>
+      <Table scrollLabel="Projects" className={className}>
+        <TableHeader>
+          <TableRow>
+            {shown.map((column) => {
+              const active = sort.column === column.id;
+              const Icon = !active ? ArrowUpDown : sort.direction === 'asc' ? ChevronUp : ChevronDown;
+              return (
+                <TableHead
+                  key={column.id}
+                  className={cn(column.numeric && 'text-right')}
+                  // Announces the current ordering, which colour and a chevron
+                  // alone do not.
+                  aria-sort={active ? (sort.direction === 'asc' ? 'ascending' : 'descending') : 'none'}
                 >
-                  {column.label}
-                  <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
-                  <span className="sr-only">
-                    {active
-                      ? `sorted ${sort.direction === 'asc' ? 'ascending' : 'descending'}, activate to reverse`
-                      : 'activate to sort'}
-                  </span>
-                </button>
-              </TableHead>
+                  <button
+                    type="button"
+                    onClick={() => toggleSort(column.id)}
+                    className={cn(
+                      'inline-flex items-center gap-1.5 rounded-sm font-medium hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring',
+                      column.numeric && 'flex-row-reverse',
+                      active && 'text-foreground',
+                    )}
+                  >
+                    {column.label}
+                    <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden="true" />
+                    <span className="sr-only">
+                      {active
+                        ? `sorted ${sort.direction === 'asc' ? 'ascending' : 'descending'}, activate to reverse`
+                        : 'activate to sort'}
+                    </span>
+                  </button>
+                </TableHead>
+              );
+            })}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {projects.map((project) => {
+            const rag = assessRag(project);
+            const progress = projectProgress(project);
+            const issues = openIssueCount(project);
+            const href = `/projects/${project.id}${linkQuery ? `?${linkQuery}` : ''}`;
+
+            return (
+              <TableRow key={project.id}>
+                {shown.map((column) => {
+                  switch (column.id) {
+                    case 'name':
+                      return (
+                        <TableCell key={column.id} className="max-w-[280px] font-medium">
+                          <Link
+                            href={href}
+                            className="block truncate rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            title={project.name}
+                          >
+                            {project.name}
+                          </Link>
+                          {rag.reasons.length > 0 && (
+                            <span className="block truncate text-xs text-muted-foreground">
+                              {rag.reasons[0]}
+                            </span>
+                          )}
+                        </TableCell>
+                      );
+                    case 'rag':
+                      return (
+                        <TableCell key={column.id}>
+                          <RagPill rag={rag.rag} />
+                        </TableCell>
+                      );
+                    case 'status':
+                      return (
+                        <TableCell key={column.id}>
+                          <Badge variant="secondary" className="font-normal">
+                            {project.status?.name ?? 'Unknown'}
+                          </Badge>
+                        </TableCell>
+                      );
+                    case 'manager':
+                      return (
+                        <TableCell key={column.id} className="max-w-[160px] truncate">
+                          {project.projectManager?.name ?? '—'}
+                        </TableCell>
+                      );
+                    case 'progress':
+                      return (
+                        <TableCell key={column.id}>
+                          <div className="flex items-center justify-end gap-2">
+                            <Progress
+                              value={progress}
+                              className="h-2 w-16"
+                              aria-label={`${project.name}: ${displayProgress(progress)}% complete`}
+                            />
+                            <span className="w-9 text-right tabular-nums">
+                              {displayProgress(progress)}%
+                            </span>
+                          </div>
+                        </TableCell>
+                      );
+                    case 'schedule':
+                      return (
+                        <TableCell key={column.id} className="text-right tabular-nums">
+                          <VarianceCell value={rag.scheduleVariance} />
+                        </TableCell>
+                      );
+                    case 'budget':
+                      return (
+                        <TableCell key={column.id} className="text-right tabular-nums">
+                          {rag.budgetUsed === null ? (
+                            <span className="text-muted-foreground">No budget</span>
+                          ) : (
+                            `${Math.round(rag.budgetUsed)}%`
+                          )}
+                        </TableCell>
+                      );
+                    case 'deadline':
+                      return (
+                        <TableCell key={column.id} className="whitespace-nowrap">
+                          {project.endDate ? format(parseISO(project.endDate), 'd MMM yyyy') : '—'}
+                          {rag.daysRemaining !== null && rag.daysRemaining < 0 && (
+                            <span className="block text-xs text-destructive">
+                              {Math.abs(rag.daysRemaining)} days over
+                            </span>
+                          )}
+                        </TableCell>
+                      );
+                    case 'issues':
+                      return (
+                        <TableCell key={column.id} className="text-right tabular-nums">
+                          {issues > 0 ? (
+                            <span className="font-medium text-destructive">{issues}</span>
+                          ) : (
+                            <span className="text-muted-foreground">0</span>
+                          )}
+                        </TableCell>
+                      );
+                    default:
+                      return <TableCell key={column.id} />;
+                  }
+                })}
+              </TableRow>
             );
           })}
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {projects.map((project) => {
-          const rag = assessRag(project);
-          const progress = projectProgress(project);
-          const issues = openIssueCount(project);
-          const href = `/projects/${project.id}${linkQuery ? `?${linkQuery}` : ''}`;
-
-          return (
-            <TableRow key={project.id}>
-              {shown.map((column) => {
-                switch (column.id) {
-                  case 'name':
-                    return (
-                      <TableCell key={column.id} className="max-w-[280px] font-medium">
-                        <Link
-                          href={href}
-                          className="block truncate rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          title={project.name}
-                        >
-                          {project.name}
-                        </Link>
-                        {rag.reasons.length > 0 && (
-                          <span className="block truncate text-xs text-muted-foreground">
-                            {rag.reasons[0]}
-                          </span>
-                        )}
-                      </TableCell>
-                    );
-                  case 'rag':
-                    return (
-                      <TableCell key={column.id}>
-                        <RagPill rag={rag.rag} />
-                      </TableCell>
-                    );
-                  case 'status':
-                    return (
-                      <TableCell key={column.id}>
-                        <Badge variant="secondary" className="font-normal">
-                          {project.status?.name ?? 'Unknown'}
-                        </Badge>
-                      </TableCell>
-                    );
-                  case 'manager':
-                    return (
-                      <TableCell key={column.id} className="max-w-[160px] truncate">
-                        {project.projectManager?.name ?? '—'}
-                      </TableCell>
-                    );
-                  case 'progress':
-                    return (
-                      <TableCell key={column.id}>
-                        <div className="flex items-center justify-end gap-2">
-                          <Progress
-                            value={progress}
-                            className="h-2 w-16"
-                            aria-label={`${project.name}: ${displayProgress(progress)}% complete`}
-                          />
-                          <span className="w-9 text-right tabular-nums">
-                            {displayProgress(progress)}%
-                          </span>
-                        </div>
-                      </TableCell>
-                    );
-                  case 'schedule':
-                    return (
-                      <TableCell key={column.id} className="text-right tabular-nums">
-                        <VarianceCell value={rag.scheduleVariance} />
-                      </TableCell>
-                    );
-                  case 'budget':
-                    return (
-                      <TableCell key={column.id} className="text-right tabular-nums">
-                        {rag.budgetUsed === null ? (
-                          <span className="text-muted-foreground">No budget</span>
-                        ) : (
-                          `${Math.round(rag.budgetUsed)}%`
-                        )}
-                      </TableCell>
-                    );
-                  case 'deadline':
-                    return (
-                      <TableCell key={column.id} className="whitespace-nowrap">
-                        {project.endDate ? format(parseISO(project.endDate), 'd MMM yyyy') : '—'}
-                        {rag.daysRemaining !== null && rag.daysRemaining < 0 && (
-                          <span className="block text-xs text-destructive">
-                            {Math.abs(rag.daysRemaining)} days over
-                          </span>
-                        )}
-                      </TableCell>
-                    );
-                  case 'issues':
-                    return (
-                      <TableCell key={column.id} className="text-right tabular-nums">
-                        {issues > 0 ? (
-                          <span className="font-medium text-destructive">{issues}</span>
-                        ) : (
-                          <span className="text-muted-foreground">0</span>
-                        )}
-                      </TableCell>
-                    );
-                  default:
-                    return <TableCell key={column.id} />;
-                }
-              })}
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+        </TableBody>
+      </Table>
+    </TableCard>
   );
 }
 
@@ -334,7 +337,7 @@ function VarianceCell({ value }: { value: number | null }) {
 
   const ahead = rounded > 0;
   return (
-    <span className={cn('font-medium', ahead ? 'text-green-700' : 'text-destructive')}>
+    <span className={cn('font-medium', ahead ? 'text-success-strong' : 'text-destructive')}>
       {ahead ? '+' : '−'}
       {Math.abs(rounded)} pts
       <span className="sr-only"> {ahead ? 'ahead of plan' : 'behind plan'}</span>

@@ -203,7 +203,7 @@ function StepList({
                     isInvalid
                       ? 'border-destructive bg-destructive/10 text-destructive'
                       : isDone
-                        ? 'border-green-700 bg-green-700 text-white'
+                        ? 'border-success bg-success text-success-foreground'
                         : isCurrent
                           ? 'border-foreground text-foreground'
                           : 'border-border',

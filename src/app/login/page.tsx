@@ -85,12 +85,9 @@ function LoginForm() {
   }
 
   return (
-    <Card className="w-full max-w-sm">
-      <CardHeader className="text-center">
-        <div className="mx-auto mb-4">
-          <NibLogo className="w-12 h-12" />
-        </div>
-        <CardTitle>Welcome Back to NIB EPMO</CardTitle>
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-xl">Sign in</CardTitle>
         <CardDescription>Enter your credentials to access your account.</CardDescription>
       </CardHeader>
       <CardContent>
@@ -155,30 +152,50 @@ function LoginForm() {
             </Button>
           </form>
         </Form>
-        <p className="mt-6 text-center text-xs text-muted-foreground">
-          Forgotten your password? Contact your EPMO administrator to have it reset.
-        </p>
       </CardContent>
     </Card>
   );
 }
 
+/**
+ * The wordmark, set above the card rather than inside it.
+ *
+ * It is the identity of the whole screen, not a heading for the form, and
+ * lifting it out lets the card open with the one thing the reader came to do.
+ */
+function LoginMasthead() {
+  return (
+    <div className="mb-6 text-center">
+      <span className="inline-flex items-center gap-2.5">
+        <NibLogo className="h-10 w-10" />
+        <span className="text-2xl font-semibold tracking-tight">NIB EPMO</span>
+      </span>
+      <p className="mt-2 text-sm text-muted-foreground">
+        Enterprise project management office
+      </p>
+    </div>
+  );
+}
+
 export default function LoginPage() {
   return (
-    <Suspense
-      fallback={
-        <Card className="w-full max-w-sm">
-          <CardHeader className="text-center">
-            <div className="mx-auto mb-4">
-              <NibLogo className="w-12 h-12" />
-            </div>
-            <CardTitle>Welcome Back to NIB EPMO</CardTitle>
-            <CardDescription>Loading…</CardDescription>
-          </CardHeader>
-        </Card>
-      }
-    >
-      <LoginForm />
-    </Suspense>
+    <div className="w-full max-w-sm">
+      <LoginMasthead />
+      <Suspense
+        fallback={
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-xl">Sign in</CardTitle>
+              <CardDescription>Loading…</CardDescription>
+            </CardHeader>
+          </Card>
+        }
+      >
+        <LoginForm />
+      </Suspense>
+      <p className="mt-6 text-center text-xs text-muted-foreground">
+        Forgotten your password? Contact your EPMO administrator to have it reset.
+      </p>
+    </div>
   );
 }

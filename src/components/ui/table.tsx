@@ -33,11 +33,35 @@ const Table = React.forwardRef<
 ))
 Table.displayName = "Table"
 
+/**
+ * The panel a table sits in when nothing else is already framing it.
+ *
+ * Tables rendered bare had no edge, so on a page whose ground is a shade off
+ * white they dissolved into it — the header row was the only thing suggesting
+ * where the data started. `overflow-hidden` is what lets the rounded corners
+ * actually clip the first and last rows.
+ *
+ * Not needed inside a `Card`, which already provides the same frame.
+ */
+const TableCard = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("overflow-hidden rounded-xl border border-border bg-card", className)}
+    {...props}
+  />
+))
+TableCard.displayName = "TableCard"
+
 const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn("[&_tr]:border-b", className)} {...props} />
+  // A quiet ground under the header, so the column names read as a rule across
+  // the top of the data rather than as the first row of it.
+  <thead ref={ref} className={cn("bg-muted/50 [&_tr]:border-b", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 
@@ -124,6 +148,7 @@ TableCaption.displayName = "TableCaption"
 
 export {
   Table,
+  TableCard,
   TableHeader,
   TableBody,
   TableFooter,

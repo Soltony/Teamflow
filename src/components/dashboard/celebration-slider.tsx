@@ -17,9 +17,9 @@ import Confetti from 'react-confetti';
 import useWindowSize from 'react-use/lib/useWindowSize';
 
 const celebrationIcons = [
-  <Award key="award" className="h-12 w-12 text-yellow-500" />,
-  <Medal key="medal" className="h-12 w-12 text-orange-500" />,
-  <PartyPopper key="popper" className="h-12 w-12 text-pink-500" />,
+  <Award key="award" className="h-12 w-12 text-warning" />,
+  <Medal key="medal" className="h-12 w-12 text-warning-strong" />,
+  <PartyPopper key="popper" className="h-12 w-12 text-accent" />,
 ];
 
 export function CelebrationSlider({ completedProjects, teams }: { completedProjects: any[], teams: any[] }) {
@@ -77,19 +77,19 @@ export function CelebrationSlider({ completedProjects, teams }: { completedProje
             return (
               <CarouselItem key={project.id}>
                 <div className="p-1">
-                  <Card className="bg-gradient-to-r from-yellow-100 via-amber-50 to-yellow-100 border-yellow-300">
+                  <Card className="border-primary/40 bg-gradient-to-r from-primary-soft via-warning-soft to-primary-soft">
                     <CardContent className="flex flex-col items-center justify-center p-6 text-center space-y-4">
                       <div className="flex items-center gap-4">
                         {icon}
                         <div className="flex flex-col items-center">
-                          <h3 className="text-2xl font-bold text-yellow-800">{project.name}</h3>
-                          <p className="text-sm font-semibold text-yellow-700">Project Completed!</p>
+                          <h3 className="text-2xl font-bold text-warning-strong">{project.name}</h3>
+                          <p className="text-sm font-semibold text-warning-strong">Project Completed!</p>
                         </div>
                       </div>
-                      <p className="text-muted-foreground text-yellow-800/80">
+                      <p className="text-warning-strong/80">
                         A huge congratulations to the team for their hard work and dedication.
                       </p>
-                      <div className="text-sm text-yellow-700/90 space-y-1">
+                      <div className="text-sm text-warning-strong/90 space-y-1">
                         <p><span className="font-semibold">Project Manager (PM):</span> {projectManagerName}</p>
                         <p><span className="font-semibold">Team:</span> {teamMembers}</p>
                         <p><span className="font-semibold">Completed on:</span> {format(new Date(project.endDate), 'MMMM dd, yyyy')}</p>

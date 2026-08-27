@@ -58,8 +58,8 @@ export function ProjectCardTeams({
                 }}
             >
                 <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-blue-600" />
-                  <h4 className="font-semibold text-blue-700">Teams ({project.teams?.length || 0})</h4>
+                  <Users className="h-4 w-4 text-info" />
+                  <h4 className="font-semibold text-info-strong">Teams ({project.teams?.length || 0})</h4>
                 </div>
                 <div className="flex items-center gap-2">
                     {canManageTeams.create && (
@@ -69,13 +69,13 @@ export function ProjectCardTeams({
                         </Button>
                     )}
                     <div className="cursor-pointer p-1">
-                        <ChevronDown className={cn("h-5 w-5 transition-transform text-blue-600", isTeamsExpanded && "rotate-180")} />
+                        <ChevronDown className={cn("h-5 w-5 transition-transform text-info", isTeamsExpanded && "rotate-180")} />
                     </div>
                 </div>
             </div>
 
             {isTeamsExpanded && (
-              <div className="ml-6 space-y-3 border-l-2 border-blue-200 pl-4">
+              <div className="ml-6 space-y-3 border-l-2 border-info/30 pl-4">
                 {(project.teams && project.teams.length > 0) ? (
                     <div className="space-y-3">
                         {project.teams.map((team: any) => {
@@ -83,9 +83,9 @@ export function ProjectCardTeams({
                             const teamMembers = team.members.filter((m: any) => m.id !== team.teamLeadId);
 
                             return (
-                                <div key={team.id} className="text-sm p-3 rounded-md bg-blue-50 border border-blue-200 group">
+                                <div key={team.id} className="text-sm p-3 rounded-md bg-info-soft border border-info/30 group">
                                     <div className="flex justify-between items-start">
-                                        <h5 className="font-semibold text-blue-800">{team.name}</h5>
+                                        <h5 className="font-semibold text-info-strong">{team.name}</h5>
                                         <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity">
                                             {canManageTeams.update && (
                                                 <Button variant="ghost" size="icon" className="h-6 w-6" onClick={(e) => handleEditTeamClick(e, team)}>
@@ -99,7 +99,7 @@ export function ProjectCardTeams({
                                             )}
                                         </div>
                                     </div>
-                                    <div className="text-blue-600 mt-1 space-y-1">
+                                    <div className="text-info mt-1 space-y-1">
                                         {teamLead && <p><span className="font-semibold">Lead:</span> {teamLead.name}</p>}
                                         {teamMembers.length > 0 && <p><span className="font-semibold">Members:</span> {teamMembers.map((m: any) => m.name).join(', ')}</p>}
                                     </div>
@@ -108,7 +108,7 @@ export function ProjectCardTeams({
                         })}
                     </div>
                 ) : (
-                    <p className="text-sm text-blue-600 mt-2">No teams assigned.</p>
+                    <p className="text-sm text-info mt-2">No teams assigned.</p>
                 )}
               </div>
             )}

@@ -375,8 +375,8 @@ export function ReportsClient({
 function RagSummary({ rag, onDrillDown }: { rag: PortfolioRag; onDrillDown: () => void }) {
   const parts = [
     { key: 'RED' as const, count: rag.red, className: 'bg-destructive', label: 'In trouble' },
-    { key: 'AMBER' as const, count: rag.amber, className: 'bg-amber-500', label: 'At risk' },
-    { key: 'GREEN' as const, count: rag.green, className: 'bg-green-600', label: 'On track' },
+    { key: 'AMBER' as const, count: rag.amber, className: 'bg-warning', label: 'At risk' },
+    { key: 'GREEN' as const, count: rag.green, className: 'bg-success', label: 'On track' },
     { key: 'COMPLETE' as const, count: rag.complete, className: 'bg-muted-foreground/40', label: 'Complete' },
   ].filter((p) => p.count > 0);
 
@@ -480,7 +480,7 @@ function VarianceCard({
             <p
               className={cn(
                 'flex items-center gap-2 text-2xl font-bold tabular-nums',
-                ahead ? 'text-green-700' : 'text-destructive',
+                ahead ? 'text-success-strong' : 'text-destructive',
               )}
             >
               <Icon className="h-5 w-5 shrink-0" aria-hidden="true" />

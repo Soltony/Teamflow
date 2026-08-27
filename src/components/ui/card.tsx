@@ -9,7 +9,10 @@ const Card = React.forwardRef<
   <div
     ref={ref}
     className={cn(
-      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      // rounded-xl, not the radius token's rounded-lg: the panel geometry is
+      // the most visible single thing about this design language, and every
+      // surface in it — cards, tables, filter bars, stat tiles — shares it.
+      "rounded-xl border border-border bg-card text-card-foreground shadow-sm",
       className
     )}
     {...props}

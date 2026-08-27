@@ -33,6 +33,7 @@ import { Progress } from '@/components/ui/progress';
 import { TaskStatusPill } from '@/components/ui/status-pill';
 import {
   Table,
+  TableCard,
   TableBody,
   TableCell,
   TableHead,
@@ -231,78 +232,80 @@ export function TaskListView({
 
           {/* Desktop: a table. Below sm it becomes cards — see TaskCards. */}
           <div className="hidden sm:block">
-            <Table scrollLabel={group.label ? `Tasks: ${group.label}` : 'Tasks'}>
-              <TableHeader>
-                <TableRow>
-                  {selectable && (
-                    <TableHead className="w-10">
-                      {onToggleAll && group.key === groups[0].key && (
-                        <Checkbox
-                          checked={someSelected ? 'indeterminate' : allSelected}
-                          onCheckedChange={(v) => onToggleAll(v === true)}
-                          aria-label="Select all tasks"
-                        />
-                      )}
-                    </TableHead>
-                  )}
-                  <TableHead>Task</TableHead>
-                  <TableHead>Project</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Progress</TableHead>
-                  <TableHead>Due</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {group.tasks.map((task) => (
-                  <TableRow
-                    key={task.id}
-                    data-state={selected.has(task.id) ? 'selected' : undefined}
-                    className={cn(isTaskOverdue(task, now) && 'bg-destructive/5')}
-                  >
+            <TableCard>
+              <Table scrollLabel={group.label ? `Tasks: ${group.label}` : 'Tasks'}>
+                <TableHeader>
+                  <TableRow>
                     {selectable && (
-                      <TableCell className="w-10">
-                        <Checkbox
-                          checked={selected.has(task.id)}
-                          onCheckedChange={(v) => onToggle(task.id, v === true)}
-                          aria-label={`Select ${task.title}`}
-                        />
-                      </TableCell>
+                      <TableHead className="w-10">
+                        {onToggleAll && group.key === groups[0].key && (
+                          <Checkbox
+                            checked={someSelected ? 'indeterminate' : allSelected}
+                            onCheckedChange={(v) => onToggleAll(v === true)}
+                            aria-label="Select all tasks"
+                          />
+                        )}
+                      </TableHead>
                     )}
-                    <TableCell className="max-w-[280px] font-medium">
-                      <Link
-                        href={`/tasks/${task.id}`}
-                        className="block truncate rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      >
-                        {task.title}
-                      </Link>
-                      {task.milestoneTitle && (
-                        <span className="block truncate text-xs text-muted-foreground">
-                          {task.milestoneTitle}
-                        </span>
-                      )}
-                    </TableCell>
-                    <TableCell className="max-w-[160px] truncate text-muted-foreground">
-                      {task.projectName ?? '—'}
-                    </TableCell>
-                    <TableCell>
-                      <TaskStatusPill status={task.status} />
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Progress value={task.progress ?? 0} className="h-2 w-14" />
-                        <span className="tabular-nums">{task.progress ?? 0}%</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="whitespace-nowrap">
-                      {format(parseISO(task.endDate), 'd MMM yyyy')}
-                      <span className="block">
-                        <OverdueFlag task={task} now={now} />
-                      </span>
-                    </TableCell>
+                    <TableHead>Task</TableHead>
+                    <TableHead>Project</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Progress</TableHead>
+                    <TableHead>Due</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {group.tasks.map((task) => (
+                    <TableRow
+                      key={task.id}
+                      data-state={selected.has(task.id) ? 'selected' : undefined}
+                      className={cn(isTaskOverdue(task, now) && 'bg-destructive/5')}
+                    >
+                      {selectable && (
+                        <TableCell className="w-10">
+                          <Checkbox
+                            checked={selected.has(task.id)}
+                            onCheckedChange={(v) => onToggle(task.id, v === true)}
+                            aria-label={`Select ${task.title}`}
+                          />
+                        </TableCell>
+                      )}
+                      <TableCell className="max-w-[280px] font-medium">
+                        <Link
+                          href={`/tasks/${task.id}`}
+                          className="block truncate rounded-sm text-primary hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                        >
+                          {task.title}
+                        </Link>
+                        {task.milestoneTitle && (
+                          <span className="block truncate text-xs text-muted-foreground">
+                            {task.milestoneTitle}
+                          </span>
+                        )}
+                      </TableCell>
+                      <TableCell className="max-w-[160px] truncate text-muted-foreground">
+                        {task.projectName ?? '—'}
+                      </TableCell>
+                      <TableCell>
+                        <TaskStatusPill status={task.status} />
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <Progress value={task.progress ?? 0} className="h-2 w-14" />
+                          <span className="tabular-nums">{task.progress ?? 0}%</span>
+                        </div>
+                      </TableCell>
+                      <TableCell className="whitespace-nowrap">
+                        {format(parseISO(task.endDate), 'd MMM yyyy')}
+                        <span className="block">
+                          <OverdueFlag task={task} now={now} />
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableCard>
           </div>
 
           <TaskCards

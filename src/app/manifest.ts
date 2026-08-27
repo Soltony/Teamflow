@@ -8,8 +8,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'A project management solution to assign tasks and manage activity online.',
     start_url: '/',
     display: 'standalone',
-    background_color: '#f0f4c4',
-    theme_color: '#4db6ac',
+    background_color: '#F6F7F9',
+    theme_color: '#0C1222',
     icons: [
       {
         src: '/img/logo.png',
