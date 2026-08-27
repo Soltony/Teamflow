@@ -27,6 +27,14 @@ export const SIGNED_IN_ONLY = [
 ] as const;
 
 export const ROUTE_PERMISSIONS: Record<string, string | string[]> = {
+  /*
+   * The consolidated approvals inbox, which replaced the three separate
+   * queues below. Holding any one of the three lets you in; the inbox then
+   * shows only the kinds you hold, so a payments approver is never offered a
+   * task to review. The three old routes stay in this table because they still
+   * exist as redirects, and a redirect must be gated on the way through.
+   */
+  '/approvals': ['tasks:approve', 'timeline:approve', 'payment-approvals:view'],
   '/archive': 'projects:read',
   '/ceo-report': 'reports:view',
   '/config': ['settings:manage', 'config:manage-users', 'config:manage-roles'],
@@ -93,13 +101,14 @@ export function permissionForRoute(route: string): string | string[] | undefined
  * failing test.
  */
 export const ROUTE_TITLES: Record<string, string> = {
+  '/approvals': 'Approvals',
   '/archive': 'Archive',
   '/ceo-report': 'Portfolio report',
   '/change-password': 'Change password',
   '/config': 'Configuration',
   '/dashboard': 'Dashboard',
   '/departments': 'Departments',
-  '/gantt': 'Timeline',
+  '/gantt': 'Schedule',
   '/login': 'Sign in',
   '/milestones': 'Milestones',
   '/my-tasks': 'My tasks',
@@ -108,7 +117,7 @@ export const ROUTE_TITLES: Record<string, string> = {
   '/pmo-divisions': 'EPMO divisions',
   '/profile': 'Profile',
   '/projects': 'Projects',
-  '/reports': 'Report',
+  '/reports': 'Reports',
   '/settings': 'Settings',
   '/task-approvals': 'Task approvals',
   '/tasks': 'Task',

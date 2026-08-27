@@ -212,6 +212,41 @@ export const SETTING_DEFINITIONS: SettingDefinition[] = [
     step: 1,
     unit: 'days',
   },
+  /*
+   * How long a decision may sit before the inbox says so.
+   *
+   * The approval queues had no notion of age at all: a request submitted an
+   * hour ago and one submitted three weeks ago looked identical, so the oldest
+   * were routinely the last to be dealt with. These two are the warning and
+   * breach lines the inbox draws, and they belong to the bank's governance
+   * people rather than to a constant in a component.
+   */
+  {
+    key: 'governance.approvalSlaDays',
+    label: 'Approvals should be decided within',
+    description:
+      'The service level for a pending approval. The inbox shows how long each item has waited and flags anything past this.',
+    category: 'governance',
+    type: 'number',
+    default: 3,
+    min: 1,
+    max: 30,
+    step: 1,
+    unit: 'days',
+  },
+  {
+    key: 'governance.approvalSlaWarningDays',
+    label: 'Warn about an approaching approval deadline after',
+    description:
+      'When an approval has waited this long, the inbox marks it as due soon so it can be cleared before it breaches.',
+    category: 'governance',
+    type: 'number',
+    default: 2,
+    min: 1,
+    max: 30,
+    step: 1,
+    unit: 'days',
+  },
 ];
 
 export const SETTINGS_BY_KEY = new Map(SETTING_DEFINITIONS.map((d) => [d.key, d]));

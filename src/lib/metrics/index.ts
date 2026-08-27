@@ -54,3 +54,19 @@ export {
   type AssignmentLike,
   type AllocationSummary,
 } from './allocation';
+
+export {
+  assessRag,
+  summarizeRag,
+  elapsedSchedulePercent,
+  scheduleVariancePercent,
+  budgetUsedPercent,
+  budgetVariancePercent,
+  committedSpend,
+  RAG_AMBER_THRESHOLD,
+  RAG_RED_THRESHOLD,
+  type Rag,
+  type RagAssessment,
+  type PortfolioRag,
+  type RagProjectLike,
+} from './rag';

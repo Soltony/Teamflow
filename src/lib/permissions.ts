@@ -40,6 +40,17 @@ export const routePermissions: Record<string, string | string[]> = {
   '/my-tasks': 'my-tasks:view',
   '/tasks': 'my-tasks:view',
   '/team-view': 'team-view:view',
+  /*
+   * The consolidated approvals inbox. Any one of the three approval
+   * permissions gets you in; the inbox itself then shows only the kinds you
+   * hold, so a payments approver never sees a task waiting for review.
+   */
+  '/approvals': ['tasks:approve', 'timeline:approve', 'payment-approvals:view'],
+  /*
+   * The three retired queues. Kept in the policy because they still exist as
+   * redirects into the inbox — an old bookmark should land somewhere useful,
+   * and it must still be gated on the way through.
+   */
   '/task-approvals': 'tasks:approve',
   '/projects': 'projects:read',
   '/archive': 'projects:read',

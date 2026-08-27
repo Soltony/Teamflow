@@ -35,13 +35,22 @@ describe('isNavItemActive', () => {
     expect(isNavItemActive(dashboard, '/dashboard/anything')).toBe(false);
   });
 
-  it('lights the portfolio report on its drill-down pages', () => {
-    // /reports is reached from the dashboard stat cards and has no sidebar
-    // entry of its own; without this, landing there selected nothing at all.
-    const report = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.href === '/ceo-report')!;
+  it('lights Reports on the route it replaced', () => {
+    // /ceo-report was folded into /reports. Somebody following an old link
+    // should still see where they are, rather than a sidebar with nothing lit.
+    const report = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.href === '/reports')!;
     expect(isNavItemActive(report, '/reports')).toBe(true);
     expect(isNavItemActive(report, '/reports?type=overdue')).toBe(true);
     expect(isNavItemActive(report, '/ceo-report')).toBe(true);
+  });
+
+  it('lights Approvals on each of the three queues it replaced', () => {
+    const approvals = NAV_GROUPS.flatMap((g) => g.items).find((i) => i.href === '/approvals')!;
+    expect(isNavItemActive(approvals, '/approvals')).toBe(true);
+    expect(isNavItemActive(approvals, '/approvals?type=payment')).toBe(true);
+    for (const retired of ['/task-approvals', '/timeline-approvals', '/payment-approvals']) {
+      expect(isNavItemActive(approvals, retired), `on ${retired}`).toBe(true);
+    }
   });
 
   it('selects exactly one item for any route in the sidebar', () => {
@@ -65,7 +74,29 @@ describe('visibleGroups', () => {
     // A section title with no items reads as a broken screen.
     const groups = visibleGroups(NAV_GROUPS, (p) => p === 'my-tasks:view');
     expect(groups).toHaveLength(1);
-    expect(groups[0].label).toBe('My work');
+    expect(groups[0].label).toBe('Work');
+    expect(groups[0].items.map((i) => i.href)).toEqual(['/my-tasks']);
+  });
+
+  it('lets any one approval permission into the inbox', () => {
+    // The inbox is shared by three roles that each hold only one of these.
+    for (const permission of ['tasks:approve', 'timeline:approve', 'payment-approvals:view']) {
+      const groups = visibleGroups(NAV_GROUPS, (p) =>
+        Array.isArray(p) ? p.includes(permission) : p === permission,
+      );
+      const hrefs = groups.flatMap((g) => g.items.map((i) => i.href));
+      expect(hrefs, `with ${permission}`).toContain('/approvals');
+    }
+  });
+
+  it('keeps the five groups the design calls for, in order', () => {
+    expect(NAV_GROUPS.map((g) => g.label)).toEqual([
+      'Work',
+      'Delivery',
+      'Governance',
+      'Insight',
+      'Administration',
+    ]);
   });
 
   it('shows everything to somebody who may see everything', () => {

@@ -187,6 +187,12 @@ export async function getProjectForEdit(projectId: string) {
                 description: 'A default collection of tasks for this project that are not assigned to a specific milestone.',
                 startDate: project.startDate,
                 dueDate: project.endDate,
+                // This milestone has never been committed to — it is invented
+                // here to hold loose tasks — so it has no baseline. Null says
+                // that; copying the project's dates in would claim a
+                // commitment that was never made.
+                baselineStartDate: null,
+                baselineDueDate: null,
                 weight: 100,
                 createdAt: new Date(),
                 updatedAt: new Date(),
@@ -1118,9 +1124,26 @@ export async function getProjectDetailsForUser(projectId: string, _userId?: stri
                         include: {
                             assignees: { select: USER_DISPLAY_SELECT },
                             updates: true,
+                            // Which work waits on which, for the schedule view's
+                            // dependency arrows and its critical path.
+                            dependsOn: { select: { predecessorId: true, type: true, lagDays: true } },
                         }
                     },
                 }
+            },
+            // The budget tab: what was scheduled, what has been released.
+            payments: { orderBy: { paymentDate: 'asc' } },
+            // The team tab. Reached through ProjectTeam since a team may serve
+            // several projects.
+            teamLinks: {
+                include: {
+                    team: {
+                        include: {
+                            teamLead: { select: USER_DISPLAY_SELECT },
+                            members: { select: USER_DISPLAY_SELECT },
+                        },
+                    },
+                },
             },
             timelineChangeRequests: {
                 include: {

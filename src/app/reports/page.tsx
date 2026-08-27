@@ -5,7 +5,7 @@ import { PageShell } from '@/components/ui/page-header';
 import { Skeleton, LoadingRegion } from '@/components/ui/skeleton';
 import prisma from '@/lib/db';
 import { requirePermissionOrRedirect } from '@/lib/auth/guard';
-import { isLate, isOnTime, isOverdue } from '@/lib/metrics';
+import { isLate, isOnTime, isOverdue, statusCategory, summarizeRag, summarizeSchedule } from '@/lib/metrics';
 import { serialize } from '@/lib/serialize';
 import { isOpenBlocker } from '@/lib/validation/blocker';
 
@@ -34,12 +34,29 @@ const REPORT_COPY: Record<string, { title: string; description: string }> = {
     title: 'Projects with open issues',
     description: 'Projects carrying unresolved issues that are holding delivery up.',
   },
+  'at-risk': {
+    title: 'Projects at risk',
+    description:
+      'Active projects rated amber or red — behind schedule, overspent against delivery, or past their deadline.',
+  },
   all: {
     title: 'All projects',
     description: 'Every project in the selected working year and EPMO division.',
   },
 };
 
+/**
+ * The single reporting screen.
+ *
+ * There were two: `/ceo-report`, a fixed portfolio summary, and `/reports`, a
+ * filtered drill-down. They shared a permission, overlapped on four figures,
+ * and linked to each other — so "the report" meant different things to
+ * different people and the two could disagree after a filter was applied,
+ * because only one of them had filters.
+ *
+ * Now one page: the portfolio position at the top, the drill-down beneath it,
+ * and both obeying the same year and division filters.
+ */
 async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSearchParams> }) {
     // This page previously read every project in the portfolio with no
     // permission check of any kind.
@@ -51,23 +68,26 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
     const year = params?.year ?? 'all';
     const division = params?.division ?? 'all';
 
-    const [allProjects, pmoDivisions, distinctYears] = await Promise.all([
+    const where = {
+        ...(year && year !== 'all' ? { workingYear: year } : {}),
+        ...(division && division !== 'all' ? { pmoDivisionId: division } : {}),
+    };
+
+    const [allProjects, projectStatuses, pmoDivisions, distinctYears] = await Promise.all([
       prisma.project.findMany({
         // Both filters, because the dashboard cards were counted under both.
         // Honouring only the year is what made a card read 7 and its list 19.
-        where: {
-            ...(year && year !== 'all' ? { workingYear: year } : {}),
-            ...(division && division !== 'all' ? { pmoDivisionId: division } : {}),
-        },
+        where,
         include: {
             status: true,
+            projectManager: { select: { id: true, name: true } },
             milestones: { include: { tasks: true } },
             blockers: true,
+            // Committed spend, for the budget variance behind the RAG rating.
+            payments: { select: { amount: true, status: true } },
         },
       }),
-      // The filter controls need these; the page previously had no controls at
-      // all, so the only way to change a report was to go back and re-click a
-      // dashboard card.
+      prisma.projectStatus.findMany(),
       prisma.pmoDivision.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
       prisma.project.findMany({
         select: { workingYear: true },
@@ -76,18 +96,22 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
       }),
     ]);
 
-    // Same predicates the dashboard and CEO report use, so a drill-down always
-    // lists exactly the projects the card counted. These filters previously
-    // used planned task dates while the cards used actual completion, so the
-    // number and the list disagreed.
+    // Same predicates the dashboard uses, so a drill-down always lists exactly
+    // the projects a card counted.
     const hasOpenBlocker = (p: (typeof allProjects)[number]) =>
       p.blockers?.some((b) => isOpenBlocker(b.status)) ?? false;
+
+    const rag = summarizeRag(allProjects);
+    const schedule = summarizeSchedule(allProjects);
 
     const byType: Record<string, typeof allProjects> = {
       'on-time': allProjects.filter(isOnTime),
       late: allProjects.filter(isLate),
       overdue: allProjects.filter((p) => isOverdue(p)),
       'active-blockers': allProjects.filter(hasOpenBlocker),
+      'at-risk': allProjects.filter(
+        (p) => statusCategory(p.status) === 'ACTIVE' && (isOverdue(p) || hasOpenBlocker(p)),
+      ),
       all: allProjects,
     };
 
@@ -96,11 +120,25 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
     return (
       <ReportsClient
         projects={serialize(byType[type])}
+        allProjects={serialize(allProjects)}
+        projectStatuses={serialize(projectStatuses)}
+        portfolio={{
+          rag,
+          activeCount: allProjects.filter((p) => statusCategory(p.status) === 'ACTIVE').length,
+          onTimeRate: schedule.onTimeRate,
+          closedCount: schedule.closed,
+          overdueCount: schedule.overdue,
+          openBlockerCount: allProjects.reduce(
+            (sum, p) => sum + p.blockers.filter((b) => isOpenBlocker(b.status)).length,
+            0,
+          ),
+        }}
         counts={{
           onTime: byType['on-time'].length,
           late: byType.late.length,
           overdue: byType.overdue.length,
           blockers: byType['active-blockers'].length,
+          atRisk: byType['at-risk'].length,
           all: allProjects.length,
         }}
         pmoDivisions={pmoDivisions}
@@ -119,7 +157,6 @@ function ReportsSkeleton() {
     return (
         <LoadingRegion label="Loading report">
           <PageShell>
-            <Skeleton className="h-4 w-48" />
             <div className="space-y-2">
               <Skeleton className="h-9 w-64" />
               <Skeleton className="h-4 w-96" />
@@ -130,6 +167,7 @@ function ReportsSkeleton() {
               <Skeleton className="h-28 w-full" />
               <Skeleton className="h-28 w-full" />
             </div>
+            <Skeleton className="h-64 w-full" />
             <Skeleton className="h-96 w-full" />
           </PageShell>
         </LoadingRegion>

@@ -206,16 +206,21 @@ interface SidebarMenuButtonProps
   icon?: React.ReactElement
   isActive?: boolean
   href?: string
+  /** A live count beside the label — currently only the approvals inbox. */
+  badge?: number
+  /** What the count means, for a screen reader. "12" alone says nothing. */
+  badgeLabel?: string
 }
 
 const SidebarMenuButton = React.forwardRef<
   HTMLButtonElement,
   SidebarMenuButtonProps
->(({ className, icon, isActive, children, href, ...props }, ref) => {
+>(({ className, icon, isActive, children, href, badge, badgeLabel, ...props }, ref) => {
   const { isOpen, isMobile } = useSidebar()
 
   const variant: "secondary" | "ghost" = isActive ? "secondary" : "ghost";
   const collapsed = !isOpen && !isMobile
+  const hasBadge = typeof badge === "number" && badge > 0
 
   /**
    * The label survives the collapse.
@@ -230,8 +235,12 @@ const SidebarMenuButton = React.forwardRef<
 
   const commonProps = {
     variant,
-    title: collapsed ? label : undefined,
-    "aria-label": collapsed ? label : undefined,
+    title: collapsed ? [label, badgeLabel].filter(Boolean).join(" — ") : undefined,
+    // Collapsed, the count has no room to render, so it has to go in the name
+    // or it is lost entirely.
+    "aria-label": collapsed
+      ? [label, badgeLabel].filter(Boolean).join(", ")
+      : undefined,
     // Marks the current page for assistive technology, which colour alone
     // could not: the active item was distinguishable only by its background.
     "aria-current": isActive ? ("page" as const) : undefined,
@@ -245,8 +254,31 @@ const SidebarMenuButton = React.forwardRef<
 
   const buttonContent = (
     <>
-      {icon && React.cloneElement(icon, { className: "h-5 w-5 shrink-0" })}
+      <span className="relative shrink-0">
+        {icon && React.cloneElement(icon, { className: "h-5 w-5 shrink-0" })}
+        {/*
+          Collapsed there is no room for a number, so the icon carries a dot
+          instead — enough to say "there is something here" and send the reader
+          to expand the rail. The count itself is in the accessible name.
+        */}
+        {hasBadge && collapsed && (
+          <span
+            className="absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-destructive ring-2 ring-sidebar"
+            aria-hidden="true"
+          />
+        )}
+      </span>
       <span className={cn("truncate", collapsed && "sr-only")}>{children}</span>
+      {hasBadge && !collapsed && (
+        <span
+          className="ml-auto shrink-0 rounded-full bg-destructive px-1.5 py-0.5 text-xs font-semibold tabular-nums text-destructive-foreground"
+          aria-hidden="true"
+        >
+          {badge > 99 ? "99+" : badge}
+        </span>
+      )}
+      {/* The number, said once, in words that explain it. */}
+      {hasBadge && !collapsed && <span className="sr-only">{badgeLabel ?? `${badge} pending`}</span>}
     </>
   );
 

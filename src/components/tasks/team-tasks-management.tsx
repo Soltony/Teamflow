@@ -22,6 +22,8 @@ import { type ProjectWithTasksAndStats, type TeamViewTask } from "@/app/team-vie
 import { approveTaskAction, declineTaskAction } from "@/app/team-view/actions";
 import { Progress } from "../ui/progress";
 import { DeclineTaskDialog } from "./decline-task-dialog";
+import { TaskWorkspace } from "./my-tasks-views";
+import type { TaskLike } from "./task-views";
 import { cn } from "@/lib/utils";
 import {
   isArchivedStatus,
@@ -180,6 +182,32 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
    * anything that needs the *category* — which is the only safe basis for
    * deciding whether a project is finished — has to look it up here.
    */
+  /**
+   * Every task the reader's teams are carrying, flattened.
+   *
+   * The workspace is shared with My tasks, so both screens agree on what
+   * counts as overdue and how grouping behaves.
+   */
+  const workspaceTasks: TaskLike[] = useMemo(
+    () =>
+      (initialTasksByProject ?? []).flatMap((entry: ProjectWithTasksAndStats) =>
+        entry.tasks.map((task) => ({
+          id: task.id,
+          title: task.title,
+          status: task.status as string,
+          endDate: task.endDate as unknown as string,
+          progress: task.progress ?? 0,
+          projectId: entry.project.id,
+          projectName: entry.project.name,
+          milestoneTitle: task.milestoneTitle,
+          assigneeNames: task.assignedUserIds
+            .map((id: string) => userMap.get(id)?.name)
+            .filter(Boolean) as string[],
+        })),
+      ),
+    [initialTasksByProject, userMap],
+  );
+
   const statusById = useMemo(
     () => new Map<string, any>((projectStatuses ?? []).map((s: any) => [s.id as string, s])),
     [projectStatuses],
@@ -388,121 +416,22 @@ export function TeamTasksManagement({ allUsers, ledTeams, currentUser, initialTa
               </div>
           </CardContent>
         </Card>
-        
-        {initialTasksByProject.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground border-2 border-dashed rounded-lg bg-card">
-                <p className="text-lg font-semibold">No tasks assigned to your team members.</p>
-                <p>Once tasks are assigned, they will appear here for you to manage.</p>
-            </div>
-        ) : (
-          <Accordion type="single" collapsible className="w-full space-y-4" value={expandedStatusId || ""} onValueChange={handleStatusAccordionChange}>
-            {orderedStatuses.map(statusName => {
-                const projects = projectsByStatus[statusName];
-                if (!projects || projects.length === 0) {
-                    return null;
-                }
-                return (
-                    <AccordionItem value={statusName} key={statusName} className="border-none">
-                        <Card>
-                            <AccordionTrigger className="p-4 text-lg hover:no-underline font-semibold">
-                                {statusName} Projects ({projects.length})
-                            </AccordionTrigger>
-                            <AccordionContent className="px-4 pb-4">
-                                <Accordion type="single" collapsible className="w-full space-y-4" value={expandedProjectId || ""} onValueChange={handleProjectAccordionChange}>
-                                    {projects.map(({ project, tasks, stats }: ProjectWithTasksAndStats) => {
-                                        const projectProgress = calculateProjectProgress(project);
 
-                                        const isClosingThisMonth = isSameMonth(new Date(), parseISO(project.endDate as unknown as string)) && isSameYear(new Date(), parseISO(project.endDate as unknown as string));
+        {/*
+          The accordion this replaces nested status → project → task, so seeing
+          one team member's work meant opening three levels in every project
+          they touch. The workspace shows the same tasks in whichever shape the
+          question needs, and review decisions live where they belong — in the
+          approvals inbox, and on the task itself.
+        */}
+        <TaskWorkspace
+          tasks={workspaceTasks}
+          onDataChange={onDataChange}
+          storageKey="team-view"
+          emptyTitle="No tasks assigned to your team"
+          emptyDescription="Once work is assigned to somebody you lead, it appears here."
+        />
 
-                                        let statusBadge;
-                                        // Category, not name: renaming "Completed"
-                                        // in Settings used to stop its projects
-                                        // ever badging as closed.
-                                        const isProjectClosed = isArchivedStatus(
-                                          statusById.get(project.statusId ?? '') ?? statusName,
-                                        );
-                                        const allTasksDone = stats.done === stats.total && stats.total > 0;
-
-                                        if (isProjectClosed) {
-                                            statusBadge = <Badge className="bg-zinc-500 hover:bg-zinc-500/90 text-primary-foreground">Closed</Badge>;
-                                        } else if (stats.pending > 0) {
-                                            statusBadge = <Badge className="bg-amber-500 hover:bg-amber-500/90 text-primary-foreground">Pending Review</Badge>;
-                                        } else if (allTasksDone && Math.round(projectProgress) >= 100) {
-                                            statusBadge = <Badge className="bg-sky-600 hover:bg-sky-600/90 text-primary-foreground">Ready to Close</Badge>;
-                                        } else if (allTasksDone) {
-                                            statusBadge = <Badge className="bg-blue-600 hover:bg-blue-600/90 text-primary-foreground">All Tasks Done</Badge>;
-                                        } else {
-                                            statusBadge = <Badge className="bg-primary hover:bg-primary/90">Active</Badge>;
-                                        }
-                                      
-                                      return (
-                                      <AccordionItem value={project.id} key={project.id} className="border rounded-lg bg-background">
-                                        <AccordionTrigger className="p-4 hover:no-underline">
-                                          <div className="flex flex-col md:flex-row md:items-center justify-between w-full gap-4">
-                                              <div className="flex-1 text-left space-y-1">
-                                                <p className="font-semibold">{project.name}</p>
-                                                <div className="flex items-center gap-2">
-                                                    <p className="text-xs text-muted-foreground">Closing Date: {format(parseISO(project.endDate as unknown as string), 'MMM dd, yyyy')}</p>
-                                                    {isClosingThisMonth && (
-                                                        <Badge variant="destructive" className="flex items-center gap-1">
-                                                            <CalendarClock className="w-3 h-3" /> Closing Soon
-                                                        </Badge>
-                                                    )}
-                                                </div>
-                                              </div>
-                                              <div className="flex items-center gap-3 w-full md:w-auto md:min-w-[300px]">
-                                                  <Progress value={projectProgress} className="h-2 flex-1" />
-                                                  <span className="text-sm font-semibold w-12 text-right">{Math.round(projectProgress)}%</span>
-                                                  {statusBadge}
-                                                  <Badge variant="outline">Tasks: ({stats.done}/{stats.total})</Badge>
-                                              </div>
-                                          </div>
-                                        </AccordionTrigger>
-                                        <AccordionContent className="p-4 pt-0">
-                                           {tasks.length > 0 ? (
-                                             <Accordion type="single" collapsible className="w-full space-y-2" value={expandedTaskId || ""} onValueChange={handleTaskAccordionChange}>
-                                              {tasks.sort((a: TeamViewTask, b: TeamViewTask) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()).map((task: TeamViewTask) => (
-                                                <AccordionItem value={task.id} key={task.id} className="border rounded-md px-4 bg-muted/50">
-                                                    <AccordionTrigger className="hover:no-underline">
-                                                        <div className="flex items-center justify-between w-full">
-                                                            <div className="flex-1 text-left">
-                                                                <p className="font-semibold">{task.title}</p>
-                                                                <p className="text-sm text-muted-foreground">{formatStatus(task.status)}</p>
-                                                            </div>
-                                                            <div className="flex items-center gap-2 mr-4">
-                                                                <Badge variant="secondary" className={task.status === 'PENDING_REVIEW' ? 'bg-primary text-primary-foreground' : ''}>
-                                                                    {task.status === 'PENDING_REVIEW' ? 'Action Required' : `${task.progress || 0}%`}
-                                                                </Badge>
-                                                            </div>
-                                                        </div>
-                                                    </AccordionTrigger>
-                                                    <AccordionContent className="pt-2 pb-4">
-                                                        <TaskCollapsible
-                                                            task={task}
-                                                            userMap={userMap}
-                                                            onApprove={handleApprove}
-                                                            onDecline={setTaskToDecline}
-                                                        />
-                                                    </AccordionContent>
-                                                </AccordionItem>
-                                              ))}
-                                            </Accordion>
-                                          ) : (
-                                              <p className="text-muted-foreground text-sm pl-2">No tasks assigned to your team members for this project.</p>
-                                          )}
-                                        </AccordionContent>
-                                      </AccordionItem>
-                                      )
-                                    })}
-                                </Accordion>
-                            </AccordionContent>
-                        </Card>
-                    </AccordionItem>
-                )
-            })}
-          </Accordion>
-        )}
-        
         {taskToDecline && (
           <DeclineTaskDialog
             isOpen={!!taskToDecline}

@@ -5,17 +5,20 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import {
   ArrowRight,
-  Building,
   CalendarDays,
-  Clock,
+  CalendarRange,
   ExternalLink,
   FileText,
-  Layers,
+  History,
+  LayoutDashboard,
   Library,
+  ListChecks,
   Pencil,
   ShieldAlert,
   Trash2,
   UserCircle,
+  Users,
+  Wallet,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 
@@ -52,7 +55,16 @@ import { EscalateBlockerDialog } from './escalate-blocker-dialog';
 import { ProjectBlockers } from './project-blockers';
 import { ProjectDocuments } from './project-documents';
 import { ProjectMilestonesSection } from './project-milestones-section';
-import { ProjectRiskPanel, ProjectSummaryCards } from './project-summary';
+import { ConfirmDestructive } from '@/components/ui/confirm-destructive';
+import { ProjectHealthHeader } from './project-health-header';
+import { ProjectScheduleTab } from './project-schedule-tab';
+import {
+  ProjectActivityTab,
+  ProjectBudgetTab,
+  ProjectOverviewTab,
+  ProjectTasksTab,
+  ProjectTeamTab,
+} from './project-tabs';
 import type { OwnerOption } from './blocker-form-fields';
 import type { CreateBlockerInput, EscalateBlockerInput } from '@/lib/validation/blocker';
 import { isOpenBlocker } from '@/lib/validation/blocker';
@@ -107,8 +119,36 @@ type ProjectViewProps = {
   onProjectDeleteSubmit: () => void;
 };
 
-/** The section ids double as `?tab=` values, so old links keep working. */
-const SECTION_IDS = ['milestones', 'blockers', 'documents', 'timeline'] as const;
+/** The section ids double as `?tab=` values. */
+const SECTION_IDS = [
+  'overview',
+  'schedule',
+  'tasks',
+  'team',
+  'risks',
+  'budget',
+  'documents',
+  'activity',
+] as const;
+
+/**
+ * Where the previous four tabs went.
+ *
+ * `?tab=blockers` is linked from the dashboard, the reports drill-down and any
+ * number of saved links, so those values keep resolving rather than silently
+ * dropping the reader on Overview.
+ */
+const LEGACY_TABS: Record<string, string> = {
+  milestones: 'schedule',
+  blockers: 'risks',
+  timeline: 'schedule',
+};
+
+function resolveTab(requested: string | null): string {
+  if (!requested) return 'overview';
+  if ((SECTION_IDS as readonly string[]).includes(requested)) return requested;
+  return LEGACY_TABS[requested] ?? 'overview';
+}
 
 export function ProjectView({
   project,
@@ -145,9 +185,7 @@ export function ProjectView({
   const router = useRouter();
 
   const requested = searchParams.get('tab');
-  const [section, setSection] = React.useState<string>(
-    SECTION_IDS.includes(requested as never) ? requested! : 'milestones',
-  );
+  const [section, setSection] = React.useState<string>(() => resolveTab(requested));
 
   /**
    * The section lives in the URL, so a reader can send somebody "look at the
@@ -171,21 +209,55 @@ export function ProjectView({
   const pendingTimeline = timelineRequests.filter((r: any) => r.status === 'PENDING');
   const departments = (project.responsibleDepartments ?? []).map((d: any) => d.name);
 
+  const allTasks = (project.milestones ?? []).flatMap((m: any) => m.tasks ?? []);
+  const teamMemberCount = new Set(
+    (project.teamLinks ?? []).flatMap((l: any) => (l.team?.members ?? []).map((m: any) => m.id)),
+  ).size;
+  const pendingPayments = (project.payments ?? []).filter((p: any) => p.status === 'PENDING');
+
   const sections: Section[] = [
     {
-      id: 'milestones',
-      label: 'Milestones and tasks',
-      icon: Layers,
-      count: project.milestones?.length ?? 0,
-      description: 'The plan and how far through it we are',
+      id: 'overview',
+      label: 'Overview',
+      icon: LayoutDashboard,
+      description: 'What this is, who owns it, what is wrong',
     },
     {
-      id: 'blockers',
-      label: 'Issue register',
+      id: 'schedule',
+      label: 'Schedule',
+      icon: CalendarRange,
+      count: project.milestones?.length ?? 0,
+      description: 'Milestones, dependencies and the critical path',
+    },
+    {
+      id: 'tasks',
+      label: 'Tasks',
+      icon: ListChecks,
+      count: allTasks.length,
+      description: 'Every task, searchable in one list',
+    },
+    {
+      id: 'team',
+      label: 'Team',
+      icon: Users,
+      count: teamMemberCount,
+      description: 'Who is delivering it and what they carry',
+    },
+    {
+      id: 'risks',
+      label: 'Risks and issues',
       icon: ShieldAlert,
       count: openBlockers.length,
       attention: openBlockers.length > 0,
       description: 'What is holding the project up',
+    },
+    {
+      id: 'budget',
+      label: 'Budget',
+      icon: Wallet,
+      count: pendingPayments.length,
+      attention: pendingPayments.length > 0,
+      description: 'Cost, committed spend and payments',
     },
     {
       id: 'documents',
@@ -194,12 +266,10 @@ export function ProjectView({
       description: 'Charters, reports and sign-offs',
     },
     {
-      id: 'timeline',
-      label: 'Timeline changes',
-      icon: Clock,
-      count: pendingTimeline.length,
-      attention: pendingTimeline.length > 0,
-      description: 'Requested and approved deadline moves',
+      id: 'activity',
+      label: 'Activity',
+      icon: History,
+      description: 'Updates and decisions, newest first',
     },
   ];
 
@@ -223,17 +293,15 @@ export function ProjectView({
               {format(parseISO(project.startDate), 'd MMM yyyy')} –{' '}
               {format(parseISO(project.endDate), 'd MMM yyyy')}
             </PageMeta>
+            {/*
+              Manager, division and the receiving departments moved to the
+              Overview tab. They identify the project but do not help somebody
+              decide what to do with it, and repeating them here pushed the
+              health header — which does — below the fold on a laptop.
+            */}
             <PageMeta icon={UserCircle} label="Manager">
               {project.projectManager?.name || 'Unassigned'}
             </PageMeta>
-            <PageMeta icon={Library} label="EPMO division">
-              {project.pmoDivision?.name || 'None'}
-            </PageMeta>
-            {departments.length > 0 && (
-              <PageMeta icon={Building} label="For">
-                {departments.join(', ')}
-              </PageMeta>
-            )}
           </>
         }
         actions={
@@ -264,9 +332,7 @@ export function ProjectView({
         }
       />
 
-      <ProjectSummaryCards project={project} />
-
-      <ProjectRiskPanel project={project} onNavigate={selectSection} />
+      <ProjectHealthHeader project={project} onNavigate={selectSection} />
 
       <SectionLayout
         nav={
@@ -278,11 +344,27 @@ export function ProjectView({
           />
         }
       >
-        <SectionPanel id="milestones" active={section === 'milestones'}>
-          <ProjectMilestonesSection project={project} />
+        <SectionPanel id="overview" active={section === 'overview'}>
+          <ProjectOverviewTab project={project} onNavigate={selectSection} />
         </SectionPanel>
 
-        <SectionPanel id="blockers" active={section === 'blockers'}>
+        <SectionPanel id="schedule" active={section === 'schedule'}>
+          <div className="space-y-6">
+            <ProjectScheduleTab project={project} />
+            <ProjectMilestonesSection project={project} />
+            <TimelineHistory requests={timelineRequests} />
+          </div>
+        </SectionPanel>
+
+        <SectionPanel id="tasks" active={section === 'tasks'}>
+          <ProjectTasksTab project={project} />
+        </SectionPanel>
+
+        <SectionPanel id="team" active={section === 'team'}>
+          <ProjectTeamTab project={project} />
+        </SectionPanel>
+
+        <SectionPanel id="risks" active={section === 'risks'}>
           <ProjectBlockers
             blockers={blockers as Blocker[]}
             owners={blockerOwners}
@@ -295,12 +377,16 @@ export function ProjectView({
           />
         </SectionPanel>
 
+        <SectionPanel id="budget" active={section === 'budget'}>
+          <ProjectBudgetTab project={project} />
+        </SectionPanel>
+
         <SectionPanel id="documents" active={section === 'documents'}>
           <ProjectDocuments projectId={project.id} />
         </SectionPanel>
 
-        <SectionPanel id="timeline" active={section === 'timeline'}>
-          <TimelineHistory requests={timelineRequests} />
+        <SectionPanel id="activity" active={section === 'activity'}>
+          <ProjectActivityTab project={project} />
         </SectionPanel>
       </SectionLayout>
 
@@ -372,35 +458,28 @@ export function ProjectView({
         </AlertDialog>
       )}
 
-      {projectToDelete && (
-        <AlertDialog
-          open={!!projectToDelete}
-          onOpenChange={(open) => !open && onDeleteProjectOpenChange(null)}
-        >
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle>Delete &ldquo;{projectToDelete.name}&rdquo;?</AlertDialogTitle>
-              <AlertDialogDescription>
-                This removes the project and everything under it —{' '}
-                {project.milestones?.length ?? 0} milestone
-                {(project.milestones?.length ?? 0) === 1 ? '' : 's'}, all of their tasks, and{' '}
-                {blockers.length} issue{blockers.length === 1 ? '' : 's'}. This cannot be undone.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-              <AlertDialogCancel onClick={() => onDeleteProjectOpenChange(null)}>
-                Keep it
-              </AlertDialogCancel>
-              <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={onProjectDeleteSubmit}
-              >
-                Delete project
-              </AlertDialogAction>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
-      )}
+      {/*
+        Deleting a project is the largest irreversible action in the system, so
+        it is the one that asks for the name to be typed. The counts below are
+        the actual blast radius rather than "all associated data".
+      */}
+      <ConfirmDestructive
+        open={!!projectToDelete}
+        onOpenChange={(open) => !open && onDeleteProjectOpenChange(null)}
+        title={`Delete “${projectToDelete?.name ?? ''}”?`}
+        description="This removes the project and everything recorded against it. It cannot be undone, and there is no archive copy."
+        consequences={[
+          `${project.milestones?.length ?? 0} milestone${(project.milestones?.length ?? 0) === 1 ? '' : 's'}`,
+          `${allTasks.length} task${allTasks.length === 1 ? '' : 's'}, with all their progress updates`,
+          `${blockers.length} issue${blockers.length === 1 ? '' : 's'} in the register`,
+          `${(project.payments ?? []).length} scheduled payment${(project.payments ?? []).length === 1 ? '' : 's'}`,
+          'every document uploaded to the project',
+        ]}
+        confirmText={projectToDelete?.name}
+        confirmLabel="project name"
+        confirmButtonLabel="Delete this project"
+        onConfirm={onProjectDeleteSubmit}
+      />
     </PageShell>
   );
 }

@@ -14,6 +14,8 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { Health, RiskSeverity } from '@/lib/ui/health';
+import type { Rag } from '@/lib/metrics/rag';
+import type { SlaState } from '@/lib/approvals/types';
 
 /**
  * One vocabulary for "how is this going", used on every screen.
@@ -172,6 +174,112 @@ export function DecisionPill({ status, className }: { status: string; className?
     >
       <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
       {preset.label}
+    </Badge>
+  );
+}
+
+/**
+ * How long a decision has been waiting, against the service level.
+ *
+ * Carries the number of days as well as the state, because "Breached" alone
+ * invites the question the reader then has to go and answer. Icon plus text
+ * plus colour, so a breach is still a breach in greyscale.
+ */
+const SLA_PRESET: Record<
+  SlaState,
+  { label: string; icon: LucideIcon; className: string }
+> = {
+  ON_TIME: {
+    label: 'On time',
+    icon: CircleDot,
+    className: 'border-border bg-muted text-muted-foreground',
+  },
+  DUE_SOON: {
+    label: 'Due soon',
+    icon: Clock,
+    className: 'border-amber-600/40 bg-amber-500/15 text-amber-800',
+  },
+  BREACHED: {
+    label: 'Overdue',
+    icon: AlertTriangle,
+    className: 'border-destructive/40 bg-destructive/10 text-destructive',
+  },
+};
+
+export function SlaPill({
+  state,
+  days,
+  className,
+}: {
+  state: SlaState;
+  /** Whole days waited, so the pill can say "waiting 6 days" rather than a mood. */
+  days: number;
+  className?: string;
+}) {
+  const preset = SLA_PRESET[state];
+  const Icon = preset.icon;
+  const waited = `${days} day${days === 1 ? '' : 's'}`;
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn('gap-1 whitespace-nowrap font-medium', preset.className, className)}
+    >
+      <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+      {state === 'ON_TIME' ? `Waiting ${waited}` : `${preset.label} · ${waited}`}
+    </Badge>
+  );
+}
+
+/**
+ * A project's RAG status.
+ *
+ * The letter is not enough on its own — "amber" means nothing to somebody who
+ * cannot separate it from green — so each carries a word and a distinct icon.
+ */
+const RAG_PRESET: Record<Rag, { label: string; icon: LucideIcon; className: string }> = {
+  GREEN: {
+    label: 'On track',
+    icon: CircleDot,
+    className: 'border-green-700/30 bg-green-700/10 text-green-800',
+  },
+  AMBER: {
+    label: 'At risk',
+    icon: AlertTriangle,
+    className: 'border-amber-600/40 bg-amber-500/15 text-amber-800',
+  },
+  RED: {
+    label: 'In trouble',
+    icon: AlertTriangle,
+    className: 'border-destructive/40 bg-destructive/10 text-destructive',
+  },
+  COMPLETE: {
+    label: 'Complete',
+    icon: CheckCircle2,
+    className: 'border-border bg-muted text-muted-foreground',
+  },
+};
+
+export function RagPill({
+  rag,
+  className,
+  showLetter = false,
+}: {
+  rag: Rag;
+  className?: string;
+  /** Adds the R/A/G letter for readers who report in those terms. */
+  showLetter?: boolean;
+}) {
+  const preset = RAG_PRESET[rag];
+  const Icon = preset.icon;
+
+  return (
+    <Badge
+      variant="outline"
+      className={cn('gap-1 whitespace-nowrap font-medium', preset.className, className)}
+    >
+      <Icon className="h-3 w-3 shrink-0" aria-hidden="true" />
+      {showLetter && rag !== 'COMPLETE' ? `${rag[0]} · ${preset.label}` : preset.label}
     </Badge>
   );
 }

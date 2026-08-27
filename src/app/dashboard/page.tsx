@@ -79,6 +79,10 @@ export default async function DashboardPage({
                         status: { in: [...OPEN_BLOCKER_STATUSES] }
                     }
                 },
+                // Committed spend, which the RAG rating needs to work out
+                // budget variance. Only two columns: the dashboard never shows
+                // an individual payment.
+                payments: { select: { amount: true, status: true } },
             },
         }),
         prisma.projectStatus.findMany(),
@@ -106,12 +110,45 @@ export default async function DashboardPage({
     const existingYears = new Set(distinctYears.map(p => p.workingYear));
     const generatedYears = generateWorkingYears();
     const combinedYears = new Set([...generatedYears, ...existingYears]);
-    
+
     const years = Array.from(combinedYears);
     const availableYears = ["all", ...years.sort((a, b) => b.localeCompare(a))];
-    
+
+    /*
+     * Delivery trend, from timestamps that already exist.
+     *
+     * There is no history table, so a "RAG last month" figure would have to be
+     * invented. What *is* recorded honestly is when each task was completed, so
+     * the trend shown is throughput: tasks finished in each of the last six
+     * weeks, and this week against last. That is a real measurement rather than
+     * a reconstructed one.
+     */
+    const projectIds = allProjects.map((p) => p.id);
+    const sixWeeksAgo = new Date();
+    sixWeeksAgo.setDate(sixWeeksAgo.getDate() - 42);
+
+    const completions = projectIds.length
+        ? await prisma.task.findMany({
+              where: {
+                  completedAt: { gte: sixWeeksAgo },
+                  milestone: { projectId: { in: projectIds } },
+              },
+              select: { completedAt: true },
+          })
+        : [];
+
+    // Bucketed into six 7-day windows, oldest first.
+    const buckets = Array.from({ length: 6 }, () => 0);
+    for (const { completedAt } of completions) {
+        if (!completedAt) continue;
+        const daysAgo = Math.floor((Date.now() - completedAt.getTime()) / (24 * 60 * 60 * 1000));
+        const index = 5 - Math.floor(daysAgo / 7);
+        if (index >= 0 && index < 6) buckets[index] += 1;
+    }
+
     return (
         <DashboardClient
+            deliveryTrend={buckets}
             initialProjects={serialize(allProjects)}
             projectStatuses={serialize(projectStatuses)}
             pmoDivisions={serialize(pmoDivisions)}

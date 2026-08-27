@@ -262,6 +262,15 @@ model Milestone {
   description String
   startDate   DateTime
   dueDate     DateTime
+  /// The dates this milestone was originally committed to.
+  ///
+  /// Mirrors the project-level baseline, for the same reason: the schedule
+  /// view compares plan against commitment, and without a milestone baseline
+  /// a milestone that slipped three weeks looks identical to one that never
+  /// moved. Nullable because milestones created before this existed have no
+  /// recorded commitment, and inventing one would be a lie.
+  baselineStartDate DateTime?
+  baselineDueDate   DateTime?
   weight      Float
   /// Cascade: a milestone belongs to its project and has no meaning without it.
   project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
@@ -291,6 +300,9 @@ model Task {
   status      TaskStatus   @default(TODO)
   startDate   DateTime
   endDate     DateTime
+  /// The dates this task was originally committed to. See Milestone.
+  baselineStartDate DateTime?
+  baselineEndDate   DateTime?
   weight      Float
   progress    Float        @default(0)
   completedAt DateTime?
@@ -298,6 +310,9 @@ model Task {
   milestoneId String
   assignees   User[]       @relation("TaskAssignees")
   updates     TaskUpdate[]
+  /// Work that must happen before this task, and work waiting on it.
+  dependsOn   TaskDependency[] @relation("DependencySuccessor")
+  dependents  TaskDependency[] @relation("DependencyPredecessor")
   createdAt   DateTime     @default(now())
   updatedAt   DateTime     @updatedAt
 
@@ -307,6 +322,49 @@ model Task {
   /// Drives the approvals queue: pending tasks, oldest deadline first.
   @@index([status, endDate])
   @@index([completedAt])
+}
+
+/// How a dependency constrains the two tasks it joins.
+///
+/// Finish-to-start covers almost everything and is the default; the other
+/// three exist because real plans contain them and silently coercing them to
+/// FS would move dates the planner did not agree to.
+enum DependencyType {
+  /// The predecessor must finish before the successor starts. The common case.
+  FINISH_TO_START
+  /// Both start together.
+  START_TO_START
+  /// Both finish together.
+  FINISH_TO_FINISH
+  /// The predecessor must start before the successor finishes. Rare.
+  START_TO_FINISH
+}
+
+/// One "this waits on that" link between two tasks.
+///
+/// Held as a table rather than an array column so a link can carry its own
+/// type and lag, and so the schedule can be walked in either direction —
+/// forward to find what a slip delays, backward to find the critical path.
+model TaskDependency {
+  id String @id @default(cuid())
+
+  /// The task that must happen first.
+  predecessor   Task   @relation("DependencyPredecessor", fields: [predecessorId], references: [id], onDelete: Cascade)
+  predecessorId String
+  /// The task that waits.
+  successor   Task   @relation("DependencySuccessor", fields: [successorId], references: [id], onDelete: Cascade)
+  successorId String
+
+  type DependencyType @default(FINISH_TO_START)
+  /// Working days of delay between the two. Negative means overlap (lead).
+  lagDays Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  /// The same pair may only be linked once.
+  @@unique([predecessorId, successorId])
+  @@index([predecessorId])
+  @@index([successorId])
 }
 
 enum TaskUpdateType {
@@ -376,8 +434,32 @@ model User {
   timelineChangeApprovals TimelineChangeRequest[] @relation("ReviewedBy")
   notificationsSent       Notification[]          @relation("SentNotifications")
   notificationsReceived   Notification[]          @relation("ReceivedNotifications")
+  tablePreferences        TablePreference[]
   createdAt               DateTime                @default(now())
   updatedAt               DateTime                @updatedAt
+}
+
+/// How one person likes a particular table arranged.
+///
+/// Column choice, sort and page size are a working preference, not a global
+/// setting: a finance reviewer and a delivery manager want different columns
+/// on the same table, and neither should have to set them again tomorrow.
+/// Stored per user and per table rather than in the browser, so the choice
+/// follows the person between machines.
+model TablePreference {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId String
+  /// Which table this describes, e.g. "projects" or "approvals".
+  tableKey String
+  /// Visible columns, sort, page size. Shape is owned by the table component
+  /// and validated on read, so adding a column cannot break a stored row.
+  preferences Json
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([userId, tableKey])
+  @@index([userId])
 }
 
 model Role {

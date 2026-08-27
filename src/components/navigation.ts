@@ -4,28 +4,38 @@ import {
   Archive,
   Building2,
   CalendarDays,
-  CheckSquare,
   ClipboardCheck,
   ClipboardList,
-  Clock,
-  DollarSign,
   FolderKanban,
   GanttChartSquare,
   Home,
+  Inbox,
   Library,
   ListTodo,
   Milestone,
   Settings,
-  ThumbsUp,
   UsersRound,
+  Wallet,
 } from 'lucide-react';
 
 /**
  * The sidebar's contents.
  *
- * Eighteen items were listed flat, in no particular order, so finding anything
- * meant reading the whole list — and an administrator, who can see all of them,
- * had the worst of it. They are grouped by what somebody is trying to do.
+ * Grouped by the question somebody is answering when they look at it:
+ *
+ *  - **Work** — what am I doing today?
+ *  - **Delivery** — how are the projects themselves going?
+ *  - **Governance** — what needs a decision, and where is the money?
+ *  - **Insight** — what do I tell the executive?
+ *  - **Administration** — how is the system set up?
+ *
+ * Two consolidations are visible here. The three approval queues — tasks,
+ * deadline changes, payments — are one **Approvals** inbox: they were three
+ * pages that each said nothing about the other two, so "what is waiting on me"
+ * could not be answered without visiting all three. And the two reporting
+ * pages, `/ceo-report` and `/reports`, are one **Reports** experience: they
+ * had the same permission and overlapping figures, and the drill-down links
+ * pointed between them.
  *
  * Kept out of the component so the grouping and the active-route rules can be
  * tested without rendering a sidebar.
@@ -40,13 +50,19 @@ export interface NavItem {
   /**
    * Extra paths that should light this item up.
    *
-   * `/reports` is a drill-down reached from the dashboard's stat cards. It has
-   * no sidebar entry of its own, so landing there used to leave nothing
-   * selected and no clue where you were.
+   * Used for the routes that were consolidated: somebody following an old
+   * `/task-approvals` bookmark still lands on a lit-up Approvals entry.
    */
   alsoActiveOn?: string[];
   /** For items whose href is a prefix of unrelated routes. */
   exact?: boolean;
+  /**
+   * Which live counter to show beside the label, if any.
+   *
+   * The count itself is fetched by the shell, not declared here — this only
+   * says which item is entitled to one.
+   */
+  badge?: 'approvals';
 }
 
 export interface NavGroup {
@@ -54,14 +70,22 @@ export interface NavGroup {
   items: NavItem[];
 }
 
+/** Every permission that lets somebody into some part of the approvals inbox. */
+export const APPROVAL_PERMISSIONS = [
+  'tasks:approve',
+  'timeline:approve',
+  'payment-approvals:view',
+];
+
 export const NAV_GROUPS: NavGroup[] = [
   {
-    label: 'My work',
+    label: 'Work',
     items: [
       { href: '/dashboard', label: 'Dashboard', icon: Home, permission: 'dashboard:view', exact: true },
       { href: '/today', label: 'Today', icon: ListTodo, permission: 'dashboard:view' },
       { href: '/weekly-activities', label: 'This week', icon: CalendarDays, permission: 'dashboard:view' },
       { href: '/my-tasks', label: 'My tasks', icon: ClipboardCheck, permission: 'my-tasks:view' },
+      { href: '/team-view', label: 'Team view', icon: ClipboardList, permission: 'team-view:view' },
     ],
   },
   {
@@ -69,40 +93,41 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/projects', label: 'Projects', icon: FolderKanban, permission: 'projects:read' },
       { href: '/milestones', label: 'Milestones', icon: Milestone, permission: 'milestones:view' },
-      { href: '/gantt', label: 'Timeline', icon: GanttChartSquare, permission: 'gantt:view' },
+      { href: '/gantt', label: 'Schedule', icon: GanttChartSquare, permission: 'gantt:view' },
+      { href: '/teams', label: 'Teams', icon: UsersRound, permission: 'teams:read' },
       { href: '/archive', label: 'Archive', icon: Archive, permission: 'projects:read' },
     ],
   },
   {
-    label: 'Team',
+    label: 'Governance',
     items: [
-      { href: '/team-view', label: 'Team view', icon: ClipboardList, permission: 'team-view:view' },
-      { href: '/teams', label: 'Teams', icon: UsersRound, permission: 'teams:read' },
-    ],
-  },
-  {
-    label: 'Awaiting approval',
-    items: [
-      { href: '/task-approvals', label: 'Tasks', icon: ThumbsUp, permission: 'tasks:approve' },
-      { href: '/timeline-approvals', label: 'Timeline changes', icon: Clock, permission: 'timeline:approve' },
-      { href: '/payment-approvals', label: 'Payments', icon: CheckSquare, permission: 'payment-approvals:view' },
-    ],
-  },
-  {
-    label: 'Money and reporting',
-    items: [
-      { href: '/payments', label: 'Payments', icon: DollarSign, permission: 'payments:view' },
       {
-        href: '/ceo-report',
-        label: 'Portfolio report',
+        href: '/approvals',
+        label: 'Approvals',
+        icon: Inbox,
+        permission: APPROVAL_PERMISSIONS,
+        badge: 'approvals',
+        // The three retired queues keep working and keep this entry lit.
+        alsoActiveOn: ['/task-approvals', '/timeline-approvals', '/payment-approvals'],
+      },
+      { href: '/payments', label: 'Payments', icon: Wallet, permission: 'payments:view' },
+    ],
+  },
+  {
+    label: 'Insight',
+    items: [
+      {
+        href: '/reports',
+        label: 'Reports',
         icon: AreaChart,
         permission: 'reports:view',
-        alsoActiveOn: ['/reports'],
+        // `/ceo-report` folded into this one.
+        alsoActiveOn: ['/ceo-report'],
       },
     ],
   },
   {
-    label: 'Organisation',
+    label: 'Administration',
     items: [
       { href: '/pmo-divisions', label: 'EPMO divisions', icon: Library, permission: 'pmo-divisions:view' },
       { href: '/departments', label: 'Departments', icon: Building2, permission: 'departments:read' },
@@ -120,7 +145,8 @@ export const NAV_GROUPS: NavGroup[] = [
  * Whether a nav item should appear selected for the current path.
  *
  * `startsWith` alone is wrong in both directions: /dashboard would stay lit on
- * every route beneath it, and /reports would light nothing at all.
+ * every route beneath it, and a consolidated route would light nothing at all
+ * when reached by one of its old addresses.
  */
 export function isNavItemActive(item: NavItem, pathname: string): boolean {
   const matches = (base: string) =>

@@ -22,18 +22,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import {
-  Accordion,
-  AccordionContent,
-  AccordionItem,
-  AccordionTrigger,
-} from "@/components/ui/accordion";
 import { DataToolbar, ALL } from "@/components/ui/data-toolbar";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, PageShell } from "@/components/ui/page-header";
 import { Progress } from "@/components/ui/progress";
 import { StatCard, StatCardGrid } from "@/components/ui/stat-card";
-import { HealthPill, RISK_CLASS, RISK_ICON } from "@/components/ui/status-pill";
+import { RISK_CLASS, RISK_ICON } from "@/components/ui/status-pill";
 import { Separator } from "../ui/separator";
 import { useAuth } from "@/context/auth-context";
 import { CelebrationSlider } from "./celebration-slider";
@@ -43,20 +37,27 @@ import { ResponsibleDepartmentChart } from "@/components/dashboard/responsible-d
 import { isOpenBlocker } from "@/lib/validation/blocker";
 import {
   displayProgress,
-  milestoneProgress as calculateMilestoneProgress,
   projectProgress as calculateProjectProgress,
   isArchivedStatus,
   isClosedStatus,
   isOverdue,
+  summarizeRag,
   summarizeSchedule,
 } from "@/lib/metrics";
-import {
-  daysUntil,
-  milestoneHealth,
-  projectRisks,
-  summarizeMilestoneHealth,
-} from "@/lib/ui/health";
+import { projectRisks } from "@/lib/ui/health";
 import { sortProjects } from "@/lib/ui/sort";
+import {
+  ProjectTable,
+  PROJECT_COLUMNS,
+  DEFAULT_PROJECT_COLUMNS,
+  sortProjectRows,
+  type ProjectColumn,
+  type ProjectTableSort,
+} from "@/components/projects/project-table";
+import { ColumnPicker } from "@/components/ui/column-picker";
+import { PortfolioHealth, NeedsAttention } from "./portfolio-health";
+import { useTablePreferences } from "@/hooks/use-table-preferences";
+import { getAttentionCounts } from "@/app/approvals/actions";
 import { cn } from "@/lib/utils";
 
 /**
@@ -83,6 +84,7 @@ export function DashboardClient({
   teams,
   availableYears,
   currentWorkingYear,
+  deliveryTrend = [],
 }: any) {
   const router = useRouter();
   const pathname = usePathname();
@@ -91,6 +93,49 @@ export function DashboardClient({
 
   const selectedYear = searchParams.get("year") || currentWorkingYear;
   const selectedDivision = searchParams.get("division") || ALL;
+
+  /**
+   * The project table's layout, remembered for this person.
+   *
+   * Sort lives here too rather than in the URL: which column somebody sorts by
+   * is a working preference, not a description of the data, and putting it in
+   * the address bar would make every shared dashboard link carry one reader's
+   * habits.
+   */
+  const [tablePrefs, setTablePrefs] = useTablePreferences<{
+    columns: string[];
+    sort: ProjectTableSort;
+  }>('dashboard-projects', {
+    columns: DEFAULT_PROJECT_COLUMNS,
+    // Worst health first: this table exists to surface trouble, so the default
+    // ordering should already have done that before anyone touches a header.
+    sort: { column: 'rag', direction: 'asc' },
+  });
+  const columns = tablePrefs.columns as ProjectColumn[];
+  const tableSort = tablePrefs.sort as ProjectTableSort;
+  const setColumns = (next: ProjectColumn[]) => setTablePrefs({ columns: next });
+  const setTableSort = (next: ProjectTableSort) => setTablePrefs({ sort: next });
+
+  /** What is outstanding for this person, counted on the server. */
+  const [attentionCounts, setAttentionCounts] = React.useState<{
+    pendingApprovals: number;
+    overdueTasks: number;
+    openBlockers: number;
+  } | null>(null);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    getAttentionCounts()
+      .then((counts) => {
+        if (!cancelled) setAttentionCounts(counts);
+      })
+      // The panel simply does not render if the counts cannot be fetched —
+      // the rest of the dashboard is still worth showing.
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const ready =
     initialProjects && projectStatuses && pmoDivisions && departments && teams;
@@ -193,6 +238,12 @@ export function DashboardClient({
     };
   }, [activeProjects]);
 
+  /** The RAG spread across whatever the filters currently select. */
+  const portfolioRag = React.useMemo(
+    () => summarizeRag(filteredProjects),
+    [filteredProjects],
+  );
+
   /** Every filter the cards were counted under, so a drill-down matches. */
   const reportQuery = React.useMemo(() => {
     const params = new URLSearchParams();
@@ -268,6 +319,29 @@ export function DashboardClient({
         />
       </PageHeader>
 
+      {/*
+        Health first, then what needs doing, then the numbers.
+        The order is the order somebody reads them in: is the portfolio all
+        right, is anything waiting on me, and only then how did we do.
+      */}
+      <PortfolioHealth
+        rag={portfolioRag}
+        deliveryTrend={deliveryTrend}
+        onDrillDown={(rating) =>
+          router.push(
+            `/reports?type=${rating === 'RED' ? 'overdue' : 'at-risk'}&${reportQuery}`,
+          )
+        }
+      />
+
+      {attentionCounts && (
+        <NeedsAttention
+          pendingApprovals={attentionCounts.pendingApprovals}
+          overdueTasks={attentionCounts.overdueTasks}
+          openBlockers={attentionCounts.openBlockers}
+        />
+      )}
+
       <StatCardGrid>
         <StatCard
           label="On-time completion"
@@ -322,19 +396,32 @@ export function DashboardClient({
 
       <Card>
         <CardHeader>
-          <CardTitle>Active projects</CardTitle>
-          <CardDescription>
-            Everything currently in delivery, ordered by how much trouble it is in. Expand a
-            project to see its milestones.
-          </CardDescription>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <CardTitle>Active projects</CardTitle>
+              <CardDescription>
+                Everything currently in delivery. Sort by any column to find what needs you.
+              </CardDescription>
+            </div>
+            <ColumnPicker
+              columns={PROJECT_COLUMNS}
+              selected={columns}
+              onChange={setColumns}
+            />
+          </div>
         </CardHeader>
         <CardContent>
           {activeProjects.length > 0 ? (
-            <Accordion type="single" collapsible className="w-full space-y-2">
-              {sortProjects(activeProjects, "risk").map((project: any) => (
-                <ActiveProjectRow key={project.id} project={project} />
-              ))}
-            </Accordion>
+            <ProjectTable
+              projects={sortProjectRows(activeProjects, tableSort)}
+              columns={columns}
+              sort={tableSort}
+              onSortChange={setTableSort}
+              // The dashboard's filters travel with the link, so returning
+              // from a project lands on the same slice of the portfolio the
+              // reader left. Without this, every drill-down reset the view.
+              linkQuery={reportQuery}
+            />
           ) : (
             <EmptyState
               variant={filteredProjects.length > 0 ? "no-match" : "empty"}
@@ -628,113 +715,5 @@ function AttentionPanel({
         })}
       </CardContent>
     </Card>
-  );
-}
-
-/**
- * One active project in the list, with its milestones one level down.
- *
- * The nesting used to go one level further — project, then milestone, then a
- * table of tasks — which meant three clicks to see anything and a dashboard
- * that could be scrolled for a minute without reaching the bottom. The task
- * detail lives on the project page, which is one click from here.
- */
-function ActiveProjectRow({ project }: { project: any }) {
-  const progress = calculateProjectProgress(project);
-  const health = summarizeMilestoneHealth(project.milestones ?? []);
-  const remaining = daysUntil({ endDate: project.endDate });
-  const needsAttention = health.overdue + health.atRisk;
-
-  return (
-    <AccordionItem value={project.id} className="rounded-md border px-4">
-      <AccordionTrigger className="hover:no-underline">
-        <div className="flex w-full flex-col gap-3 pr-2 text-left lg:flex-row lg:items-center lg:gap-4">
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="font-semibold">{project.name}</span>
-              <Badge variant="secondary" className="font-normal">
-                {project.status?.name}
-              </Badge>
-              {needsAttention > 0 && (
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
-                    health.overdue > 0 ? RISK_CLASS.critical : RISK_CLASS.warning,
-                  )}
-                >
-                  {needsAttention} milestone{needsAttention === 1 ? "" : "s"} need attention
-                </span>
-              )}
-            </div>
-            <p className="text-xs font-normal text-muted-foreground">
-              {health.total} milestone{health.total === 1 ? "" : "s"}
-              {remaining !== null &&
-                (remaining < 0
-                  ? ` · ${Math.abs(remaining)} days past its deadline`
-                  : ` · ${remaining} days left`)}
-            </p>
-          </div>
-
-          <div className="flex w-full items-center gap-3 lg:w-56 lg:shrink-0">
-            <Progress
-              value={progress}
-              className="h-2 flex-1"
-              aria-label={`${project.name}: ${displayProgress(progress)}% complete`}
-            />
-            <span className="w-10 shrink-0 text-right text-sm font-semibold tabular-nums">
-              {displayProgress(progress)}%
-            </span>
-          </div>
-        </div>
-      </AccordionTrigger>
-
-      <AccordionContent className="pb-4 pt-2">
-        {(project.milestones ?? []).length === 0 ? (
-          <EmptyState
-            title="No milestones planned"
-            description="Progress cannot be tracked until the work is broken down."
-            compact
-          />
-        ) : (
-          <>
-            <ul className="space-y-2">
-              {project.milestones.map((milestone: any) => {
-                const mProgress = calculateMilestoneProgress(milestone);
-                return (
-                  <li
-                    key={milestone.id}
-                    className="flex flex-col gap-2 rounded-md border bg-muted/40 p-3 sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div className="min-w-0 space-y-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className="text-sm font-medium">{milestone.title}</span>
-                        <HealthPill health={milestoneHealth(milestone)} />
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Due {format(parseISO(milestone.dueDate), "d MMM yyyy")} · weight{" "}
-                        {milestone.weight}% · {milestone.tasks?.length ?? 0} task
-                        {(milestone.tasks?.length ?? 0) === 1 ? "" : "s"}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 sm:w-40 sm:shrink-0">
-                      <Progress value={mProgress} className="h-2 flex-1" />
-                      <span className="w-9 shrink-0 text-right text-xs font-semibold tabular-nums">
-                        {displayProgress(mProgress)}%
-                      </span>
-                    </div>
-                  </li>
-                );
-              })}
-            </ul>
-            <Button asChild variant="outline" size="sm" className="mt-3">
-              <Link href={`/projects/${project.id}`}>
-                Open the project
-                <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
-              </Link>
-            </Button>
-          </>
-        )}
-      </AccordionContent>
-    </AccordionItem>
   );
 }

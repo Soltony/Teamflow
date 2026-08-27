@@ -128,6 +128,10 @@ export default function EditProjectPage() {
 
   const initialDataForForm = {
       ...data.project,
+      // The column is a free string in the database; the shared schema allows
+      // exactly two values. Narrowing here means the form cannot be seeded
+      // with a currency it would then refuse to submit.
+      currency: data.project.currency === 'USD' ? ('USD' as const) : ('ETB' as const),
       totalCost: data.project.totalCost ? parseFloat(data.project.totalCost) : 0,
       startDate: parseISO(data.project.startDate),
       endDate: parseISO(data.project.endDate),

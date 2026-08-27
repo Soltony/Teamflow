@@ -58,7 +58,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "../ui/alert-dialog";
-import type { Serialized } from '@/lib/serialize';
+import type { Serialized } from "@/lib/serialize";
+import { useFormDraft } from "@/hooks/use-form-draft";
 
 type ProjectFormProps = {
   mode: 'create' | 'edit';
@@ -131,7 +132,9 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       responsibleDepartmentIds: [],
       hasMilestones: false,
       hasCost: false,
-      currency: 'ETB',
+      // Narrowed by the shared schema now, so the literal has to be one of the
+      // two the enum allows rather than any string.
+      currency: 'ETB' as const,
       totalCost: 0,
       milestones: [],
       payments: [],
@@ -167,6 +170,32 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
     }
   }, [initialData, isEditMode, form]);
 
+  /**
+   * The draft, so a refresh does not cost the reader their work.
+   *
+   * Only on create. An edit form is already seeded from a saved project, and
+   * restoring a stale draft over it would silently resurrect changes somebody
+   * had abandoned — which is much worse than retyping.
+   */
+  const { draft, save: saveDraft, clear: clearDraft, savedAt } = useFormDraft<ProjectFormValues>(
+    'project-create',
+    !isEditMode,
+  );
+  const [draftRestored, setDraftRestored] = useState(false);
+
+  useEffect(() => {
+    if (isEditMode || !draft || draftRestored) return;
+    form.reset(draft);
+    setDraftRestored(true);
+  }, [draft, draftRestored, isEditMode, form]);
+
+  // Watches every field; the hook debounces the actual write.
+  useEffect(() => {
+    if (isEditMode) return;
+    const subscription = form.watch((values) => saveDraft(values as ProjectFormValues));
+    return () => subscription.unsubscribe();
+  }, [form, saveDraft, isEditMode]);
+
   // Passed whole to the section that owns each list, rather than destructured
   // here and threaded through as six separate props.
   const milestoneArray = useFieldArray({ control: form.control, name: "milestones" });
@@ -185,35 +214,35 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
   const steps: WizardStep[] = [
     {
       id: 'basics',
-      label: 'The project',
-      description: 'What it is called and what it is for.',
-      fields: ['name', 'description'],
+      label: 'Basics',
+      description: 'What it is called, what it delivers, and where it stands.',
+      fields: ['name', 'description', 'statusId'],
     },
     {
       id: 'schedule',
-      label: 'Dates',
+      label: 'Schedule',
       description: 'When delivery starts and when it is committed to finish.',
       fields: ['startDate', 'endDate', 'workingYear'],
     },
     {
-      id: 'ownership',
-      label: 'Ownership',
-      description: 'Who runs it, which division owns it, and who it is for.',
-      fields: ['pmoDivisionId', 'projectManagerId', 'statusId', 'responsibleDepartmentIds'],
-    },
-    {
-      id: 'milestones',
-      label: 'Milestones',
-      description: 'Break the work down so progress can be measured against it.',
+      id: 'structure',
+      label: 'Structure',
+      description: 'Break the work into milestones so progress can be measured against a plan.',
       fields: ['hasMilestones', 'milestones'],
       optional: true,
     },
     {
-      id: 'cost',
-      label: 'Cost and payments',
-      description: 'The budget and the schedule it is paid against.',
+      id: 'budget',
+      label: 'Budget',
+      description: 'What it costs and the schedule it is paid against.',
       fields: ['hasCost', 'totalCost', 'currency', 'payments'],
       optional: true,
+    },
+    {
+      id: 'team',
+      label: 'Team',
+      description: 'Who runs it, which division owns it, and who it is being delivered for.',
+      fields: ['pmoDivisionId', 'projectManagerId', 'responsibleDepartmentIds'],
     },
     {
       id: 'review',
@@ -262,8 +291,11 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
     }
 
     setIsSubmitting(true);
-    await onSubmit(data);
+    const result = await onSubmit(data);
     setIsSubmitting(false);
+    // Only once it has actually landed: clearing on submit would lose the
+    // draft for somebody whose save just failed.
+    if (result?.success !== false) clearDraft();
   }
 
   /**
@@ -322,9 +354,21 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
           submitLabel={isEditMode ? 'Save changes' : 'Create project'}
           onSubmit={handleSubmitClick}
           footer={
-            <Button type="button" variant="ghost" onClick={() => router.back()} disabled={isSubmitting}>
-              Cancel
-            </Button>
+            <>
+              <Button type="button" variant="ghost" onClick={() => router.back()} disabled={isSubmitting}>
+                Cancel
+              </Button>
+              {/*
+                Says the draft exists rather than leaving the reader to hope.
+                A form that silently saves is indistinguishable from one that
+                silently does not.
+              */}
+              {!isEditMode && savedAt && (
+                <span className="text-xs text-muted-foreground">
+                  Draft kept for this session · saved {format(savedAt, 'HH:mm')}
+                </span>
+              )}
+            </>
           }
         >
           {currentStepId === 'basics' && (
@@ -362,6 +406,30 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                       Read by people who were not in the room when it was agreed. At least 10
                       characters.
                     </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/*
+                Status belongs with the basics rather than with ownership: it
+                describes the project, not who runs it, and somebody registering
+                a project sets it in the same breath as the name.
+              */}
+              <FormField
+                control={form.control}
+                name="statusId"
+                render={({ field }) => (
+                  <FormItem className="max-w-sm">
+                    <FormLabel>Status</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {projectStatuses.map(status => <SelectItem key={status.id} value={status.id}>{status.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>How delivery is currently going.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -411,7 +479,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
             </FormSection>
           )}
 
-          {currentStepId === 'ownership' && (
+          {currentStepId === 'team' && (
             <FormSection>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
@@ -460,25 +528,6 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                           ? `${projectManagers.length} available in this division.`
                           : 'All managers are listed until a division is chosen.'}
                       </FormDescription>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="statusId"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger><SelectValue placeholder="Select a status" /></SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {projectStatuses.map(status => <SelectItem key={status.id} value={status.id}>{status.name}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                      <FormDescription>How delivery is currently going.</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -542,7 +591,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
             </FormSection>
           )}
 
-          {currentStepId === 'milestones' && (
+          {currentStepId === 'structure' && (
             <ProjectFormMilestones
               form={form}
               fieldArray={milestoneArray}
@@ -551,7 +600,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
             />
           )}
 
-          {currentStepId === 'cost' && (
+          {currentStepId === 'budget' && (
             <ProjectFormCost
               form={form}
               fieldArray={paymentArray}

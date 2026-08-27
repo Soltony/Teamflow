@@ -53,6 +53,7 @@ import { cn } from "@/lib/utils";
 import { NibLogo } from "./logo";
 import { NotificationBell } from "./notifications/notification-bell";
 import { NAV_GROUPS, isNavItemActive, visibleGroups } from "./navigation";
+import { useApprovalCount } from "@/hooks/use-approval-count";
 
 
 
@@ -60,6 +61,7 @@ function AppSidebar({ className }: { className?: string }) {
   const pathname = usePathname();
   const { isOpen, isMobile } = useSidebar();
   const { localUser, logout, hasPermission } = useAuth();
+  const approvalCount = useApprovalCount();
   const router = useRouter();
   
   const userInitials = localUser
@@ -99,6 +101,14 @@ function AppSidebar({ className }: { className?: string }) {
                     href={item.href}
                     isActive={isNavItemActive(item, pathname)}
                     icon={<item.icon />}
+                    // Only the approvals entry claims a badge, and only when
+                    // there is actually something waiting.
+                    badge={item.badge === 'approvals' && approvalCount ? approvalCount : undefined}
+                    badgeLabel={
+                      item.badge === 'approvals' && approvalCount
+                        ? `${approvalCount} awaiting your decision`
+                        : undefined
+                    }
                   >
                     {item.label}
                   </SidebarMenuButton>

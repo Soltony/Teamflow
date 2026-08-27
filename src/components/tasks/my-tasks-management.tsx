@@ -40,6 +40,8 @@ import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader, PageShell } from "@/components/ui/page-header";
 import { StatCard, StatCardGrid } from "@/components/ui/stat-card";
 import { TaskStatusPill } from "@/components/ui/status-pill";
+import { TaskWorkspace } from "./my-tasks-views";
+import type { TaskLike } from "./task-views";
 
 const taskUpdateSchema = (taskProgress: number) => z.object({
   text: z.string().min(10, "Update must be at least 10 characters.").max(500, "Update cannot exceed 500 characters."),
@@ -432,8 +434,27 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
         )
       : tasks;
 
-  const nothingAssigned =
-    overdueTasks.length === 0 && activeTasks.length === 0 && accomplishedThisWeek.length === 0;
+  /**
+   * The tasks in the shape the workspace reads.
+   *
+   * Mapped rather than passed through: the workspace is shared with Team view,
+   * whose rows come from a different query, and giving both the same shape is
+   * what keeps the two screens agreeing about what "overdue" means.
+   */
+  const workspaceTasks: TaskLike[] = useMemo(
+    () =>
+      initialTasks.map((task) => ({
+        id: task.id,
+        title: task.title,
+        status: task.status,
+        endDate: task.endDate as unknown as string,
+        progress: task.progress ?? 0,
+        projectId: task.projectId,
+        projectName: task.projectName,
+        milestoneTitle: task.milestoneTitle,
+      })),
+    [initialTasks],
+  );
 
   return (
     <PageShell>
@@ -492,77 +513,21 @@ export function MyTasksManagement({ allUsers, currentUser, initialTasks, onDataC
         />
       </StatCardGrid>
 
-      {nothingAssigned ? (
-        <EmptyState
-          variant="none-yours"
-          title="No tasks are assigned to you"
-          description="When somebody assigns you work it will appear here, grouped by what needs doing first."
-        />
-      ) : (
-        <>
-          <DataToolbar
-            search={{
-              value: search,
-              onChange: setSearch,
-              placeholder: 'Search your tasks…',
-              label: 'Search your tasks by title, project or milestone',
-            }}
-            count={{
-              showing: narrow([...overdueTasks, ...activeTasks, ...accomplishedThisWeek]).length,
-              total: overdueTasks.length + activeTasks.length + accomplishedThisWeek.length,
-              noun: 'tasks',
-            }}
-            onClearAll={() => {
-              setSearch('');
-              setFilter(null);
-            }}
-            actions={
-              filter && (
-                <Button variant="outline" size="sm" onClick={() => setFilter(null)}>
-                  Show all sections
-                </Button>
-              )
-            }
-          />
-
-          <TaskSection
-              title="Overdue"
-              icon={<AlertTriangle className="w-6 h-6 text-destructive" />}
-              tasks={narrow(overdueTasks)}
-              show={filter === null || filter === 'overdue'}
-              emptyMatters={filter === 'overdue'}
-              searching={Boolean(query)}
-              {...commonTaskSectionProps}
-          />
-          <TaskSection
-              title="Due today"
-              icon={<CalendarCheck className="w-6 h-6 text-amber-600" />}
-              tasks={narrow(todaysTasks)}
-              show={filter === 'today'}
-              emptyMatters={filter === 'today'}
-              searching={Boolean(query)}
-              {...commonTaskSectionProps}
-          />
-          <TaskSection
-              title="Active"
-              icon={<Clock className="w-6 h-6 text-blue-600" />}
-              tasks={narrow(activeTasks)}
-              show={filter === null || filter === 'active'}
-              emptyMatters={filter === 'active'}
-              searching={Boolean(query)}
-              {...commonTaskSectionProps}
-          />
-          <TaskSection
-              title="Accomplished this week"
-              icon={<Check className="w-6 h-6 text-green-700" />}
-              tasks={narrow(accomplishedThisWeek)}
-              show={filter === null || filter === 'accomplished'}
-              emptyMatters={filter === 'accomplished'}
-              searching={Boolean(query)}
-              {...commonTaskSectionProps}
-          />
-        </>
-      )}
+      {/*
+        The four fixed sections this replaces — Overdue, Due today, Active,
+        Accomplished — were the only arrangement on offer, so a question the
+        sections did not answer could not be asked. The workspace keeps the
+        same tasks and lets the reader choose the shape: a list when hunting
+        for what is late, a board when asking where work is piling up, a
+        calendar when planning a week.
+      */}
+      <TaskWorkspace
+        tasks={workspaceTasks}
+        onDataChange={onDataChange}
+        storageKey="my-tasks"
+        emptyTitle="No tasks are assigned to you"
+        emptyDescription="When somebody assigns you work it will appear here."
+      />
     </PageShell>
   );
 }

@@ -66,12 +66,13 @@ export function ProjectReviewStep({
 
   return (
     <div className="space-y-4">
-      <ReviewCard title="The project" onEdit={() => onEditStep('basics')}>
+      <ReviewCard title="Basics" onEdit={() => onEditStep('basics')}>
         <Row label="Name" value={values.name || <Missing />} />
         <Row label="Delivers" value={values.description || <Missing />} />
+        <Row label="Status" value={status?.name ?? <Missing />} />
       </ReviewCard>
 
-      <ReviewCard title="Dates" onEdit={() => onEditStep('schedule')}>
+      <ReviewCard title="Schedule" onEdit={() => onEditStep('schedule')}>
         <Row
           label="Runs"
           value={
@@ -85,17 +86,7 @@ export function ProjectReviewStep({
         <Row label="Working year" value={values.workingYear || <Missing />} />
       </ReviewCard>
 
-      <ReviewCard title="Ownership" onEdit={() => onEditStep('ownership')}>
-        <Row label="EPMO division" value={division?.name ?? <Missing />} />
-        <Row label="Project manager" value={manager?.name ?? <Missing />} />
-        <Row label="Status" value={status?.name ?? <Missing />} />
-        <Row
-          label="Responsible departments"
-          value={depts.length > 0 ? depts.map((d) => d.name).join(', ') : <Missing />}
-        />
-      </ReviewCard>
-
-      <ReviewCard title="Milestones" onEdit={() => onEditStep('milestones')}>
+      <ReviewCard title="Structure" onEdit={() => onEditStep('structure')}>
         {!values.hasMilestones ? (
           <p className="text-sm text-muted-foreground">
             No milestones. Progress cannot be tracked against a plan until the work is broken down.
@@ -130,7 +121,7 @@ export function ProjectReviewStep({
         )}
       </ReviewCard>
 
-      <ReviewCard title="Cost and payments" onEdit={() => onEditStep('cost')}>
+      <ReviewCard title="Budget" onEdit={() => onEditStep('budget')}>
         {!values.hasCost ? (
           <p className="text-sm text-muted-foreground">No budget recorded for this project.</p>
         ) : (
@@ -163,6 +154,15 @@ export function ProjectReviewStep({
             )}
           </>
         )}
+      </ReviewCard>
+
+      <ReviewCard title="Team" onEdit={() => onEditStep('team')}>
+        <Row label="EPMO division" value={division?.name ?? <Missing />} />
+        <Row label="Project manager" value={manager?.name ?? <Missing />} />
+        <Row
+          label="Responsible departments"
+          value={depts.length > 0 ? depts.map((d) => d.name).join(', ') : <Missing />}
+        />
       </ReviewCard>
 
       <p className="text-sm text-muted-foreground">
