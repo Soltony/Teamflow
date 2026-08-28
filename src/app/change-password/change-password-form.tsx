@@ -82,7 +82,10 @@ export function ChangePasswordForm({ mustChange }: { mustChange: boolean }) {
       title: 'Password changed',
       description: 'You have been signed out everywhere. Sign in with your new password.',
     });
-    router.replace('/login');
+    // The toast does not survive the navigation reliably; the flag gives the
+    // sign-in screen its own notice, so the reason they are back here is on
+    // the page they land on.
+    router.replace('/login?passwordChanged=1');
     router.refresh();
   }
 

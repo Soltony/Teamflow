@@ -5,10 +5,11 @@
 /*
  * NIB EPMO design tokens.
  *
- * The palette is the GuessLow family: brand gold as the action colour, warm
- * orange for urgency, and a deep ink surface for chrome and headline panels.
- * Gold is dull against white, so it earns its presence by sitting on either a
- * cool near-white page or the ink — that contrast is what carries the identity.
+ * The palette comes off the logo: gold as the action colour, the logo's brown
+ * as the deep surface for chrome and headline panels, and warm orange between
+ * them for urgency. Gold is dull against white, so it earns its presence by
+ * sitting on either the near-white page or the brown — that contrast is what
+ * carries the identity, and it is why nothing in the system is flat black.
  *
  * Typography is set by next/font in app/layout.tsx, which defines --font-sans
  * and is picked up by Tailwind's font-sans.
@@ -29,11 +30,13 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    /* Brand gold — always pairs with black text. */
-    --primary: 45 93% 47%;
-    --primary-foreground: 0 0% 0%;
-    --primary-soft: 45 95% 92%;
-    --primary-strong: 40 95% 27%;
+    /* Brand gold, sampled off the logo's lower half (#FFCC02 at its centre).
+     * It pairs with the logo's brown rather than flat black: near-black at
+     * this lightness, but warm, so nothing on a gold fill goes cold. */
+    --primary: 46 96% 50%;
+    --primary-foreground: 26 65% 8%;
+    --primary-soft: 46 95% 92%;
+    --primary-strong: 38 92% 27%;
 
     --secondary: 210 40% 96.1%;
     --secondary-foreground: 222.2 47.4% 11.2%;
@@ -83,18 +86,26 @@
     /* The keyboard focus indicator. Brand gold, but deep enough to be seen: at
      * the reference 47% it sits at 1.98:1 on a card, so anyone navigating by
      * keyboard could not tell where they were. */
-    --ring: 45 93% 35%;
+    --ring: 46 96% 34%;
     /* The off track of a switch. Distinct from both --primary (on) and the
      * card behind it, so the state is never ambiguous. */
     --switch-off: 215 20% 40%;
 
-    /* Deep surfaces used by the chrome and headline panels. */
-    --ink: 224 47% 9%;
-    --ink-raised: 223 40% 15%;
-    --ink-foreground: 210 40% 98%;
-    --ink-muted: 215 22% 68%;
+    /*
+     * Deep surfaces used by the chrome and headline panels.
+     *
+     * The logo is brown over gold, so these carry the brown: hue 26, the same
+     * as the logo's upper half, taken down into shadow. The logo's own 40%
+     * lightness is a mid brown — fine as a mark, but gold sitting on a panel
+     * that light measures 2.6:1, so the surface goes darker and the hue
+     * carries the identity instead.
+     */
+    --ink: 26 42% 12%;
+    --ink-raised: 26 38% 18%;
+    --ink-foreground: 40 40% 97%;
+    --ink-muted: 30 20% 68%;
 
-    --chart-1: 45 93% 47%;
+    --chart-1: 46 96% 50%;
     --chart-2: 25 90% 45%;
     --chart-3: 210 60% 45%;
     --chart-4: 152 55% 38%;
@@ -106,12 +117,12 @@
      * reads against it the same way a primary button does on a page. */
     --sidebar-background: 0 0% 100%;
     --sidebar-foreground: 222.2 84% 4.9%;
-    --sidebar-primary: 45 93% 47%;
-    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-primary: 46 96% 50%;
+    --sidebar-primary-foreground: 26 65% 8%;
     --sidebar-accent: 210 40% 96.1%;
     --sidebar-accent-foreground: 222.2 47.4% 11.2%;
     --sidebar-border: 215 20% 84%;
-    --sidebar-ring: 45 93% 35%;
+    --sidebar-ring: 46 96% 34%;
   }
 
   .dark {
@@ -122,10 +133,10 @@
     --popover: 223 40% 11%;
     --popover-foreground: 210 40% 98%;
 
-    --primary: 45 93% 52%;
-    --primary-foreground: 0 0% 0%;
-    --primary-soft: 45 80% 16%;
-    --primary-strong: 45 93% 62%;
+    --primary: 46 96% 53%;
+    --primary-foreground: 26 65% 8%;
+    --primary-soft: 40 70% 15%;
+    --primary-strong: 46 96% 63%;
 
     --secondary: 217.2 32.6% 17.5%;
     --secondary-foreground: 210 40% 98%;
@@ -159,22 +170,22 @@
 
     --border: 217.2 32.6% 22%;
     --input: 215 18% 55%;
-    --ring: 45 93% 52%;
+    --ring: 46 96% 53%;
     --switch-off: 215 16% 45%;
 
-    --ink: 224 47% 6%;
-    --ink-raised: 223 40% 13%;
-    --ink-foreground: 210 40% 98%;
-    --ink-muted: 215 22% 66%;
+    --ink: 26 44% 8%;
+    --ink-raised: 26 38% 15%;
+    --ink-foreground: 40 40% 97%;
+    --ink-muted: 30 20% 66%;
 
     --sidebar-background: 223 40% 11%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 45 93% 52%;
-    --sidebar-primary-foreground: 0 0% 0%;
+    --sidebar-primary: 46 96% 53%;
+    --sidebar-primary-foreground: 26 65% 8%;
     --sidebar-accent: 217.2 32.6% 17.5%;
     --sidebar-accent-foreground: 210 40% 98%;
     --sidebar-border: 217.2 32.6% 22%;
-    --sidebar-ring: 45 93% 52%;
+    --sidebar-ring: 46 96% 53%;
   }
 }
 
@@ -246,8 +257,8 @@
   .gl-card {
     @apply rounded-2xl border border-border bg-card;
     box-shadow:
-      0 1px 2px hsl(224 47% 9% / 0.05),
-      0 10px 28px -14px hsl(224 47% 9% / 0.18);
+      0 1px 2px hsl(26 42% 12% / 0.06),
+      0 10px 28px -14px hsl(26 42% 12% / 0.20);
     transition:
       transform 0.22s ease,
       box-shadow 0.22s ease,
@@ -257,8 +268,8 @@
     transform: translateY(-2px);
     border-color: hsl(var(--primary) / 0.55);
     box-shadow:
-      0 1px 2px hsl(224 47% 9% / 0.06),
-      0 18px 40px -18px hsl(224 47% 9% / 0.3);
+      0 1px 2px hsl(26 42% 12% / 0.07),
+      0 18px 40px -18px hsl(26 42% 12% / 0.32);
   }
 
   /* Flat panel for dense lists and tables, where elevation would be noisy. */
@@ -329,6 +340,88 @@
     animation: gl-rise 0.45s cubic-bezier(0.16, 1, 0.3, 1) both;
   }
 
+  /* ---------- Sign-in ---------- */
+
+  /* Warm wash behind the sign-in card, so the page is not a flat sheet of
+     off-white: gold thrown from above, a little accent orange in the corner. */
+  .gl-auth-backdrop {
+    background:
+      radial-gradient(58% 46% at 50% -8%, hsl(var(--primary) / 0.16), transparent 64%),
+      radial-gradient(44% 42% at 104% 104%, hsl(var(--accent) / 0.1), transparent 62%);
+  }
+
+  /* Blinking caret trailing the typed headline on the sign-in brand panel. */
+  .gl-caret {
+    @apply ml-1 inline-block w-[3px] rounded-sm;
+    height: 0.86em;
+    transform: translateY(0.08em);
+    background-color: hsl(var(--primary));
+    animation: gl-caret 1.06s infinite;
+  }
+
+  /*
+   * Two rings leaving the element half a cycle apart, like a radar sweep. Sized
+   * off the element itself, so the same class works on a 68px button and an 8px
+   * pin; override --gl-halo-scale to tune how far the ring travels.
+   */
+  .gl-halo::before,
+  .gl-halo::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    border: 2px solid hsl(var(--primary) / 0.5);
+    animation: gl-halo 3.4s cubic-bezier(0, 0, 0.2, 1) infinite;
+  }
+  .gl-halo::after {
+    animation-delay: 1.7s;
+  }
+
+  /* Barely-there rotation, for dashed rings in the background. */
+  .gl-spin-slow {
+    animation: gl-spin-slow 44s linear infinite;
+  }
+
+  /* Loose decorative dots breathing up and down. */
+  .gl-float {
+    animation: gl-float 6.5s ease-in-out infinite;
+  }
+
+  /* A quarter turn and back: a cross maps onto itself, so it reads as a slow
+     wobble rather than a spin. */
+  .gl-twinkle {
+    opacity: 0.4;
+    animation: gl-twinkle 5s ease-in-out infinite;
+  }
+
+  /* Pendulum for the tag hanging off the top of the page. The pivot is the pin
+     it hangs from, not the banner's own middle. */
+  .gl-sway {
+    transform-origin: 50% 0;
+    animation: gl-sway 5.5s ease-in-out infinite;
+  }
+
+  /* Specular highlight passing over a dark face. */
+  .gl-sheen {
+    animation: gl-sheen 6.5s ease-in-out infinite;
+  }
+
+  /* One-shot ring thrown off when a sign-in lands. */
+  .gl-burst {
+    animation: gl-burst 0.65s cubic-bezier(0, 0, 0.2, 1) forwards;
+  }
+
+  /* A refused sign-in. Put this on an element that is not already carrying a
+     transform — it sets its own, and would eat a centring translate. */
+  .gl-shake {
+    animation: gl-shake 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  }
+
+  /* Overshooting entrance, for the tick that replaces the arrow. */
+  .gl-pop {
+    animation: gl-pop 0.42s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
+
   /* ---------- Navigation rail ---------- */
 
   /*
@@ -381,11 +474,143 @@
   }
 }
 
+@keyframes gl-caret {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes gl-halo {
+  0% {
+    transform: scale(1);
+    opacity: 0.6;
+  }
+  70%,
+  100% {
+    transform: scale(var(--gl-halo-scale, 1.9));
+    opacity: 0;
+  }
+}
+
+@keyframes gl-spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes gl-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-10px);
+  }
+}
+
+@keyframes gl-twinkle {
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: rotate(0deg);
+  }
+  50% {
+    opacity: 0.75;
+    transform: rotate(90deg);
+  }
+}
+
+@keyframes gl-sway {
+  0%,
+  100% {
+    transform: rotate(-1.7deg);
+  }
+  50% {
+    transform: rotate(1.7deg);
+  }
+}
+
+@keyframes gl-sheen {
+  0%,
+  58% {
+    transform: translateX(-160%) skewX(-18deg);
+  }
+  88%,
+  100% {
+    transform: translateX(440%) skewX(-18deg);
+  }
+}
+
+@keyframes gl-burst {
+  0% {
+    transform: scale(1);
+    opacity: 0.75;
+  }
+  100% {
+    transform: scale(2.7);
+    opacity: 0;
+  }
+}
+
+@keyframes gl-shake {
+  10%,
+  90% {
+    transform: translateX(-2px);
+  }
+  20%,
+  80% {
+    transform: translateX(4px);
+  }
+  30%,
+  50%,
+  70% {
+    transform: translateX(-7px);
+  }
+  40%,
+  60% {
+    transform: translateX(7px);
+  }
+}
+
+@keyframes gl-pop {
+  0% {
+    transform: scale(0.2);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
 /* Motion is decoration here; never impose it on people who opt out. */
 @media (prefers-reduced-motion: reduce) {
   .gl-rise,
   .gl-live-dot::after {
     animation: none;
+  }
+  /* The caret still marks where the text ends, it just stops blinking. */
+  .gl-caret,
+  .gl-spin-slow,
+  .gl-float,
+  .gl-twinkle,
+  .gl-sway,
+  .gl-shake,
+  .gl-pop {
+    animation: none;
+  }
+  /* These two exist only to move. Frozen mid-sweep they are artefacts, so
+     they are removed rather than stilled. */
+  .gl-halo::before,
+  .gl-halo::after,
+  .gl-sheen,
+  .gl-burst {
+    display: none;
   }
   .gl-card,
   .gl-gold {

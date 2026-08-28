@@ -21,7 +21,10 @@ export default async function AuthLayout({ children }: { children: React.ReactNo
   }
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center bg-secondary/40 p-4 py-12">
+    // Positioned and clipped: the page paints a full-bleed wash into this
+    // element, and the corner decoration on the sign-in card runs past the
+    // viewport edge rather than opening a scrollbar.
+    <main className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-12 sm:py-16">
       {children}
     </main>
   );

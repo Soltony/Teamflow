@@ -39,7 +39,9 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0C1222",
+  // The --ink brown, as a literal: this paints the browser and PWA chrome, and
+  // there is no stylesheet in scope by the time it is read.
+  themeColor: "#2B1D12",
 };
 
 export default function RootLayout({
