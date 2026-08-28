@@ -54,8 +54,14 @@ model Project {
   currency               String                  @default("ETB")
   status                 ProjectStatus           @relation(fields: [statusId], references: [id])
   statusId               String
+  /// The division accountable for delivery. One, always — it is what the
+  /// project-manager list, the division reports and approval routing key off.
   pmoDivision            PmoDivision             @relation(fields: [pmoDivisionId], references: [id])
   pmoDivisionId          String
+  /// The other divisions contributing to delivery. Large projects are rarely
+  /// run by one division, and until this existed the work was invisible to
+  /// every division except the owner.
+  participatingDivisions PmoDivision[]           @relation("ProjectParticipatingDivisions")
   projectManager         User                    @relation(fields: [projectManagerId], references: [id])
   projectManagerId       String
   responsibleDepartments Department[]            @relation("ProjectResponsibleDepartments")
@@ -87,7 +93,10 @@ model PmoDivision {
   responsibleTitle String
   responsiblePhone String
   users            User[]
+  /// Projects this division owns.
   projects         Project[]
+  /// Projects this division contributes to without owning.
+  participatingProjects Project[] @relation("ProjectParticipatingDivisions")
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 }

@@ -10,6 +10,7 @@ import { requirePermission, isAdmin as userIsAdmin } from "@/lib/auth/guard";
 import { auditAction } from "@/lib/auth/audit-context";
 import { AUDIT_ACTIONS } from "@/lib/audit-log";
 import { serialize } from '@/lib/serialize';
+import { projectsForDivision } from '@/lib/queries/division-scope';
 
 /** Identity comes from the session; `_userId` is ignored (see archive/actions.ts). */
 export async function getPendingReviewTasks(_userId?: string) {
@@ -27,9 +28,9 @@ export async function getPendingReviewTasks(_userId?: string) {
         if (user.pmoDivisionId) {
             // If the user is associated with a PMO division (like a director), show all tasks from that division.
              whereClause.milestone = {
-                project: {
-                    pmoDivisionId: user.pmoDivisionId,
-                }
+                // Projects the division owns or takes part in — a director
+                // whose division is delivering work still approves that work.
+                project: projectsForDivision(user.pmoDivisionId),
             };
         } else {
             // Fallback for users who are team leads but not part of a division structure

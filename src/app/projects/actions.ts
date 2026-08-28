@@ -29,6 +29,7 @@ import {
     type EscalateBlockerInput,
     type UpdateBlockerInput,
 } from "@/lib/validation/blocker";
+import { projectsForDivision } from "@/lib/queries/division-scope";
 import { GENERAL_TASKS_TITLE, ensureGeneralTasksMilestone } from "@/lib/services/milestones";
 import { resolvePage } from "@/lib/pagination";
 
@@ -75,7 +76,7 @@ export async function createProject(data: unknown) {
     if (!parsed.success) {
         return { success: false, error: formatValidationError(parsed.error) };
     }
-    const { milestones, responsibleDepartmentIds, hasCost, payments, hasMilestones, timelineChangeReason, ...projectData } = parsed.data;
+    const { milestones, responsibleDepartmentIds, participatingDivisionIds, hasCost, payments, hasMilestones, timelineChangeReason, ...projectData } = parsed.data;
 
     const newProject = await prisma.project.create({
         data: {
@@ -99,6 +100,11 @@ export async function createProject(data: unknown) {
             currency: projectData.currency,
             responsibleDepartments: {
                 connect: responsibleDepartmentIds.map((id: string) => ({ id }))
+            },
+            // The divisions delivering alongside the owner. The schema rejects
+            // the owner appearing here, so this can only add to it.
+            participatingDivisions: {
+                connect: participatingDivisionIds.map((id: string) => ({ id }))
             },
             milestones: hasMilestones && milestones ? {
                 create: milestones.map((m: any) => ({
@@ -135,6 +141,7 @@ export async function createProject(data: unknown) {
             endDate: newProject.endDate,
             statusId: newProject.statusId,
             pmoDivisionId: newProject.pmoDivisionId,
+            participatingDivisionIds,
             projectManagerId: newProject.projectManagerId,
             totalCost: newProject.totalCost,
             milestoneCount: newProject.milestones.length,
@@ -161,6 +168,9 @@ export async function getProjectForEdit(projectId: string) {
                   }
                 },
                 responsibleDepartments: {
+                    select: { id: true }
+                },
+                participatingDivisions: {
                     select: { id: true }
                 },
                 payments: true,
@@ -210,6 +220,7 @@ export async function getProjectForEdit(projectId: string) {
         hasCost: project.totalCost !== null,
         hasMilestones: userCreatedMilestones.length > 0,
         responsibleDepartmentIds: project.responsibleDepartments.map(d => d.id),
+        participatingDivisionIds: project.participatingDivisions.map(d => d.id),
     };
 
     return {
@@ -229,7 +240,7 @@ export async function updateProject(projectId: string, data: unknown) {
     if (!parsed.success) {
         return { success: false, error: formatValidationError(parsed.error) };
     }
-    const { milestones, responsibleDepartmentIds, hasCost, payments, timelineChangeReason, hasMilestones, ...projectData } = parsed.data;
+    const { milestones, responsibleDepartmentIds, participatingDivisionIds, hasCost, payments, timelineChangeReason, hasMilestones, ...projectData } = parsed.data;
 
     const existingProject = await prisma.project.findUnique({ where: { id: projectId } });
     if (!existingProject) {
@@ -334,6 +345,11 @@ export async function updateProject(projectId: string, data: unknown) {
                   totalCost: hasCost ? new Decimal(projectData.totalCost || 0) : null,
                   responsibleDepartments: {
                     set: responsibleDepartmentIds.map((id: string) => ({ id }))
+                  },
+                  // `set`, not `connect`: removing a division from the form has
+                  // to remove it from the project.
+                  participatingDivisions: {
+                    set: participatingDivisionIds.map((id: string) => ({ id }))
                   }
                 }
             });
@@ -987,7 +1003,9 @@ export async function getProjectsPageData(_userId: string | undefined, filters: 
         AND: [
             { statusId: { notIn: archivedStatusIds } },
             ...(filters.status ? [{ statusId: filters.status }] : []),
-            ...(filters.pmoDivisionId ? [{ pmoDivisionId: filters.pmoDivisionId }] : []),
+            // Owner or participant: a division filtering the list expects to
+            // see the projects it is working on, not only the ones it owns.
+            ...(filters.pmoDivisionId ? [projectsForDivision(filters.pmoDivisionId)] : []),
             // Searching in the database rather than filtering an array the
             // browser already holds: the point of paging is not to send the
             // rest in the first place.
@@ -1108,6 +1126,7 @@ export async function getProjectDetailsForUser(projectId: string, _userId?: stri
         include: {
             status: true,
             pmoDivision: true,
+            participatingDivisions: true,
             projectManager: { select: USER_DISPLAY_SELECT },
             responsibleDepartments: true,
             blockers: {

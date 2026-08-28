@@ -48,6 +48,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "..
 import { createTeam, updateTeam, deleteTeam } from "@/app/teams/actions";
 import type { getTeamsPageData } from "@/app/teams/actions";
 import { useAuth } from "@/context/auth-context";
+import { divisionIdsOnProject } from "@/lib/queries/division-scope";
 import { EmptyState } from "@/components/ui/empty-state";
 
 const teamSchema = z.object({
@@ -115,10 +116,12 @@ export function TeamsManagement({ initialTeams, allProjects, allUsers, onDataCha
     }
     // A team spanning several projects can draw on any of their divisions,
     // so this is the union rather than one project’s division.
+    // Every division on each project, not just the owner: a project two
+    // divisions deliver has to be staffable from both.
     const divisions = new Set(
         allProjects
             .filter(p => selectedProjectIds.includes(p.id))
-            .map(p => p.pmoDivisionId)
+            .flatMap(p => divisionIdsOnProject(p))
             .filter((id): id is string => Boolean(id)),
     );
     if (divisions.size === 0) {

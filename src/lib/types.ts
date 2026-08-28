@@ -162,6 +162,8 @@ export type Project = {
   endDate: string;
   statusId: string;
   pmoDivisionId: string;
+  /** Divisions delivering alongside the owner; empty for most projects. */
+  participatingDivisionIds: string[];
   projectManagerId: string;
   workingYear: string;
   responsibleDepartmentIds: string[];

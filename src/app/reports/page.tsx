@@ -8,6 +8,7 @@ import { requirePermissionOrRedirect } from '@/lib/auth/guard';
 import { isLate, isOnTime, isOverdue, statusCategory, summarizeRag, summarizeSchedule } from '@/lib/metrics';
 import { serialize } from '@/lib/serialize';
 import { isOpenBlocker } from '@/lib/validation/blocker';
+import { projectsForDivision } from '@/lib/queries/division-scope';
 
 // Reads the session, so it must never be prerendered.
 export const dynamic = 'force-dynamic';
@@ -70,7 +71,9 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
 
     const where = {
         ...(year && year !== 'all' ? { workingYear: year } : {}),
-        ...(division && division !== 'all' ? { pmoDivisionId: division } : {}),
+        // Owner or participant, matching the dashboard exactly — the two are
+        // read side by side and a discrepancy between them reads as a bug.
+        ...(division && division !== 'all' ? projectsForDivision(division) : {}),
     };
 
     const [allProjects, projectStatuses, pmoDivisions, distinctYears] = await Promise.all([
@@ -81,6 +84,10 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
         include: {
             status: true,
             projectManager: { select: { id: true, name: true } },
+            // Ids only: the division performance table groups by them, and
+            // grouping on the owner alone left co-delivered work off every
+            // contributing division's row.
+            participatingDivisions: { select: { id: true } },
             milestones: { include: { tasks: true } },
             blockers: true,
             // Committed spend, for the budget variance behind the RAG rating.

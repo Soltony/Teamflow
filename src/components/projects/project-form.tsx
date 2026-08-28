@@ -128,6 +128,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       workingYear: getCurrentWorkingYear(),
       statusId: "",
       pmoDivisionId: "",
+      participatingDivisionIds: [],
       projectManagerId: "",
       responsibleDepartmentIds: [],
       hasMilestones: false,
@@ -241,8 +242,8 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
     {
       id: 'team',
       label: 'Team',
-      description: 'Who runs it, which division owns it, and who it is being delivered for.',
-      fields: ['pmoDivisionId', 'projectManagerId', 'responsibleDepartmentIds'],
+      description: 'Who runs it, which divisions deliver it, and who it is being delivered for.',
+      fields: ['pmoDivisionId', 'participatingDivisionIds', 'projectManagerId', 'responsibleDepartmentIds'],
     },
     {
       id: 'review',
@@ -488,7 +489,24 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Owning EPMO division</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select
+                        onValueChange={(value) => {
+                          field.onChange(value);
+                          // A division cannot both own the project and merely
+                          // take part in it. Promoting a participant to owner
+                          // would otherwise leave it listed twice, which the
+                          // schema rejects at submit — two steps later.
+                          const participants = form.getValues('participatingDivisionIds') ?? [];
+                          if (participants.includes(value)) {
+                            form.setValue(
+                              'participatingDivisionIds',
+                              participants.filter(id => id !== value),
+                              { shouldValidate: true },
+                            );
+                          }
+                        }}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger><SelectValue placeholder="Select a division" /></SelectTrigger>
                         </FormControl>
@@ -496,7 +514,9 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                           {pmoDivisions.map(div => <SelectItem key={div.id} value={div.id}>{div.name}</SelectItem>)}
                         </SelectContent>
                       </Select>
-                      <FormDescription>Narrows the managers you can choose from.</FormDescription>
+                      <FormDescription>
+                        Accountable for delivery, and it narrows the managers you can choose from.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -531,6 +551,66 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                       <FormMessage />
                     </FormItem>
                   )}
+                />
+                <FormField
+                  control={form.control}
+                  name="participatingDivisionIds"
+                  render={({ field }) => {
+                    // The owner is on the project already; offering it here
+                    // would only let the reader create a state the schema
+                    // refuses.
+                    const selectableDivisions = pmoDivisions.filter(div => div.id !== selectedPmoDivisionId);
+                    const selectedDivisions = selectableDivisions.filter(div => field.value?.includes(div.id));
+                    return (
+                      <FormItem className="flex flex-col">
+                        <FormLabel>Participating EPMO divisions</FormLabel>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <FormControl>
+                              <Button
+                                variant="outline"
+                                className={cn("w-full justify-start font-normal", !selectedDivisions.length && "text-muted-foreground")}
+                                disabled={selectableDivisions.length === 0}
+                              >
+                                <span className="min-w-0 truncate">
+                                  {selectedDivisions.length > 0
+                                    ? selectedDivisions.map(d => d.name).join(', ')
+                                    : "None — owned solely by the division above"}
+                                </span>
+                                <ChevronDown className="ml-auto h-4 w-4 shrink-0" />
+                              </Button>
+                            </FormControl>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent className="w-[--radix-dropdown-menu-trigger-width]">
+                            {selectableDivisions.map((div) => (
+                              <DropdownMenuCheckboxItem
+                                key={div.id}
+                                checked={field.value?.includes(div.id)}
+                                onCheckedChange={(checked) => {
+                                  const newValues = field.value ? [...field.value] : [];
+                                  if (checked) {
+                                    newValues.push(div.id);
+                                  } else {
+                                    const idx = newValues.indexOf(div.id);
+                                    if (idx > -1) newValues.splice(idx, 1);
+                                  }
+                                  field.onChange(newValues);
+                                }}
+                              >
+                                {div.name}
+                              </DropdownMenuCheckboxItem>
+                            ))}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                        <FormDescription>
+                          {selectedDivisions.length > 0
+                            ? `${selectedDivisions.length} other division${selectedDivisions.length === 1 ? '' : 's'} delivering this. They see it on their dashboards too.`
+                            : 'Other divisions delivering the work alongside the owner. Optional.'}
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    );
+                  }}
                 />
                 <FormField
                   control={form.control}

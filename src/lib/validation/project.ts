@@ -56,6 +56,9 @@ const baseProjectSchema = z.object({
   workingYear: z.string().trim().min(1, 'An active working year must be set on the Settings page.'),
   statusId: z.string().trim().min(1, 'Please select a project status.'),
   pmoDivisionId: z.string().trim().min(1, 'Please select an EPMO division.'),
+  // The divisions helping deliver, beside the one accountable for it. Optional
+  // — most projects are run by their owning division alone.
+  participatingDivisionIds: z.array(z.string().min(1)).default([]),
   projectManagerId: z.string().trim().min(1, 'Please select a project manager.'),
   responsibleDepartmentIds: z
     .array(z.string().min(1))
@@ -80,6 +83,19 @@ function applyProjectInvariants(schema: typeof baseProjectSchema) {
       message: 'End date must be after start date.',
       path: ['endDate'],
     })
+    // The owner is on the project by definition. Listing it again would double
+    // count it in every "which divisions are involved" figure.
+    .refine((data) => !data.participatingDivisionIds.includes(data.pmoDivisionId), {
+      message: 'The owning division is already on the project. List only the other divisions taking part.',
+      path: ['participatingDivisionIds'],
+    })
+    .refine(
+      (data) => new Set(data.participatingDivisionIds).size === data.participatingDivisionIds.length,
+      {
+        message: 'A division can only be listed once.',
+        path: ['participatingDivisionIds'],
+      },
+    )
     .superRefine((data, ctx) => {
       if (data.hasMilestones && data.milestones?.length) {
         // Weights must total 100, not merely stay under it. Allowing less is

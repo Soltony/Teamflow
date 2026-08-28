@@ -48,6 +48,34 @@ describe('createProjectSchema', () => {
     expect(createProjectSchema.safeParse(validProject({ responsibleDepartmentIds: [] })).success).toBe(false);
   });
 
+  describe('participating divisions', () => {
+    it('defaults to none, since most projects are run by their owner alone', () => {
+      const parsed = createProjectSchema.parse(validProject());
+      expect(parsed.participatingDivisionIds).toEqual([]);
+    });
+
+    it('accepts other divisions delivering alongside the owner', () => {
+      const result = createProjectSchema.safeParse(
+        validProject({ participatingDivisionIds: ['dv-2', 'dv-3'] }),
+      );
+      expect(result.success).toBe(true);
+    });
+
+    it('rejects the owning division listed again as a participant', () => {
+      const result = createProjectSchema.safeParse(
+        validProject({ pmoDivisionId: 'dv-1', participatingDivisionIds: ['dv-1'] }),
+      );
+      expect(result.success).toBe(false);
+    });
+
+    it('rejects the same division listed twice', () => {
+      const result = createProjectSchema.safeParse(
+        validProject({ participatingDivisionIds: ['dv-2', 'dv-2'] }),
+      );
+      expect(result.success).toBe(false);
+    });
+  });
+
   it.each([['name', 'ab'], ['description', 'short']])(
     'rejects a too-short %s',
     (field, value) => {

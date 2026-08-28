@@ -53,6 +53,7 @@ export function ProjectOverviewTab({
   onNavigate: (tab: string) => void;
 }) {
   const departments = (project.responsibleDepartments ?? []).map((d: any) => d.name);
+  const participatingDivisions = (project.participatingDivisions ?? []).map((d: any) => d.name);
 
   return (
     <div className="space-y-6">
@@ -73,6 +74,11 @@ export function ProjectOverviewTab({
             </Fact>
             <Fact icon={Library} label="Owning EPMO division">
               {project.pmoDivision?.name ?? 'None'}
+            </Fact>
+            <Fact icon={Library} label="Participating divisions">
+              {participatingDivisions.length > 0
+                ? participatingDivisions.join(', ')
+                : 'Owned solely by the division above'}
             </Fact>
             <Fact icon={Building} label="Delivered for">
               {departments.length > 0 ? departments.join(', ') : 'Nobody recorded'}

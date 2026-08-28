@@ -11,6 +11,7 @@ import { isPast, max as dateMax, parseISO, isAfter } from 'date-fns';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { isClosedStatus, summarizeSchedule, type ProjectScheduleLike, type StatusLike } from '@/lib/metrics';
+import { isDivisionOnProject } from '@/lib/queries/division-scope';
 
 /**
  * Only what this table reads.
@@ -23,6 +24,8 @@ type ProjectWithRelations = ProjectScheduleLike & {
     id: string;
     name: string;
     pmoDivisionId: string;
+    /** Absent on older callers; treated as none. */
+    participatingDivisions?: { id: string }[] | null;
     statusId: string;
     status: StatusLike;
 };
@@ -40,7 +43,13 @@ export function PmoDivisionPerformance({ projects, pmoDivisions, projectStatuses
     const pmoDivisionPerformance = useMemo(() => {
         return pmoDivisions
             .map(div => {
-                const divisionProjects = projects.filter(p => p.pmoDivisionId === div.id);
+                // Owned or contributed to. A division that delivers half a
+                // project is answerable for how that half is going, so
+                // matching only the owner understated the work it is doing.
+                // A co-delivered project therefore appears under each of its
+                // divisions — these are per-division rows, not a partition of
+                // the portfolio.
+                const divisionProjects = projects.filter(p => isDivisionOnProject(p, div.id));
 
                 // Shared metrics, so this card agrees with the KPI row above it.
                 // Its own rule mapped incomplete tasks to the epoch and then took

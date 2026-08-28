@@ -52,9 +52,20 @@ export async function updatePmoDivision(id: string, data: Omit<PmoDivision, 'id'
 export async function deletePmoDivision(id: string) {
     await requirePermission('pmo-divisions:delete');
     try {
-         const projectsWithDivision = await prisma.project.count({ where: { pmoDivisionId: id }});
+         const [projectsWithDivision, projectsParticipatedIn] = await Promise.all([
+            prisma.project.count({ where: { pmoDivisionId: id }}),
+            prisma.project.count({ where: { participatingDivisions: { some: { id } } }}),
+        ]);
         if (projectsWithDivision > 0) {
             return { success: false, error: "Cannot delete division as it is set as the owning division for one or more projects."};
+        }
+        // The join would cascade silently, quietly dropping the division from
+        // projects it is delivering and leaving nobody able to tell it ever was.
+        if (projectsParticipatedIn > 0) {
+            return {
+                success: false,
+                error: `Cannot delete division as it is taking part in ${projectsParticipatedIn} project${projectsParticipatedIn === 1 ? '' : 's'}. Remove it from them first.`,
+            };
         }
         
         await prisma.pmoDivision.delete({ where: { id } });

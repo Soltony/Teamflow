@@ -176,6 +176,9 @@ export async function getTeamsPageData(_userId?: string, pageRequest: PageReques
             }
         }),
         prisma.project.findMany({
+            // Ids only: the dialog staffs a team from every division on the
+            // project, so it needs the contributors as well as the owner.
+            include: { participatingDivisions: { select: { id: true } } },
             orderBy: {
                 name: 'asc'
             }

@@ -34,6 +34,7 @@ import {
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { Project, Team, User, Role } from "@/lib/types";
+import { divisionIdsOnProject } from "@/lib/queries/division-scope";
 
 const teamSchema = z.object({
   name: z.string().min(3, "Team name must be at least 3 characters."),
@@ -70,7 +71,10 @@ export function TeamDialog({ isOpen, onOpenChange, team, project, allUsers, onSu
     if (!project?.pmoDivisionId) {
         return { availableLeads: usersToFilter, availableMembers: usersToFilter };
     }
-    const filteredUsers = usersToFilter.filter(u => u.pmoDivisionId === project.pmoDivisionId);
+    // Owner plus contributors — staffing a co-delivered project from the
+    // owning division alone excluded the people actually doing the work.
+    const divisions = new Set(divisionIdsOnProject(project));
+    const filteredUsers = usersToFilter.filter(u => u.pmoDivisionId && divisions.has(u.pmoDivisionId));
     return { availableLeads: filteredUsers, availableMembers: filteredUsers };
   }, [project, nonAdminUsers]);
 

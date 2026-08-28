@@ -6,6 +6,7 @@ import { requirePermissionOrRedirect } from "@/lib/auth/guard";
 import { serialize } from '@/lib/serialize';
 import { OPEN_BLOCKER_STATUSES } from '@/lib/validation/blocker';
 import { USER_DISPLAY_SELECT } from '@/lib/queries/user-select';
+import { projectsForDivision } from '@/lib/queries/division-scope';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,8 +57,11 @@ export default async function DashboardPage({
 
     const projectWhere = {
         ...(selectedYear && selectedYear !== 'all' ? { workingYear: selectedYear } : {}),
+        // Owner or participant. A division that helps deliver a project sees
+        // it here too — before participants existed this could only ever mean
+        // "owns", which is why co-delivered work showed on one dashboard.
         ...(selectedDivision && selectedDivision !== 'all'
-            ? { pmoDivisionId: selectedDivision }
+            ? projectsForDivision(selectedDivision)
             : {}),
     };
 

@@ -53,6 +53,7 @@ export function ProjectReviewStep({
   const manager = users.find((u) => u.id === values.projectManagerId);
   const status = projectStatuses.find((s) => s.id === values.statusId);
   const depts = departments.filter((d) => values.responsibleDepartmentIds?.includes(d.id));
+  const participants = pmoDivisions.filter((d) => values.participatingDivisionIds?.includes(d.id));
 
   const milestones = values.hasMilestones ? values.milestones ?? [] : [];
   const weights = checkWeights(milestones.map((m) => m.weight));
@@ -157,7 +158,13 @@ export function ProjectReviewStep({
       </ReviewCard>
 
       <ReviewCard title="Team" onEdit={() => onEditStep('team')}>
-        <Row label="EPMO division" value={division?.name ?? <Missing />} />
+        <Row label="Owning EPMO division" value={division?.name ?? <Missing />} />
+        <Row
+          label="Participating divisions"
+          // Not a Missing marker: no participants is the ordinary case, not an
+          // omission to go back and fix.
+          value={participants.length > 0 ? participants.map((d) => d.name).join(', ') : 'None'}
+        />
         <Row label="Project manager" value={manager?.name ?? <Missing />} />
         <Row
           label="Responsible departments"
