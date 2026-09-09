@@ -63,6 +63,14 @@ export const departmentsData = [
     { name: 'Customer Support' },
 ];
 
+/** The strategic initiatives projects are registered under. */
+export const initiativesData = [
+    { name: 'Digital Transformation' },
+    { name: 'Customer Experience' },
+    { name: 'Operational Excellence' },
+    { name: 'Financial Inclusion' },
+];
+
 export const projectStatusesData = [
   { name: 'Active' },
   { name: 'Pending' },
@@ -129,6 +137,8 @@ export interface SeedProject {
   pmoDivisionName: string;
   projectManagerEmail: string;
   responsibleDepartmentNames: string[];
+  /** Optional, exactly as it is on a real project. */
+  initiativeName?: string;
   milestones: SeedMilestone[];
   blockers: SeedBlocker[];
 }
@@ -145,6 +155,7 @@ export const projectsData: SeedProject[] = [
     pmoDivisionName: 'Technology',
     projectManagerEmail: 'alice.johnson@teamflow.com',
     responsibleDepartmentNames: ['Sales', 'Customer Support'],
+    initiativeName: 'Customer Experience',
     milestones: [
         {
             id: 'mile-1-1',
@@ -215,6 +226,7 @@ export const projectsData: SeedProject[] = [
     pmoDivisionName: 'Technology',
     projectManagerEmail: 'bob.williams@teamflow.com',
     responsibleDepartmentNames: ['Finance', 'Human Resources'],
+    initiativeName: 'Digital Transformation',
     milestones: [
         {
             id: 'mile-2-1',

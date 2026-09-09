@@ -4,7 +4,7 @@ import * as React from 'react';
 import type { UseFormReturn } from 'react-hook-form';
 import { format } from 'date-fns';
 import { AlertTriangle, CheckCircle2, Pencil } from 'lucide-react';
-import type { Department, PmoDivision, ProjectStatus } from '@prisma/client';
+import type { Department, Initiative, PmoDivision, ProjectStatus } from '@prisma/client';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -33,6 +33,7 @@ export function ProjectReviewStep({
   mode,
   pmoDivisions,
   departments,
+  initiatives,
   projectStatuses,
   users,
   currencySymbol,
@@ -42,6 +43,7 @@ export function ProjectReviewStep({
   mode: 'create' | 'edit';
   pmoDivisions: Serialized<PmoDivision>[];
   departments: Serialized<Department>[];
+  initiatives: Serialized<Initiative>[];
   projectStatuses: Serialized<ProjectStatus>[];
   users: UserWithRoles[];
   currencySymbol: string;
@@ -52,6 +54,7 @@ export function ProjectReviewStep({
   const division = pmoDivisions.find((d) => d.id === values.pmoDivisionId);
   const manager = users.find((u) => u.id === values.projectManagerId);
   const status = projectStatuses.find((s) => s.id === values.statusId);
+  const initiative = initiatives.find((i) => i.id === values.initiativeId);
   const depts = departments.filter((d) => values.responsibleDepartmentIds?.includes(d.id));
   const participants = pmoDivisions.filter((d) => values.participatingDivisionIds?.includes(d.id));
 
@@ -71,6 +74,11 @@ export function ProjectReviewStep({
         <Row label="Name" value={values.name || <Missing />} />
         <Row label="Delivers" value={values.description || <Missing />} />
         <Row label="Status" value={status?.name ?? <Missing />} />
+        {/*
+          Not a Missing marker: a project need not sit under an initiative, so
+          an empty one is an answer rather than an omission to go back and fix.
+        */}
+        <Row label="Initiative" value={initiative?.name ?? 'None'} />
       </ReviewCard>
 
       <ReviewCard title="Schedule" onEdit={() => onEditStep('schedule')}>

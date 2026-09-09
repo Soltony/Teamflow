@@ -100,6 +100,11 @@ export type Department = {
     name: string;
 };
 
+export type Initiative = {
+    id:string;
+    name: string;
+};
+
 export type PmoDivision = {
     id:string;
     name: string;
@@ -167,6 +172,8 @@ export type Project = {
   projectManagerId: string;
   workingYear: string;
   responsibleDepartmentIds: string[];
+  /** The initiative this project is delivered under; null when it sits under none. */
+  initiativeId: string | null;
   milestones: Milestone[];
   blockers?: Blocker[];
 };

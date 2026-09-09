@@ -65,6 +65,13 @@ model Project {
   projectManager         User                    @relation(fields: [projectManagerId], references: [id])
   projectManagerId       String
   responsibleDepartments Department[]            @relation("ProjectResponsibleDepartments")
+  /// The strategic initiative this project delivers against, chosen from the
+  /// initiatives maintained in their own section. Optional, and nullable on
+  /// purpose: every project that predates this field has none, and a project
+  /// may legitimately be registered before the portfolio has decided which
+  /// initiative it belongs under.
+  initiative             Initiative?             @relation(fields: [initiativeId], references: [id])
+  initiativeId           String?
   milestones             Milestone[]
   /// Teams are linked through ProjectTeam now, so one team can serve several
   /// projects. `teamLinks` is the join; use it to reach the teams themselves.
@@ -81,6 +88,7 @@ model Project {
   @@index([statusId])
   @@index([pmoDivisionId])
   @@index([projectManagerId])
+  @@index([initiativeId])
   @@index([workingYear])
   /// The dashboard's dominant filter: a working year plus a status.
   @@index([workingYear, statusId])
@@ -105,6 +113,20 @@ model Department {
   id        String    @id @default(cuid())
   name      String    @unique
   projects  Project[] @relation("ProjectResponsibleDepartments")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+}
+
+/// A strategic initiative that projects are delivered under.
+///
+/// Maintained in its own section, exactly as departments are. The project form
+/// only ever picks from the rows here; it cannot create one, so an initiative
+/// is agreed in one place before any project can claim it.
+model Initiative {
+  id        String    @id @default(cuid())
+  name      String    @unique
+  /// Projects delivering against this initiative.
+  projects  Project[]
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
 }

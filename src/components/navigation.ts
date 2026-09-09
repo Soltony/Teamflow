@@ -4,6 +4,7 @@ import {
   Archive,
   Building2,
   CalendarDays,
+  Compass,
   ClipboardCheck,
   ClipboardList,
   FolderKanban,
@@ -131,6 +132,7 @@ export const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: '/pmo-divisions', label: 'EPMO divisions', icon: Library, permission: 'pmo-divisions:view' },
       { href: '/departments', label: 'Departments', icon: Building2, permission: 'departments:read' },
+      { href: '/initiatives', label: 'Initiatives', icon: Compass, permission: 'initiatives:read' },
       {
         href: '/settings',
         label: 'Settings',

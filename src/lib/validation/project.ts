@@ -63,6 +63,25 @@ const baseProjectSchema = z.object({
   responsibleDepartmentIds: z
     .array(z.string().min(1))
     .min(1, 'At least one department must be responsible.'),
+  /**
+   * The strategic initiative this project is delivered under.
+   *
+   * Chosen from the initiatives maintained in their own section, exactly as
+   * departments are — the form offers the existing rows and cannot create one.
+   *
+   * Optional, deliberately. Every project registered before initiatives
+   * existed has none, and requiring one here would make each of them
+   * unsaveable until somebody picked an initiative on its behalf. An unset
+   * dropdown, a cleared one and an absent field all normalise to null, so
+   * "no initiative" has exactly one representation in the database.
+   */
+  initiativeId: z
+    .union([z.string(), z.null()])
+    .optional()
+    .transform((value) => {
+      const trimmed = typeof value === 'string' ? value.trim() : value;
+      return trimmed ? trimmed : null;
+    }),
   hasMilestones: z.boolean().default(false),
   hasCost: z.boolean().default(false),
   currency: z.enum(['ETB', 'USD']).default('ETB'),

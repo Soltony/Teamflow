@@ -95,7 +95,7 @@ export default function NewProjectPage() {
         <ErrorState
           variant="load"
           title="We could not open the project form"
-          description="The divisions, departments and statuses it needs did not load."
+          description="The divisions, departments, initiatives and statuses it needs did not load."
           detail={loadError}
           onRetry={load}
           href="/projects"
@@ -117,6 +117,7 @@ export default function NewProjectPage() {
         users={data.users}
         pmoDivisions={data.pmoDivisions}
         departments={data.departments}
+        initiatives={data.initiatives}
         projectStatuses={data.projectStatuses}
         onSubmit={handleCreateProject}
       />

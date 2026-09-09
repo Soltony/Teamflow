@@ -7,6 +7,7 @@ import { AlertOctagon, CheckCircle, Clock, ShieldAlert, Target, TrendingDown, Tr
 
 import { ProjectCard } from '@/components/projects/project-card';
 import { PmoDivisionPerformance } from '@/components/ceo-report/pmo-division-performance';
+import { InitiativePerformance } from '@/components/reports/initiative-performance';
 import { ProjectStatusChart } from '@/components/dashboard/project-status-chart';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { DataToolbar, ALL } from '@/components/ui/data-toolbar';
@@ -17,6 +18,10 @@ import { StatCard, StatCardGrid } from '@/components/ui/stat-card';
 import { RagPill } from '@/components/ui/status-pill';
 import { MetricInfo } from '@/components/metrics/metric-info';
 import { displayProgress, projectProgress, type PortfolioRag } from '@/lib/metrics';
+import {
+  UNASSIGNED_INITIATIVE,
+  UNASSIGNED_INITIATIVE_LABEL,
+} from '@/lib/queries/initiative-scope';
 import { PROJECT_SORT_OPTIONS, sortProjects, type ProjectSort } from '@/lib/ui/sort';
 import { cn } from '@/lib/utils';
 
@@ -51,10 +56,13 @@ export interface ReportsClientProps {
     all: number;
   };
   pmoDivisions: { id: string; name: string }[];
+  initiatives: { id: string; name: string }[];
   workingYears: string[];
   type: string;
   year: string;
   division: string;
+  /** An initiative id, the unassigned sentinel, or ALL. */
+  initiative: string;
   title: string;
   description: string;
 }
@@ -75,10 +83,12 @@ export function ReportsClient({
   portfolio,
   counts,
   pmoDivisions,
+  initiatives,
   workingYears,
   type,
   year,
   division,
+  initiative,
   title,
   description,
 }: ReportsClientProps) {
@@ -105,6 +115,25 @@ export function ReportsClient({
     [pathname, router, searchParams],
   );
 
+  /**
+   * A link to another report at the current scope.
+   *
+   * The scope filters were spelled out inline per card and the initiative was
+   * simply missing from them, so following "Overdue" from a report scoped to
+   * one initiative silently widened it to the whole portfolio — and the
+   * count on the card no longer matched the list it opened.
+   */
+  const reportHref = React.useCallback(
+    (reportType: string) => {
+      const params = new URLSearchParams({ type: reportType });
+      if (year !== ALL) params.set('year', year);
+      if (division !== ALL) params.set('division', division);
+      if (initiative !== ALL) params.set('initiative', initiative);
+      return `/reports?${params.toString()}`;
+    },
+    [year, division, initiative],
+  );
+
   const visible = React.useMemo(() => {
     const query = search.trim().toLowerCase();
     const filtered = query
@@ -127,8 +156,15 @@ export function ReportsClient({
       division === ALL
         ? 'all EPMO divisions'
         : (pmoDivisions.find((d) => d.id === division)?.name ?? 'one division');
-    return `${divisionName}, ${year === ALL ? 'all working years' : year}`;
-  }, [division, year, pmoDivisions]);
+    const parts = [divisionName, year === ALL ? 'all working years' : year];
+    // Named only when it narrows anything, so the ordinary caption does not
+    // grow a clause saying "and all initiatives" that nobody needs to read.
+    if (initiative === UNASSIGNED_INITIATIVE) parts.push('projects under no initiative');
+    else if (initiative !== ALL) {
+      parts.push(initiatives.find((i) => i.id === initiative)?.name ?? 'one initiative');
+    }
+    return parts.join(', ');
+  }, [division, year, initiative, pmoDivisions, initiatives]);
 
   const sections: Section[] = [
     {
@@ -150,6 +186,12 @@ export function ReportsClient({
       count: pmoDivisions.length,
       description: 'How each division is performing',
     },
+    {
+      id: 'initiatives',
+      label: 'By initiative',
+      count: initiatives.length,
+      description: 'What each strategic initiative is delivering',
+    },
   ];
 
   const filters = [
@@ -168,6 +210,20 @@ export function ReportsClient({
       onChange: (v: string) => setParam('division', v),
       options: pmoDivisions.map((d) => ({ value: d.id, label: d.name })),
       allLabel: 'All EPMO divisions',
+    },
+    {
+      id: 'initiative',
+      label: 'Initiative',
+      value: initiative,
+      onChange: (v: string) => setParam('initiative', v),
+      options: [
+        ...initiatives.map((i) => ({ value: i.id, label: i.name })),
+        // Offered last, and offered at all because "what are we delivering
+        // that answers to no strategic commitment" is a question the register
+        // exists to make askable.
+        { value: UNASSIGNED_INITIATIVE, label: UNASSIGNED_INITIATIVE_LABEL },
+      ],
+      allLabel: 'All initiatives',
     },
   ];
 
@@ -230,7 +286,7 @@ export function ReportsClient({
                 tone={portfolio.overdueCount > 0 ? 'critical' : 'positive'}
                 value={portfolio.overdueCount}
                 hint="still running, past their deadline"
-                href={`/reports?type=overdue&year=${year}${division !== ALL ? `&division=${division}` : ''}`}
+                href={reportHref('overdue')}
                 interactive={portfolio.overdueCount > 0}
               />
               <StatCard
@@ -240,7 +296,7 @@ export function ReportsClient({
                 tone={portfolio.openBlockerCount > 0 ? 'critical' : 'positive'}
                 value={portfolio.openBlockerCount}
                 hint="unresolved across the portfolio"
-                href={`/reports?type=active-blockers&year=${year}${division !== ALL ? `&division=${division}` : ''}`}
+                href={reportHref('active-blockers')}
                 interactive={portfolio.openBlockerCount > 0}
               />
             </StatCardGrid>
@@ -356,6 +412,14 @@ export function ReportsClient({
           <PmoDivisionPerformance
             projects={allProjects}
             pmoDivisions={pmoDivisions as any}
+            projectStatuses={projectStatuses}
+          />
+        </SectionPanel>
+
+        <SectionPanel id="initiatives" active={section === 'initiatives'}>
+          <InitiativePerformance
+            projects={allProjects}
+            initiatives={initiatives}
             projectStatuses={projectStatuses}
           />
         </SectionPanel>

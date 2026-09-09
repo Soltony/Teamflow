@@ -9,11 +9,12 @@ import { isLate, isOnTime, isOverdue, statusCategory, summarizeRag, summarizeSch
 import { serialize } from '@/lib/serialize';
 import { isOpenBlocker } from '@/lib/validation/blocker';
 import { projectsForDivision } from '@/lib/queries/division-scope';
+import { projectsForInitiative } from '@/lib/queries/initiative-scope';
 
 // Reads the session, so it must never be prerendered.
 export const dynamic = 'force-dynamic';
 
-type ReportSearchParams = { type?: string; year?: string; division?: string };
+type ReportSearchParams = { type?: string; year?: string; division?: string; initiative?: string };
 
 const REPORT_COPY: Record<string, { title: string; description: string }> = {
   'on-time': {
@@ -42,7 +43,7 @@ const REPORT_COPY: Record<string, { title: string; description: string }> = {
   },
   all: {
     title: 'All projects',
-    description: 'Every project in the selected working year and EPMO division.',
+    description: 'Every project in the selected working year, EPMO division and initiative.',
   },
 };
 
@@ -68,15 +69,19 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
     const type = params?.type && REPORT_COPY[params.type] ? params.type : 'all';
     const year = params?.year ?? 'all';
     const division = params?.division ?? 'all';
+    const initiative = params?.initiative ?? 'all';
 
     const where = {
         ...(year && year !== 'all' ? { workingYear: year } : {}),
         // Owner or participant, matching the dashboard exactly — the two are
         // read side by side and a discrepancy between them reads as a bug.
         ...(division && division !== 'all' ? projectsForDivision(division) : {}),
+        // Scoping the whole report to one strategic initiative — including,
+        // deliberately, to the projects under none of them.
+        ...(initiative && initiative !== 'all' ? projectsForInitiative(initiative) : {}),
     };
 
-    const [allProjects, projectStatuses, pmoDivisions, distinctYears] = await Promise.all([
+    const [allProjects, projectStatuses, pmoDivisions, initiatives, distinctYears] = await Promise.all([
       prisma.project.findMany({
         // Both filters, because the dashboard cards were counted under both.
         // Honouring only the year is what made a card read 7 and its list 19.
@@ -88,6 +93,9 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
             // grouping on the owner alone left co-delivered work off every
             // contributing division's row.
             participatingDivisions: { select: { id: true } },
+            // The initiative each project answers to, for the breakdown and
+            // the scope caption. Two columns: nothing here shows more.
+            initiative: { select: { id: true, name: true } },
             milestones: { include: { tasks: true } },
             blockers: true,
             // Committed spend, for the budget variance behind the RAG rating.
@@ -96,6 +104,10 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
       }),
       prisma.projectStatus.findMany(),
       prisma.pmoDivision.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
+      // Unscoped by the filters above on purpose: an initiative with nothing
+      // under it in this year still belongs in the list, or it could never be
+      // selected to discover that.
+      prisma.initiative.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } }),
       prisma.project.findMany({
         select: { workingYear: true },
         distinct: ['workingYear'],
@@ -149,10 +161,12 @@ async function ReportsContent({ searchParams }: { searchParams: Promise<ReportSe
           all: allProjects.length,
         }}
         pmoDivisions={pmoDivisions}
+        initiatives={initiatives}
         workingYears={distinctYears.map((p) => p.workingYear)}
         type={type}
         year={year}
         division={division}
+        initiative={initiative}
         title={copy.title}
         description={copy.description}
       />

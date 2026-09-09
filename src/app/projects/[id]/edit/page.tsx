@@ -165,6 +165,7 @@ export default function EditProjectPage() {
         users={data.users}
         pmoDivisions={data.pmoDivisions}
         departments={data.departments}
+        initiatives={data.initiatives}
         projectStatuses={data.projectStatuses}
         onSubmit={handleUpdateProject}
       />

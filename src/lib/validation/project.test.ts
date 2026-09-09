@@ -48,6 +48,33 @@ describe('createProjectSchema', () => {
     expect(createProjectSchema.safeParse(validProject({ responsibleDepartmentIds: [] })).success).toBe(false);
   });
 
+  describe('the initiative', () => {
+    it('is optional, so projects registered before initiatives existed still save', () => {
+      const parsed = createProjectSchema.parse(validProject());
+      expect(parsed.initiativeId).toBeNull();
+    });
+
+    it('accepts an existing initiative', () => {
+      const parsed = createProjectSchema.parse(validProject({ initiativeId: 'in-1' }));
+      expect(parsed.initiativeId).toBe('in-1');
+    });
+
+    it('normalises every way of saying "none" to null', () => {
+      // The dropdown clears to null, a serialised form can send an empty
+      // string, and an older client sends nothing at all. One value reaches
+      // the database for all three, so "no initiative" cannot be stored two
+      // different ways.
+      for (const none of [null, '', '   ', undefined]) {
+        const parsed = createProjectSchema.parse(validProject({ initiativeId: none }));
+        expect(parsed.initiativeId, String(none)).toBeNull();
+      }
+    });
+
+    it('trims a padded id rather than storing one that matches nothing', () => {
+      expect(createProjectSchema.parse(validProject({ initiativeId: ' in-1 ' })).initiativeId).toBe('in-1');
+    });
+  });
+
   describe('participating divisions', () => {
     it('defaults to none, since most projects are run by their owner alone', () => {
       const parsed = createProjectSchema.parse(validProject());

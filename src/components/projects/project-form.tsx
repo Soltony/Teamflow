@@ -35,7 +35,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { FormSection, FormWizard, type WizardStep } from "@/components/ui/form-wizard";
-import type { Department, ProjectStatus, PmoDivision } from "@prisma/client";
+import type { Department, Initiative, ProjectStatus, PmoDivision } from "@prisma/client";
 import type { UserWithRoles } from "@/lib/types";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
@@ -67,9 +67,23 @@ type ProjectFormProps = {
   users: UserWithRoles[];
   pmoDivisions: Serialized<PmoDivision>[];
   departments: Serialized<Department>[];
+  /**
+   * The initiatives already on record. Supplied, never created here — see the
+   * Initiative field in the Basics step.
+   */
+  initiatives: Serialized<Initiative>[];
   projectStatuses: Serialized<ProjectStatus>[];
   onSubmit: (data: ProjectFormValues) => Promise<any>;
 };
+
+/**
+ * The "no initiative" option's value.
+ *
+ * A Radix select item cannot carry an empty string, and the field itself is
+ * null when unset, so the two are mapped to each other at the edge of the
+ * control rather than letting a sentinel reach the schema.
+ */
+const NO_INITIATIVE = '__none__';
 
 /**
  * Registering or editing a project, one decision at a time.
@@ -94,7 +108,7 @@ type ProjectFormProps = {
  * fields it owns, so errors appear beside the input that caused them, and the
  * step list shows at a glance which part still needs work.
  */
-export function ProjectForm({ mode, initialData, users, pmoDivisions, departments, projectStatuses, onSubmit }: ProjectFormProps) {
+export function ProjectForm({ mode, initialData, users, pmoDivisions, departments, initiatives, projectStatuses, onSubmit }: ProjectFormProps) {
   const router = useRouter();
   const { hasPermission } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -131,6 +145,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       participatingDivisionIds: [],
       projectManagerId: "",
       responsibleDepartmentIds: [],
+      initiativeId: null,
       hasMilestones: false,
       hasCost: false,
       // Narrowed by the shared schema now, so the literal has to be one of the
@@ -217,7 +232,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       id: 'basics',
       label: 'Basics',
       description: 'What it is called, what it delivers, and where it stands.',
-      fields: ['name', 'description', 'statusId'],
+      fields: ['name', 'description', 'statusId', 'initiativeId'],
     },
     {
       id: 'schedule',
@@ -431,6 +446,59 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                       </SelectContent>
                     </Select>
                     <FormDescription>How delivery is currently going.</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              {/*
+                The initiative this project sits under.
+
+                Same arrangement as the responsible departments on the Team
+                step: the list comes from records maintained in their own
+                section, and nothing here can add to it. An initiative is a
+                portfolio-level commitment, so inventing one mid-form — as a
+                free-text field would let anybody do — is how you end up with
+                "Digital Transformation", "Digital transformation" and "DT"
+                all counted separately.
+              */}
+              <FormField
+                control={form.control}
+                name="initiativeId"
+                render={({ field }) => (
+                  <FormItem className="max-w-sm">
+                    <FormLabel>Initiative</FormLabel>
+                    <Select
+                      onValueChange={(value) =>
+                        field.onChange(value === NO_INITIATIVE ? null : value)
+                      }
+                      value={field.value ?? NO_INITIATIVE}
+                      disabled={initiatives.length === 0}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select an initiative" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {/*
+                          Explicit, rather than leaving the control blank: a
+                          project genuinely need not belong to an initiative,
+                          and somebody who picked one must be able to take it
+                          off again.
+                        */}
+                        <SelectItem value={NO_INITIATIVE}>None</SelectItem>
+                        {initiatives.map(initiative => (
+                          <SelectItem key={initiative.id} value={initiative.id}>
+                            {initiative.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormDescription>
+                      {initiatives.length === 0
+                        ? 'No initiatives exist yet. They are added on the Initiatives page, then chosen here.'
+                        : 'The strategic initiative this project delivers against. Optional, and maintained on the Initiatives page.'}
+                    </FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -695,6 +763,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
               mode={mode}
               pmoDivisions={pmoDivisions}
               departments={departments}
+              initiatives={initiatives}
               projectStatuses={projectStatuses}
               users={users}
               currencySymbol={currencySymbol}

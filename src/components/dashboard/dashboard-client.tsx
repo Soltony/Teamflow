@@ -34,6 +34,7 @@ import { CelebrationSlider } from "./celebration-slider";
 import { DepartmentProjectsChart } from "@/components/dashboard/department-projects-chart";
 import { ProjectStatusChart } from "@/components/dashboard/project-status-chart";
 import { ResponsibleDepartmentChart } from "@/components/dashboard/responsible-department-chart";
+import { InitiativeProjectsChart } from "@/components/dashboard/initiative-projects-chart";
 import { isOpenBlocker } from "@/lib/validation/blocker";
 import {
   displayProgress,
@@ -81,6 +82,7 @@ export function DashboardClient({
   projectStatuses,
   pmoDivisions,
   departments,
+  initiatives = [],
   teams,
   availableYears,
   currentWorkingYear,
@@ -441,7 +443,11 @@ export function DashboardClient({
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 lg:grid-cols-3">
+      {/*
+        Four breakdowns of the same selection, so the grid pairs them at
+        medium width rather than leaving a single orphan under a row of three.
+      */}
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Projects by owning EPMO division</CardTitle>
@@ -467,6 +473,17 @@ export function DashboardClient({
           </CardHeader>
           <CardContent>
             <ResponsibleDepartmentChart projects={filteredProjects} departments={departments} />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Projects by initiative</CardTitle>
+            <CardDescription>
+              Which strategic commitments the portfolio is serving.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <InitiativeProjectsChart projects={filteredProjects} initiatives={initiatives} />
           </CardContent>
         </Card>
       </div>

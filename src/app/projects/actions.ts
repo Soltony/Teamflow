@@ -30,6 +30,7 @@ import {
     type UpdateBlockerInput,
 } from "@/lib/validation/blocker";
 import { projectsForDivision } from "@/lib/queries/division-scope";
+import { projectsForInitiative } from "@/lib/queries/initiative-scope";
 import { GENERAL_TASKS_TITLE, ensureGeneralTasksMilestone } from "@/lib/services/milestones";
 import { resolvePage } from "@/lib/pagination";
 
@@ -51,11 +52,14 @@ import { projectVisibilityClauses } from '@/lib/queries/project-visibility';
 
 export async function getNewProjectData() {
     await requirePermission('projects:create');
-    const [users, pmoDivisions, projectStatuses, departments] = await Promise.all([
+    const [users, pmoDivisions, projectStatuses, departments, initiatives] = await Promise.all([
         prisma.user.findMany({ select: USER_WITH_ROLES_SELECT }),
         prisma.pmoDivision.findMany(),
         prisma.projectStatus.findMany(),
         prisma.department.findMany(),
+        // Read straight from the initiative register, like the departments
+        // above it. The form only ever picks from these rows.
+        prisma.initiative.findMany({ orderBy: { name: 'asc' } }),
       ]);
 
       return {
@@ -63,6 +67,7 @@ export async function getNewProjectData() {
         pmoDivisions: serialize(pmoDivisions),
         projectStatuses: serialize(projectStatuses),
         departments: serialize(departments),
+        initiatives: serialize(initiatives),
       }
 }
 
@@ -76,7 +81,13 @@ export async function createProject(data: unknown) {
     if (!parsed.success) {
         return { success: false, error: formatValidationError(parsed.error) };
     }
-    const { milestones, responsibleDepartmentIds, participatingDivisionIds, hasCost, payments, hasMilestones, timelineChangeReason, ...projectData } = parsed.data;
+    const { milestones, responsibleDepartmentIds, participatingDivisionIds, initiativeId, hasCost, payments, hasMilestones, timelineChangeReason, ...projectData } = parsed.data;
+
+    // Checked before the write rather than left to the foreign key. Connecting
+    // an id that is not there throws out of the action as a 500; this says
+    // what is wrong in a sentence the form can show.
+    const initiativeError = await missingInitiativeError(initiativeId);
+    if (initiativeError) return initiativeError;
 
     const newProject = await prisma.project.create({
         data: {
@@ -101,6 +112,10 @@ export async function createProject(data: unknown) {
             responsibleDepartments: {
                 connect: responsibleDepartmentIds.map((id: string) => ({ id }))
             },
+            // One initiative at most, and only one that already exists. Null
+            // is a legitimate answer: the project has not been placed under an
+            // initiative yet.
+            initiativeId,
             // The divisions delivering alongside the owner. The schema rejects
             // the owner appearing here, so this can only add to it.
             participatingDivisions: {
@@ -143,6 +158,7 @@ export async function createProject(data: unknown) {
             pmoDivisionId: newProject.pmoDivisionId,
             participatingDivisionIds,
             projectManagerId: newProject.projectManagerId,
+            initiativeId: newProject.initiativeId,
             totalCost: newProject.totalCost,
             milestoneCount: newProject.milestones.length,
             paymentCount: newProject.payments.length,
@@ -158,7 +174,7 @@ export async function createProject(data: unknown) {
 
 export async function getProjectForEdit(projectId: string) {
     await requirePermission('projects:update');
-    const [project, users, pmoDivisions, projectStatuses, departments] = await Promise.all([
+    const [project, users, pmoDivisions, projectStatuses, departments, initiatives] = await Promise.all([
         prisma.project.findUnique({
             where: { id: projectId },
             include: {
@@ -180,6 +196,7 @@ export async function getProjectForEdit(projectId: string) {
         prisma.pmoDivision.findMany({ orderBy: { name: 'asc' } }),
         prisma.projectStatus.findMany({ orderBy: { name: 'asc' } }),
         prisma.department.findMany({ orderBy: { name: 'asc' } }),
+        prisma.initiative.findMany({ orderBy: { name: 'asc' } }),
     ]);
 
     if (!project) return null;
@@ -229,6 +246,26 @@ export async function getProjectForEdit(projectId: string) {
         pmoDivisions: serialize(pmoDivisions),
         projectStatuses: serialize(projectStatuses),
         departments: serialize(departments),
+        initiatives: serialize(initiatives),
+    };
+}
+
+/**
+ * Whether an initiative id refers to something that exists.
+ *
+ * Returns the failure to hand straight back to the caller, or null when there
+ * is nothing wrong — including when no initiative was chosen, which is allowed.
+ */
+async function missingInitiativeError(initiativeId: string | null) {
+    if (!initiativeId) return null;
+    const initiative = await prisma.initiative.findUnique({
+        where: { id: initiativeId },
+        select: { id: true },
+    });
+    if (initiative) return null;
+    return {
+        success: false as const,
+        error: 'That initiative no longer exists. Pick one from the list, or leave it unset.',
     };
 }
 
@@ -240,7 +277,10 @@ export async function updateProject(projectId: string, data: unknown) {
     if (!parsed.success) {
         return { success: false, error: formatValidationError(parsed.error) };
     }
-    const { milestones, responsibleDepartmentIds, participatingDivisionIds, hasCost, payments, timelineChangeReason, hasMilestones, ...projectData } = parsed.data;
+    const { milestones, responsibleDepartmentIds, participatingDivisionIds, initiativeId, hasCost, payments, timelineChangeReason, hasMilestones, ...projectData } = parsed.data;
+
+    const initiativeError = await missingInitiativeError(initiativeId);
+    if (initiativeError) return initiativeError;
 
     const existingProject = await prisma.project.findUnique({ where: { id: projectId } });
     if (!existingProject) {
@@ -346,6 +386,10 @@ export async function updateProject(projectId: string, data: unknown) {
                   responsibleDepartments: {
                     set: responsibleDepartmentIds.map((id: string) => ({ id }))
                   },
+                  // Written unconditionally, so clearing the field on the form
+                  // clears it on the project rather than leaving the old
+                  // initiative silently attached.
+                  initiativeId,
                   // `set`, not `connect`: removing a division from the form has
                   // to remove it from the project.
                   participatingDivisions: {
@@ -937,6 +981,8 @@ export async function deleteTask(taskId: string, projectId: string) {
 export interface ProjectsPageFilters {
     status?: string | null;
     pmoDivisionId?: string | null;
+    /** An initiative id, or the unassigned sentinel. See initiative-scope.ts. */
+    initiativeId?: string | null;
     /** Matched against the project name and description, case-insensitively. */
     search?: string | null;
     /** 1-based. */
@@ -981,13 +1027,15 @@ export async function getProjectsPageData(_userId: string | undefined, filters: 
             statuses: [],
             users: [],
             pmoDivisions: [],
+            initiatives: [],
         };
     }
     
-    const [statuses, users, pmoDivisions] = await Promise.all([
+    const [statuses, users, pmoDivisions, initiatives] = await Promise.all([
         prisma.projectStatus.findMany({ orderBy: { name: 'asc' } }),
         prisma.user.findMany({ select: USER_WITH_ROLES_SELECT }),
         prisma.pmoDivision.findMany({ orderBy: { name: 'asc' } }),
+        prisma.initiative.findMany({ orderBy: { name: 'asc' } }),
     ]);
     
     const archivedStatusIds = statuses.filter(s => isArchivedStatus(s)).map(s => s.id);
@@ -1006,6 +1054,9 @@ export async function getProjectsPageData(_userId: string | undefined, filters: 
             // Owner or participant: a division filtering the list expects to
             // see the projects it is working on, not only the ones it owns.
             ...(filters.pmoDivisionId ? [projectsForDivision(filters.pmoDivisionId)] : []),
+            // The drill-down behind the initiative breakdowns on the dashboard
+            // and the reports page, including to the work under none of them.
+            ...(filters.initiativeId ? [projectsForInitiative(filters.initiativeId)] : []),
             // Searching in the database rather than filtering an array the
             // browser already holds: the point of paging is not to send the
             // rest in the first place.
@@ -1102,6 +1153,7 @@ export async function getProjectsPageData(_userId: string | undefined, filters: 
         statuses: serialize(statuses.filter(s => !isArchivedStatus(s))),
         users: serialize(users),
         pmoDivisions: serialize(pmoDivisions),
+        initiatives: serialize(initiatives),
         // The client needs the total to draw the pager; it no longer holds the
         // rows to count them itself.
         page,
@@ -1129,6 +1181,7 @@ export async function getProjectDetailsForUser(projectId: string, _userId?: stri
             participatingDivisions: true,
             projectManager: { select: USER_DISPLAY_SELECT },
             responsibleDepartments: true,
+            initiative: true,
             blockers: {
                 include: {
                     owner: { select: { id: true, name: true } },

@@ -65,7 +65,7 @@ export default async function DashboardPage({
             : {}),
     };
 
-    const [allProjects, projectStatuses, pmoDivisions, departments, teams, distinctYears] = await Promise.all([
+    const [allProjects, projectStatuses, pmoDivisions, departments, initiatives, teams, distinctYears] = await Promise.all([
         prisma.project.findMany({
             where: projectWhere,
             include: {
@@ -73,6 +73,9 @@ export default async function DashboardPage({
                 pmoDivision: true,
                 projectManager: true,
                 responsibleDepartments: true,
+                // The initiative each project answers to, for the breakdown
+                // chart and the optional table column.
+                initiative: { select: { id: true, name: true } },
                 milestones: {
                     include: {
                         tasks: true,
@@ -92,6 +95,7 @@ export default async function DashboardPage({
         prisma.projectStatus.findMany(),
         prisma.pmoDivision.findMany(),
         prisma.department.findMany(),
+        prisma.initiative.findMany({ orderBy: { name: 'asc' } }),
         prisma.team.findMany({
             // A team is reached through its project links now.
             where: { projects: { some: { project: projectWhere } } },
@@ -157,6 +161,7 @@ export default async function DashboardPage({
             projectStatuses={serialize(projectStatuses)}
             pmoDivisions={serialize(pmoDivisions)}
             departments={serialize(departments)}
+            initiatives={serialize(initiatives)}
             teams={serialize(teams)}
             availableYears={availableYears}
             currentWorkingYear={activeYear}

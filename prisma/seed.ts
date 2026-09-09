@@ -5,6 +5,7 @@ import {
     users as usersData, 
     pmoDivisionsData, 
     departmentsData,
+    initiativesData,
     projectStatusesData, 
     projectsData, 
     teamsData
@@ -78,6 +79,7 @@ async function main() {
   await prisma.role.deleteMany();
   await prisma.pmoDivision.deleteMany();
   await prisma.department.deleteMany();
+  await prisma.initiative.deleteMany();
   await prisma.projectStatus.deleteMany();
   console.log('Existing data cleared.');
   
@@ -120,6 +122,10 @@ async function main() {
             'departments:create',
             'departments:update',
             'departments:delete',
+            'initiatives:read',
+            'initiatives:create',
+            'initiatives:update',
+            'initiatives:delete',
             'teams:create',
             'teams:read',
             'teams:update',
@@ -150,6 +156,10 @@ async function main() {
             'departments:create',
             'departments:update',
             'departments:delete',
+            'initiatives:read',
+            'initiatives:create',
+            'initiatives:update',
+            'initiatives:delete',
             'teams:create',
             'teams:read',
             'teams:update',
@@ -216,6 +226,20 @@ async function main() {
     departmentMap.set(createdDept.name, createdDept.id);
   }
   console.log(`Seeded ${departmentsData.length} departments.`);
+
+  // Seed Initiatives and create a map
+  const initiativeMap = new Map<string, string>();
+  for (const initiative of initiativesData) {
+    const createdInitiative = await prisma.initiative.upsert({
+        where: { name: initiative.name },
+        update: {},
+        create: {
+            name: initiative.name,
+        }
+    });
+    initiativeMap.set(createdInitiative.name, createdInitiative.id);
+  }
+  console.log(`Seeded ${initiativesData.length} initiatives.`);
 
   // Seed Users and create a map
   const userMap = new Map<string, string>();
@@ -299,6 +323,11 @@ async function main() {
     const responsibleDepartmentIds = project.responsibleDepartmentNames
         .map(name => departmentMap.get(name))
         .filter((id): id is string => !!id);
+    // Undefined when the fixture names no initiative, which is a project that
+    // has not been placed under one — a state the schema allows.
+    const initiativeId = project.initiativeName
+        ? initiativeMap.get(project.initiativeName)
+        : undefined;
 
     if (!projectManagerId || !statusId || !pmoDivisionId) {
         console.warn(`Skipping project "${project.name}" due to missing relations.`);
@@ -322,6 +351,7 @@ async function main() {
         responsibleDepartments: {
           connect: responsibleDepartmentIds.map(id => ({ id })),
         },
+        initiativeId,
       },
     });
 

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { ArrowRight, Building, CalendarDays, Crown, Library, UserCircle, Users } from 'lucide-react';
+import { ArrowRight, Building, CalendarDays, Compass, Crown, Library, UserCircle, Users } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -82,6 +82,9 @@ export function ProjectOverviewTab({
             </Fact>
             <Fact icon={Building} label="Delivered for">
               {departments.length > 0 ? departments.join(', ') : 'Nobody recorded'}
+            </Fact>
+            <Fact icon={Compass} label="Initiative">
+              {project.initiative?.name ?? 'Not under an initiative'}
             </Fact>
             <Fact icon={CalendarDays} label="Runs">
               {format(parseISO(project.startDate), 'd MMM yyyy')} –{' '}

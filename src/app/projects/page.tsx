@@ -13,7 +13,11 @@ import { getProjectsPageData, addTask, updateTask, deleteTask } from "./actions"
 import { Skeleton, LoadingRegion } from "@/components/ui/skeleton";
 import { DataToolbar, ALL } from "@/components/ui/data-toolbar";
 import { PageHeader, PageShell } from "@/components/ui/page-header";
-import type { Task as TaskType, Project, Milestone, ProjectStatus, PmoDivision, Team, UserWithRoles } from "@/lib/types";
+import type { Task as TaskType, Project, Milestone, ProjectStatus, PmoDivision, Initiative, Team, UserWithRoles } from "@/lib/types";
+import {
+  UNASSIGNED_INITIATIVE,
+  UNASSIGNED_INITIATIVE_LABEL,
+} from "@/lib/queries/initiative-scope";
 import { AddTaskDialog } from "@/components/projects/add-task-dialog";
 import { EditTaskDialog } from "@/components/projects/edit-task-dialog";
 import { useToast } from "@/hooks/use-toast";
@@ -66,6 +70,7 @@ export default function ProjectsPage() {
     const [allUsers, setAllUsers] = useState<UserWithRoles[]>([]);
     const [statuses, setStatuses] = useState<ProjectStatus[]>([]);
     const [pmoDivisions, setPmoDivisions] = useState<PmoDivision[]>([]);
+    const [initiatives, setInitiatives] = useState<Initiative[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [loadError, setLoadError] = useState<string | null>(null);
     const [totalPages, setTotalPages] = useState(1);
@@ -85,6 +90,7 @@ export default function ProjectsPage() {
 
     const [selectedStatus, setSelectedStatus] = useState<string>(ALL);
     const [selectedPmoDivision, setSelectedPmoDivision] = useState<string>(ALL);
+    const [selectedInitiative, setSelectedInitiative] = useState<string>(ALL);
     const [sort, setSort] = useState('created');
 
     const [expandedItem, setExpandedItem] = useState<{ projectId: string; section: 'tasks' | 'teams' } | null>(null);
@@ -107,12 +113,18 @@ export default function ProjectsPage() {
 
     // Whether the list is empty because nothing exists, or because a filter
     // is hiding it. The two need opposite advice.
-    const filtersActive = anyFilterActive(debouncedSearch, selectedStatus, selectedPmoDivision);
+    const filtersActive = anyFilterActive(
+        debouncedSearch,
+        selectedStatus,
+        selectedPmoDivision,
+        selectedInitiative,
+    );
 
     const clearFilters = () => {
         setSearchQuery('');
         setSelectedStatus(ALL);
         setSelectedPmoDivision(ALL);
+        setSelectedInitiative(ALL);
     };
 
     const fetchData = useCallback(async () => {
@@ -124,6 +136,7 @@ export default function ProjectsPage() {
             const data = await getProjectsPageData(localUser.id, {
                 status: selectedStatus === ALL ? null : selectedStatus,
                 pmoDivisionId: selectedPmoDivision === ALL ? null : selectedPmoDivision,
+                initiativeId: selectedInitiative === ALL ? null : selectedInitiative,
                 search: debouncedSearch,
                 page: currentPage,
                 pageSize: projectsPerPage,
@@ -133,6 +146,7 @@ export default function ProjectsPage() {
             setStatuses(data.statuses);
             setAllUsers(data.users || []);
             setPmoDivisions(data.pmoDivisions || []);
+            setInitiatives(data.initiatives || []);
             setTotalPages(data.totalPages ?? 1);
             setTotalCount(data.totalCount ?? 0);
         } catch (error) {
@@ -142,7 +156,7 @@ export default function ProjectsPage() {
         } finally {
             setIsLoading(false);
         }
-    }, [localUser?.id, selectedStatus, selectedPmoDivision, debouncedSearch, currentPage, sort]);
+    }, [localUser?.id, selectedStatus, selectedPmoDivision, selectedInitiative, debouncedSearch, currentPage, sort]);
 
     useEffect(() => {
         if (localUser?.id) {
@@ -159,7 +173,7 @@ export default function ProjectsPage() {
     useEffect(() => {
         setCurrentPage(1);
         setExpandedItem(null);
-    }, [debouncedSearch, selectedStatus, selectedPmoDivision, sort]);
+    }, [debouncedSearch, selectedStatus, selectedPmoDivision, selectedInitiative, sort]);
 
     const handleTaskAdd = async (data: any, milestoneId?: string) => {
         if (!addingTaskToProject || !localUser) {
@@ -315,6 +329,17 @@ export default function ProjectsPage() {
                         onChange: setSelectedPmoDivision,
                         options: pmoDivisions.map((d) => ({ value: d.id, label: d.name })),
                         allLabel: 'All EPMO divisions',
+                    },
+                    {
+                        id: 'initiative',
+                        label: 'Initiative',
+                        value: selectedInitiative,
+                        onChange: setSelectedInitiative,
+                        options: [
+                            ...initiatives.map((i) => ({ value: i.id, label: i.name })),
+                            { value: UNASSIGNED_INITIATIVE, label: UNASSIGNED_INITIATIVE_LABEL },
+                        ],
+                        allLabel: 'All initiatives',
                     },
                 ]}
                 sort={{ value: sort, onChange: setSort, options: SORT_OPTIONS }}

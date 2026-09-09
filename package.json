@@ -23,6 +23,7 @@
     "auth:test-restart": "bash scripts/test-restart-persistence.sh",
     "auth:test-session": "tsx scripts/test-stale-session.ts",
     "auth:grant-read-all": "tsx scripts/grant-read-all.ts",
+    "initiatives:grant-permissions": "tsx scripts/grant-initiative-permissions.ts",
     "test:pagination": "tsx scripts/test-pagination.ts",
     "test:documents": "tsx scripts/test-documents.ts",
     "deploy:preflight": "tsx scripts/preflight-deploy.ts",

@@ -41,6 +41,7 @@ export type ProjectColumn =
   | 'rag'
   | 'status'
   | 'manager'
+  | 'initiative'
   | 'progress'
   | 'schedule'
   | 'budget'
@@ -61,6 +62,10 @@ export const PROJECT_COLUMNS: ProjectColumnDef[] = [
   { id: 'rag', label: 'Health', required: true },
   { id: 'status', label: 'Status' },
   { id: 'manager', label: 'Manager' },
+  // Off by default. The strategic reading of the portfolio belongs on
+  // Reports; this is here for somebody scanning delivery who wants to see
+  // which commitment each row answers to without leaving the table.
+  { id: 'initiative', label: 'Initiative' },
   { id: 'progress', label: 'Progress', numeric: true },
   { id: 'schedule', label: 'Schedule variance', numeric: true },
   { id: 'budget', label: 'Budget used', numeric: true },
@@ -116,6 +121,13 @@ export function sortProjectRows(projects: any[], sort: ProjectTableSort): any[] 
       case 'manager':
         result = String(a.projectManager?.name ?? '').localeCompare(
           String(b.projectManager?.name ?? ''),
+        );
+        break;
+      case 'initiative':
+        // Unplaced projects sort last in either direction rather than under
+        // an empty name at the top, where they read as a broken row.
+        result = String(a.initiative?.name ?? '￿').localeCompare(
+          String(b.initiative?.name ?? '￿'),
         );
         break;
       case 'progress':
@@ -256,6 +268,14 @@ export function ProjectTable({
                       return (
                         <TableCell key={column.id} className="max-w-[160px] truncate">
                           {project.projectManager?.name ?? '—'}
+                        </TableCell>
+                      );
+                    case 'initiative':
+                      return (
+                        <TableCell key={column.id} className="max-w-[180px] truncate">
+                          {project.initiative?.name ?? (
+                            <span className="text-muted-foreground">—</span>
+                          )}
                         </TableCell>
                       );
                     case 'progress':
