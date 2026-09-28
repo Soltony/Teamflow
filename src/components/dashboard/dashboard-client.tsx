@@ -450,7 +450,7 @@ export function DashboardClient({
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Projects by owning EPMO division</CardTitle>
+            <CardTitle className="text-base">Projects by responsible EPMO division</CardTitle>
             <CardDescription>Where the portfolio sits.</CardDescription>
           </CardHeader>
           <CardContent>
@@ -468,7 +468,7 @@ export function DashboardClient({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Projects by responsible department</CardTitle>
+            <CardTitle className="text-base">Projects by owner department</CardTitle>
             <CardDescription>Who the work is being delivered for.</CardDescription>
           </CardHeader>
           <CardContent>

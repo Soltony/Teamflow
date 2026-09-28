@@ -44,7 +44,7 @@ describe('createProjectSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('requires at least one responsible department', () => {
+  it('requires at least one owner department', () => {
     expect(createProjectSchema.safeParse(validProject({ responsibleDepartmentIds: [] })).success).toBe(false);
   });
 
@@ -88,7 +88,7 @@ describe('createProjectSchema', () => {
       expect(result.success).toBe(true);
     });
 
-    it('rejects the owning division listed again as a participant', () => {
+    it('rejects the responsible division listed again as a participant', () => {
       const result = createProjectSchema.safeParse(
         validProject({ pmoDivisionId: 'dv-1', participatingDivisionIds: ['dv-1'] }),
       );

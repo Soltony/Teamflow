@@ -56,7 +56,7 @@ export async function deleteDepartment(id: string) {
             where: { responsibleDepartments: { some: { id } } } 
         });
         if (projectsWithDept > 0) {
-            return { success: false, error: "Cannot delete department as it is set as a responsible department for one or more projects."};
+            return { success: false, error: "Cannot delete department as it is set as an owner department for one or more projects."};
         }
         
         await prisma.department.delete({ where: { id } });

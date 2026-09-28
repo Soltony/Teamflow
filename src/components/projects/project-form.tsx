@@ -453,7 +453,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
               {/*
                 The initiative this project sits under.
 
-                Same arrangement as the responsible departments on the Team
+                Same arrangement as the owner departments on the Team
                 step: the list comes from records maintained in their own
                 section, and nothing here can add to it. An initiative is a
                 portfolio-level commitment, so inventing one mid-form — as a
@@ -556,7 +556,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                   name="pmoDivisionId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Owning EPMO division</FormLabel>
+                      <FormLabel>Responsible EPMO division</FormLabel>
                       <Select
                         onValueChange={(value) => {
                           field.onChange(value);
@@ -643,7 +643,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                                 <span className="min-w-0 truncate">
                                   {selectedDivisions.length > 0
                                     ? selectedDivisions.map(d => d.name).join(', ')
-                                    : "None — owned solely by the division above"}
+                                    : "None — delivered solely by the division above"}
                                 </span>
                                 <ChevronDown className="ml-auto h-4 w-4 shrink-0" />
                               </Button>
@@ -673,7 +673,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                         <FormDescription>
                           {selectedDivisions.length > 0
                             ? `${selectedDivisions.length} other division${selectedDivisions.length === 1 ? '' : 's'} delivering this. They see it on their dashboards too.`
-                            : 'Other divisions delivering the work alongside the owner. Optional.'}
+                            : 'Other divisions delivering the work alongside the responsible division. Optional.'}
                         </FormDescription>
                         <FormMessage />
                       </FormItem>
@@ -687,7 +687,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                     const selectedDepts = departments.filter(dept => field.value?.includes(dept.id));
                     return (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Responsible departments</FormLabel>
+                        <FormLabel>Owner departments</FormLabel>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <FormControl>

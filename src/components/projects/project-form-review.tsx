@@ -166,7 +166,7 @@ export function ProjectReviewStep({
       </ReviewCard>
 
       <ReviewCard title="Team" onEdit={() => onEditStep('team')}>
-        <Row label="Owning EPMO division" value={division?.name ?? <Missing />} />
+        <Row label="Responsible EPMO division" value={division?.name ?? <Missing />} />
         <Row
           label="Participating divisions"
           // Not a Missing marker: no participants is the ordinary case, not an
@@ -175,7 +175,7 @@ export function ProjectReviewStep({
         />
         <Row label="Project manager" value={manager?.name ?? <Missing />} />
         <Row
-          label="Responsible departments"
+          label="Owner departments"
           value={depts.length > 0 ? depts.map((d) => d.name).join(', ') : <Missing />}
         />
       </ReviewCard>

@@ -72,15 +72,15 @@ export function ProjectOverviewTab({
             <Fact icon={UserCircle} label="Project manager">
               {project.projectManager?.name ?? 'Unassigned'}
             </Fact>
-            <Fact icon={Library} label="Owning EPMO division">
+            <Fact icon={Library} label="Responsible EPMO division">
               {project.pmoDivision?.name ?? 'None'}
             </Fact>
             <Fact icon={Library} label="Participating divisions">
               {participatingDivisions.length > 0
                 ? participatingDivisions.join(', ')
-                : 'Owned solely by the division above'}
+                : 'Delivered solely by the division above'}
             </Fact>
-            <Fact icon={Building} label="Delivered for">
+            <Fact icon={Building} label="Owner departments">
               {departments.length > 0 ? departments.join(', ') : 'Nobody recorded'}
             </Fact>
             <Fact icon={Compass} label="Initiative">

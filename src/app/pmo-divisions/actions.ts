@@ -57,7 +57,7 @@ export async function deletePmoDivision(id: string) {
             prisma.project.count({ where: { participatingDivisions: { some: { id } } }}),
         ]);
         if (projectsWithDivision > 0) {
-            return { success: false, error: "Cannot delete division as it is set as the owning division for one or more projects."};
+            return { success: false, error: "Cannot delete division as it is set as the responsible EPMO division for one or more projects."};
         }
         // The join would cascade silently, quietly dropping the division from
         // projects it is delivering and leaving nobody able to tell it ever was.
