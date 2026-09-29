@@ -37,6 +37,7 @@ export function ProjectReviewStep({
   projectStatuses,
   users,
   currencySymbol,
+  originalEndDate,
   onEditStep,
 }: {
   form: UseFormReturn<ProjectFormValues>;
@@ -47,6 +48,8 @@ export function ProjectReviewStep({
   projectStatuses: Serialized<ProjectStatus>[];
   users: UserWithRoles[];
   currencySymbol: string;
+  /** The end date on record, when editing. */
+  originalEndDate?: Date;
   onEditStep: (stepId: string) => void;
 }) {
   const values = form.watch();
@@ -57,6 +60,13 @@ export function ProjectReviewStep({
   const initiative = initiatives.find((i) => i.id === values.initiativeId);
   const depts = departments.filter((d) => values.responsibleDepartmentIds?.includes(d.id));
   const participants = pmoDivisions.filter((d) => values.participatingDivisionIds?.includes(d.id));
+
+  // The reason is asked for on the way out of the schedule step, so by now it
+  // is out of sight. It is part of what gets submitted, so it is shown here.
+  const deadlineMovedFrom =
+    originalEndDate && values.endDate && values.endDate.getTime() !== originalEndDate.getTime()
+      ? originalEndDate
+      : null;
 
   const milestones = values.hasMilestones ? values.milestones ?? [] : [];
   const weights = checkWeights(milestones.map((m) => m.weight));
@@ -92,6 +102,15 @@ export function ProjectReviewStep({
             )
           }
         />
+        {deadlineMovedFrom && (
+          <>
+            <Row
+              label="Deadline change"
+              value={`Moved from ${format(deadlineMovedFrom, 'd MMM yyyy')}. Takes effect once approved.`}
+            />
+            <Row label="Reason" value={values.timelineChangeReason?.trim() || <Missing />} />
+          </>
+        )}
         <Row label="Working year" value={values.workingYear || <Missing />} />
       </ReviewCard>
 
@@ -182,7 +201,7 @@ export function ProjectReviewStep({
 
       <p className="text-sm text-muted-foreground">
         {mode === 'edit'
-          ? 'Saving applies these changes immediately. A changed end date is submitted for approval instead of taking effect straight away.'
+          ? 'Saving applies these changes immediately. A changed end date goes for approval, with your reason, instead of taking effect straight away.'
           : 'Creating the project makes it visible to everyone with portfolio access, and it starts counting towards the working year’s figures.'}
       </p>
     </div>

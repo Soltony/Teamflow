@@ -3,7 +3,7 @@
 import * as React from "react";
 import { useFieldArray, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { format } from "date-fns";
+import { format, isSameDay } from "date-fns";
 import { CalendarIcon, ChevronDown } from "lucide-react";
 
 import {
@@ -115,6 +115,11 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
   const [isTimelineChangeDialogOpen, setIsTimelineChangeDialogOpen] = useState(false);
   const [originalEndDate, setOriginalEndDate] = useState<Date | undefined>(initialData?.endDate);
   const [stepIndex, setStepIndex] = useState(0);
+  /**
+   * Where the reader was heading when the deadline question interrupted them.
+   * Null when the question was asked at save instead.
+   */
+  const [pendingStep, setPendingStep] = useState<number | null>(null);
 
   const isEditMode = mode === 'edit';
   const canRequestTimelineChange = hasPermission('timeline:request');
@@ -300,8 +305,39 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
     return form.trigger(step.fields as (keyof ProjectFormValues)[]);
   };
 
+  /** Whether the committed end date differs from the one on record. Never on create. */
+  const deadlineMoved = (endDate: Date | undefined = form.getValues('endDate')) =>
+    Boolean(isEditMode && originalEndDate && endDate && endDate.getTime() !== originalEndDate.getTime());
+
+  const hasDeadlineReason = () => (form.getValues('timelineChangeReason')?.trim().length ?? 0) >= 10;
+
+  /**
+   * Moving between steps.
+   *
+   * Leaving the schedule step with the deadline moved asks why there and then,
+   * while the change is still on screen, rather than steps later at save.
+   * Every way off the step comes through here — Next (after its own
+   * validation), Back, and the step list — so none of them skips the question.
+   * It is asked again on each way out while the date stays moved, with the
+   * earlier answer filled in, since the date may have moved again meanwhile.
+   */
+  const goToStep = (target: number) => {
+    if (target === stepIndex) return;
+    if (visibleSteps[stepIndex]?.id === 'schedule' && deadlineMoved()) {
+      setPendingStep(target);
+      setIsTimelineChangeDialogOpen(true);
+      return;
+    }
+    setStepIndex(target);
+  };
+
   async function handleFormSubmit(data: ProjectFormValues) {
-    if (isEditMode && canRequestTimelineChange && originalEndDate && data.endDate.getTime() !== originalEndDate.getTime()) {
+    // Any moved deadline needs a reason — the server refuses one without it.
+    // It is normally given on the way out of the schedule step; this catches a
+    // save that arrives without one. Whether this person may move the deadline
+    // at all is settled by the end date field, which is locked for roles
+    // without timeline:request.
+    if (deadlineMoved(data.endDate) && !hasDeadlineReason()) {
       setIsTimelineChangeDialogOpen(true);
       return;
     }
@@ -329,14 +365,27 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
     if (firstBad >= 0) setStepIndex(firstBad);
   });
 
-  async function handleTimelineChangeSubmit() {
-    const reason = form.getValues("timelineChangeReason");
-    if (!reason || reason.length < 10) {
+  /**
+   * The reason dialog's confirm button.
+   *
+   * Asked on the way out of the schedule step, it keeps the reason and carries
+   * on to wherever the reader was going — the reason travels with the save.
+   * Asked at save, it submits.
+   */
+  async function handleTimelineChangeConfirm() {
+    if (!hasDeadlineReason()) {
         form.setError("timelineChangeReason", { type: "manual", message: "A reason of at least 10 characters is required." });
         return;
     }
-
+    form.clearErrors("timelineChangeReason");
     setIsTimelineChangeDialogOpen(false);
+
+    if (pendingStep !== null) {
+      setStepIndex(pendingStep);
+      setPendingStep(null);
+      return;
+    }
+
     setIsSubmitting(true);
     await onSubmit(form.getValues());
     setIsSubmitting(false);
@@ -363,7 +412,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
         <FormWizard
           steps={visibleSteps}
           currentStep={stepIndex}
-          onStepChange={setStepIndex}
+          onStepChange={goToStep}
           invalidSteps={invalidSteps}
           onNext={handleNext}
           isSubmitting={isSubmitting}
@@ -520,11 +569,17 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                   name="endDate"
                   label="Committed end date"
                   description={
-                    isEditMode
-                      ? 'Moving this raises a timeline change request for approval.'
-                      : 'The date the project is judged against. Extensions are measured from it.'
+                    !isEditMode
+                      ? 'The date the project is judged against. Extensions are measured from it.'
+                      : canRequestTimelineChange
+                        ? 'Moving this raises a timeline change request for approval. You will be asked why before you leave this step.'
+                        : 'Your role cannot move the deadline. An administrator can allow it under Projects → Request in the role settings.'
                   }
                   disabledBefore={form.getValues('startDate')}
+                  // Locked rather than left to fail at the server: the refusal
+                  // should come before somebody edits the date, not after.
+                  disabled={isEditMode && !canRequestTimelineChange}
+                  recorded={isEditMode ? originalEndDate : undefined}
                 />
               </div>
               <FormField
@@ -767,6 +822,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
               projectStatuses={projectStatuses}
               users={users}
               currencySymbol={currencySymbol}
+              originalEndDate={isEditMode ? originalEndDate : undefined}
               onEditStep={(id) => {
                 const index = visibleSteps.findIndex((s) => s.id === id);
                 if (index >= 0) setStepIndex(index);
@@ -777,7 +833,18 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
       </form>
     </Form>
 
-    <AlertDialog open={isTimelineChangeDialogOpen} onOpenChange={setIsTimelineChangeDialogOpen}>
+    <AlertDialog
+      open={isTimelineChangeDialogOpen}
+      onOpenChange={(open) => {
+        setIsTimelineChangeDialogOpen(open);
+        if (!open) {
+          // Dismissed on the way out of the schedule step: stay on it, where
+          // the date can be put back.
+          setPendingStep(null);
+          form.clearErrors("timelineChangeReason");
+        }
+      }}
+    >
         <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Why is the deadline moving?</AlertDialogTitle>
@@ -787,6 +854,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                     {form.getValues('endDate') ? ` to ${format(form.getValues('endDate'), 'd MMM yyyy')}` : ''}.
                     That needs approval before it takes effect, and the original date stays on record
                     so the project is still measured against what was committed.
+                    {pendingStep !== null && ' The request goes for approval when you save the project.'}
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <Form {...form}>
@@ -821,10 +889,10 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                     // The dialog closes on click by default, which submitted
                     // the form even when the reason failed validation.
                     e.preventDefault();
-                    handleTimelineChangeSubmit();
+                    handleTimelineChangeConfirm();
                   }}
                 >
-                  Submit for approval
+                  {pendingStep !== null ? 'Continue' : 'Submit for approval'}
                 </AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
@@ -847,12 +915,17 @@ function DateField({
   label,
   description,
   disabledBefore,
+  disabled,
+  recorded,
 }: {
   form: ReturnType<typeof useForm<ProjectFormValues>>;
   name: 'startDate' | 'endDate';
   label: string;
   description?: string;
   disabledBefore?: Date;
+  disabled?: boolean;
+  /** The date already on record. Picking its day again restores it exactly. */
+  recorded?: Date;
 }) {
   return (
     <FormField
@@ -866,6 +939,7 @@ function DateField({
               <FormControl>
                 <Button
                   variant="outline"
+                  disabled={disabled}
                   aria-label={field.value ? `${label}: ${format(field.value, 'PPP')}` : `${label}: not set`}
                   className={cn("w-full pl-3 text-left font-normal", !field.value && "text-muted-foreground")}
                 >
@@ -878,7 +952,14 @@ function DateField({
               <Calendar
                 mode="single"
                 selected={field.value}
-                onSelect={field.onChange}
+                // The calendar hands back local midnight, which need not be
+                // the instant on record — seeded projects are stored at UTC
+                // midnight, for one. Picking the day already on record must
+                // not count as moving it: for the deadline that would demand a
+                // reason, and raise a change request, for a date nobody moved.
+                onSelect={(date) =>
+                  field.onChange(date && recorded && isSameDay(date, recorded) ? recorded : date)
+                }
                 disabled={disabledBefore ? (date) => date < disabledBefore : undefined}
                 initialFocus
               />

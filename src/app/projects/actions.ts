@@ -14,7 +14,7 @@ import { revalidatePath } from "next/cache";
 import type { TaskStatus } from "@/lib/types";
 import type { Prisma } from '@prisma/client';
 import { Decimal } from '@prisma/client/runtime/library';
-import { requirePermission, canSeeAllProjects } from "@/lib/auth/guard";
+import { requirePermission, canSeeAllProjects, permit } from "@/lib/auth/guard";
 import { isArchivedStatus, isClosedStatus } from "@/lib/metrics";
 import { auditAction } from "@/lib/auth/audit-context";
 import { AUDIT_ACTIONS, diffFields } from "@/lib/audit-log";
@@ -288,6 +288,20 @@ export async function updateProject(projectId: string, data: unknown) {
     }
 
     const endDateChanged = new Date(projectData.endDate).getTime() !== new Date(existingProject.endDate).getTime();
+
+    // Moving the deadline is its own permission, not part of editing the
+    // project. It used to be checked only in the browser, and only to decide
+    // whether to ask for a reason — so a role without it was never shown the
+    // reason box, then refused here for not filling it in.
+    if (endDateChanged) {
+        const allowed = await permit('timeline:request');
+        if (!allowed.ok) {
+            return {
+                success: false,
+                error: 'Your role cannot move the project deadline. Keep the original end date, or ask an administrator to grant Projects → Request on your role.',
+            };
+        }
+    }
 
     if (endDateChanged && !timelineChangeReason?.trim()) {
         return { success: false, error: 'A reason for changing the project deadline is required.' };

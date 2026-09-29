@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { parseISO } from "date-fns";
 
@@ -93,6 +93,35 @@ export default function EditProjectPage() {
     return result;
   };
 
+  // Memoised on the loaded project, not rebuilt each render. The form re-seeds
+  // itself whenever this object changes, and this page re-renders on every
+  // toast — so building it inline wiped the reader's edits the moment a failed
+  // save reported why it failed.
+  const initialDataForForm = useMemo(() => {
+    if (!data) return undefined;
+    return {
+      ...data.project,
+      // The column is a free string in the database; the shared schema allows
+      // exactly two values. Narrowing here means the form cannot be seeded
+      // with a currency it would then refuse to submit.
+      currency: data.project.currency === 'USD' ? ('USD' as const) : ('ETB' as const),
+      totalCost: data.project.totalCost ? parseFloat(data.project.totalCost) : 0,
+      startDate: parseISO(data.project.startDate),
+      endDate: parseISO(data.project.endDate),
+      milestones: data.project.milestones.map((m: any) => ({
+          ...m,
+          cost: m.cost ? parseFloat(m.cost) : 0,
+          startDate: parseISO(m.startDate),
+          dueDate: parseISO(m.dueDate),
+      })),
+      payments: data.project.payments.map((p: any) => ({
+        ...p,
+        amount: p.amount ? parseFloat(p.amount) : 0,
+        paymentDate: parseISO(p.paymentDate),
+      }))
+    };
+  }, [data]);
+
   if (loading || authLoading) {
     return <LoadingSkeleton />;
   }
@@ -125,28 +154,6 @@ export default function EditProjectPage() {
       </PageShell>
     );
   }
-
-  const initialDataForForm = {
-      ...data.project,
-      // The column is a free string in the database; the shared schema allows
-      // exactly two values. Narrowing here means the form cannot be seeded
-      // with a currency it would then refuse to submit.
-      currency: data.project.currency === 'USD' ? ('USD' as const) : ('ETB' as const),
-      totalCost: data.project.totalCost ? parseFloat(data.project.totalCost) : 0,
-      startDate: parseISO(data.project.startDate),
-      endDate: parseISO(data.project.endDate),
-      milestones: data.project.milestones.map((m: any) => ({
-          ...m,
-          cost: m.cost ? parseFloat(m.cost) : 0,
-          startDate: parseISO(m.startDate),
-          dueDate: parseISO(m.dueDate),
-      })),
-      payments: data.project.payments.map((p: any) => ({
-        ...p,
-        amount: p.amount ? parseFloat(p.amount) : 0,
-        paymentDate: parseISO(p.paymentDate),
-      }))
-  };
 
   return (
     <PageShell className="mx-auto w-full max-w-6xl">
