@@ -1,8 +1,10 @@
+import type { Prisma } from '@prisma/client';
 import prisma from '@/lib/db';
 import { canSeeAllProjects } from '@/lib/auth/access';
 import type { SessionUser } from '@/lib/auth/session';
 import { serialize } from '@/lib/serialize';
 import { USER_DISPLAY_SELECT } from '@/lib/queries/user-select';
+import { projectVisibilityWhere } from '@/lib/queries/project-visibility';
 
 /**
  * "What happened in this period" — the data behind both the Today and the
@@ -29,18 +31,13 @@ export interface ActivityStats {
  * Restricts the query to projects this user may see.
  *
  * Someone with portfolio-wide visibility gets an empty clause; everyone else
- * sees only projects they manage, are on a team for, or hold a task in.
+ * gets the shared rule in projectVisibilityWhere(). This used to be its own
+ * hand-written copy, which kept querying `teams` after teams moved behind
+ * ProjectTeam — so Today and Weekly crashed for everyone but admins.
  */
-function visibleProjectsClause(user: SessionUser) {
+function visibleProjectsClause(user: SessionUser): Prisma.ProjectWhereInput {
   if (canSeeAllProjects(user)) return {};
-
-  return {
-    OR: [
-      { projectManagerId: user.id },
-      { teams: { some: { members: { some: { id: user.id } } } } },
-      { milestones: { some: { tasks: { some: { assignees: { some: { id: user.id } } } } } } },
-    ],
-  };
+  return projectVisibilityWhere(user.id);
 }
 
 /**
