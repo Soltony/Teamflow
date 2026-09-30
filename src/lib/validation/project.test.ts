@@ -44,7 +44,7 @@ describe('createProjectSchema', () => {
     expect(result.success).toBe(false);
   });
 
-  it('requires at least one owner department', () => {
+  it('requires a product owner', () => {
     expect(createProjectSchema.safeParse(validProject({ responsibleDepartmentIds: [] })).success).toBe(false);
   });
 

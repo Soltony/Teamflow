@@ -468,7 +468,7 @@ export function DashboardClient({
         </Card>
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">Projects by owner department</CardTitle>
+            <CardTitle className="text-base">Projects by product owner</CardTitle>
             <CardDescription>Who the work is being delivered for.</CardDescription>
           </CardHeader>
           <CardContent>

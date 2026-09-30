@@ -9,6 +9,7 @@ import type { Department, Initiative, PmoDivision, ProjectStatus } from '@prisma
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { checkWeights } from '@/lib/metrics';
+import { PORTFOLIO_OWNER } from '@/lib/portfolio';
 import type { Serialized } from '@/lib/serialize';
 import type { UserWithRoles } from '@/lib/types';
 import { cn } from '@/lib/utils';
@@ -185,6 +186,7 @@ export function ProjectReviewStep({
       </ReviewCard>
 
       <ReviewCard title="Team" onEdit={() => onEditStep('team')}>
+        <Row label="Portfolio owner" value={PORTFOLIO_OWNER} />
         <Row label="Responsible EPMO division" value={division?.name ?? <Missing />} />
         <Row
           label="Participating divisions"
@@ -194,7 +196,7 @@ export function ProjectReviewStep({
         />
         <Row label="Project manager" value={manager?.name ?? <Missing />} />
         <Row
-          label="Owner departments"
+          label="Product owner"
           value={depts.length > 0 ? depts.map((d) => d.name).join(', ') : <Missing />}
         />
       </ReviewCard>

@@ -3,7 +3,7 @@
 import * as React from 'react';
 import Link from 'next/link';
 import { format, formatDistanceToNow, parseISO } from 'date-fns';
-import { ArrowRight, Building, CalendarDays, Compass, Crown, Library, UserCircle, Users } from 'lucide-react';
+import { ArrowRight, Briefcase, Building, CalendarDays, Compass, Crown, Library, UserCircle, Users } from 'lucide-react';
 
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/table';
 import { ProjectRiskPanel } from './project-summary';
 import { assessRag, committedSpend, displayProgress } from '@/lib/metrics';
+import { PORTFOLIO_OWNER } from '@/lib/portfolio';
 import { daysUntil } from '@/lib/ui/health';
 import { TASK_SORT_OPTIONS, sortTasks, type TaskSort } from '@/lib/ui/sort';
 import { cn } from '@/lib/utils';
@@ -72,6 +73,9 @@ export function ProjectOverviewTab({
             <Fact icon={UserCircle} label="Project manager">
               {project.projectManager?.name ?? 'Unassigned'}
             </Fact>
+            <Fact icon={Briefcase} label="Portfolio owner">
+              {PORTFOLIO_OWNER}
+            </Fact>
             <Fact icon={Library} label="Responsible EPMO division">
               {project.pmoDivision?.name ?? 'None'}
             </Fact>
@@ -80,7 +84,7 @@ export function ProjectOverviewTab({
                 ? participatingDivisions.join(', ')
                 : 'Delivered solely by the division above'}
             </Fact>
-            <Fact icon={Building} label="Owner departments">
+            <Fact icon={Building} label="Product owner">
               {departments.length > 0 ? departments.join(', ') : 'Nobody recorded'}
             </Fact>
             <Fact icon={Compass} label="Initiative">

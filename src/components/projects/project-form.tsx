@@ -16,6 +16,7 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -59,6 +60,7 @@ import {
   AlertDialogTitle,
 } from "../ui/alert-dialog";
 import type { Serialized } from "@/lib/serialize";
+import { PORTFOLIO_OWNER } from "@/lib/portfolio";
 import { useFormDraft } from "@/hooks/use-form-draft";
 
 type ProjectFormProps = {
@@ -502,8 +504,8 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
               {/*
                 The initiative this project sits under.
 
-                Same arrangement as the owner departments on the Team
-                step: the list comes from records maintained in their own
+                Same arrangement as the product owner on the Team step:
+                the list comes from records maintained in their own
                 section, and nothing here can add to it. An initiative is a
                 portfolio-level commitment, so inventing one mid-form — as a
                 free-text field would let anybody do — is how you end up with
@@ -605,6 +607,28 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
 
           {currentStepId === 'team' && (
             <FormSection>
+              {/*
+                Shown, not chosen: every project sits in the same portfolio,
+                so there is nothing to pick and nothing is submitted. Plain
+                Label and Input rather than FormField, which needs a form
+                value behind it. A row of its own, one column wide, so it sits
+                above the division it outranks without breaking the
+                division → manager pairing below.
+              */}
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="portfolio-owner">Portfolio owner</Label>
+                  <Input
+                    id="portfolio-owner"
+                    value={PORTFOLIO_OWNER}
+                    disabled
+                    aria-describedby="portfolio-owner-description"
+                  />
+                  <p id="portfolio-owner-description" className="text-sm text-muted-foreground">
+                    Every project sits in the {PORTFOLIO_OWNER} portfolio, so this cannot be changed.
+                  </p>
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -742,7 +766,7 @@ export function ProjectForm({ mode, initialData, users, pmoDivisions, department
                     const selectedDepts = departments.filter(dept => field.value?.includes(dept.id));
                     return (
                       <FormItem className="flex flex-col">
-                        <FormLabel>Owner departments</FormLabel>
+                        <FormLabel>Product owner</FormLabel>
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
                             <FormControl>

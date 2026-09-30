@@ -62,7 +62,7 @@ const baseProjectSchema = z.object({
   projectManagerId: z.string().trim().min(1, 'Please select a project manager.'),
   responsibleDepartmentIds: z
     .array(z.string().min(1))
-    .min(1, 'Please select at least one owner department.'),
+    .min(1, 'Please select a product owner.'),
   /**
    * The strategic initiative this project is delivered under.
    *
